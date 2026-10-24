@@ -1,10 +1,9 @@
 /**
  * Small panel helpers: open the full app on a route, hide this window, report a failure as an
- * error toast, run a coach action (coach.runAction), and close on an unhandled Esc.
+ * error toast, and close on an unhandled Esc.
  */
 import { toast } from '@renderer/design-system'
 import { invoke } from '@renderer/lib/api'
-import { useAction } from '@renderer/lib/queries'
 import { useEffect, useRef } from 'react'
 
 export function report(error: unknown): void {
@@ -21,11 +20,6 @@ export function openApp(route: string | null = null): void {
 /** Hides the panel window; main keeps it around for the next open. */
 export function closePanel(): void {
   invoke('window.close', 'panel').catch(report)
-}
-
-/** coach.runAction with failures shown as a toast. */
-export function useRunAction() {
-  return useAction('coach.runAction', { onError: report })
 }
 
 /**

@@ -11,11 +11,6 @@ const ROOT = resolve(__dirname, '../..')
 const SHOTS = resolve(__dirname, '__screenshots__')
 const CONFIG = resolve(ROOT, 'src/renderer/surfaces/panel/vite.config.mjs')
 
-/** The page globals the evaluate() callbacks use (this project has no DOM lib). */
-interface PageGlobals {
-  document: { querySelector: (s: string) => { scrollTop: number; scrollHeight: number } | null }
-}
-
 let server: ViteDevServer
 let base = ''
 
@@ -50,51 +45,30 @@ async function shoot(page: Page, name: string, theme: string, extra = 0) {
   })
 }
 
-const scrollBody = (page: Page, to: 'top' | 'bottom') =>
-  page.evaluate((where) => {
-    const el = (globalThis as unknown as PageGlobals).document.querySelector('.pn-body')
-    if (el) el.scrollTop = where === 'top' ? 0 : el.scrollHeight
-  }, to)
-
 async function loaded(page: Page) {
-  await expect(page.getByRole('region', { name: /SN1 vs SN2/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /problem set 4/i })).toBeVisible()
-  await expect(page.getByRole('button', { name: /focus: organic chemistry/i })).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Organic Chemistry topics' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /subject: organic chemistry/i })).toBeVisible()
 }
 
 for (const theme of ['light', 'dark'] as const) {
   test.describe(`panel screenshots · ${theme}`, () => {
     test.use({ colorScheme: theme, viewport: { width: 560, height: 700 }, deviceScaleFactor: 2 })
 
-    test('panel: top, bottom, focus menu, chat', async ({ page }) => {
+    test('panel: topics and the subject menu', async ({ page }) => {
       await open(page)
       await loaded(page)
       await shoot(page, 'home', theme)
 
-      await scrollBody(page, 'bottom')
-      await expect(page.getByText('What should I focus on today?')).toBeVisible()
-      await shoot(page, 'bottom', theme)
-
-      await scrollBody(page, 'top')
-      await page.getByRole('button', { name: /focus: organic chemistry/i }).press('Enter')
+      await page.getByRole('button', { name: /subject: organic chemistry/i }).press('Enter')
       await expect(page.getByRole('menuitem', { name: /linear algebra/i })).toBeVisible()
       await shoot(page, 'focus', theme)
-      await page.keyboard.press('Escape')
-      await expect(page.getByRole('menu')).toHaveCount(0)
-
-      const ask = page.getByRole('textbox', { name: 'Ask Dumbledore' })
-      await ask.fill('I don’t get carbocation stability')
-      await ask.press('Enter')
-      await expect(
-        page.getByRole('button', { name: /roadmap: carbocation stability/i }),
-      ).toHaveCount(2, { timeout: 8000 })
-      await scrollBody(page, 'bottom')
-      await shoot(page, 'chat', theme)
+      await page.getByRole('menuitem', { name: /linear algebra/i }).click()
+      await expect(page.getByRole('list', { name: 'Linear Algebra topics' })).toBeVisible()
     })
 
     test('panel: first day (empty)', async ({ page }) => {
       await open(page, '/', '&scenario=empty')
-      await expect(page.getByText(/no subjects yet/i)).toBeVisible()
+      await expect(page.getByText(/nothing yet\. read or highlight/i)).toBeVisible()
       await shoot(page, 'empty', theme)
     })
 
@@ -115,22 +89,25 @@ for (const theme of ['light', 'dark'] as const) {
 test.describe('panel flows', () => {
   test.use({ viewport: { width: 560, height: 700 } })
 
-  test('next step reaches the checkpoint; Start studying opens the picker; picking starts', async ({
+  test('a topic opens the app; picking in the picker starts and returns to the topics', async ({
     page,
   }) => {
     const errors: string[] = []
     page.on('pageerror', (e) => errors.push(e.message))
     await open(page)
     await loaded(page)
-    const session = page.getByRole('region', { name: /SN1 vs SN2/ })
-    await session.getByRole('button', { name: /next prompt/i }).click()
-    await expect(session.getByRole('button', { name: /quiz/i })).toBeVisible()
-    await expect(session.getByText('Step 4 of 8')).toBeAttached()
+    const popup = page.waitForEvent('popup')
+    await page
+      .getByRole('list', { name: 'Organic Chemistry topics' })
+      .getByRole('button')
+      .first()
+      .click()
+    expect((await popup).url()).toMatch(/subjects\/sub_orgo\/concepts/)
 
     await page.goto(`${base}/panel.html?mock=1&latency=0#/picker`)
     await page.getByRole('option', { name: /why does a rotation/i }).click()
     await expect(page).toHaveURL(/#\/$/)
-    await expect(page.getByRole('region', { name: /eigen/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /subject:/i })).toBeVisible()
     expect(errors).toEqual([])
   })
 })

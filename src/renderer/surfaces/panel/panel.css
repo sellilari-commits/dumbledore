@@ -1,8 +1,8 @@
 /*
- * Mini panel card, header and sections (panel.html; chat and picker styles live beside their
- * components). In Electron the card fills its 380 × 580 transparent window
- * and draws its own 12 px corners and hairline edge; in a plain browser (?mock=1) it floats on
- * a neutral stage with the large shadow. Notion's grey hierarchy; colour only for meaning.
+ * Mini panel card, header and topic list (panel.html; picker styles live beside the picker). In
+ * Electron the card fills its 380 × 580 transparent window and draws its own 12 px corners and
+ * hairline edge; in a plain browser (?mock=1) it floats on a neutral stage with the large shadow.
+ * Calm by design: one list, quiet type, colour only in the small mastery dots.
  */
 
 html,
@@ -79,11 +79,6 @@ body {
   box-shadow: none;
 }
 
-/* Toasts sit above the chat input instead of over it (beats overlays.css, which loads later). */
-:root .dd-toaster {
-  bottom: 64px;
-}
-
 /* ── Header ─────────────────────────────────────────────────────────────── */
 
 .pn-header {
@@ -91,9 +86,8 @@ body {
   flex: none;
   align-items: center;
   gap: 4px;
-  height: 44px;
+  height: 48px;
   padding: 0 8px 0 var(--pn-pad);
-  border-bottom: 1px solid var(--c-borPri);
 }
 
 .pn-brand {
@@ -111,37 +105,31 @@ body {
   white-space: nowrap;
 }
 
-.pn-focus {
+.pn-subj {
   display: inline-flex;
   flex: 0 1 auto;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
-  max-width: 168px;
+  max-width: 180px;
   height: 28px;
-  padding: 0 6px;
+  padding: 0 8px;
   border-radius: var(--radius-control);
   color: var(--c-texPri);
   transition: background var(--dur-fast) var(--ease-out);
 }
 
-.pn-focus:hover,
-.pn-focus[data-state="open"] {
+.pn-subj:hover,
+.pn-subj[data-state="open"] {
   background: var(--c-hover);
 }
 
-.pn-focus__label {
-  flex: none;
-  color: var(--c-texSec);
-  font-size: var(--text-small);
-}
-
-.pn-focus__emoji {
+.pn-subj__emoji {
   flex: none;
   font-size: 13px;
 }
 
-.pn-focus__name {
+.pn-subj__name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -150,7 +138,7 @@ body {
   font-weight: var(--weight-medium);
 }
 
-.pn-focus__chevron {
+.pn-subj__chevron {
   flex: none;
   color: var(--c-icoSec);
 }
@@ -163,60 +151,84 @@ body {
   padding: 0 6px;
 }
 
-/* ── Body & sections ────────────────────────────────────────────────────── */
+/* ── Body: the topic list ─────────────────────────────────────────────── */
 
 .pn-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 2px 0 8px;
+  padding: 8px 0 16px;
 }
 
-.pn-section {
-  padding: 10px var(--pn-pad) 6px;
+.pn-topics {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px;
 }
 
-.pn-section + .pn-section {
-  margin-top: 2px;
-}
-
-.pn-section__head {
+.pn-topic {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 24px;
-  margin-bottom: 2px;
+  gap: 12px;
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  border-radius: var(--radius-control);
+  text-align: left;
+  color: var(--c-texPri);
+  transition: background var(--dur-fast) var(--ease-out);
 }
 
-.pn-section__title {
+.pn-topic:hover {
+  background: var(--c-hover);
+}
+
+.pn-topic:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.pn-topic__name {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--text-small);
-  line-height: var(--leading-small);
-  font-weight: var(--weight-medium);
-  color: var(--c-texSec);
+  font-size: 14px;
+  line-height: 20px;
 }
 
-.pn-section__sep {
-  margin: 0 2px;
-  color: var(--c-texTer);
-}
-
-.pn-section__emoji {
-  margin-right: 4px;
-}
-
-.pn-section__aside {
+/* One quiet detail per row: a small dot for how well the topic is known. */
+.pn-topic__dot {
   flex: none;
-  margin-left: auto;
-  font-size: var(--text-small);
-  color: var(--c-texSec);
-  font-variant-numeric: tabular-nums;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-round);
+  box-shadow: inset 0 0 0 1px var(--c-icoSec); /* new: a hollow ring */
 }
 
+.pn-topic__dot[data-status="learning"] {
+  background: var(--c-icoSec);
+}
+
+.pn-topic__dot[data-status="struggling"] {
+  background: var(--c-orange-ink);
+}
+
+.pn-topic__dot[data-status="mastered"] {
+  background: var(--c-green-ink);
+}
+
+.pn-empty {
+  margin: 0;
+  padding: 20px 18px 0;
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--c-texSec);
+}
+
+/* Shared with the picker: loading and error lines. */
 .pn-note {
   margin: 2px 0 4px;
   font-size: 13px;
@@ -228,328 +240,12 @@ body {
   color: var(--c-red-ink);
 }
 
+.pn-body > .pn-note {
+  padding: 16px 18px 0;
+}
+
 .pn-skel {
   display: grid;
-  gap: 8px;
-  padding: 6px 0 8px;
-}
-
-.pn-link {
-  display: inline-flex;
-  align-items: center;
-  height: 24px;
-  padding: 0 6px;
-  margin: 2px -6px 0;
-  border-radius: var(--radius-control);
-  font-size: var(--text-small);
-  color: var(--c-texSec);
-}
-
-.pn-link:hover {
-  background: var(--c-hover);
-  color: var(--c-texPri);
-}
-
-/* Rows: Notion's 28 px list rows with a hover tint that bleeds into the padding. */
-.pn-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.pn-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: calc(100% + 12px);
-  min-height: 30px;
-  margin: 0 -6px;
-  padding: 0 6px;
-  border-radius: var(--radius-control);
-  text-align: left;
-  transition: background var(--dur-fast) var(--ease-out);
-}
-
-button.pn-row:hover:not(:disabled) {
-  background: var(--c-hover);
-}
-
-button.pn-row:disabled {
-  cursor: default;
-}
-
-.pn-row__icon {
-  flex: none;
-  width: 18px;
-  text-align: center;
-  font-size: 14px;
-}
-
-.pn-row__label {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pn-row__aside {
-  flex: none;
-  font-size: var(--text-small);
-  color: var(--c-texSec);
-  font-variant-numeric: tabular-nums;
-}
-
-.pn-due--soon {
-  color: var(--c-orange-ink);
-  font-weight: var(--weight-medium);
-}
-
-.pn-due--late {
-  color: var(--c-red-ink);
-  font-weight: var(--weight-medium);
-}
-
-/* ── Right now ──────────────────────────────────────────────────────────── */
-
-.pn-now {
-  display: flex;
-  gap: 8px;
-  padding: 2px 0 2px;
-}
-
-.pn-now__icon {
-  flex: none;
-  display: inline-flex;
-  justify-content: center;
-  width: 18px;
-  padding-top: 1px;
-  font-size: 14px;
-  color: var(--c-icoSec);
-}
-
-.pn-now__text {
-  min-width: 0;
-}
-
-.pn-now__line {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  color: var(--c-texSec);
-}
-
-.pn-now__title {
-  color: var(--c-texPri);
-  font-weight: var(--weight-medium);
-}
-
-.pn-now__meta {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--text-small);
-  line-height: var(--leading-small);
-  color: var(--c-texSec);
-}
-
-.pn-suggest {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-  padding: 10px 12px 12px 10px;
-  border-radius: var(--radius-menu);
-  background: var(--c-bacSec);
-  box-shadow: inset 0 0 0 1px var(--c-borPri);
-}
-
-.pn-suggest__icon {
-  flex: none;
-  width: 18px;
-  text-align: center;
-  font-size: 14px;
-  line-height: 21px;
-}
-
-.pn-suggest__body {
-  display: grid;
-  justify-items: start;
-  gap: 8px;
-  min-width: 0;
-}
-
-.pn-suggest__text {
-  margin: 0;
-  font-weight: var(--weight-medium);
-}
-
-.pn-paused {
-  display: flex;
-  align-items: center;
   gap: 10px;
-}
-
-.pn-paused .pn-note {
-  flex: 1;
-}
-
-/* ── Session ────────────────────────────────────────────────────────────── */
-
-.pn-rm {
-  display: flex;
-  flex-wrap: wrap;
-  column-gap: 12px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.pn-rm__item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  min-height: 26px;
-  line-height: 26px;
-}
-
-.pn-rm__item--done {
-  max-width: 100%;
-  font-size: 13px;
-  color: var(--c-texSec);
-}
-
-.pn-rm__item--earlier {
-  color: var(--c-texTer);
-}
-
-.pn-rm__item--current,
-.pn-rm__item--next {
-  flex-basis: 100%;
-}
-
-.pn-rm__mark {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 26px;
-  text-align: center;
-  color: var(--c-texTer);
-}
-
-.pn-rm__item--done .pn-rm__mark {
-  color: var(--c-green-text);
-}
-
-.pn-rm__item--current .pn-rm__mark {
-  color: var(--c-accent);
-}
-
-.pn-rm__title {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pn-rm__item--current .pn-rm__title {
-  font-weight: var(--weight-semibold);
-}
-
-.pn-rm__item--next .pn-rm__title {
-  color: var(--c-texSec);
-}
-
-.pn-rm__meta {
-  flex: none;
-  font-size: var(--text-small);
-  color: var(--c-texSec);
-}
-
-.pn-session__actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.pn-session__hint {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--text-small);
-  color: var(--c-texSec);
-}
-
-.pn-session__planning {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 30px;
-  color: var(--c-texSec);
-}
-
-.pn-start {
-  display: grid;
-  justify-items: start;
-  gap: 8px;
-  padding-top: 2px;
-}
-
-.pn-start__text {
-  margin: 0;
-  color: var(--c-texSec);
-}
-
-/* ── Goals & due ────────────────────────────────────────────────────────── */
-
-.pn-reviews {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-}
-
-.pn-reviews__text {
-  flex: 1;
-  min-width: 0;
-}
-
-.pn-reviews__count {
-  line-height: 18px;
-}
-
-.pn-reviews__names {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--text-small);
-  line-height: var(--leading-small);
-  color: var(--c-texSec);
-}
-
-.pn-exam {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.pn-exam__hint {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--text-small);
-  color: var(--c-texSec);
-}
-
-/* ── Subjects ───────────────────────────────────────────────────────────── */
-
-.pn-subject__bar {
-  flex: none;
+  padding: 14px 18px;
 }
