@@ -22,7 +22,12 @@ const browser = (
 
 describe('detectAssistant', () => {
   it('has a config for every assistant name the prompts can address', () => {
-    expect(ASSISTANTS.map((a) => a.key).sort()).toEqual(Object.keys(ASSISTANT_NAMES).sort())
+    const keys = ASSISTANTS.map((a) => a.key)
+    for (const [key, name] of Object.entries(ASSISTANT_NAMES)) {
+      expect(keys).toContain(key)
+      expect(ASSISTANTS.find((a) => a.key === key)?.name).toBe(name)
+    }
+    expect(new Set(keys).size).toBe(keys.length)
   })
 
   it.each([

@@ -1,4 +1,5 @@
 /** Small types shared inside the perception module. */
+import type { Rect } from '@shared/geometry'
 import type { TextLine } from '@shared/helper-protocol'
 
 /** What perception knows about a window, with or without its text. */
@@ -10,6 +11,8 @@ export interface WindowLike {
   title: string | null
   url: string | null
   lines?: readonly Pick<TextLine, 'text' | 'align'>[]
+  /** Window frame in screen coordinates, when known (sizes the composer check). */
+  frame?: Rect | null
 }
 
 /** Stable identity of a window across frames. */

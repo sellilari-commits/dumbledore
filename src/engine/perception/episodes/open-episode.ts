@@ -61,6 +61,8 @@ export class OpenEpisode {
   title: string | null
   url: string | null
   aiProvider: string | null
+  /** Opened when this window stopped being an AI chat (a coding session took over). */
+  leftChat = false
   userAlign: 'right' | null
   readonly visitStartedAt: number
   readonly revisitsToday: number

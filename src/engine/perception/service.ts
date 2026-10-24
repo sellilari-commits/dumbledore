@@ -3,7 +3,8 @@
  * AI-chat tracker and the episode builder to the helper, Repos and the engine bus.
  *
  * Emits 'perception:window' (masked frames), 'perception:episodeClosed', 'perception:now' and
- * 'perception:aiChat'. Listens to 'settings:changed' and the helper:* events the shell forwards.
+ * 'perception:aiChat'. Listens to 'settings:changed' and the helper:* events the shell forwards
+ * ('helper:focus' feeds the focused composer to the AI-chat tracker).
  */
 import type { Episode, Settings } from '@shared/domain'
 import type { NowContext } from '@shared/state'
@@ -89,6 +90,8 @@ export class Perception implements PerceptionService {
       }),
       bus.on('helper:screenLocked', ({ locked }) => this.scheduler.setLocked(locked)),
       bus.on('helper:appActivated', () => this.scheduler.poke()),
+      // The composer the student focuses tells unknown AI chats apart (ai-chat/composer.ts).
+      bus.on('helper:focus', ({ element }) => this.tracker.observeFocus(element)),
       bus.on('helper:status', ({ status }) => {
         if (status === 'connected') this.scheduler.poke()
       }),

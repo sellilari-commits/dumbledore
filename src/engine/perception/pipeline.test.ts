@@ -67,7 +67,7 @@ const longest = (r: Run) => [...r.closed].sort((a, b) => b.dwellSeconds - a.dwel
 const fixtures = loadEpisodeFixtures()
 
 describe('perception pipeline on recorded fixtures', () => {
-  it('covers the seven recorded scenarios', () => {
+  it('covers the recorded scenarios', () => {
     expect(fixtures.map((f) => f.name)).toEqual([
       'wikipedia-scrollback',
       'scanned-pdf-preview',
@@ -76,6 +76,7 @@ describe('perception pipeline on recorded fixtures', () => {
       'spotify-and-news',
       'password-manager',
       'incognito-window',
+      'claude-app-code-tab',
     ])
   })
 
@@ -147,8 +148,11 @@ describe('perception pipeline on recorded fixtures', () => {
     const aiChat = ex.aiChat
     if (aiChat !== undefined) {
       it('reports the AI chat while it is open', () => {
-        if (aiChat === null) expect(r.chats.filter(Boolean)).toEqual([])
-        else expect(r.chats).toContain(aiChat)
+        if (aiChat === null) {
+          expect(r.chats.filter(Boolean)).toEqual([]) // never reported as a chat
+          return
+        }
+        expect(r.chats).toContain(aiChat)
         expect(r.chats.at(-1)).toBeNull() // cleared when the chat closed
       })
     }

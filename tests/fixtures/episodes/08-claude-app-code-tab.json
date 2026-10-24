@@ -1,0 +1,74 @@
+{
+  "name": "claude-app-code-tab",
+  "description": "The Claude desktop app shows a Claude Code session in its Code tab for two minutes: tool runs, file paths, test output, a diff, permission buttons and the model picker. The code under work happens to be a chemistry fixture about leaving groups. It is a coding session, not a study chat: no AI chat is reported and nothing is learned from it (the real run saved 'studied leaving groups with Claude' from such a session).",
+  "windows": {
+    "claude": {
+      "pid": 640,
+      "bundleId": "com.anthropic.claudefordesktop",
+      "appName": "Claude",
+      "windowId": 4,
+      "title": "Claude",
+      "url": null,
+      "source": "ax"
+    }
+  },
+  "timeline": [
+    {
+      "at": 0,
+      "front": "claude",
+      "lines": [
+        "Chat",
+        "Code",
+        "dumbledore",
+        "main",
+        { "text": "add a fixture where the student reads about leaving groups in SN1 reactions", "align": "right" },
+        "⏺ Read tests/fixtures/episodes/01-wikipedia-scrollback.json",
+        "⎿ Read 120 lines",
+        "⏺ Write(tests/fixtures/episodes/09-leaving-groups.json)",
+        "A good leaving group is a weak base that can stabilise the negative charge.",
+        "Allow once",
+        "Always allow",
+        "Deny",
+        "Opus 5.5"
+      ]
+    },
+    {
+      "at": 40,
+      "front": "claude",
+      "lines": [
+        "Chat",
+        "Code",
+        "⏺ Bash(npx vitest run src/engine/perception/pipeline.test.ts)",
+        "⎿ Test Files 1 passed (1)",
+        "⏺ Update(src/engine/perception/pipeline.test.ts)",
+        "+3 -1",
+        "@@ -70,6 +70,7 @@",
+        "Tosylate and iodide are excellent leaving groups because their conjugate acids are strong.",
+        "Accept edits",
+        "Opus 5.5"
+      ]
+    },
+    {
+      "at": 80,
+      "front": "claude",
+      "lines": [
+        "Chat",
+        "Code",
+        "⏺ Bash(git status)",
+        "⎿ modified: src/engine/perception/pipeline.test.ts",
+        "Commit changes",
+        "Fixture added: leaving groups, SN1 rate law, carbocation stability.",
+        "Reply to Claude…",
+        "Opus 5.5"
+      ]
+    },
+    { "at": 120, "front": null }
+  ],
+  "end": 150,
+  "learning": false,
+  "expect": {
+    "aiChat": null,
+    "encounters": 0,
+    "main": { "kind": "other", "aiProvider": null, "textIncludes": ["Bash(", "leaving groups"] }
+  }
+}

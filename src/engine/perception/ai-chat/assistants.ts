@@ -2,20 +2,29 @@
  * The AI chat assistants Dumbledore recognises: apps, sites, on-screen text markers and the chat
  * input placeholders handed to helper `ax.findChatInput` (docs/PLAN.md R29, §5.3 F2).
  *
- * Bundle ids marked "unverified" are best guesses for apps not installed on the dev Mac; sites
- * and text markers carry detection for them anyway.
+ * The catalog lives in `catalog-web.ts` (assistants with a web app, plus their desktop apps) and
+ * `catalog-apps.ts` (desktop and local-model apps). Every host and bundle id there was checked
+ * (Homebrew cask metadata, the App Store lookup API, `mdls` on installed apps, live page titles);
+ * see docs/progress/W-all-chats.md. Chats that match no entry are recognised by their composer
+ * (`composer.ts`) and reported as the generic `UNKNOWN_CHAT`.
  */
-import { ASSISTANT_NAMES, type AssistantKey } from '@shared/llm'
+import { APP_ASSISTANTS } from './catalog-apps'
+import { WEB_ASSISTANTS } from './catalog-web'
 
 export interface AssistantSite {
   host: string // hostMatches syntax: the host and its subdomains
   pathPrefix?: string
+  /** A query parameter the URL must carry, e.g. Google Search's AI Mode (`udm=50`). */
+  param?: readonly [name: string, value: string]
 }
 
 export interface AssistantConfig {
-  key: AssistantKey
+  /** "chatgpt", "claude", …; the eight keys of ASSISTANT_NAMES keep their meaning. */
+  key: string
   name: string
   bundleIds: readonly string[]
+  /** For apps that are only partly a chat (Raycast): the window title that marks a chat window. */
+  bundleTitle?: RegExp
   sites: readonly AssistantSite[]
   /** Text only this assistant shows (input placeholder, disclaimer); decisive on its own. */
   textMarkers: readonly string[]
@@ -36,104 +45,24 @@ export const GENERIC_CHAT_MARKERS: readonly string[] = [
   'What do you want to know?',
 ]
 
-export const ASSISTANTS: readonly AssistantConfig[] = [
-  {
-    key: 'chatgpt',
-    name: ASSISTANT_NAMES.chatgpt,
-    bundleIds: ['com.openai.chat'],
-    sites: [{ host: 'chatgpt.com' }, { host: 'chat.openai.com' }],
-    textMarkers: ['Message ChatGPT', 'ChatGPT can make mistakes', 'Ask ChatGPT'],
-    titleMarker: /\bChatGPT\b/i,
-    placeholders: ['Ask anything', 'Message ChatGPT', 'Ask ChatGPT'],
-    userAlign: 'right',
-  },
-  {
-    key: 'claude',
-    name: ASSISTANT_NAMES.claude,
-    bundleIds: ['com.anthropic.claudefordesktop'],
-    sites: [{ host: 'claude.ai' }],
-    textMarkers: [
-      'Reply to Claude',
-      'Claude can make mistakes',
-      'Talk with Claude',
-      'Write your prompt to Claude',
-    ],
-    titleMarker: /\bClaude\b/i,
-    placeholders: [
-      'Reply to Claude…',
-      'Reply to Claude...',
-      'How can I help you today?',
-      'Write your prompt to Claude',
-    ],
-    userAlign: null,
-  },
-  {
-    key: 'gemini',
-    name: ASSISTANT_NAMES.gemini,
-    bundleIds: ['com.google.GeminiMacOS', 'com.google.Gemini'], // unverified
-    sites: [
-      { host: 'gemini.google.com' },
-      { host: 'aistudio.google.com' },
-      { host: 'bard.google.com' },
-    ],
-    textMarkers: ['Ask Gemini', 'Gemini can make mistakes', 'Gemini may display inaccurate info'],
-    titleMarker: /\b(Gemini|Google AI Studio)\b/i,
-    placeholders: ['Ask Gemini', 'Enter a prompt here', 'Start typing a prompt', 'Type something'],
-    userAlign: 'right',
-  },
-  {
-    key: 'perplexity',
-    name: ASSISTANT_NAMES.perplexity,
-    bundleIds: ['ai.perplexity.mac', 'ai.perplexity.app'], // unverified
-    sites: [{ host: 'perplexity.ai' }],
-    textMarkers: ['Ask a follow-up', 'Ask follow-up', 'Perplexity can make mistakes'],
-    titleMarker: /\bPerplexity\b/i,
-    placeholders: ['Ask anything…', 'Ask anything...', 'Ask a follow-up…', 'Ask follow-up'],
-    userAlign: null,
-  },
-  {
-    key: 'copilot',
-    name: ASSISTANT_NAMES.copilot,
-    bundleIds: ['com.microsoft.copilot', 'com.microsoft.CopilotForMac'], // unverified
-    sites: [{ host: 'copilot.microsoft.com' }],
-    textMarkers: ['Message Copilot', 'Copilot may make mistakes'],
-    titleMarker: /\bCopilot\b/i,
-    placeholders: ['Message Copilot', 'Ask me anything'],
-    userAlign: 'right',
-  },
-  {
-    key: 'mistral',
-    name: ASSISTANT_NAMES.mistral,
-    bundleIds: ['ai.mistral.chat', 'ai.mistral.lechat'], // unverified
-    sites: [{ host: 'chat.mistral.ai' }],
-    textMarkers: ['Ask Le Chat', 'Le Chat can make mistakes'],
-    titleMarker: /\bLe Chat\b/i,
-    placeholders: ['Ask Le Chat or @mention an agent', 'Ask Le Chat', 'Ask anything'],
-    userAlign: 'right',
-  },
-  {
-    key: 'deepseek',
-    name: ASSISTANT_NAMES.deepseek,
-    bundleIds: ['com.deepseek.chat'], // unverified
-    sites: [{ host: 'chat.deepseek.com' }],
-    textMarkers: ['Message DeepSeek', 'AI-generated, for reference only'],
-    titleMarker: /\bDeepSeek\b/i,
-    placeholders: ['Message DeepSeek'],
-    userAlign: 'right',
-  },
-  {
-    key: 'grok',
-    name: ASSISTANT_NAMES.grok,
-    bundleIds: ['ai.x.grok', 'ai.x.GrokApp'], // unverified
-    sites: [{ host: 'grok.com' }, { host: 'x.com', pathPrefix: '/i/grok' }],
-    textMarkers: ['Ask Grok', 'How can Grok help?'],
-    titleMarker: /\bGrok\b/i,
-    placeholders: ['How can Grok help?', 'Ask Grok', 'Ask anything'],
-    userAlign: 'right',
-  },
-]
+export const UNKNOWN_CHAT_KEY = 'ai_chat'
+
+/** An AI chat recognised by its composer and screen, not by a catalog entry. */
+export const UNKNOWN_CHAT: AssistantConfig = {
+  key: UNKNOWN_CHAT_KEY,
+  name: 'AI chat',
+  bundleIds: [],
+  sites: [],
+  textMarkers: [],
+  titleMarker: /(?!)/,
+  placeholders: [],
+  userAlign: null,
+}
+
+export const ASSISTANTS: readonly AssistantConfig[] = [...WEB_ASSISTANTS, ...APP_ASSISTANTS]
 
 export function assistantByKey(key: string): AssistantConfig | null {
+  if (key === UNKNOWN_CHAT_KEY) return UNKNOWN_CHAT
   return ASSISTANTS.find((a) => a.key === key) ?? null
 }
 

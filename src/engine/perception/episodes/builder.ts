@@ -165,6 +165,15 @@ export class EpisodeBuilder {
         ep = prev
       }
     }
+    const hasText = win.changed && win.lines.length > 0
+    // The same window switched between a chat and a coding session (the Claude app's Chat and
+    // Code tabs): close what was read so far, so neither side's text lands in the other.
+    if (ep && hasText && (ep.aiProvider ? !match : match && ep.leftChat)) {
+      const wasChat = ep.aiProvider !== null
+      this.close(ep, at)
+      ep = this.create(win, ids, match, at)
+      ep.leftChat = wasChat
+    }
     if (!ep) ep = this.create(win, ids, match, at)
     if (match && !ep.aiProvider) {
       ep.aiProvider = match.assistant.key
@@ -173,7 +182,6 @@ export class EpisodeBuilder {
     ep.leftAt = null
     if (win.title) ep.title = win.title
     const countsTowardDwell = idleSeconds < this.opts.idleDwellCapSeconds
-    const hasText = win.changed && win.lines.length > 0
     if (isFront) {
       if (ep.isFront && ep.lastFrontAt !== null && countsTowardDwell) {
         ep.addDwell(Math.min(at - ep.lastFrontAt, this.opts.maxDwellStepMs))
