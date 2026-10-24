@@ -102,6 +102,51 @@ describe('redact', () => {
     expect(redact(text)).toBe(text)
   })
 
+  it('keeps a glued AI-chat line about SN1/SN2 (Accessibility drops the spaces)', () => {
+    // The exact failure: ChatGPT chemistry read as one unspaced line came out as [secret].
+    const line =
+      'SN1vsSN2:SN1reactionsgothroughacarbocationintermediate,sotherateisfirstorder(rate=k[RX]).' +
+      'SN2isaone-stepbacksideattackbythenucleophile,givinginversionofconfiguration.' +
+      'StrongnucleophileslikeOH-orCN-andpolaraproticsolventssuchasDMSOfavourSN2,' +
+      'whileweaknucleophilesandpolarproticsolventsfavourSN1.TertiaryhalidesreactbySN1,primarybySN2.'
+    expect(redact(line)).toBe(line)
+    expect(redactDetailed(line).counts.secret).toBe(0)
+    const camel =
+      'TheSN1ReactionProceedsViaACarbocationIntermediateWhileSN2IsConcerted ' +
+      'Sn1vsSn2nucleophilesubstitutionmechanisms2024 ' +
+      'CHAPTER3ORGANICCHEMISTRYREACTIONSANDMECHANISMS ' +
+      'Reaktio1nopeuslaskeeKunlampotilanousee10astetta'
+    expect(redact(camel)).toBe(camel)
+  })
+
+  it('keeps unspaced chemistry and maths notation and readable URL paths', () => {
+    const text = [
+      'CH3CH2CH2CH2CH2CH2CH2CH2CH2CH2CH2OH',
+      'H2SO4H3PO4HNO3HClHBrHIHClO4NaOHKOHCaOH2',
+      'C6H12O6plus6O2gives6CO2plus6H2Oand2870kJ',
+      'pH7buffer3times10minutesthen4degrees',
+      'f(x)=3x2+2x-5derivative6x+2integralx3+x2-5x+C',
+      'x1x2x3x4x5x6x7x8x9x10x11x12x13x14x15x16',
+      'https://chem.libretexts.org/Bookshelves/Organic_Chemistry/11-reactions-of-alkyl-halides-nucleophilic-substitutions-and-eliminations',
+      'https://en.wikipedia.org/wiki/SN2_reaction_mechanism_and_nucleophilic_substitution_kinetics',
+    ].join('\n')
+    expect(redact(text)).toBe(text)
+  })
+
+  it('still masks long random tokens, hashes and base64 blobs', () => {
+    const cases = [
+      'Vg5kL2mQ9xR7tY3wZ8pN4jH6bF1cD0sA',
+      'k9x2m4q7w1z8r3t6y5u0p2l4j7h9g1f3d5s8',
+      'b3f1c9a27e8d4065f2a1c3e5b7d9f0a2c4e6b8d0',
+      'Q2xhdWRlIGlzIGEgc2VjcmV0IGtleSB2YWx1ZQ8+x7Zq==',
+      'K7MH2JQ9X4WPL6RT0VB3NZ8YC5FDG1SA',
+    ]
+    for (const token of cases) expect(redact(`key ${token} end`)).toBe('key [secret] end')
+    expect(redact('see https://example.com/reset/Vg5kL2mQ9xR7tY3wZ8pN4jH6bF1cD0sA?x=1')).toBe(
+      'see https://example.com/reset/[secret]?x=1',
+    )
+  })
+
   it('is idempotent and counts what it masked', () => {
     const once = redactDetailed('a@b.fi, +358 40 123 4567, password=abcd1234')
     expect(once.counts).toMatchObject({ email: 1, phone: 1, secret: 1 })

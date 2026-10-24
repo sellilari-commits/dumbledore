@@ -3,10 +3,13 @@
  *
  * Applied at capture (before episode text is stored) and again before any LLM call. Masks
  * e-mails, phone numbers, IBANs, card numbers (Luhn-checked), national ids, long digit runs and
- * API keys / tokens / passwords. Idempotent: the placeholders never match a rule themselves.
+ * API keys / tokens / passwords. Long unspaced natural text (AI-chat transcripts read through
+ * Accessibility often arrive glued together) is never treated as a token. Idempotent: the
+ * placeholders never match a rule themselves.
  * Exported for lane L2b's Brain.
  */
 import { ibanLooksValid, luhnValid } from './checksums'
+import { looksLikeSecretToken } from './token-shape'
 
 export type RedactionKind = 'email' | 'phone' | 'iban' | 'card' | 'id' | 'number' | 'secret'
 
@@ -131,10 +134,12 @@ const RULES: readonly Rule[] = [
     kind: 'number',
     re: /(?<![\d]|\d[.,])\d{10,}(?![\d]|[.,]\d)/g,
   },
-  // Long random-looking tokens: ≥ 32 chars mixing letters and digits.
+  // Long random-looking tokens (≥ 32 chars, base64 padding allowed). Natural text with its
+  // spaces lost, formulas and readable URL segments are left alone: see token-shape.ts.
   {
     kind: 'secret',
-    re: /\b(?=[A-Za-z0-9_-]*\d)(?=[A-Za-z0-9_-]*[A-Za-z])[A-Za-z0-9_-]{32,}\b/g,
+    re: /(?<![A-Za-z0-9_+=-])[A-Za-z0-9_+-]{32,}={0,2}(?![A-Za-z0-9_+=-])/g,
+    replace: (m) => (looksLikeSecretToken(m) ? SECRET : null),
   },
 ]
 
