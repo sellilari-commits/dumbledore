@@ -1,9 +1,11 @@
 /**
- * Grows and shrinks the Ask bar window with its card: measures it and asks main for
- * `window.setSize` (width 560, height from 52 up to a cap) when it changes, and again whenever the
- * window comes back (main reopens it 52 tall). Returns the cap, which the card also uses as its
- * max-height, so a long conversation scrolls inside the card instead of being cut off.
+ * Sizes the Ask bar window. The study box (route 'prompt') grows and shrinks with its card: it is
+ * measured and main is asked for `window.setSize` (width 560, height from 52 up to a cap) when it
+ * changes, and again whenever the window comes back (main reopens it 52 tall). The double-tap chat
+ * is a fixed tall panel (CHAT_PANEL_WIDTH × chatPanelHeight). Returns the height cap, which the card
+ * also uses, so a long conversation scrolls inside the card instead of being cut off.
  */
+import { CHAT_PANEL_WIDTH, chatPanelHeight } from '@shared/chat-panel'
 import type { DumbledoreApi } from '@shared/ipc'
 import { type RefObject, useLayoutEffect, useRef, useState } from 'react'
 import { report } from '../overlay/lib/bridge'
@@ -24,32 +26,39 @@ export function clampHeight(measured: number, cap = MAX_HEIGHT): number {
   return Math.max(BAR_HEIGHT, Math.min(cap, Math.ceil(measured)))
 }
 
-export function useWindowAutoSize(api: DumbledoreApi, ref: RefObject<HTMLElement | null>): number {
+export function useWindowAutoSize(
+  api: DumbledoreApi,
+  ref: RefObject<HTMLElement | null>,
+  panel = false,
+): number {
   const [cap] = useState(() => heightCap(window.screen?.availHeight))
-  const last = useRef(0)
+  const [panelHeight] = useState(() => chatPanelHeight(window.screen?.availHeight ?? 0))
+  const last = useRef('')
 
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
     const push = (force: boolean) => {
-      const height = clampHeight(el.getBoundingClientRect().height, cap)
-      if (height === last.current && !force) return
-      last.current = height
+      const width = panel ? CHAT_PANEL_WIDTH : ASK_WIDTH
+      const height = panel ? panelHeight : clampHeight(el.getBoundingClientRect().height, cap)
+      const key = `${width}x${height}`
+      if (key === last.current && !force) return
+      last.current = key
       api
-        .invoke('window.setSize', { surface: 'askbar', width: ASK_WIDTH, height })
+        .invoke('window.setSize', { surface: 'askbar', width, height })
         .catch((e: unknown) => report(e, 'window.setSize'))
     }
     const onFocus = () => push(true)
     push(false)
     window.addEventListener('focus', onFocus)
     const observer =
-      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => push(false))
+      panel || typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => push(false))
     observer?.observe(el)
     return () => {
       window.removeEventListener('focus', onFocus)
       observer?.disconnect()
     }
-  }, [api, ref, cap])
+  }, [api, ref, cap, panel, panelHeight])
 
-  return cap
+  return panel ? panelHeight : cap
 }

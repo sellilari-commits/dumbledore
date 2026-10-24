@@ -162,11 +162,11 @@ test.describe('ask bar topic interactions', () => {
     await expect(input(page)).toBeFocused()
   })
 
-  test('no topics: the plain bar', async ({ page }) => {
+  test('no topics: the plain chat panel', async ({ page }) => {
     await page.goto(`${base}/askbar.html?topics=0`)
     await expect(input(page)).toBeFocused()
     await expect(page.locator('.ask__topics')).toHaveCount(0)
-    expect((await page.locator('.ask').boundingBox())?.height).toBe(52)
+    await expect(page.getByTestId('ask-empty')).toBeVisible()
   })
 
   test('the prompt box has no topic row', async ({ page }) => {

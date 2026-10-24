@@ -10,6 +10,7 @@
  * - The overlay never has focus, so quiz-card keys are injected into it (`forwardKey`).
  */
 import type { HelperClient } from '@engine/contracts'
+import { CHAT_PANEL_HEIGHT, chatPanelSize, isPromptRoute } from '@shared/chat-panel'
 import type { Surface } from '@shared/constants'
 import { type Rect, rectCenter } from '@shared/geometry'
 import { IPC_EVENT_PREFIX } from '@shared/ipc'
@@ -25,7 +26,7 @@ import { appOptions, finishTyping, typingOptions, webPreferences } from './optio
 import { OverlayWindows } from './overlays'
 import {
   ASKBAR_SIZE,
-  askbarBounds,
+  askbarOpenBounds,
   PANEL_SIZE,
   panelBounds,
   panelOpenSize,
@@ -139,7 +140,9 @@ export class WindowManager implements SurfaceControl, EventSink {
     const win = this.typing[surface]
     if (!win || win.isDestroyed()) return
     const w = Math.round(Math.min(Math.max(width, 280), 800))
-    const h = Math.round(Math.min(Math.max(height, 44), surface === 'askbar' ? 600 : 900))
+    const h = Math.round(
+      Math.min(Math.max(height, 44), surface === 'askbar' ? Math.max(CHAT_PANEL_HEIGHT, 600) : 900),
+    )
     const current = win.getBounds()
     const area = displayAt(this.displays(), rectCenter(current))?.workArea ?? current
     if (surface === 'panel') this.panelFitted = { width: w, height: h }
@@ -194,7 +197,9 @@ export class WindowManager implements SurfaceControl, EventSink {
   private ensureTyping(surface: TypingSurface, route: string | null): BrowserWindow {
     const existing = this.typing[surface]
     if (existing && !existing.isDestroyed()) {
-      if (route) existing.webContents.send(`${IPC_EVENT_PREFIX}navigate`, { route })
+      // The Ask bar always hears its route, so a reused window leaves the study box for the chat.
+      if (route || surface === 'askbar')
+        existing.webContents.send(`${IPC_EVENT_PREFIX}navigate`, { route: route ?? '/' })
       return existing
     }
     const size = surface === 'panel' ? PANEL_SIZE : ASKBAR_SIZE
@@ -222,10 +227,15 @@ export class WindowManager implements SurfaceControl, EventSink {
       if (anchor && display) return panelBounds(display, anchor, size)
       return { x: 100, y: 100, ...size }
     }
-    const display =
-      (await this.activeDisplay(opts.nearField ?? null, displays)) ?? primaryDisplay(displays)
-    if (!display) return { x: 100, y: 100, ...ASKBAR_SIZE }
-    return askbarBounds(display, opts.nearField ?? null)
+    const prompt = isPromptRoute(opts.route)
+    const anchor = this.bindings?.overlay.anchor() ?? null
+    // The double-tap chat stands beside the orb; the study box goes to the active display.
+    const display = prompt
+      ? await this.activeDisplay(opts.nearField ?? null, displays)
+      : displays.find((d) => d.id === anchor?.displayId)
+    const target = display ?? primaryDisplay(displays)
+    if (!target) return { x: 100, y: 100, ...(prompt ? ASKBAR_SIZE : chatPanelSize(900)) }
+    return askbarOpenBounds(target, opts.route, anchor, opts.nearField ?? null)
   }
 
   /** The display of the focused field, else of the frontmost window, else under the pointer. */

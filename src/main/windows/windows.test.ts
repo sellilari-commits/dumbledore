@@ -1,8 +1,11 @@
 import { join, resolve } from 'node:path'
+import { CHAT_PANEL_WIDTH, chatPanelHeight, isPromptRoute } from '@shared/chat-panel'
 import { describe, expect, it, vi } from 'vitest'
 import { DISPLAY } from '../testing/harness'
 import {
   askbarBounds,
+  askbarOpenBounds,
+  chatBounds,
   clampRect,
   PANEL_SIZE,
   panelBounds,
@@ -129,6 +132,46 @@ describe('window placement', () => {
     expect(centred.y).toBeLessThan(wa.y + wa.height / 2)
     const nearTop = askbarBounds(DISPLAY, { x: 400, y: 40, width: 700, height: 30 })
     expect(nearTop.y).toBeGreaterThanOrEqual(40 + 30)
+  })
+
+  it('sizes the double-tap chat as a constant 380 × 520 box, smaller only on a short screen', () => {
+    expect(CHAT_PANEL_WIDTH).toBe(380)
+    expect(chatPanelHeight(982)).toBe(520)
+    expect(chatPanelHeight(1400)).toBe(520)
+    expect(chatPanelHeight(600)).toBe(520)
+    expect(chatPanelHeight(400)).toBe(384) // a short screen still keeps a margin
+    expect(chatPanelHeight(0)).toBe(520)
+    expect(isPromptRoute('prompt')).toBe(true)
+    expect(isPromptRoute('#/prompt')).toBe(true)
+    expect(isPromptRoute(null)).toBe(false)
+  })
+
+  it('opens the double-tap chat beside the orb, centred on it, never over it', () => {
+    const orb = { displayId: 1, x: 1480, y: 491, edge: 'right' as const }
+    const chat = chatBounds(DISPLAY, orb)
+    expect(chat.width).toBe(CHAT_PANEL_WIDTH)
+    expect(chat.height).toBe(chatPanelHeight(wa.height))
+    expect(chat.x + chat.width).toBeLessThanOrEqual(1480 - 20)
+    expect(chat.y + chat.height / 2).toBeCloseTo(491, 0)
+    const low = chatBounds(DISPLAY, { ...orb, y: wa.y + wa.height - 30 })
+    expect(low.y + low.height).toBeLessThanOrEqual(wa.y + wa.height - 8)
+    const left = chatBounds(DISPLAY, { displayId: 1, x: 32, y: 491, edge: 'left' })
+    expect(left.x).toBeGreaterThanOrEqual(32 + 20)
+    const none = chatBounds(DISPLAY, null)
+    expect(none.x + none.width).toBeLessThanOrEqual(wa.x + wa.width - 8)
+    expect(Math.abs(none.y + none.height / 2 - (wa.y + wa.height / 2))).toBeLessThanOrEqual(1)
+  })
+
+  it('opens the chat route at its full fixed size on first open; the study box stays compact', () => {
+    const orb = { displayId: 1, x: 1480, y: 491, edge: 'right' as const }
+    const chat = askbarOpenBounds(DISPLAY, null, orb, null)
+    expect(chat).toEqual(chatBounds(DISPLAY, orb))
+    expect(chat.height).toBe(chatPanelHeight(wa.height))
+    expect(chat).toMatchObject({ width: 380, height: 520 })
+    const field = { x: 400, y: 820, width: 700, height: 56 }
+    expect(askbarOpenBounds(DISPLAY, null, orb, field)).toEqual(chat) // the chat ignores the field
+    const box = askbarOpenBounds(DISPLAY, 'prompt', orb, null)
+    expect(box).toMatchObject({ width: 560, height: 52 })
   })
 
   it('grows a window from its top edge around the same centre', () => {

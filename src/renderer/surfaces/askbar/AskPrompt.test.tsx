@@ -55,6 +55,10 @@ describe('Ask bar prompt box (route prompt, right ⌥ hold)', () => {
     expect(screen.getByText(promptHint('ChatGPT'))).toBeTruthy()
     expect(document.querySelector('.ask__choices')).toBeNull()
     expect(callsTo(local, 'session.picker')).toEqual([])
+    // The compact study box, clearly not the tall chat: no header, the 560-wide bar layout.
+    expect(screen.queryByRole('heading')).toBeNull()
+    expect(document.querySelector('.ask')?.getAttribute('data-layout')).toBe('bar')
+    expect(callsTo(local, 'window.setSize').at(-1)).toMatchObject({ width: 560 })
   })
 
   it('says the prompt is copied when no AI chat is open', async () => {

@@ -1,8 +1,10 @@
 /**
  * Where windows open, pure maths in global points: the panel beside the orb (toward the screen
- * centre), the ask bar centred on the active display or over the focused field, and resizing
- * that keeps a window's top edge and horizontal centre in place.
+ * centre), the double-tap chat as a tall panel beside the orb, the study box centred on the active
+ * display or over the focused field, and resizing that keeps a window's top edge and horizontal
+ * centre in place.
  */
+import { chatPanelSize, isPromptRoute } from '@shared/chat-panel'
 import type { Rect } from '@shared/geometry'
 import { type DisplayInfo, ORB_SIZE, type OrbSpot } from '../overlay/geometry'
 
@@ -54,7 +56,21 @@ export function panelBounds(d: DisplayInfo, orb: OrbSpot, size = PANEL_SIZE): Re
   return clampRect({ x, y, width: size.width, height: size.height }, d.workArea)
 }
 
-/** The ask bar sits over the focused field when there is one, else high on the active display. */
+/**
+ * The double-tap chat: a tall, narrow panel beside the orb (the side facing the middle of the
+ * screen), vertically centred on it and kept on screen; it never covers the orb. Without an orb
+ * spot it stands at the right edge of the work area, vertically centred.
+ */
+export function chatBounds(d: DisplayInfo, orb: OrbSpot | null): Rect {
+  const size = chatPanelSize(d.workArea.height)
+  if (orb && orb.displayId === d.id) return panelBounds(d, orb, size)
+  const wa = d.workArea
+  const x = wa.x + wa.width - size.width - MARGIN - ORB_SIZE - GAP
+  const y = wa.y + (wa.height - size.height) / 2
+  return clampRect({ x, y, width: size.width, height: size.height }, wa)
+}
+
+/** The study box sits over the focused field when there is one, else high on the active display. */
 export function askbarBounds(d: DisplayInfo, nearField: Rect | null, size = ASKBAR_SIZE): Rect {
   const wa = d.workArea
   if (nearField) {
@@ -66,6 +82,20 @@ export function askbarBounds(d: DisplayInfo, nearField: Rect | null, size = ASKB
   const x = wa.x + (wa.width - size.width) / 2
   const y = wa.y + Math.round(wa.height * 0.22)
   return clampRect({ x, y, width: size.width, height: size.height }, wa)
+}
+
+/**
+ * Where the Ask bar opens, decided before it is shown so the first frame already has its size:
+ * the double-tap chat as a tall panel beside the orb, the study box (route 'prompt') as the
+ * compact bar over the focused field or high on the display.
+ */
+export function askbarOpenBounds(
+  d: DisplayInfo,
+  route: string | null | undefined,
+  orb: OrbSpot | null,
+  nearField: Rect | null,
+): Rect {
+  return isPromptRoute(route) ? askbarBounds(d, nearField) : chatBounds(d, orb)
 }
 
 /** New size for a window that grows with its content: top edge and centre stay put. */

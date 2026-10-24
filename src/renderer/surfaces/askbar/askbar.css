@@ -1,6 +1,7 @@
 /*
- * Ask bar: a Spotlight-like card that fills its window (560 × 52) and grows into a chat with
- * Dumbledore: the conversation above, the input below (Notion AI's layout). The window is
+ * Ask bar: a card that fills its window. The double-tap chat is a fixed 380 × 520 box beside the
+ * orb (data-layout="panel"): a header, the conversation scrolling in the middle, the input pinned
+ * at the bottom (Notion AI's layout). The study box is a Spotlight-like 560 × 52 bar (data-layout="bar"). The window is
  * transparent; the card draws its own rounded edge. Depth comes from the native window shadow in
  * Electron (and from .ask-stage in the browser mock).
  */
@@ -485,4 +486,73 @@ body {
   box-shadow:
     inset 0 0 0 1px var(--c-borPri),
     var(--shadow-lg);
+}
+
+/* ── Double-tap chat: a tall vertical panel ───────────────────────────── */
+
+.ask[data-layout="panel"] {
+  height: min(100vh, var(--ask-panel-h, 100vh));
+  max-height: none;
+}
+
+.ask[data-layout="panel"] .ask__composer {
+  border-top: 1px solid var(--c-borPri);
+}
+
+.ask[data-layout="panel"] .ask__input {
+  font-size: var(--text-ui);
+  line-height: 22px;
+}
+
+.ask[data-layout="panel"] .ask__msg--user {
+  max-width: 88%;
+}
+
+.ask__empty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: flex-end;
+  margin: 0;
+  padding: 18px 20px;
+  font-size: var(--text-ui);
+  line-height: 22px;
+  color: var(--c-texTer);
+  animation: ask-fade-in var(--dur-base) var(--ease-out);
+}
+
+.ask__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 14px 12px 18px;
+  border-bottom: 1px solid var(--c-borPri);
+}
+
+.ask__head-glyph {
+  flex: none;
+  color: var(--c-icoPri);
+}
+
+.ask__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-ui);
+  font-weight: 600;
+  line-height: 22px;
+  color: var(--c-texPri);
+}
+
+.ask__head .ask__new {
+  margin-top: 0;
+}
+
+/* Browser mock: the panel stands beside a fake orb at the right edge. */
+.ask-stage:has(.ask[data-layout="panel"]) {
+  top: 50%;
+  left: auto;
+  right: 72px;
+  width: 380px;
+  transform: translateY(-50%);
 }

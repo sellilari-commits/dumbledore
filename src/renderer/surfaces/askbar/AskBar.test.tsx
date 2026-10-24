@@ -1,3 +1,4 @@
+import { CHAT_PANEL_WIDTH, chatPanelHeight } from '@shared/chat-panel'
 import type { ChatMessage } from '@shared/domain'
 import type { InvokeChannel } from '@shared/ipc'
 import type { AskResult } from '@shared/state'
@@ -6,7 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { InvokeHandlers } from '../overlay/lib/localApi'
 import { fakeApi } from '../overlay/testing/fakeApi'
 import { describeAction } from './ActionChips'
-import { AskBar, FOLLOW_UP, PLACEHOLDER } from './AskBar'
+import { AskBar, CHAT_TITLE, EMPTY_CHAT, FOLLOW_UP, PLACEHOLDER } from './AskBar'
 import { currentChat, VISIBLE_LIMIT } from './askHistory'
 import { clampHeight, heightCap } from './useWindowAutoSize'
 
@@ -62,16 +63,21 @@ afterEach(() => {
 })
 
 describe('AskBar', () => {
-  it('opens focused with the placeholder and reports its size', () => {
+  it('opens focused as a tall vertical chat panel and asks main for its size', () => {
     const local = askApi()
     render(<AskBar api={local.api} />)
     expect(input().placeholder).toBe(PLACEHOLDER)
     expect(document.activeElement).toBe(input())
     expect(callsTo(local, 'window.setSize')[0]).toEqual({
       surface: 'askbar',
-      width: 560,
-      height: 52,
+      width: CHAT_PANEL_WIDTH,
+      height: chatPanelHeight(window.screen?.availHeight ?? 0),
     })
+    const card = document.querySelector('.ask')
+    expect(card?.getAttribute('data-layout')).toBe('panel')
+    // Empty chat: a calm hint fills the panel above the input.
+    expect(screen.getByTestId('ask-empty').textContent).toBe(EMPTY_CHAT)
+    expect(screen.getByRole('heading', { name: CHAT_TITLE })).toBeTruthy()
   })
 
   it('Enter → ask.submit, then the markdown reply and action chips', async () => {

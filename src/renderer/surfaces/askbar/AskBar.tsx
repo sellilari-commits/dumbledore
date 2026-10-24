@@ -1,9 +1,9 @@
 /**
- * The Ask bar: a Spotlight-like 560 × 52 input with the spectacles glyph that grows into a chat
- * with Dumbledore (thread 'ask'). The conversation sits above the input; the window grows with it
- * up to 600 pt, then the conversation scrolls. Enter sends, Shift+Enter adds a line, Esc closes
- * and hands focus back, ⌘N (or the pen icon) starts a new chat. Opened with route 'prompt' (right
- * ⌥ hold), it is the study box instead: the student says what they want to study, Dumbledore
+ * The Ask bar. Double-tap on right ⌥ opens the chat with Dumbledore (thread 'ask'): a tall, narrow
+ * panel beside the orb with the conversation filling it (newest at the bottom) and the input at
+ * the bottom. Enter sends, Shift+Enter adds a line, Esc closes and hands focus back, ⌘N (or the pen
+ * icon) starts a new chat. Opened with route 'prompt' (right ⌥ hold), it is the compact study box
+ * instead (560 × 52, growing with its note): the student says what they want to study, Dumbledore
  * builds the subject's roadmap and pastes its first prompt into the AI chat (see usePromptBox).
  * The chat itself never pastes anything.
  * In chat mode a row of recent topics sits on top of the input (TopicCarousel): a selected topic
@@ -12,7 +12,7 @@
  */
 import type { DumbledoreApi } from '@shared/ipc'
 import { SquarePen } from 'lucide-react'
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
+import { type CSSProperties, type KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { SpectaclesGlyph } from '../overlay/glyph/SpectaclesGlyph'
 import { AskLog } from './AskLog'
 import { TopicCarousel } from './TopicCarousel'
@@ -25,6 +25,8 @@ import './askbar.css'
 export const PLACEHOLDER = 'Ask Dumbledore — e.g. ‘I don’t get recursion’'
 export const FOLLOW_UP = 'Reply to Dumbledore…'
 export const PROMPT_PLACEHOLDER = 'What do you want to study?'
+export const EMPTY_CHAT = 'Ask anything, or tell Dumbledore what to focus on.'
+export const CHAT_TITLE = 'Chat with Dumbledore'
 
 /** The input's placeholder while a topic is selected. */
 export const topicPlaceholder = (name: string, open: boolean) =>
@@ -37,8 +39,8 @@ export function AskBar({ api }: { api: DumbledoreApi }) {
   const [text, setText] = useState('')
   const card = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
-  const maxHeight = useWindowAutoSize(api, card)
   const prompting = promptBox.active
+  const maxHeight = useWindowAutoSize(api, card, !prompting)
   const busy = prompting ? promptBox.busy : chat.pending !== null || topics.starting
   const topic = prompting ? null : topics.selected
   const open =
@@ -126,10 +128,38 @@ export function AskBar({ api }: { api: DumbledoreApi }) {
       className="ask"
       ref={card}
       data-mode={open ? 'chat' : 'bar'}
+      data-layout={prompting ? 'bar' : 'panel'}
       data-prompt={prompting || undefined}
-      style={{ maxHeight }}
+      style={prompting ? { maxHeight } : ({ '--ask-panel-h': `${maxHeight}px` } as CSSProperties)}
     >
-      {open && <AskLog chat={chat} />}
+      {!prompting && (
+        <header className="ask__head">
+          <SpectaclesGlyph className="ask__head-glyph" size={18} />
+          <h1 className="ask__title">{CHAT_TITLE}</h1>
+          <button
+            type="button"
+            className="ov-icon-btn ask__new"
+            aria-label="New chat"
+            title="New chat · ⌘N"
+            aria-disabled={busy || !open || undefined}
+            onClick={() => {
+              chat.newChat()
+              input.current?.focus()
+            }}
+          >
+            <SquarePen size={15} strokeWidth={1.75} aria-hidden />
+          </button>
+        </header>
+      )}
+      {open ? (
+        <AskLog chat={chat} />
+      ) : (
+        !prompting && (
+          <p className="ask__empty" data-testid="ask-empty">
+            {EMPTY_CHAT}
+          </p>
+        )
+      )}
       {showTopics && (
         <TopicCarousel
           topics={topics.topics}
@@ -141,7 +171,7 @@ export function AskBar({ api }: { api: DumbledoreApi }) {
         />
       )}
       <div className="ask__composer">
-        <SpectaclesGlyph className="ask__glyph" size={22} />
+        {prompting && <SpectaclesGlyph className="ask__glyph" size={22} />}
         <textarea
           ref={input}
           className="ask__input"
@@ -184,21 +214,6 @@ export function AskBar({ api }: { api: DumbledoreApi }) {
               Study <kbd className="ov-key">↵</kbd>
             </span>
           )
-        )}
-        {open && (
-          <button
-            type="button"
-            className="ov-icon-btn ask__new"
-            aria-label="New chat"
-            title="New chat · ⌘N"
-            aria-disabled={busy || undefined}
-            onClick={() => {
-              chat.newChat()
-              input.current?.focus()
-            }}
-          >
-            <SquarePen size={15} strokeWidth={1.75} aria-hidden />
-          </button>
         )}
       </div>
       {!prompting && topics.error && (

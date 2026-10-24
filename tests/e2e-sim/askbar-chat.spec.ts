@@ -68,8 +68,11 @@ async function send(page: Page, text: string, replies: number) {
 
 for (const theme of ['light', 'dark'] as const) {
   test.describe(`ask bar chat (${theme})`, () => {
-    test('compact bar', async ({ page }) => {
+    test('empty chat panel', async ({ page }) => {
       await page.goto(`${base}/askbar.html?theme=${theme}`)
+      // Same constant size when empty: no growing from a short bar.
+      const box = await page.locator('.ask').boundingBox()
+      expect(Math.round(box?.height ?? 0)).toBe(520)
       await expect(page.getByPlaceholder(/Ask Dumbledore/)).toBeFocused()
       await shoot(page, `compact-${theme}`)
     })
@@ -88,8 +91,10 @@ for (const theme of ['light', 'dark'] as const) {
       await page.goto(`${base}/askbar.html?theme=${theme}&seed=5`)
       await expect(page.locator('.ask__msg--user')).toHaveCount(5)
       await send(page, 'quiz me on moles', 6)
+      // The double-tap chat is a constant 380 × 520 box: a long chat scrolls inside it.
       const box = await page.locator('.ask').boundingBox()
-      expect(Math.round(box?.height ?? 0)).toBe(600)
+      expect(Math.round(box?.width ?? 0)).toBe(380)
+      expect(Math.round(box?.height ?? 0)).toBe(520)
       const log = await page.evaluate(() => {
         const el = (globalThis as unknown as PageGlobals).document.querySelector('.ask__log')
         return { top: el.scrollTop, gap: el.scrollHeight - el.scrollTop - el.clientHeight }
@@ -129,7 +134,7 @@ test.describe('ask bar chat interactions', () => {
     await page.getByRole('button', { name: 'New chat' }).click()
     await expect(page.locator('.ask__log')).toHaveCount(0)
     await expect(page.getByPlaceholder(/Ask Dumbledore/)).toBeFocused()
-    expect((await page.locator('.ask').boundingBox())?.height).toBe(52)
+    await expect(page.getByTestId('ask-empty')).toBeVisible()
     await send(page, 'chemistry', 1)
     const [payload] = (await calls(page, 'ask.submit')) as Array<{ since?: string }>
     expect(payload?.since).toMatch(/^\d{4}-\d{2}-\d{2}T/)

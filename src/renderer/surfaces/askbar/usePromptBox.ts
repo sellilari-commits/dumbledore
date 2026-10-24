@@ -6,6 +6,8 @@
  * error line. The mode ends when the bar loses focus (unless a prompt is being written), so a later
  * plain open (double-tap) shows the chat with Dumbledore.
  */
+
+import { isPromptRoute } from '@shared/chat-panel'
 import type { DumbledoreApi } from '@shared/ipc'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { errorMessage, report } from '../overlay/lib/bridge'
@@ -22,9 +24,7 @@ export interface PromptBoxController {
   exit: () => void
 }
 
-export function isPromptRoute(route: string | null | undefined): boolean {
-  return (route ?? '').replace(/^#?\/?/, '').split(/[?#]/)[0] === 'prompt'
-}
+export { isPromptRoute }
 
 /** The one-line hint under the input: where the prompt will go. */
 export function promptHint(assistant: string | null): string {
