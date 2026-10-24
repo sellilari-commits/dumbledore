@@ -51,6 +51,16 @@ export function createAskMock(search: string = window.location.search): Dumbledo
     'chat.history': (name) => thread.filter((m) => m.thread === name),
     'ask.submit': async ({ text }) => {
       add('user', text)
+      // "note: …" is saved at once, like the real chat: no coach, an Undo chip.
+      if (/^\s*(?:note|n)\s*:/i.test(text)) {
+        const result = {
+          reply: 'Saved to SN1 mechanism.',
+          actions: [{ type: 'undo_note' as const, noteId: `note_demo_${seq}` }],
+          pasted: false,
+        }
+        add('assistant', result.reply, { actions: result.actions })
+        return result
+      }
       const result = cannedReply(text)
       const messageId = `ask_pending_${seq}`
       const words = result.reply.split(/(?<= )/)

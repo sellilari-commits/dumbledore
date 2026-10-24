@@ -139,7 +139,7 @@ test.describe('ask bar topic interactions', () => {
     await page.keyboard.press('ArrowRight')
     await page.keyboard.press('ArrowRight')
     await expect(selected(page)).toHaveText(/Calculus II/)
-    await expect(page.getByText('Study')).toBeVisible()
+    await expect(page.getByText('Study', { exact: true })).toBeVisible()
     await page.keyboard.press('Enter')
     await expect.poll(() => calls(page, 'window.close')).toEqual(['askbar'])
     expect(await calls(page, 'session.start')).toEqual([

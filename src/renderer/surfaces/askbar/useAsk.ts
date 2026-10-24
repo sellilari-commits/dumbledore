@@ -169,6 +169,11 @@ export function useAsk(api: DumbledoreApi): AskController {
     async (action: CoachAction) => {
       try {
         await api.invoke('coach.runAction', action)
+        // Undo of a note keeps the chat open, so the student can go on writing notes.
+        if (action.type === 'undo_note') {
+          setMessages((list) => [...list, localMessage('assistant', 'Note removed.')])
+          return
+        }
         close()
       } catch (e) {
         setError({ message: errorMessage(e), retry: false })

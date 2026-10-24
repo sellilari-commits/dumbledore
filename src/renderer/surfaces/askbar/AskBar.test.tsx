@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { InvokeHandlers } from '../overlay/lib/localApi'
 import { fakeApi } from '../overlay/testing/fakeApi'
 import { describeAction } from './ActionChips'
-import { AskBar, CHAT_TITLE, EMPTY_CHAT, FOLLOW_UP, PLACEHOLDER } from './AskBar'
+import { AskBar, CHAT_TITLE, EMPTY_CHAT, FOLLOW_UP, NOTE_PLACEHOLDER, PLACEHOLDER } from './AskBar'
 import { currentChat, VISIBLE_LIMIT } from './askHistory'
 import { clampHeight, heightCap } from './useWindowAutoSize'
 
@@ -59,6 +59,7 @@ function ask(text: string) {
 afterEach(() => {
   cleanup()
   window.localStorage.clear()
+  window.sessionStorage.clear()
 })
 
 describe('AskBar', () => {
@@ -120,6 +121,52 @@ describe('AskBar', () => {
     const log = screen.getByRole('log', { name: 'Conversation with Dumbledore' })
     expect(log.textContent).toMatch(/chemistry.*First answer\..*moles\?.*Second answer\./)
     expect(screen.getAllByRole('button', { name: 'Paste prompt into chat' })).toHaveLength(1)
+  })
+
+  it('Note on: Enter saves the text as a typed note ("note: …"), shown as a note', async () => {
+    const saved: AskResult = {
+      reply: 'Saved to SN1 mechanism.',
+      actions: [{ type: 'undo_note', noteId: 'note_1' }],
+      pasted: false,
+    }
+    const local = askApi(() => saved)
+    render(<AskBar api={local.api} />)
+    const toggle = screen.getByRole('button', { name: 'Note' })
+    expect(toggle.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(toggle)
+    expect(toggle.getAttribute('aria-pressed')).toBe('true')
+    const box = screen.getByRole('textbox', { name: 'Write a note' }) as HTMLTextAreaElement
+    expect(box.placeholder).toBe(NOTE_PLACEHOLDER)
+    fireEvent.change(box, {
+      target: { value: 'SN1 goes through a carbocation\nrate = k[substrate]' },
+    })
+    fireEvent.keyDown(box, { key: 'Enter' })
+    await flush()
+    expect(callsTo(local, 'ask.submit')).toEqual([
+      { text: 'note: SN1 goes through a carbocation\nrate = k[substrate]' },
+    ])
+    expect(screen.getByTestId('ask-note').textContent).toContain('SN1 goes through a carbocation')
+    expect(screen.getByText('Saved to SN1 mechanism.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    await flush()
+    expect(callsTo(local, 'coach.runAction')).toEqual([{ type: 'undo_note', noteId: 'note_1' }])
+    expect(callsTo(local, 'window.close')).toEqual([])
+    expect(screen.getByText('Note removed.')).toBeTruthy()
+    // Still on for the next note, and remembered for the session.
+    expect(toggle.getAttribute('aria-pressed')).toBe('true')
+    expect(window.sessionStorage.getItem('dumbledore.askbar.noteMode')).toBe('1')
+  })
+
+  it('Note off: Enter is a normal chat message', async () => {
+    const local = askApi()
+    render(<AskBar api={local.api} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Note' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Note' }))
+    ask('why is SN1 first order?')
+    await flush()
+    expect(callsTo(local, 'ask.submit')).toEqual([{ text: 'why is SN1 first order?' }])
+    expect(screen.queryByTestId('ask-note')).toBeNull()
   })
 
   it('Shift+Enter adds a line instead of sending', async () => {

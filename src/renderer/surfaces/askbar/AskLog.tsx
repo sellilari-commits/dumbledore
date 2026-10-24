@@ -3,7 +3,7 @@
  * markdown replies with their action chips on the left, the reply being written (streamed) and
  * the last error. It stays on the newest message unless the student scrolled up to read.
  */
-import { Check } from 'lucide-react'
+import { Check, StickyNote } from 'lucide-react'
 import { memo, useRef } from 'react'
 import Markdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -34,6 +34,15 @@ interface MessageProps {
 /** Memoised: while a reply streams in, only the streaming bubble re-renders. */
 const Message = memo(function Message({ message, onRun }: MessageProps) {
   if (message.role === 'user') {
+    const note = noteText(message.content)
+    if (note !== null) {
+      return (
+        <div className="ask__msg ask__msg--note" data-testid="ask-note">
+          <StickyNote size={13} strokeWidth={1.75} aria-hidden className="ask__note-icon" />
+          <span>{note}</span>
+        </div>
+      )
+    }
     return <div className="ask__msg ask__msg--user">{message.content}</div>
   }
   if (!message.content && !message.pasted && message.actions.length === 0) return null
@@ -49,6 +58,13 @@ const Message = memo(function Message({ message, onRun }: MessageProps) {
     </div>
   )
 })
+
+const NOTE_PREFIX = /^\s*(?:note|n)\s*:\s*/i
+
+/** A typed note sent from the chat ("note: …"), shown as a note rather than a question. */
+export function noteText(content: string): string | null {
+  return NOTE_PREFIX.test(content) ? content.replace(NOTE_PREFIX, '') : null
+}
 
 function errorText({ message, retry }: AskError): string {
   const sentence = /[.!?…]$/.test(message) ? message : `${message}.`
