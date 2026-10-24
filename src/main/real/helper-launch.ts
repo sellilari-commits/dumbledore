@@ -4,12 +4,14 @@
  *
  * - `dev`: spawns native/helper/build/dumbledore-helper (build it with `npm run helper:build`);
  *   it inherits the terminal's Accessibility / Screen Recording permissions.
- * - `packaged`: opens the helper app embedded in Dumbledore.app (its own permissions).
+ * - `packaged`: spawns the helper embedded in Dumbledore.app as a child process, so it runs
+ *   under Dumbledore's own Accessibility / Screen Recording grants. (Opened as its own app,
+ *   macOS would not keep a nested helper's grants on this Mac.)
  * - `external`: only connects; something else runs the helper (Xcode, a terminal).
  *   `DUMBLEDORE_HELPER=external` picks this mode when the shell passes no launch mode.
  */
+import { join } from 'node:path'
 import {
-  appLauncher,
   devHelperPaths,
   externalLauncher,
   type HelperLauncher,
@@ -40,7 +42,15 @@ export function launcherFor(launch: HelperLaunch, log?: LogFn): HelperLauncher {
         log,
       })
     case 'packaged':
-      return appLauncher({ appPath: packagedHelperAppPath(launch.mainAppBundle), log })
+      return spawnLauncher({
+        executable: join(
+          packagedHelperAppPath(launch.mainAppBundle),
+          'Contents',
+          'MacOS',
+          'dumbledore-helper',
+        ),
+        log,
+      })
     case 'external':
       return externalLauncher()
   }
