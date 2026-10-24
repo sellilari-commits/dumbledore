@@ -59,7 +59,7 @@ function setup(opts: { aiChat?: boolean; pasted?: boolean; step?: StepInstructio
   return { writer: new PromptWriter(deps), log, sessionsStart, studyStart, pasteFailed }
 }
 
-describe('PromptWriter (right ⌥ hold → "What do you want to study?")', () => {
+describe('PromptWriter (right ⌥ hold → "Open a topic")', () => {
   it('starts the subject and its roadmap, then pastes the first step into the AI chat', async () => {
     const t = setup()
     const out = await t.writer.write('  SN1 reactions for my exam Friday ')

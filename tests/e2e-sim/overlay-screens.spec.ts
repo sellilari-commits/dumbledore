@@ -177,7 +177,7 @@ for (const theme of ['light', 'dark'] as const) {
     test('ask bar: empty and answered', async ({ page }) => {
       await page.goto(`${base}/askbar.html`)
       const bar = page.locator('.ask')
-      await expect(page.getByPlaceholder(/Ask Dumbledore/)).toBeFocused()
+      await expect(page.getByRole('textbox', { name: 'Ask Dumbledore' })).toBeFocused()
       const frame = async () => {
         const b = await bar.boundingBox()
         if (!b) throw new Error('no ask bar')
@@ -292,7 +292,8 @@ test.describe('overlay interactions', () => {
     await expect
       .poll(() => calls(page))
       .toEqual(
-        expect.arrayContaining(['ask.submit', 'coach.runAction', 'window.close', 'window.setSize']),
+        // The chat is a fixed-size box now: running an action closes it without resizing.
+        expect.arrayContaining(['ask.submit', 'coach.runAction', 'window.close']),
       )
     await page.keyboard.press('Escape')
     const closes = (await calls(page)).filter((c) => c === 'window.close')

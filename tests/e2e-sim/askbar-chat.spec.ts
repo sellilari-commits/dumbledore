@@ -73,7 +73,7 @@ for (const theme of ['light', 'dark'] as const) {
       // Same constant size when empty: no growing from a short bar.
       const box = await page.locator('.ask').boundingBox()
       expect(Math.round(box?.height ?? 0)).toBe(520)
-      await expect(page.getByPlaceholder(/Ask Dumbledore/)).toBeFocused()
+      await expect(page.getByRole('textbox', { name: 'Ask Dumbledore' })).toBeFocused()
       await shoot(page, `compact-${theme}`)
     })
 
@@ -133,7 +133,7 @@ test.describe('ask bar chat interactions', () => {
     await expect(page.locator('.ask__msg--user')).toHaveCount(2)
     await page.getByRole('button', { name: 'New chat' }).click()
     await expect(page.locator('.ask__log')).toHaveCount(0)
-    await expect(page.getByPlaceholder(/Ask Dumbledore/)).toBeFocused()
+    await expect(page.getByRole('textbox', { name: 'Ask Dumbledore' })).toBeFocused()
     await expect(page.getByTestId('ask-empty')).toBeVisible()
     await send(page, 'chemistry', 1)
     const [payload] = (await calls(page, 'ask.submit')) as Array<{ since?: string }>
@@ -144,7 +144,7 @@ test.describe('ask bar chat interactions', () => {
 
   test('prompt box: Enter sends the wish as prompt.write', async ({ page }) => {
     await page.goto(`${base}/askbar.html#/prompt`)
-    const box = page.getByRole('textbox', { name: 'What do you want to study?' })
+    const box = page.getByRole('textbox', { name: 'Open a topic' })
     await box.pressSequentially('explain SN1 simply, I have an exam Friday')
     await page.keyboard.press('Enter')
     await expect(page.getByText('Building your roadmap…')).toBeVisible()

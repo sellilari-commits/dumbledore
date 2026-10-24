@@ -1,5 +1,5 @@
 /**
- * The study box (right ⌥ hold, ask bar route 'prompt'): "What do you want to study?" The student
+ * The study box (right ⌥ hold, ask bar route 'prompt'): "Open a topic". The student
  * types a goal ("SN1 reactions for Friday's exam") and Dumbledore starts it:
  *
  *   1. the subject — an existing one it matches by name, else a new one (StudyService.start
