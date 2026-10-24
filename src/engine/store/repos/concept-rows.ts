@@ -6,13 +6,13 @@
  * concept-fold.ts).
  */
 import type { CoachAction, Concept, Id } from '@shared/domain'
-import { codec, normalizeName } from '../codec'
+import { codec, normalizeName, type Params, type Row } from '../codec'
 import { foldConcepts, relinkAction, survivorParent } from '../concept-fold'
 import { conceptKey } from '../concept-key'
 import { must, type StoreCtx } from '../context'
 import { reaches } from './notes'
 
-export const conceptCodec = codec<Concept>({
+const baseCodec = codec<Omit<Concept, 'summaryPinned'>>({
   id: 'text',
   subjectId: 'text',
   parentId: 'text',
@@ -25,6 +25,26 @@ export const conceptCodec = codec<Concept>({
   struggleCount: 'num',
   lastSeenAt: 'text',
 })
+
+/**
+ * The concept codec. `summaryPinned` lives in the `summary_pinned` column (schema v2) and is only
+ * present on a decoded concept when true, exactly like the in-memory twin.
+ */
+export const conceptCodec = {
+  ...baseCodec,
+  decode(row: Row): Concept {
+    const c: Concept = baseCodec.decode(row)
+    return row.summary_pinned === 1 || row.summary_pinned === true
+      ? { ...c, summaryPinned: true }
+      : c
+  },
+  patchParams(patch: Partial<Concept>): Params {
+    const { summaryPinned, ...rest } = patch
+    const params = baseCodec.patchParams(rest)
+    if (summaryPinned !== undefined) params.summary_pinned = summaryPinned ? 1 : 0
+    return params
+  },
+}
 
 /** Row seq of the oldest concept in `subjectId` whose name has this conceptKey, or null. */
 export function findConceptSeq(ctx: StoreCtx, subjectId: Id, key: string): number | null {

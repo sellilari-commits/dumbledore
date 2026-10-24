@@ -84,8 +84,10 @@ describe('memory control', () => {
     expect(() => control.updateConcept(tampere.id, { name: 'finland' })).toThrow(/already exists/)
     expect(
       control.updateConcept(tampere.id, { name: 'Tampere city', summary: ' A mill town ' }),
-    ).toMatchObject({ name: 'Tampere city', summary: 'A mill town' })
+    ).toMatchObject({ name: 'Tampere city', summary: 'A mill town', summaryPinned: true })
     expect(control.updateConcept(finland.id, {})).toMatchObject({ name: 'Finland' })
+    // A rename alone does not pin the summary: consolidation may still rewrite it.
+    expect(control.updateConcept(finland.id, { name: 'Suomi' })).not.toHaveProperty('summaryPinned')
   })
 
   it('deletes a concept with its notes and an encounter with its notes', () => {

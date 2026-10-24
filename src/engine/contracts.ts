@@ -134,6 +134,7 @@ export interface ConceptRepo {
         | 'status'
         | 'struggleCount'
         | 'lastSeenAt'
+        | 'summaryPinned'
       >
     >,
   ): Concept

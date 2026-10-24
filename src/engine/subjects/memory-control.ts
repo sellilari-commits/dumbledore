@@ -109,7 +109,7 @@ export function createMemoryControl(repos: Repos): MemoryControl {
 
     updateConcept(id, patch) {
       const concept = mustConcept(id)
-      const next: { name?: string; summary?: string } = {}
+      const next: { name?: string; summary?: string; summaryPinned?: boolean } = {}
       if (patch.name !== undefined) {
         const name = patch.name.trim()
         if (!name) throw new Error('A topic needs a name')
@@ -117,7 +117,11 @@ export function createMemoryControl(repos: Repos): MemoryControl {
         if (twin && twin.id !== id) throw new Error(`"${twin.name}" already exists in this subject`)
         next.name = name
       }
-      if (patch.summary !== undefined) next.summary = patch.summary.trim()
+      if (patch.summary !== undefined) {
+        next.summary = patch.summary.trim()
+        // The student's own summary: consolidation never rewrites it (docs/NOTES.md §7).
+        next.summaryPinned = true
+      }
       return Object.keys(next).length > 0 ? repos.concepts.update(id, next) : concept
     },
 

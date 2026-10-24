@@ -76,6 +76,8 @@ export const Concept = z.object({
   status: MasteryStatus,
   struggleCount: z.number().int(),
   lastSeenAt: IsoDate.nullable(),
+  /** The student wrote or edited the summary: consolidation never rewrites it. Absent = false. */
+  summaryPinned: z.boolean().optional(),
 })
 export type Concept = z.infer<typeof Concept>
 

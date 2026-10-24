@@ -270,6 +270,7 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
       update(id, patch) {
         const current = must(concepts.get(id), `concept ${id}`)
         const next: Concept = { ...current, ...patch, id }
+        if (!next.summaryPinned) delete next.summaryPinned // like SQLite: present only when true
         concepts.set(id, next)
         return clone(next)
       },

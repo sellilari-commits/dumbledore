@@ -186,6 +186,21 @@ export function noteSuite(t: () => ConformanceTarget): void {
       expect(repos.search.query('tampere', 10).filter((h) => h.id === c.id)).toHaveLength(1)
     })
 
+    it('stores a pinned concept summary; the flag is present only when true', () => {
+      const { repos } = t()
+      const s = repos.subjects.create({ name: 'History' })
+      const c = repos.concepts.upsert({ subjectId: s.id, name: 'Tampere' })
+      expect(repos.concepts.get(c.id)).not.toHaveProperty('summaryPinned')
+      repos.concepts.update(c.id, { summary: 'My own words', summaryPinned: true })
+      expect(repos.concepts.get(c.id)).toMatchObject({
+        summary: 'My own words',
+        summaryPinned: true,
+      })
+      expect(repos.concepts.listBySubject(s.id)[0]?.summaryPinned).toBe(true)
+      repos.concepts.update(c.id, { summaryPinned: false })
+      expect(repos.concepts.get(c.id)).not.toHaveProperty('summaryPinned')
+    })
+
     it('subject merge and concept folding carry notes; subject delete removes them', () => {
       const { repos } = t()
       const from = repos.subjects.create({ name: 'Finnish history' })
