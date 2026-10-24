@@ -140,22 +140,14 @@ describe('satellites', () => {
     expect(screen.getByTestId('suggestion-chip').textContent).toBe('Rewrite prompt·⌥')
   })
 
-  it('side stack: Next only (no Quiz square), long press opens the Ask bar', async () => {
+  it('no squares under the orb during a session or at a checkpoint', async () => {
     const { local } = await mount('session')
-    vi.useFakeTimers()
-    const next = screen.getByTestId('side-next')
-    expect(next.textContent).toBe('3/8')
-    press(next)
-    release(next)
-    press(next)
-    act(() => vi.advanceTimersByTime(520))
-    release(next)
+    expect(screen.queryByTestId('side-next')).toBeNull()
     act(() => local.emit('overlay.changed', state('checkpoint')))
     expect(screen.queryByTestId('side-quiz')).toBeNull()
-    expect(sentTypes(local)).toEqual(['sideNext', 'orbLongPress'])
   })
 
-  it('hides the pill and stack while docked', async () => {
+  it('hides the pill while docked', async () => {
     const { local } = await mount('docked')
     act(() =>
       local.emit('overlay.changed', {
@@ -165,7 +157,6 @@ describe('satellites', () => {
       }),
     )
     expect(screen.queryByTestId('study-pill')).toBeNull()
-    expect(screen.queryByTestId('side-next')).toBeNull()
   })
 })
 

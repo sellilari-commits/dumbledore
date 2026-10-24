@@ -14,9 +14,7 @@ import {
   type OrbBox,
   type Size,
   sideToward,
-  stackAnchor,
   tooltipAnchor,
-  verticalToward,
 } from './lib/layout'
 import { useHitAreaHover } from './lib/useHitAreaHover'
 import { useOverlayState } from './lib/useOverlayState'
@@ -26,7 +24,6 @@ import { Orb } from './orb/Orb'
 import { orbLook } from './orb/orbLook'
 import { QUIZ_WIDTH, QuizCard } from './quiz/QuizCard'
 import { OrbTooltip, TOOLTIP_ID } from './satellites/OrbTooltip'
-import { SideStack } from './satellites/SideStack'
 import { StudyPill } from './satellites/StudyPill'
 import { SuggestionChip } from './satellites/SuggestionChip'
 import { TOAST_WIDTH, ToastStack } from './toast/ToastStack'
@@ -117,7 +114,6 @@ function OverlayScene({ api, state, viewport, send, onDragging }: SceneProps) {
   const moving = gesture.dragPos !== null
   useEffect(() => onDragging(moving), [moving, onDragging])
 
-  const showStack = !look.docked && state.side.next !== null
   const showPill = !look.docked && state.pill !== null
   const cardOpts = { clearPill: showPill, dock: look.docked ? state.dockTarget : null }
   const side = sideToward(orb, state.edge, viewport)
@@ -137,14 +133,6 @@ function OverlayScene({ api, state, viewport, send, onDragging }: SceneProps) {
         <OrbTooltip anchor={tooltipAnchor(orb, viewport)} />
       )}
 
-      {showStack && (
-        <SideStack
-          side={state.side}
-          anchor={stackAnchor(orb, state.edge, viewport)}
-          up={verticalToward(orb, state.edge, viewport) === 'up'}
-          send={send}
-        />
-      )}
       {showPill && state.pill && (
         <StudyPill
           pill={state.pill}

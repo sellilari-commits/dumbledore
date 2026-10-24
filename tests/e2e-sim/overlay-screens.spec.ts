@@ -116,10 +116,9 @@ for (const theme of ['light', 'dark'] as const) {
       }
     })
 
-    test('session ring, side stack label and orb tooltip', async ({ page }) => {
+    test('session ring and orb tooltip', async ({ page }) => {
       await overlay(page, 'session')
-      await page.getByTestId('side-next').hover()
-      await expect(page.locator('.ov-sq__label')).toHaveText('3/8')
+      await expect(page.getByTestId('side-next')).toHaveCount(0)
       await shoot(page, 'session', theme)
       await page.getByTestId('orb').hover()
       await expect(page.getByRole('tooltip')).toHaveText(/Dumbledore\s*· right ⌥/)
@@ -222,7 +221,6 @@ test.describe('overlay interactions', () => {
     }
     await clickSends('pill', 'study-pill', 'pillClick')
     await clickSends('docked', 'suggestion-chip', 'chipClick')
-    await clickSends('session', 'side-next', 'sideNext')
     await overlay(page, 'checkpoint')
     await expect(page.getByTestId('side-quiz')).toHaveCount(0)
 
