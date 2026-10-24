@@ -225,7 +225,12 @@ const HOSTS: readonly { kind: HintKind; weight: number; patterns: readonly strin
   {
     kind: 'mail',
     weight: -0.1,
-    patterns: ['mail.google.com', 'outlook.live.com', 'outlook.office.com', 'outlook.office365.com'],
+    patterns: [
+      'mail.google.com',
+      'outlook.live.com',
+      'outlook.office.com',
+      'outlook.office365.com',
+    ],
   },
 ]
 

@@ -26,11 +26,17 @@ describe('siteHints', () => {
   it('knows study sites, reading apps and distractions', () => {
     const kinds = (bundle: string, url: string | null, title: string | null = null) =>
       siteHints(bundle, url, title).map((h) => h.kind)
-    expect(kinds('com.google.Chrome', 'https://mycourses.aalto.fi/mod/assign/view.php?id=1')).toEqual(['lms'])
-    expect(kinds('com.google.Chrome', 'https://moodle.helsinki.fi/course/view.php')).toEqual(['lms'])
+    expect(
+      kinds('com.google.Chrome', 'https://mycourses.aalto.fi/mod/assign/view.php?id=1'),
+    ).toEqual(['lms'])
+    expect(kinds('com.google.Chrome', 'https://moodle.helsinki.fi/course/view.php')).toEqual([
+      'lms',
+    ])
     expect(kinds('com.google.Chrome', 'https://canvas.instructure.com/courses/1')).toEqual(['lms'])
     expect(kinds('com.google.Chrome', 'https://arxiv.org/abs/2401.1')).toEqual(['paper'])
-    expect(kinds('com.google.Chrome', 'https://fi.wikipedia.org/wiki/Osmoosi')).toEqual(['reference'])
+    expect(kinds('com.google.Chrome', 'https://fi.wikipedia.org/wiki/Osmoosi')).toEqual([
+      'reference',
+    ])
     expect(kinds('com.google.Chrome', 'https://docs.python.org/3/')).toEqual(['docs'])
     expect(kinds('com.apple.Preview', null, 'lecture4.pdf')).toEqual(['reading_app', 'pdf'])
     expect(kinds('com.spotify.client', null)).toEqual(['entertainment'])
@@ -74,9 +80,18 @@ describe('prefilter', () => {
       text: `Daily Mix 1\nShuffle play\n${CHATTER}`,
     })
     expect(prefilter(spotify).pass).toBe(false)
-    const news = makeEpisode({ url: 'https://yle.fi/uutiset/3-1', title: 'Uutiset', text: CHATTER, signals: { ...makeEpisode().signals, scrollBacks: 0 } })
+    const news = makeEpisode({
+      url: 'https://yle.fi/uutiset/3-1',
+      title: 'Uutiset',
+      text: CHATTER,
+      signals: { ...makeEpisode().signals, scrollBacks: 0 },
+    })
     expect(prefilter(news).pass).toBe(false)
-    const blog = makeEpisode({ url: 'https://someblog.example/weekend', title: 'Weekend', text: CHATTER })
+    const blog = makeEpisode({
+      url: 'https://someblog.example/weekend',
+      title: 'Weekend',
+      text: CHATTER,
+    })
     expect(prefilter(blog).pass).toBe(false)
   })
 
@@ -95,7 +110,13 @@ describe('prefilter', () => {
     const r = prefilter(moodle)
     expect(r.pass).toBe(true)
     expect(r.reasons).toContain('deadline cue')
-    const pdf = makeEpisode({ bundleId: 'com.apple.Preview', app: 'Preview', url: null, title: 'lecture4.pdf', source: 'ocr' })
+    const pdf = makeEpisode({
+      bundleId: 'com.apple.Preview',
+      app: 'Preview',
+      url: null,
+      title: 'lecture4.pdf',
+      source: 'ocr',
+    })
     expect(prefilter(pdf).pass).toBe(true)
     const unknown = makeEpisode({ url: 'https://someblog.example/sn1', title: 'Notes' })
     expect(prefilter(unknown).pass).toBe(true)

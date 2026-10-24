@@ -19,8 +19,22 @@ const item = (overrides: Partial<ExtractedItem> = {}): ExtractedItem => ({
   ...overrides,
 })
 
-const output = (episodeId: string, items: ExtractedItem[], extra: Partial<ExtractOutput['results'][number]> = {}): ExtractOutput => ({
-  results: [{ episodeId, isLearning: items.length > 0, confidence: 0.9, reason: 'study', items, studentPrompts: [], ...extra }],
+const output = (
+  episodeId: string,
+  items: ExtractedItem[],
+  extra: Partial<ExtractOutput['results'][number]> = {},
+): ExtractOutput => ({
+  results: [
+    {
+      episodeId,
+      isLearning: items.length > 0,
+      confidence: 0.9,
+      reason: 'study',
+      items,
+      studentPrompts: [],
+      ...extra,
+    },
+  ],
 })
 
 describe('applyExtraction', () => {
@@ -83,12 +97,20 @@ describe('applyExtraction', () => {
 
   it('upserts assignments with normalised due dates', () => {
     const ep = makeEpisode({ url: 'https://mycourses.aalto.fi/mod/assign/view.php?id=7' })
-    const assignment = { title: 'Assignment 3: Linear regression', course: 'Statistics', dueAt: '2026-10-31' }
+    const assignment = {
+      title: 'Assignment 3: Linear regression',
+      course: 'Statistics',
+      dueAt: '2026-10-31',
+    }
     applyExtraction(output(ep.id, [item({ assignment })]), [ep], repos, { prompts, nowIso })
     applyExtraction(output(ep.id, [item({ assignment })]), [ep], repos, { prompts, nowIso })
     const list = repos.assignments.list({})
     expect(list).toHaveLength(1)
-    expect(list[0]).toMatchObject({ title: 'Assignment 3: Linear regression', course: 'Statistics', source: ep.url })
+    expect(list[0]).toMatchObject({
+      title: 'Assignment 3: Linear regression',
+      course: 'Statistics',
+      source: ep.url,
+    })
     expect(list[0]?.dueAt).toBe(new Date(2026, 9, 31, 23, 59).toISOString())
     expect(normalizeDue('2026-10-31T21:59:00Z')).toBe('2026-10-31T21:59:00.000Z')
     expect(normalizeDue('next friday')).toBeNull()
@@ -97,10 +119,25 @@ describe('applyExtraction', () => {
   it('counts prompt habits once per prompt, also for non-learning chats', () => {
     const ep = makeEpisode({ kind: 'ai_chat' })
     const studentPrompts = [
-      { text: 'Explain SN1 with an example', hasContext: false, hasStructure: false, asksToBeQuizzed: false, asksForExamples: true },
-      { text: "I'm a 1st-year chem student. Quiz me on SN1 in 3 questions", hasContext: true, hasStructure: true, asksToBeQuizzed: true, asksForExamples: false },
+      {
+        text: 'Explain SN1 with an example',
+        hasContext: false,
+        hasStructure: false,
+        asksToBeQuizzed: false,
+        asksForExamples: true,
+      },
+      {
+        text: "I'm a 1st-year chem student. Quiz me on SN1 in 3 questions",
+        hasContext: true,
+        hasStructure: true,
+        asksToBeQuizzed: true,
+        asksForExamples: false,
+      },
     ]
-    const out = applyExtraction(output(ep.id, [], { studentPrompts }), [ep], repos, { prompts, nowIso })
+    const out = applyExtraction(output(ep.id, [], { studentPrompts }), [ep], repos, {
+      prompts,
+      nowIso,
+    })
     applyExtraction(output(ep.id, [], { studentPrompts }), [ep], repos, { prompts, nowIso })
     expect(out.profileChanged).toBe(true)
     expect(out.encounterIds).toEqual([])
@@ -135,7 +172,9 @@ describe('applyExtraction', () => {
     const out = applyExtraction(output('epi_other', [item()]), [ep], repos, { prompts, nowIso })
     expect(out.encounterIds).toEqual([])
     const noSubject = applyExtraction(
-      output(ep.id, [item({ subject: { matchId: null, newName: null }, topicPath: ['Something'] })]),
+      output(ep.id, [
+        item({ subject: { matchId: null, newName: null }, topicPath: ['Something'] }),
+      ]),
       [ep],
       repos,
       { prompts, nowIso },

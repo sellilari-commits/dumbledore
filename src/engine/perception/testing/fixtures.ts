@@ -61,9 +61,10 @@ const Expect = z.object({
       source: z.enum(['ax', 'ocr', 'mixed']).optional(),
       aiProvider: z.string().nullable().optional(),
       minDwell: z.number().optional(),
-      minScrollBacks: z.number().int().optional(),
+      scrollBacks: z.number().int().optional(),
       searches: z.array(z.string()).optional(),
       aiQuestions: z.array(z.string()).optional(),
+      /** Snippets the episode text must contain, in this order. */
       textIncludes: z.array(z.string()).default([]),
       textExcludes: z.array(z.string()).default([]),
     })
@@ -99,9 +100,16 @@ export function loadEpisodeFixtures(): EpisodeFixture[] {
 }
 
 /** Plays the fixture's timeline on the helper, advancing the clock between steps. */
-export async function replayFixture(fx: EpisodeFixture, helper: ScriptedHelper, clock: FakeClock): Promise<void> {
+export async function replayFixture(
+  fx: EpisodeFixture,
+  helper: ScriptedHelper,
+  clock: FakeClock,
+): Promise<void> {
   const state = new Map<string, ScriptedWindow>()
-  const update = (key: string, patch: { title?: string; url?: string; lines?: ScriptedWindow['lines'] }) => {
+  const update = (
+    key: string,
+    patch: { title?: string; url?: string; lines?: ScriptedWindow['lines'] },
+  ) => {
     const def = fx.windows[key]
     if (!def) throw new Error(`${fx.name}: unknown window "${key}"`)
     const current = state.get(key) ?? { ...def, lines: [] }
@@ -145,14 +153,18 @@ export function fixtureExtractor(fx: EpisodeFixture) {
         items: spec
           ? [
               {
-                subject: existing ? { matchId: existing.id, newName: null } : { matchId: null, newName: spec.subject },
+                subject: existing
+                  ? { matchId: existing.id, newName: null }
+                  : { matchId: null, newName: spec.subject },
                 topicPath: spec.topicPath,
                 seen: ep.text.replace(/^\[(L|C|R)\] /gm, '').slice(0, 300),
                 bigPicture: `Understanding ${spec.topicPath.at(-1)} within ${spec.subject}.`,
                 understanding: struggling
                   ? {
                       status: 'struggling' as const,
-                      evidence: confused ? `Asked: "${confused}"` : `Scrolled back ${ep.signals.scrollBacks} times`,
+                      evidence: confused
+                        ? `Asked: "${confused}"`
+                        : `Scrolled back ${ep.signals.scrollBacks} times`,
                     }
                   : { status: 'unknown' as const, evidence: '' },
                 openQuestions: spec.openQuestions,

@@ -67,6 +67,39 @@ describe('MergedText', () => {
     m.touch(['a'], 2)
     expect(m.get('a')?.segment).toBe(2)
   })
+
+  it('continues a page turn behind a fixed title line after the page that was on screen', () => {
+    const m = new MergedText()
+    m.addFrame(f('Lecture.pdf', 'slide 1 a', 'slide 1 b'), 0)
+    m.addFrame(f('Lecture.pdf', 'slide 2 a', 'slide 2 b', 'slide 2 c'), 0)
+    m.addFrame(f('Lecture.pdf', 'slide 3 a', 'slide 3 b'), 0)
+    m.addFrame(f('Lecture.pdf', 'slide 2 a', 'slide 2 b', 'slide 2 c'), 0) // flip back: nothing new
+    expect(texts(m)).toEqual([
+      'Lecture.pdf',
+      'slide 1 a',
+      'slide 1 b',
+      'slide 2 a',
+      'slide 2 b',
+      'slide 2 c',
+      'slide 3 a',
+      'slide 3 b',
+    ])
+    expect(m.firstSeen('slide 3 a')).toBeGreaterThan(m.firstSeen('slide 2 c') ?? Infinity)
+    expect(m.firstSeen('nope')).toBeNull()
+  })
+
+  it('keeps a reply between a fixed header and an input bar in place', () => {
+    const m = new MergedText()
+    m.addFrame(f('New chat', 'What can I help with?', 'Ask anything'), 0)
+    m.addFrame(f('New chat', 'question', 'answer', 'Ask anything'), 0)
+    expect(texts(m)).toEqual([
+      'New chat',
+      'What can I help with?',
+      'question',
+      'answer',
+      'Ask anything',
+    ])
+  })
 })
 
 describe('text helpers', () => {

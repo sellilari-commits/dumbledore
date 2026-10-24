@@ -96,6 +96,30 @@ describe('ScrollTracker', () => {
     s.observe(view(10), view(1), at) // back → 1
     expect(s.backs).toBe(1)
   })
+
+  it('ignores chrome pinned to the bottom when the content above grows', () => {
+    const s = new ScrollTracker()
+    const order = (k: string) => ['nav', 'hello', 'q', 'a1', 'a2', 'a3', 'input', 'note'].indexOf(k)
+    s.observe(
+      ['nav', 'hello', 'input', 'note'],
+      ['nav', 'q', 'a1', 'a2', 'a3', 'input', 'note'],
+      order,
+    )
+    expect(s.backs).toBe(0)
+  })
+
+  it('treats a page turn to new content as forward and a turn back to older content as back', () => {
+    const s = new ScrollTracker()
+    const seen = ['title', 's1 a', 's1 b', 's1 c', 's2 a', 's2 b', 's2 c', 's3 a', 's3 b', 's3 c']
+    const order = (k: string) => seen.indexOf(k)
+    const slide = (n: number) => ['title', `s${n} a`, `s${n} b`, `s${n} c`]
+    s.observe(slide(1), slide(2), order)
+    s.observe(slide(2), slide(3), order)
+    expect(s.backs).toBe(0)
+    s.observe(slide(3), slide(2), order) // flipped back → 1
+    s.observe(slide(2), slide(3), order)
+    expect(s.backs).toBe(1)
+  })
 })
 
 describe('studentMessages', () => {
@@ -105,6 +129,7 @@ describe('studentMessages', () => {
     align,
     rank: 0,
     segment: 0,
+    seq: 0,
   })
 
   it('groups consecutive right-aligned lines into messages', () => {

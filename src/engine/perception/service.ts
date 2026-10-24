@@ -130,7 +130,8 @@ export class Perception implements PerceptionService {
     const chat = this.tracker.get()
     const source = this.builder.chatSource(chat?.pid ?? null)
     const name =
-      chat?.assistant ?? (source?.aiProvider ? (assistantByKey(source.aiProvider)?.name ?? null) : null)
+      chat?.assistant ??
+      (source?.aiProvider ? (assistantByKey(source.aiProvider)?.name ?? null) : null)
     return chatExcerptOf(source, this.builder.env, name, maxChars)
   }
 

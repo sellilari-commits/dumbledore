@@ -37,7 +37,27 @@ export class PromptMemory {
   }
 }
 
-const NAME_NOISE = new Set(['i', 'ii', 'iii', 'iv', '1', '2', '3', '4', 'and', '&', 'the', 'of', 'to', 'intro', 'introduction', 'basics', 'course', 'a', 'b'])
+const NAME_NOISE = new Set([
+  'i',
+  'ii',
+  'iii',
+  'iv',
+  '1',
+  '2',
+  '3',
+  '4',
+  'and',
+  '&',
+  'the',
+  'of',
+  'to',
+  'intro',
+  'introduction',
+  'basics',
+  'course',
+  'a',
+  'b',
+])
 
 function nameTokens(name: string): string[] {
   return name
@@ -68,7 +88,10 @@ export function normalizeDue(due: string | null): string | null {
   return Number.isNaN(t) ? null : new Date(t).toISOString()
 }
 
-export function resolveSubject(repos: Repos, item: ExtractedItem): { subject: Subject | null; created: boolean } {
+export function resolveSubject(
+  repos: Repos,
+  item: ExtractedItem,
+): { subject: Subject | null; created: boolean } {
   const byId = item.subject.matchId ? repos.subjects.get(item.subject.matchId) : null
   if (byId) return { subject: byId, created: false }
   const name = item.subject.newName?.trim() || null
@@ -144,7 +167,12 @@ export function applyExtraction(
         evidence: item.understanding.evidence,
         openQuestions: item.openQuestions.slice(0, 3),
         keyTerms: item.keyTerms.slice(0, 12),
-        source: { app: episode.app, bundleId: episode.bundleId, url: episode.url, title: episode.title },
+        source: {
+          app: episode.app,
+          bundleId: episode.bundleId,
+          url: episode.url,
+          title: episode.title,
+        },
         dwellSeconds: episode.dwellSeconds,
       })
       outcome.encounterIds.push(encounter.id)
@@ -164,7 +192,9 @@ export function applyExtraction(
       }
     }
   }
-  outcome.episodeSubjects = [...new Map(outcome.episodeSubjects.map((p) => [`${p.episodeId}|${p.subjectId}`, p])).values()]
+  outcome.episodeSubjects = [
+    ...new Map(outcome.episodeSubjects.map((p) => [`${p.episodeId}|${p.subjectId}`, p])).values(),
+  ]
   if (outcome.profileChanged) repos.profile.update({ habits })
   return outcome
 }

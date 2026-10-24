@@ -2,8 +2,9 @@
  * Order-preserving merge of scrolled frames into one text without duplicate lines.
  *
  * Every line gets a stable fractional rank, so inserting lines revealed above or between known
- * ones never renumbers the others. The rank of a frame's first line is its viewport top, which
- * lets the episode detect scrolling backwards (re-reading).
+ * ones never renumbers the others. Lines also remember the order they were first seen in, which
+ * tells re-reading (going back to older lines) from new content. A page turn behind fixed chrome
+ * (the next slide under the same title line) continues after the page that was on screen.
  */
 import type { TextLine } from '@shared/helper-protocol'
 import { lineKey } from './text'
@@ -17,6 +18,8 @@ export interface MergedLine {
   rank: number
   /** Segment (checkpoint) in which the line was last on screen. */
   segment: number
+  /** Order in which the line was first seen (0, 1, 2 …). */
+  seq: number
 }
 
 export interface FrameLine {
@@ -36,6 +39,8 @@ const MIN_GAP = 1e-6
 export class MergedText {
   private lines: MergedLine[] = []
   private readonly byKey = new Map<string, MergedLine>()
+  private prevKeys: string[] = []
+  private nextSeq = 0
 
   get size(): number {
     return this.lines.length
@@ -70,10 +75,21 @@ export class MergedText {
 
     const keys = items.map((l) => lineKey(l.text))
     const firstAnchor = keys.findIndex((k) => this.byKey.has(k))
+    const turnedFrom = firstAnchor === -1 ? null : this.pageTurnAnchor(keys)
     const added: MergedLine[] = []
     if (firstAnchor === -1) {
       // Nothing known: a fresh page or a jump; append in order.
       added.push(...this.insertRun(items, keys, this.lines.at(-1) ?? null, segment))
+    } else if (turnedFrom) {
+      const fresh = keys.flatMap((k, i) => (this.byKey.has(k) ? [] : [i]))
+      added.push(
+        ...this.insertRun(
+          fresh.map((i) => items[i] as FrameLine),
+          fresh.map((i) => keys[i] as string),
+          turnedFrom,
+          segment,
+        ),
+      )
     } else {
       const anchor = this.byKey.get(keys[firstAnchor] as string) as MergedLine
       const before = this.lines[this.indexOf(anchor) - 1] ?? null
@@ -108,7 +124,37 @@ export class MergedText {
       const line = this.byKey.get(k)
       if (line) line.segment = segment
     }
+    this.prevKeys = keys
     return { added, topIndex: this.indexOfKey(keys[0] as string), lineCount: items.length }
+  }
+
+  /** Order in which a line was first seen, or null when unknown. */
+  firstSeen(key: string): number | null {
+    return this.byKey.get(key)?.seq ?? null
+  }
+
+  /**
+   * A page turn behind fixed chrome: the frame shares with the previous one only lines that kept
+   * their place from the top or the bottom (title bar, footer), and holds no other known line.
+   * Returns the last line of the page that was on screen, which the new page follows; null when
+   * this is an ordinary scroll, jump or gap fill.
+   */
+  private pageTurnAnchor(keys: readonly string[]): MergedLine | null {
+    const prev = this.prevKeys
+    const at = new Map(keys.map((k, i) => [k, i]))
+    let last: MergedLine | null = null
+    for (const [p, k] of prev.entries()) {
+      const i = at.get(k)
+      if (i === undefined) {
+        const line = this.byKey.get(k)
+        if (line && (!last || line.rank > last.rank)) last = line
+      } else if (i !== p && prev.length - p !== keys.length - i) {
+        return null // a shared line moved: a scroll
+      }
+    }
+    if (!last) return null
+    const before = new Set(prev)
+    return keys.some((k) => this.byKey.has(k) && !before.has(k)) ? null : last
   }
 
   /** Current document-order index of a line, or null when unknown. */
@@ -141,6 +187,7 @@ export class MergedText {
       align: l.align,
       rank: lo + step * (i + 1),
       segment,
+      seq: this.nextSeq++,
     }))
     this.lines.splice(at, 0, ...fresh)
     for (const line of fresh) this.byKey.set(line.key, line)

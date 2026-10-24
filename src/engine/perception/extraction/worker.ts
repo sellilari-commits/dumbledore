@@ -85,7 +85,10 @@ export class ExtractionWorker {
 
   constructor(private readonly deps: ExtractionWorkerDeps) {
     this.opts = { ...WORKER_DEFAULTS, ...deps.options }
-    this.budget = new DailyBudget({ maxCalls: this.opts.dailyMaxCalls, maxTokens: this.opts.dailyMaxTokens })
+    this.budget = new DailyBudget({
+      maxCalls: this.opts.dailyMaxCalls,
+      maxTokens: this.opts.dailyMaxTokens,
+    })
   }
 
   get pending(): number {
@@ -190,7 +193,9 @@ export class ExtractionWorker {
   }
 
   private sortQueue(): void {
-    this.queue.sort((a, b) => Number(b.urgent) - Number(a.urgent) || b.score - a.score || a.seq - b.seq)
+    this.queue.sort(
+      (a, b) => Number(b.urgent) - Number(a.urgent) || b.score - a.score || a.seq - b.seq,
+    )
   }
 
   private takeBatch(): QueueItem[] | null {
@@ -301,7 +306,8 @@ export class ExtractionWorker {
 
   private announce(outcome: ApplyOutcome): void {
     const emit = (scope: MemoryChanged['scope'], ids: string[]) => {
-      if (ids.length > 0 || scope === 'profile') this.deps.bus.emit('memory:changed', { scope, ids })
+      if (ids.length > 0 || scope === 'profile')
+        this.deps.bus.emit('memory:changed', { scope, ids })
     }
     emit('inbox', outcome.encounterIds)
     emit('subjects', outcome.subjectIds)

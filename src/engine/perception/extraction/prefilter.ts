@@ -15,7 +15,11 @@ export interface PrefilterOptions {
   threshold: number
 }
 
-export const PREFILTER_DEFAULTS: PrefilterOptions = { minDwellSeconds: 20, minChars: 150, threshold: 0.45 }
+export const PREFILTER_DEFAULTS: PrefilterOptions = {
+  minDwellSeconds: 20,
+  minChars: 150,
+  threshold: 0.45,
+}
 
 export interface PrefilterResult {
   pass: boolean
@@ -65,7 +69,11 @@ export function prefilter(ep: Episode, options: Partial<PrefilterOptions> = {}):
   }
   if (ep.dwellSeconds >= 300) score += 0.1
   else if (ep.dwellSeconds >= 120) score += 0.05
-  if (ep.signals.scrollBacks >= 2 || ep.signals.searches.length > 0 || ep.signals.aiQuestions.length > 0) {
+  if (
+    ep.signals.scrollBacks >= 2 ||
+    ep.signals.searches.length > 0 ||
+    ep.signals.aiQuestions.length > 0
+  ) {
     score += 0.05
     reasons.push('engaged')
   }

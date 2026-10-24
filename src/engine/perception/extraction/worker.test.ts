@@ -45,7 +45,8 @@ describe('ExtractionWorker', () => {
       options,
       onEpisodeSubject: (e, s) => linked.push([e, s]),
     })
-  const extractCalls = () => brain.calls.filter((c) => c.method === 'extract').map((c) => c.input as ExtractInput)
+  const extractCalls = () =>
+    brain.calls.filter((c) => c.method === 'extract').map((c) => c.input as ExtractInput)
   const saved = (overrides: Partial<Episode> = {}) => {
     const ep = makeEpisode({ endedAt: clock.nowIso(), ...overrides })
     repos.episodes.save(ep)
@@ -110,7 +111,13 @@ describe('ExtractionWorker', () => {
     const worker = make()
     worker.start()
     const chat = () =>
-      saved({ kind: 'ai_chat', aiProvider: 'chatgpt', url: 'https://chatgpt.com/c/1', title: 'ChatGPT', text: `[R] why?\n[L] ${STUDY_TEXT}` })
+      saved({
+        kind: 'ai_chat',
+        aiProvider: 'chatgpt',
+        url: 'https://chatgpt.com/c/1',
+        title: 'ChatGPT',
+        text: `[R] why?\n[L] ${STUDY_TEXT}`,
+      })
     bus.emit('perception:episodeClosed', { episode: chat() })
     await flushAsync()
     expect(extractCalls()).toHaveLength(0) // no session: waits for the 2-minute flush
@@ -173,7 +180,9 @@ describe('ExtractionWorker', () => {
     await worker.flushNow()
     const input = extractCalls()[0] as ExtractInput
     expect(input.student).toEqual({ aboutMe: 'First-year chemistry student', language: 'fi' })
-    expect(input.subjects).toEqual([{ id: chem.id, name: 'Organic Chemistry', topConcepts: ['SN2'] }])
+    expect(input.subjects).toEqual([
+      { id: chem.id, name: 'Organic Chemistry', topConcepts: ['SN2'] },
+    ])
     expect(input.episodes[0]?.text).toContain('[email]')
     expect(input.episodes[0]?.text).not.toContain('maija@aalto.fi')
   })

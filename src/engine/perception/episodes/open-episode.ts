@@ -128,7 +128,7 @@ export class OpenEpisode {
     const result = this.merged.addFrame(frame, this.segment)
     for (const line of result.added) this.words += wordCount(line.text)
     const keys = [...new Set(frame.map((l) => lineKey(l.text)).filter(Boolean))]
-    this.scroll.observe(this.viewport, keys, (k) => this.merged.indexOfKey(k))
+    this.scroll.observe(this.viewport, keys, (k) => this.merged.firstSeen(k))
     this.viewport = keys
     env.boilerplate.observe(this.scopes, this.pageKey, new Set(this.viewport))
     return frame

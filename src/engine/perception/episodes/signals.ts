@@ -129,9 +129,11 @@ export class VisitLog {
  * Counts moves of the viewport back up the page; a run of backward moves counts once.
  *
  * Compares consecutive frames: lines on screen in both frames that moved down by ≥ `minLines`
- * mean the student scrolled up (back), lines that moved up mean forward. Lines at the same
- * position in both frames (nav bars, toolbars) are ignored. When the frames share no moving
- * lines (a jump, a page turn) the document position of their content decides.
+ * mean the student scrolled up (back), lines that moved up mean forward. Lines that kept their
+ * place from the top (nav bars, toolbars) or from the bottom (chat input bars, footers) are
+ * ignored. When the frames share no moving lines (a jump, a page turn) `order` decides: the
+ * episode passes first-seen order, so returning to older lines is a scroll-back and new
+ * content never is.
  */
 export class ScrollTracker {
   backs = 0
@@ -142,7 +144,7 @@ export class ScrollTracker {
   observe(
     previous: readonly string[] | null,
     current: readonly string[],
-    documentIndex: (key: string) => number | null,
+    order: (key: string) => number | null,
   ): void {
     if (!previous || previous.length === 0 || current.length < 3) return
     const before = new Map(previous.map((k, i) => [k, i]))
@@ -152,7 +154,7 @@ export class ScrollTracker {
     current.forEach((key, i) => {
       const p = before.get(key)
       if (p === undefined) return
-      if (p === i) sticky.add(key)
+      if (p === i || previous.length - p === current.length - i) sticky.add(key)
       else if (p - i >= this.minLines) up++
       else if (i - p >= this.minLines) down++
     })
@@ -162,7 +164,12 @@ export class ScrollTracker {
       else if (up > down) moved = 'forward'
     } else {
       const where = (keys: readonly string[]) =>
-        median(keys.filter((k) => !sticky.has(k)).map(documentIndex).filter((n): n is number => n !== null))
+        median(
+          keys
+            .filter((k) => !sticky.has(k))
+            .map(order)
+            .filter((n): n is number => n !== null),
+        )
       const a = where(previous)
       const b = where(current)
       if (a !== null && b !== null) {

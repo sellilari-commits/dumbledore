@@ -109,7 +109,7 @@
       "kind": "ai_chat",
       "aiProvider": "chatgpt",
       "minDwell": 120,
-      "minScrollBacks": 1,
+      "scrollBacks": 1,
       "aiQuestions": [
         "why are tertiary carbocations more stable than primary ones?",
         "I don't get hyperconjugation, explain it more simply with an example",

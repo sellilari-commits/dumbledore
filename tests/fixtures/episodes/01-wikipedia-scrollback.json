@@ -190,7 +190,7 @@
       "kind": "reading",
       "source": "ax",
       "minDwell": 140,
-      "minScrollBacks": 2,
+      "scrollBacks": 2,
       "searches": ["osmosis vs diffusion"],
       "textIncludes": ["Osmosis is the net movement of solvent molecules", "Desalination plants use reverse osmosis"]
     },

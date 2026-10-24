@@ -40,3 +40,28 @@ Behaviour the shell must respect:
 - Toasts hide while the quiz card is open and return with a fresh ttl.
 - Dev server for overlay/askbar: `src/renderer/surfaces/overlay/vite.config.mjs`, port 5181; the
   mock driver loads lazily (`?mock=1` or no `window.dumbledore`).
+
+## L3 Perception (landed)
+
+Wiring:
+
+```ts
+const stack = createPerceptionStack({
+  helper, repos, bus, brain, // brain: Pick<Brain, 'extract'>
+  clock, isLowPower, log, mastery, workerOptions, episodeOptions, // all optional
+})
+stack.start() // after helper.start()
+stack.stop() // on quit; closes open episodes first
+stack.perception // the PerceptionService
+```
+
+Behaviour the shell must respect:
+- Listens on the bus for `settings:changed`, `helper:status`, `helper:appActivated`,
+  `helper:screenLocked` and `session:changed`, so helper events must be forwarded onto the bus
+  (`bridgeEvents` in compose.ts).
+- Emits `perception:window`, `perception:episodeClosed`, `perception:now`, `perception:aiChat`
+  and `memory:changed`.
+- Capture runs only while `settings.captureEnabled` is on and `perception.setEnabled(true)` is set
+  (true by default).
+- Blocked windows (password managers, private browsing) leak no text, title or URL into helper
+  replies, bus events, LLM input or the database (`src/engine/perception/pipeline.test.ts`).

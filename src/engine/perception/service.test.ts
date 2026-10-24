@@ -158,8 +158,20 @@ describe('Perception', () => {
   })
 
   it("seeds today's visits from stored episodes", async () => {
-    repos.episodes.save(makeEpisode({ url: wiki.url, startedAt: '2026-10-24T08:00:00.000Z', endedAt: '2026-10-24T08:03:00.000Z' }))
-    repos.episodes.save(makeEpisode({ url: wiki.url, startedAt: '2026-10-24T08:03:00.000Z', endedAt: '2026-10-24T08:05:00.000Z' }))
+    repos.episodes.save(
+      makeEpisode({
+        url: wiki.url,
+        startedAt: '2026-10-24T08:00:00.000Z',
+        endedAt: '2026-10-24T08:03:00.000Z',
+      }),
+    )
+    repos.episodes.save(
+      makeEpisode({
+        url: wiki.url,
+        startedAt: '2026-10-24T08:03:00.000Z',
+        endedAt: '2026-10-24T08:05:00.000Z',
+      }),
+    )
     helper.front = wiki
     perception.start()
     await runFor(clock, 30_000)
@@ -179,7 +191,13 @@ describe('createPerceptionStack', () => {
     helper.front = wiki
     stack.start()
     await runFor(clock, 60_000)
-    helper.front = { ...wiki, windowId: 9, title: 'Other', url: 'https://example.org/x', lines: ['x'] }
+    helper.front = {
+      ...wiki,
+      windowId: 9,
+      title: 'Other',
+      url: 'https://example.org/x',
+      lines: ['x'],
+    }
     await runFor(clock, 12_000)
     await stack.worker.flushNow()
     expect(repos.encounters.list({})).toHaveLength(1)
