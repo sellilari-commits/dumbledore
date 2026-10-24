@@ -1,5 +1,5 @@
 /**
- * Capture cadence (docs/PLAN.md §6.4): active (input in the last minute) every 2 s, idle 60 s+
+ * Capture cadence (docs/PLAN.md §6.4): active (input in the last minute) every 1 s, idle 60 s+
  * every 10 s, idle 5 min+ or locked → paused (we only poll idle to notice the return), Low Power
  * Mode doubles every interval. Pure function so the policy is easy to test.
  */

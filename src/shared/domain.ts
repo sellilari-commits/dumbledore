@@ -423,7 +423,7 @@ export type SettingsPatch = z.infer<typeof SettingsPatch>
 export const DEFAULT_SETTINGS: Settings = {
   captureEnabled: true,
   ocrEnabled: true,
-  cadence: { activeMs: 2000, idleMs: 10000 },
+  cadence: { activeMs: 1000, idleMs: 10000 },
   excludedBundleIds: [],
   excludedHosts: [],
   orb: { visible: true, followChatBoxes: false, hideIntoEdge: false, home: null },

@@ -71,11 +71,11 @@ describe('CaptureScheduler', () => {
   const perceiveScopes = () =>
     helper.callsOf('perceive').map((c) => (c.params as { scope: string }).scope)
 
-  it('perceives the frontmost window every 2 s and visible windows every 3rd tick', async () => {
+  it('perceives the frontmost window every 1 s and visible windows every 3rd tick', async () => {
     helper.others = [pdf]
     scheduler.start()
-    await runFor(clock, 6100)
-    expect(batches).toHaveLength(4) // t = 0, 2, 4, 6 s
+    await runFor(clock, 3100)
+    expect(batches).toHaveLength(4) // t = 0, 1, 2, 3 s
     expect(batches[0]?.front?.title).toBe('Osmosis - Wikipedia')
     expect(batches.map((b) => b.visible === null)).toEqual([true, true, false, true])
     expect(batches[2]?.visible?.map((w) => w.bundleId)).toEqual(['com.apple.Preview'])
@@ -131,8 +131,8 @@ describe('CaptureScheduler', () => {
   it('doubles intervals in Low Power Mode', async () => {
     lowPower = true
     scheduler.start()
-    await runFor(clock, 8100)
-    expect(batches).toHaveLength(3) // 0, 4, 8 s
+    await runFor(clock, 4100)
+    expect(batches).toHaveLength(3) // 0, 2, 4 s
   })
 
   it('never reads a blocked app and learns its exact bundle id', async () => {
@@ -147,7 +147,7 @@ describe('CaptureScheduler', () => {
     }
     helper.others = [pdf]
     scheduler.start()
-    await runFor(clock, 6100)
+    await runFor(clock, 3100)
     expect(perceiveScopes()).toEqual(['visible'])
     const params = helper.callsOf('perceive')[0]?.params as { excludeBundleIds: string[] }
     expect(params.excludeBundleIds).toContain('com.1password.1password8')
