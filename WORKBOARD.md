@@ -8,7 +8,7 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
-| _nothing in progress_ | | | | | |
+| 2026-10-24 20:11 | Ilari / Claude | Highlight text → note in memory | src/engine/perception/ (highlights.ts, service.ts, episodes/, extraction/prefilter.ts), src/shared/domain.ts, src/shared/ipc.ts, src/engine/events.ts, src/engine/store/codec.ts, src/engine/brain/prompts/p01-extract.ts, src/main/ (broadcaster wiring), src/renderer/surfaces/overlay/ | main | |
 
 ## Done recently
 
