@@ -1,0 +1,24 @@
+#!/bin/sh
+# Workboard check (AGENTS.md → "Workboard"): every push that changes files must also change
+# WORKBOARD.md (a claim, a scope update, or moving the work to "Done recently"), so people and
+# agents working in parallel can see what is in progress. Emergency bypass: WORKBOARD_SKIP=1.
+[ "${WORKBOARD_SKIP:-}" = "1" ] && exit 0
+zero=0000000000000000000000000000000000000000
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue
+  if [ "$remote_sha" = "$zero" ]; then
+    range=$(git rev-list "$local_sha" --not --remotes 2>/dev/null)
+    [ -z "$range" ] && continue
+    files=$(git show --pretty=format: --name-only $range | sort -u)
+  else
+    files=$(git diff --name-only "$remote_sha" "$local_sha")
+  fi
+  [ -z "$files" ] && continue
+  if ! printf '%s\n' "$files" | grep -qx 'WORKBOARD.md'; then
+    echo "Push refused: these commits change files but not WORKBOARD.md." >&2
+    echo "Claim your work (or move it to \"Done recently\") in WORKBOARD.md, commit, and push again." >&2
+    echo "Rules: AGENTS.md → Workboard. Emergency bypass: WORKBOARD_SKIP=1 git push" >&2
+    exit 1
+  fi
+done
+exit 0

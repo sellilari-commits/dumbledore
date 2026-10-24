@@ -6,6 +6,7 @@
   "main": "out/main/index.js",
   "author": "Ilari",
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
     "dev": "node tools/dev.mjs",
     "dev:app-helper": "electron-vite dev",
     "build": "electron-vite build",
