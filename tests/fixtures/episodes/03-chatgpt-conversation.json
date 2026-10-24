@@ -1,0 +1,127 @@
+{
+  "name": "chatgpt-conversation",
+  "description": "Opens ChatGPT in Chrome, asks why tertiary carbocations are more stable, asks for a simpler explanation of hyperconjugation, scrolls up to re-read, then asks to be quizzed. The student's messages are right-aligned bubbles.",
+  "windows": {
+    "chat": {
+      "pid": 501,
+      "bundleId": "com.google.Chrome",
+      "appName": "Google Chrome",
+      "windowId": 12,
+      "title": "ChatGPT",
+      "url": "https://chatgpt.com/",
+      "source": "ax"
+    }
+  },
+  "timeline": [
+    {
+      "at": 0,
+      "front": "chat",
+      "lines": [
+        "New chat",
+        "Search chats",
+        "Library",
+        { "text": "What can I help with?", "align": "center" },
+        { "text": "Ask anything", "align": "center" },
+        { "text": "ChatGPT can make mistakes. Check important info.", "align": "center" }
+      ]
+    },
+    {
+      "at": 10,
+      "front": "chat",
+      "url": "https://chatgpt.com/c/6720f1a2-5b1c-8003-9c1e-0b7d2f9a4e11",
+      "title": "Carbocation stability",
+      "lines": [
+        "New chat",
+        "Search chats",
+        "Library",
+        { "text": "why are tertiary carbocations more stable than primary ones?", "align": "right" },
+        { "text": "Tertiary carbocations are more stable for two main reasons:", "align": "left" },
+        { "text": "1. Hyperconjugation: neighbouring C–H and C–C bonds donate electron density into the empty p orbital.", "align": "left" },
+        { "text": "2. Inductive effect: alkyl groups push electron density toward the positive carbon.", "align": "left" },
+        { "text": "More alkyl groups means more stabilisation, so tertiary > secondary > primary.", "align": "left" },
+        { "text": "Ask anything", "align": "center" },
+        { "text": "ChatGPT can make mistakes. Check important info.", "align": "center" }
+      ]
+    },
+    {
+      "at": 40,
+      "front": "chat",
+      "lines": [
+        "New chat",
+        "Search chats",
+        "Library",
+        { "text": "2. Inductive effect: alkyl groups push electron density toward the positive carbon.", "align": "left" },
+        { "text": "More alkyl groups means more stabilisation, so tertiary > secondary > primary.", "align": "left" },
+        { "text": "I don't get hyperconjugation, explain it more simply with an example", "align": "right" },
+        { "text": "Think of the empty p orbital as a gap that nearby bonds can partly fill.", "align": "left" },
+        { "text": "Example: in the tert-butyl cation, nine C–H bonds sit next to the positive carbon and each shares a little electron density.", "align": "left" },
+        { "text": "Sharing the charge over more bonds lowers the energy, which is what 'more stable' means.", "align": "left" },
+        { "text": "Ask anything", "align": "center" },
+        { "text": "ChatGPT can make mistakes. Check important info.", "align": "center" }
+      ]
+    },
+    {
+      "at": 80,
+      "front": "chat",
+      "lines": [
+        "New chat",
+        "Search chats",
+        "Library",
+        { "text": "why are tertiary carbocations more stable than primary ones?", "align": "right" },
+        { "text": "Tertiary carbocations are more stable for two main reasons:", "align": "left" },
+        { "text": "1. Hyperconjugation: neighbouring C–H and C–C bonds donate electron density into the empty p orbital.", "align": "left" },
+        { "text": "2. Inductive effect: alkyl groups push electron density toward the positive carbon.", "align": "left" },
+        { "text": "More alkyl groups means more stabilisation, so tertiary > secondary > primary.", "align": "left" },
+        { "text": "Ask anything", "align": "center" },
+        { "text": "ChatGPT can make mistakes. Check important info.", "align": "center" }
+      ]
+    },
+    {
+      "at": 100,
+      "front": "chat",
+      "lines": [
+        "New chat",
+        "Search chats",
+        "Library",
+        { "text": "Sharing the charge over more bonds lowers the energy, which is what 'more stable' means.", "align": "left" },
+        { "text": "quiz me with 2 questions on carbocation stability", "align": "right" },
+        { "text": "Question 1: Which is more stable, the isopropyl cation or the tert-butyl cation? Why?", "align": "left" },
+        { "text": "Question 2: Why does a methyl cation form so rarely in SN1 reactions?", "align": "left" },
+        { "text": "Ask anything", "align": "center" },
+        { "text": "ChatGPT can make mistakes. Check important info.", "align": "center" }
+      ]
+    },
+    { "at": 140, "front": null }
+  ],
+  "end": 155,
+  "learning": true,
+  "brain": {
+    "subject": "Organic Chemistry",
+    "topicPath": ["Organic Chemistry", "Reaction intermediates", "Carbocation stability"],
+    "keyTerms": ["carbocation", "hyperconjugation", "inductive effect"],
+    "openQuestions": ["How does hyperconjugation compare with resonance stabilisation?"]
+  },
+  "expect": {
+    "episodes": 1,
+    "extractCalls": 1,
+    "aiChat": "chatgpt",
+    "main": {
+      "kind": "ai_chat",
+      "aiProvider": "chatgpt",
+      "minDwell": 120,
+      "minScrollBacks": 1,
+      "aiQuestions": [
+        "why are tertiary carbocations more stable than primary ones?",
+        "I don't get hyperconjugation, explain it more simply with an example",
+        "quiz me with 2 questions on carbocation stability"
+      ],
+      "textIncludes": ["[R] why are tertiary carbocations more stable", "[L] Tertiary carbocations are more stable for two main reasons:"],
+      "textExcludes": ["Ask anything", "can make mistakes", "What can I help with?"]
+    },
+    "encounters": 1,
+    "understanding": "struggling",
+    "subject": "Organic Chemistry",
+    "concepts": ["Reaction intermediates", "Carbocation stability"],
+    "promptsSeen": 3
+  }
+}

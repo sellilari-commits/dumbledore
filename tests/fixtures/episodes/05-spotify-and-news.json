@@ -1,0 +1,66 @@
+{
+  "name": "spotify-and-news",
+  "description": "Browses playlists in Spotify for a minute, then reads a short local news story about the first snow. Neither is learning: the prefilter must reject both without an LLM call.",
+  "windows": {
+    "spotify": {
+      "pid": 700,
+      "bundleId": "com.spotify.client",
+      "appName": "Spotify",
+      "windowId": 31,
+      "title": "Spotify Premium",
+      "url": null,
+      "source": "ax"
+    },
+    "news": {
+      "pid": 501,
+      "bundleId": "com.google.Chrome",
+      "appName": "Google Chrome",
+      "windowId": 14,
+      "title": "Helsinki gets its first snow of the season | Yle News",
+      "url": "https://yle.fi/a/74-20123456",
+      "source": "ax"
+    }
+  },
+  "timeline": [
+    {
+      "at": 0,
+      "front": "spotify",
+      "lines": ["Home", "Search", "Your Library", "Good evening", "Late Night Drive", "Coffee Shop Jazz", "Liked Songs · 412 songs", "Shuffle play"]
+    },
+    {
+      "at": 30,
+      "front": "spotify",
+      "lines": ["Home", "Search", "Your Library", "Coffee Shop Jazz", "Smooth instrumentals for slow mornings", "1. Rainy Window — The Night Owls", "2. Second Cup — Marta Lind Trio", "3. Blue Hour — Kaarlo Quartet"]
+    },
+    {
+      "at": 60,
+      "front": "news",
+      "lines": [
+        "Yle News",
+        "Helsinki gets its first snow of the season",
+        "Snow fell across southern Finland on Thursday night, a few weeks earlier than last year.",
+        "Commuters faced slippery roads and some tram lines ran late during the morning rush.",
+        "Forecasters expect the snow to melt by the weekend as temperatures rise above zero again."
+      ]
+    },
+    {
+      "at": 95,
+      "front": "news",
+      "lines": [
+        "Yle News",
+        "Forecasters expect the snow to melt by the weekend as temperatures rise above zero again.",
+        "Drivers were advised to switch to winter tyres before the end of the month.",
+        "Children at a Kallio day care spent the morning building the first snowmen of the year.",
+        "Read more: Winter tyre rules in Finland"
+      ]
+    },
+    { "at": 130, "front": null }
+  ],
+  "end": 145,
+  "learning": false,
+  "expect": {
+    "episodes": 2,
+    "extractCalls": 0,
+    "encounters": 0
+  }
+}

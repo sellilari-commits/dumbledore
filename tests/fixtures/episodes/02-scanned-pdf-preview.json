@@ -1,0 +1,101 @@
+{
+  "name": "scanned-pdf-preview",
+  "description": "Reads scanned lecture slides on entropy in Preview for ~3 min; the slides are images, so the helper falls back to OCR. The student flips back to the definition slide once.",
+  "windows": {
+    "preview": {
+      "pid": 620,
+      "bundleId": "com.apple.Preview",
+      "appName": "Preview",
+      "windowId": 21,
+      "title": "Thermo_Lecture04_Entropy.pdf",
+      "url": null,
+      "source": "ocr"
+    }
+  },
+  "timeline": [
+    {
+      "at": 0,
+      "front": "preview",
+      "lines": [
+        { "text": "Thermo_Lecture04_Entropy.pdf", "align": "center", "conf": 0.97 },
+        { "text": "Lecture 4 - Entropy and the Second Law", "align": "center", "conf": 0.95 },
+        { "text": "Thermodynamics, autumn 2026", "align": "center", "conf": 0.93 },
+        { "text": "Learning goals", "align": "left", "conf": 0.96 },
+        { "text": "• Define entropy as a state function", "align": "left", "conf": 0.91 },
+        { "text": "• Compute entropy changes for reversible processes", "align": "left", "conf": 0.92 },
+        { "text": "• Explain why the entropy of an isolated system never decreases", "align": "left", "conf": 0.9 }
+      ]
+    },
+    {
+      "at": 30,
+      "front": "preview",
+      "lines": [
+        { "text": "Thermo_Lecture04_Entropy.pdf", "align": "center", "conf": 0.97 },
+        { "text": "Definition of entropy", "align": "left", "conf": 0.95 },
+        { "text": "dS = δQ_rev / T", "align": "center", "conf": 0.84 },
+        { "text": "Entropy is a state function: ΔS depends only on the initial and final states.", "align": "left", "conf": 0.9 },
+        { "text": "For an ideal gas at constant temperature: ΔS = nR ln(V2 / V1)", "align": "left", "conf": 0.88 },
+        { "text": "Example: 1 mol of gas doubling its volume gains ΔS = R ln 2 ≈ 5.76 J/K", "align": "left", "conf": 0.87 }
+      ]
+    },
+    {
+      "at": 70,
+      "front": "preview",
+      "lines": [
+        { "text": "Thermo_Lecture04_Entropy.pdf", "align": "center", "conf": 0.97 },
+        { "text": "The Second Law", "align": "left", "conf": 0.96 },
+        { "text": "For an isolated system ΔS ≥ 0", "align": "center", "conf": 0.86 },
+        { "text": "Equality holds only for reversible processes.", "align": "left", "conf": 0.92 },
+        { "text": "Clausius inequality: ∮ δQ / T ≤ 0", "align": "center", "conf": 0.81 },
+        { "text": "Heat flows spontaneously from hot to cold because the total entropy increases.", "align": "left", "conf": 0.9 }
+      ]
+    },
+    {
+      "at": 110,
+      "front": "preview",
+      "lines": [
+        { "text": "Thermo_Lecture04_Entropy.pdf", "align": "center", "conf": 0.97 },
+        { "text": "Definition of entropy", "align": "left", "conf": 0.95 },
+        { "text": "dS = δQ_rev / T", "align": "center", "conf": 0.84 },
+        { "text": "Entropy is a state function: ΔS depends only on the initial and final states.", "align": "left", "conf": 0.9 },
+        { "text": "For an ideal gas at constant temperature: ΔS = nR ln(V2 / V1)", "align": "left", "conf": 0.88 },
+        { "text": "Example: 1 mol of gas doubling its volume gains ΔS = R ln 2 ≈ 5.76 J/K", "align": "left", "conf": 0.87 }
+      ]
+    },
+    {
+      "at": 140,
+      "front": "preview",
+      "lines": [
+        { "text": "Thermo_Lecture04_Entropy.pdf", "align": "center", "conf": 0.97 },
+        { "text": "The Second Law", "align": "left", "conf": 0.96 },
+        { "text": "For an isolated system ΔS ≥ 0", "align": "center", "conf": 0.86 },
+        { "text": "Equality holds only for reversible processes.", "align": "left", "conf": 0.92 },
+        { "text": "Clausius inequality: ∮ δQ / T ≤ 0", "align": "center", "conf": 0.81 },
+        { "text": "Heat flows spontaneously from hot to cold because the total entropy increases.", "align": "left", "conf": 0.9 }
+      ]
+    },
+    { "at": 170, "front": null }
+  ],
+  "end": 185,
+  "learning": true,
+  "brain": {
+    "subject": "Thermodynamics",
+    "topicPath": ["Thermodynamics", "Entropy", "Second law of thermodynamics"],
+    "keyTerms": ["entropy", "state function", "Clausius inequality"],
+    "openQuestions": ["Why is entropy a state function when heat is not?"]
+  },
+  "expect": {
+    "episodes": 1,
+    "extractCalls": 1,
+    "main": {
+      "kind": "reading",
+      "source": "ocr",
+      "minDwell": 160,
+      "minScrollBacks": 1,
+      "textIncludes": ["dS = δQ_rev / T", "Clausius inequality"]
+    },
+    "encounters": 1,
+    "subject": "Thermodynamics",
+    "concepts": ["Entropy", "Second law of thermodynamics"]
+  }
+}

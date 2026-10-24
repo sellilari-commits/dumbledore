@@ -1,0 +1,349 @@
+/* First-run onboarding: full window, no sidebar, one calm centred column per step. */
+
+.dd-onb {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--c-bacPri);
+  color: var(--c-texPri);
+}
+
+.dd-onb__chrome {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: var(--topbar-height);
+  flex: none;
+  padding: 0 12px 0 var(--traffic-lights-inset);
+  -webkit-app-region: drag;
+}
+
+.dd-onb__chrome > * {
+  -webkit-app-region: no-drag;
+}
+
+.dd-onb__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.dd-onb__column {
+  display: flex;
+  flex-direction: column;
+  width: min(520px, calc(100vw - 48px));
+  margin: 0 auto;
+  padding: clamp(16px, 8vh, 80px) 0 64px;
+  animation: dd-pop-in var(--dur-base) var(--ease-out);
+}
+
+.dd-onb__column--center {
+  align-items: center;
+  text-align: center;
+}
+
+/* ── Progress ───────────────────────────────────────────────────────────── */
+
+.dd-onb__progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+  color: var(--c-texSec);
+  font-size: var(--text-small);
+}
+
+.dd-onb__dots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dd-onb__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--c-borStr);
+  transition:
+    width var(--dur-base) var(--ease-out),
+    background var(--dur-base) var(--ease-out);
+}
+
+.dd-onb__dot[data-state='done'] {
+  background: var(--c-texSec);
+}
+
+.dd-onb__dot[data-state='current'] {
+  width: 18px;
+  background: var(--c-texPri);
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+.dd-onb__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 24px;
+  border-radius: 18px;
+  background: var(--c-texPri);
+  color: var(--c-bacPri);
+  box-shadow: var(--shadow-md);
+}
+
+.dd-onb__title {
+  margin: 0;
+  font-size: var(--text-h1);
+  line-height: var(--leading-h1);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.01em;
+  color: var(--c-texPri);
+}
+
+.dd-onb__title:focus,
+.dd-onb__title:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.dd-onb__lead {
+  margin-top: 8px;
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  color: var(--c-texSec);
+}
+
+.dd-onb__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  margin-top: 28px;
+}
+
+.dd-onb__footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 36px;
+}
+
+.dd-onb__spacer {
+  flex: 1;
+}
+
+.dd-onb__hint {
+  font-size: var(--text-meta);
+  line-height: 19px;
+  color: var(--c-texSec);
+}
+
+/* ── Promise list (welcome) ─────────────────────────────────────────────── */
+
+.dd-onb__promises {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.dd-onb__promise {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.dd-onb__promise-icon,
+.dd-onb__row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--c-bacSec);
+  box-shadow: inset 0 0 0 1px var(--c-borPri);
+  color: var(--c-icoPri);
+}
+
+.dd-onb__promise-title {
+  font-size: var(--text-ui);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-ui);
+}
+
+.dd-onb__promise-text {
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+  color: var(--c-texSec);
+}
+
+/* ── Cards with rows (permissions, keys, subjects) ──────────────────────── */
+
+.dd-onb__card {
+  border-radius: var(--radius-menu);
+  box-shadow: inset 0 0 0 1px var(--c-borPri);
+}
+
+.dd-onb__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  border-bottom: 1px solid var(--c-borPri);
+}
+
+.dd-onb__row:last-child {
+  border-bottom: 0;
+}
+
+.dd-onb__row--compact {
+  align-items: center;
+  padding: 8px 8px 8px 14px;
+  min-height: 44px;
+}
+
+.dd-onb__row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dd-onb__row-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-ui);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-ui);
+}
+
+.dd-onb__row-desc {
+  font-size: var(--text-meta);
+  line-height: 18px;
+  color: var(--c-texSec);
+}
+
+.dd-onb__row-side {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.dd-onb__row-remove {
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.dd-onb__row:hover .dd-onb__row-remove,
+.dd-onb__row-remove:focus-visible {
+  opacity: 1;
+}
+
+.dd-onb__form {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* ── Keycap (learn the key) ─────────────────────────────────────────────── */
+
+.dd-onb__key-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 36px 16px 28px;
+  border-radius: var(--radius-panel);
+  background: var(--c-bacSec);
+  box-shadow: inset 0 0 0 1px var(--c-borPri);
+}
+
+.dd-keycap {
+  position: relative;
+  width: 132px;
+  height: 84px;
+  border-radius: 12px;
+  background: var(--c-bacPri);
+  box-shadow:
+    0 0 0 1px var(--c-borStr),
+    0 4px 0 var(--c-borStr),
+    0 10px 24px rgba(15, 15, 15, 0.08);
+  transition:
+    transform 80ms var(--ease-out),
+    box-shadow 80ms var(--ease-out);
+  user-select: none;
+}
+
+.dd-keycap[data-down='true'] {
+  transform: translateY(3px);
+  box-shadow:
+    0 0 0 1px var(--c-borStr),
+    0 1px 0 var(--c-borStr),
+    0 4px 10px rgba(15, 15, 15, 0.08);
+}
+
+.dd-keycap[data-tone='good'] {
+  box-shadow:
+    0 0 0 2px var(--c-green-text),
+    0 4px 0 var(--c-borStr),
+    0 10px 24px rgba(15, 15, 15, 0.08);
+}
+
+.dd-keycap__glyph {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--c-texPri);
+}
+
+.dd-keycap__word {
+  position: absolute;
+  bottom: 12px;
+  left: 14px;
+  font-size: var(--text-meta);
+  color: var(--c-texSec);
+}
+
+.dd-onb__key-caption {
+  font-size: var(--text-meta);
+  color: var(--c-texSec);
+}
+
+.dd-onb__verdict {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 24px;
+  font-size: var(--text-ui);
+  font-weight: var(--weight-medium);
+  text-align: center;
+  color: var(--c-texPri);
+}
+
+.dd-onb__verdict[data-tone='good'] {
+  color: var(--c-green-ink);
+}
+
+.dd-onb__verdict[data-tone='warn'] {
+  color: var(--c-orange-ink);
+}
+
+.dd-onb__verdict[data-tone='idle'] {
+  color: var(--c-texSec);
+  font-weight: var(--weight-regular);
+}

@@ -1,0 +1,76 @@
+{
+  "name": "moodle-assignment",
+  "description": "Opens an assignment page on Aalto's MyCourses (Moodle) for ~45 s: Assignment 3 on linear regression, due Friday 31 October 2026 at 23:59.",
+  "windows": {
+    "moodle": {
+      "pid": 501,
+      "bundleId": "com.google.Chrome",
+      "appName": "Google Chrome",
+      "windowId": 13,
+      "title": "MS-C1620: Assignment 3: Linear regression | MyCourses",
+      "url": "https://mycourses.aalto.fi/mod/assign/view.php?id=1234567",
+      "source": "ax"
+    }
+  },
+  "timeline": [
+    {
+      "at": 0,
+      "front": "moodle",
+      "lines": [
+        "MyCourses",
+        "Dashboard",
+        "My courses",
+        "MS-C1620 Statistical Inference D",
+        "Assignment 3: Linear regression",
+        "Opened: Monday, 20 October 2026, 9:00",
+        "Due: Friday, 31 October 2026, 23:59",
+        "Fit a simple linear regression model to the housing data set (housing.csv).",
+        "Report the estimated coefficients, their standard errors and a 95% confidence interval for the slope.",
+        "Plot the residuals against the fitted values and comment on any patterns you see."
+      ]
+    },
+    {
+      "at": 25,
+      "front": "moodle",
+      "lines": [
+        "MyCourses",
+        "Dashboard",
+        "My courses",
+        "Plot the residuals against the fitted values and comment on any patterns you see.",
+        "Submit one PDF report and your R or Python code.",
+        "Submission status",
+        "Attempt number: This is attempt 1.",
+        "Submission status: No attempt",
+        "Grading status: Not graded",
+        "Time remaining: 7 days 14 hours",
+        "Add submission"
+      ]
+    },
+    { "at": 45, "front": null }
+  ],
+  "end": 60,
+  "learning": true,
+  "brain": {
+    "subject": "Statistics",
+    "topicPath": ["Statistics", "Regression analysis", "Linear regression"],
+    "keyTerms": ["linear regression", "residuals", "confidence interval"],
+    "openQuestions": ["How do I compute a confidence interval for the slope?"],
+    "assignment": {
+      "title": "Assignment 3: Linear regression",
+      "course": "MS-C1620 Statistical Inference D",
+      "dueAt": "2026-10-31T23:59:00+02:00"
+    }
+  },
+  "expect": {
+    "episodes": 1,
+    "extractCalls": 1,
+    "main": {
+      "minDwell": 40,
+      "textIncludes": ["Due: Friday, 31 October 2026, 23:59"]
+    },
+    "encounters": 1,
+    "subject": "Statistics",
+    "concepts": ["Regression analysis", "Linear regression"],
+    "assignment": { "title": "Assignment 3: Linear regression", "dueAt": "2026-10-31T21:59:00.000Z" }
+  }
+}

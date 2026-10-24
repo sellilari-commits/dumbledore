@@ -1,0 +1,346 @@
+/* Settings page: Notion settings-modal layout — left section nav, right column of rows. */
+
+.dd-set {
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+  margin-top: 28px;
+}
+
+/* ── Section nav ────────────────────────────────────────────────────────── */
+
+.dd-set__nav {
+  position: sticky;
+  top: 16px;
+  flex: none;
+  width: 184px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-left: -8px;
+}
+
+.dd-set__nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: var(--radius-menu);
+  color: var(--c-texSidebar);
+  font-size: var(--text-ui);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.dd-set__nav-item:hover {
+  background: var(--c-hover);
+  text-decoration: none;
+}
+
+.dd-set__nav-item[aria-current='page'] {
+  background: var(--c-hover);
+  color: var(--c-texPri);
+}
+
+.dd-set__nav-item svg {
+  flex: none;
+  color: var(--c-icoSec);
+}
+
+.dd-set__content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Sections & rows ────────────────────────────────────────────────────── */
+
+.dd-set-section + .dd-set-section {
+  margin-top: 44px;
+}
+
+.dd-set-section__head {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--c-borPri);
+}
+
+.dd-set-section__title {
+  margin: 0;
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  font-weight: var(--weight-semibold);
+  color: var(--c-texPri);
+}
+
+.dd-set-section__desc {
+  margin-top: 2px;
+  font-size: var(--text-meta);
+  line-height: 18px;
+  color: var(--c-texSec);
+}
+
+.dd-set-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-height: 62px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--c-borPri);
+}
+
+.dd-set-row:last-child {
+  border-bottom: 0;
+}
+
+.dd-set-row--stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.dd-set-row__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dd-set-row__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-ui);
+  line-height: 20px;
+  color: var(--c-texPri);
+}
+
+.dd-set-row__desc {
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+  color: var(--c-texSec);
+}
+
+.dd-set-row__control {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dd-set-row__sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Select (Notion's borderless dropdown button) ───────────────────────── */
+
+.dd-set-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 6px 0 8px;
+  border-radius: var(--radius-control);
+  color: var(--c-texPri);
+  font-size: var(--text-ui);
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.dd-set-select:hover,
+.dd-set-select[data-state='open'] {
+  background: var(--c-hover);
+}
+
+.dd-set-select svg {
+  color: var(--c-icoSec);
+}
+
+/* ── Status words ───────────────────────────────────────────────────────── */
+
+.dd-set-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--c-green-ink);
+  font-size: var(--text-ui);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+.dd-set-bad {
+  color: var(--c-red-ink);
+  font-size: var(--text-small);
+}
+
+.dd-set-muted {
+  color: var(--c-texSec);
+  font-size: var(--text-small);
+  white-space: nowrap;
+}
+
+.dd-set-path {
+  display: inline-block;
+  max-width: 100%;
+  padding: 2px 6px;
+  border-radius: var(--radius-control);
+  background: var(--c-bacTer);
+  color: var(--c-texPri);
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  overflow-wrap: anywhere;
+}
+
+/* ── Editable lists (excluded apps & sites) ─────────────────────────────── */
+
+.dd-set-list {
+  border-radius: var(--radius-menu);
+  box-shadow: inset 0 0 0 1px var(--c-borPri);
+}
+
+.dd-set-list__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 6px 0 12px;
+  border-bottom: 1px solid var(--c-borPri);
+  font-size: var(--text-ui);
+}
+
+.dd-set-list__item > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dd-set-list__remove {
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.dd-set-list__item:hover .dd-set-list__remove,
+.dd-set-list__remove:focus-visible {
+  opacity: 1;
+}
+
+.dd-set-list__empty {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--c-borPri);
+  color: var(--c-texSec);
+  font-size: var(--text-ui);
+}
+
+.dd-set-list__add {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+}
+
+/* ── Usage meters ───────────────────────────────────────────────────────── */
+
+.dd-usage__row {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--c-borPri);
+}
+
+.dd-usage__row:last-child {
+  border-bottom: 0;
+}
+
+.dd-usage__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dd-usage__model {
+  font-size: var(--text-ui);
+  font-weight: var(--weight-medium);
+  color: var(--c-texPri);
+}
+
+.dd-usage__provider {
+  margin-left: 6px;
+  font-weight: var(--weight-regular);
+  color: var(--c-texSec);
+}
+
+.dd-usage__meta {
+  font-size: var(--text-small);
+  color: var(--c-texSec);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dd-usage__bars {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 10px;
+}
+
+.dd-usage__bar-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: var(--text-small);
+  color: var(--c-texSec);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Shortcut list ──────────────────────────────────────────────────────── */
+
+.dd-set-keys {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dd-set-keys__group {
+  padding: 16px 0 4px;
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  color: var(--c-texSec);
+}
+
+.dd-set-keyrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 38px;
+  border-bottom: 1px solid var(--c-borPri);
+  font-size: var(--text-ui);
+}
+
+.dd-set-keyrow:last-child {
+  border-bottom: 0;
+}
+
+.dd-set-keys__combo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dd-set-keys__sep {
+  padding: 0 2px;
+  color: var(--c-texTer);
+  font-size: var(--text-small);
+}
+
+.dd-set-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}

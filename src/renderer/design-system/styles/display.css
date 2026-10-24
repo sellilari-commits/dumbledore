@@ -1,0 +1,355 @@
+/* Display: tags, progress, callouts, toggles, dividers, skeletons, empty/error states, spinner. */
+
+.dd-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-control);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.dd-tag--default {
+  background: var(--c-bacTer);
+  color: var(--c-texSec);
+}
+
+.dd-tag--gray {
+  background: var(--c-gray-bg);
+  color: var(--c-gray-ink);
+}
+.dd-tag--brown {
+  background: var(--c-brown-bg);
+  color: var(--c-brown-ink);
+}
+.dd-tag--orange {
+  background: var(--c-orange-bg);
+  color: var(--c-orange-ink);
+}
+.dd-tag--yellow {
+  background: var(--c-yellow-bg);
+  color: var(--c-yellow-ink);
+}
+.dd-tag--green {
+  background: var(--c-green-bg);
+  color: var(--c-green-ink);
+}
+.dd-tag--blue {
+  background: var(--c-blue-bg);
+  color: var(--c-blue-ink);
+}
+.dd-tag--purple {
+  background: var(--c-purple-bg);
+  color: var(--c-purple-ink);
+}
+.dd-tag--pink {
+  background: var(--c-pink-bg);
+  color: var(--c-pink-ink);
+}
+.dd-tag--red {
+  background: var(--c-red-bg);
+  color: var(--c-red-ink);
+}
+
+.dd-tag__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+/* ── Progress ───────────────────────────────────────────────────────────── */
+
+.dd-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dd-progress__track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  min-width: 40px;
+  border-radius: 2px;
+  background: var(--c-progressTrack);
+  overflow: hidden;
+}
+
+.dd-progress__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 2px;
+  background: var(--c-progress);
+  transition: width var(--dur-base) var(--ease-out);
+}
+
+.dd-progress--blue .dd-progress__fill {
+  background: var(--c-accent);
+}
+.dd-progress--red .dd-progress__fill {
+  background: var(--c-red-text);
+}
+.dd-progress--yellow .dd-progress__fill {
+  background: var(--c-yellow-text);
+}
+.dd-progress--orange .dd-progress__fill {
+  background: var(--c-orange-text);
+}
+.dd-progress--gray .dd-progress__fill {
+  background: var(--c-texTer);
+}
+
+.dd-progress__label {
+  flex: none;
+  min-width: 32px;
+  font-size: var(--text-small);
+  color: var(--c-texSec);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ── Callout ────────────────────────────────────────────────────────────── */
+
+.dd-callout {
+  display: flex;
+  gap: 10px;
+  padding: 14px 16px 14px 12px;
+  border-radius: var(--radius-menu);
+  background: var(--c-bacSec);
+  box-shadow: inset 0 0 0 1px var(--c-borPri);
+  color: var(--c-texPri);
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+}
+
+.dd-callout--tinted {
+  box-shadow: none;
+}
+
+.dd-callout--gray {
+  background: var(--c-gray-bg);
+}
+.dd-callout--brown {
+  background: var(--c-brown-bg);
+}
+.dd-callout--orange {
+  background: var(--c-orange-bg);
+}
+.dd-callout--yellow {
+  background: var(--c-yellow-bg);
+}
+.dd-callout--green {
+  background: var(--c-green-bg);
+}
+.dd-callout--blue {
+  background: var(--c-blue-bg);
+}
+.dd-callout--purple {
+  background: var(--c-purple-bg);
+}
+.dd-callout--pink {
+  background: var(--c-pink-bg);
+}
+.dd-callout--red {
+  background: var(--c-red-bg);
+}
+
+.dd-callout__icon {
+  flex: none;
+  width: 22px;
+  font-size: 18px;
+  line-height: 21px;
+  text-align: center;
+}
+
+.dd-callout__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dd-callout__title {
+  font-weight: var(--weight-semibold);
+}
+
+/* ── Toggle block ───────────────────────────────────────────────────────── */
+
+.dd-toggle {
+  display: flex;
+  flex-direction: column;
+}
+
+.dd-toggle__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  min-height: 28px;
+  padding: 3px 2px;
+  border-radius: var(--radius-control);
+  text-align: left;
+  color: var(--c-texPri);
+}
+
+.dd-toggle__chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-control);
+  color: var(--c-icoSec);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.dd-toggle__head:hover .dd-toggle__chevron {
+  background: var(--c-hover);
+}
+
+.dd-toggle[data-open='true'] > .dd-toggle__head .dd-toggle__chevron {
+  transform: rotate(90deg);
+}
+
+.dd-toggle__title {
+  flex: 1;
+  min-width: 0;
+  padding-top: 1px;
+}
+
+.dd-toggle__content {
+  padding: 2px 0 6px 26px;
+  animation: dd-fade-in var(--dur-base) var(--ease-out);
+}
+
+/* ── Divider ────────────────────────────────────────────────────────────── */
+
+.dd-divider {
+  height: 1px;
+  border: 0;
+  margin: 8px 0;
+  background: var(--c-borPri);
+  flex: none;
+}
+
+.dd-divider--vertical {
+  width: 1px;
+  height: auto;
+  align-self: stretch;
+  margin: 0 8px;
+}
+
+/* ── Skeletons & loading ────────────────────────────────────────────────── */
+
+.dd-skeleton {
+  display: block;
+  border-radius: var(--radius-control);
+  background: var(--c-bacTer);
+  animation: dd-shimmer 1.6s ease-in-out infinite;
+}
+
+.dd-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dd-loading__caption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--c-texSec);
+  font-size: var(--text-ui);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dd-skeleton {
+    animation: none;
+  }
+}
+
+/* ── Empty & error states ───────────────────────────────────────────────── */
+
+.dd-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--c-texSec);
+}
+
+.dd-empty--compact {
+  padding: 20px 12px;
+}
+
+.dd-empty--left {
+  align-items: flex-start;
+  text-align: left;
+  padding: 12px 2px;
+}
+
+.dd-empty__icon {
+  font-size: 32px;
+  line-height: 40px;
+  margin-bottom: 4px;
+  color: var(--c-icoSec);
+}
+
+.dd-empty__title {
+  font-size: var(--text-ui);
+  font-weight: var(--weight-semibold);
+  color: var(--c-texPri);
+}
+
+.dd-empty__body {
+  max-width: 360px;
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+}
+
+.dd-empty__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* ── Spinner ────────────────────────────────────────────────────────────── */
+
+.dd-spinner {
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  opacity: 0.75;
+  animation: dd-spin 700ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dd-spinner {
+    animation-duration: 2s;
+  }
+}
+
+/* ── Glyph ──────────────────────────────────────────────────────────────── */
+
+.dd-glyph {
+  flex: none;
+  color: currentColor;
+}

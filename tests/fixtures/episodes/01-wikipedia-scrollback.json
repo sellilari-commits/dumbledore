@@ -1,0 +1,202 @@
+{
+  "name": "wikipedia-scrollback",
+  "description": "Searches Google for 'osmosis vs diffusion', then reads the Wikipedia article on osmosis for ~2.5 min in Chrome, scrolling down and twice back up to re-read the mechanism section.",
+  "windows": {
+    "chrome": {
+      "pid": 501,
+      "bundleId": "com.google.Chrome",
+      "appName": "Google Chrome",
+      "windowId": 11,
+      "title": "osmosis vs diffusion - Google Search",
+      "url": "https://www.google.com/search?q=osmosis+vs+diffusion&oq=osmosis+vs",
+      "source": "ax"
+    }
+  },
+  "timeline": [
+    {
+      "at": 0,
+      "front": "chrome",
+      "lines": [
+        "osmosis vs diffusion",
+        "About 12,400,000 results",
+        "Osmosis - Wikipedia",
+        "Diffusion vs osmosis: what is the difference?",
+        "People also ask"
+      ]
+    },
+    {
+      "at": 8,
+      "front": "chrome",
+      "title": "Osmosis - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Osmosis",
+      "lines": [
+        "Main page",
+        "Search Wikipedia",
+        "Osmosis",
+        "From Wikipedia, the free encyclopedia",
+        "Osmosis is the net movement of solvent molecules through a selectively permeable membrane.",
+        "The solvent moves from a region of lower solute concentration to a region of higher solute concentration.",
+        "It tends to equalise the solute concentrations on the two sides of the membrane.",
+        "Osmotic pressure is the external pressure needed to stop this net flow of solvent.",
+        "Contents",
+        "1 Mechanism",
+        "2 Role in living organisms",
+        "3 Reverse osmosis"
+      ]
+    },
+    {
+      "at": 20,
+      "front": "chrome",
+      "lines": [
+        "Main page",
+        "Search Wikipedia",
+        "Osmotic pressure is the external pressure needed to stop this net flow of solvent.",
+        "Contents",
+        "1 Mechanism",
+        "2 Role in living organisms",
+        "3 Reverse osmosis",
+        "Mechanism",
+        "The membrane lets solvent molecules pass but blocks most solute particles.",
+        "On the side with more solute, fewer solvent molecules are free to cross back.",
+        "The result is a net flow of solvent toward the more concentrated solution."
+      ]
+    },
+    {
+      "at": 35,
+      "front": "chrome",
+      "lines": [
+        "Main page",
+        "Search Wikipedia",
+        "Mechanism",
+        "The membrane lets solvent molecules pass but blocks most solute particles.",
+        "On the side with more solute, fewer solvent molecules are free to cross back.",
+        "The result is a net flow of solvent toward the more concentrated solution.",
+        "Osmotic pressure depends on the number of dissolved particles, not on their identity.",
+        "For dilute solutions the van 't Hoff equation gives Π = iMRT.",
+        "Here i is the van 't Hoff factor, M the molarity, R the gas constant and T the temperature.",
+        "Role in living organisms"
+      ]
+    },
+    {
+      "at": 50,
+      "front": "chrome",
+      "lines": [
+        "Main page",
+        "Search Wikipedia",
+        "Osmotic pressure depends on the number of dissolved particles, not on their identity.",
+        "For dilute solutions the van 't Hoff equation gives Π = iMRT.",
+        "Here i is the van 't Hoff factor, M the molarity, R the gas constant and T the temperature.",
+        "Role in living organisms",
+        "Plant cells rely on osmosis to stay turgid: water enters the vacuole and presses on the cell wall.",
+        "Red blood cells in a hypotonic solution swell and may burst (haemolysis).",
+        "In a hypertonic solution the same cells lose water and shrink (crenation).",
+        "Isotonic solutions cause no net movement of water across the membrane."
+      ]
+    },
+    {
+      "at": 65,
+      "front": "chrome",
+      "lines": [
+        "Main page",
+        "Search Wikipedia",
+        "Osmotic pressure is the external pressure needed to stop this net flow of solvent.",
+        "Contents",
+        "1 Mechanism",
+        "2 Role in living organisms",
+        "3 Reverse osmosis",
+        "Mechanism",
+        "The membrane lets solvent molecules pass but blocks most solute particles.",
+        "On the side with more solute, fewer solvent molecules are free to cross back.",
+        "The result is a net flow of solvent toward the more concentrated solution."
+      ]
+    },
+    {
+      "at": 80,
+      "front": "chrome",
+      "lines": [
+        "Main page",
+        "Search Wikipedia",
+        "Mechanism",
+        "The membrane lets solvent molecules pass but blocks most solute particles.",
+        "On the side with more solute, fewer solvent molecules are free to cross back.",
+        "The result is a net flow of solvent toward the more concentrated solution.",
+        "Osmotic pressure depends on the number of dissolved particles, not on their identity.",
+        "For dilute solutions the van 't Hoff equation gives Π = iMRT.",
+        "Here i is the van 't Hoff factor, M the molarity, R the gas constant and T the temperature.",
+        "Role in living organisms"
+      ]
+    },
+    {
+      "at": 95,
+      "front": "chrome",
+      "lines": [
+        "Main page",
+        "Search Wikipedia",
+        "Plant cells rely on osmosis to stay turgid: water enters the vacuole and presses on the cell wall.",
+        "Red blood cells in a hypotonic solution swell and may burst (haemolysis).",
+        "In a hypertonic solution the same cells lose water and shrink (crenation).",
+        "Isotonic solutions cause no net movement of water across the membrane.",
+        "Kidneys use osmotic gradients to concentrate urine and conserve water.",
+        "Reverse osmosis",
+        "Applying pressure greater than the osmotic pressure pushes solvent the opposite way.",
+        "Desalination plants use reverse osmosis to remove salt from seawater."
+      ]
+    },
+    {
+      "at": 110,
+      "front": "chrome",
+      "lines": [
+        "Main page",
+        "Search Wikipedia",
+        "Mechanism",
+        "The membrane lets solvent molecules pass but blocks most solute particles.",
+        "On the side with more solute, fewer solvent molecules are free to cross back.",
+        "The result is a net flow of solvent toward the more concentrated solution.",
+        "Osmotic pressure depends on the number of dissolved particles, not on their identity.",
+        "For dilute solutions the van 't Hoff equation gives Π = iMRT.",
+        "Here i is the van 't Hoff factor, M the molarity, R the gas constant and T the temperature.",
+        "Role in living organisms"
+      ]
+    },
+    {
+      "at": 125,
+      "front": "chrome",
+      "lines": [
+        "Main page",
+        "Search Wikipedia",
+        "Reverse osmosis",
+        "Applying pressure greater than the osmotic pressure pushes solvent the opposite way.",
+        "Desalination plants use reverse osmosis to remove salt from seawater.",
+        "See also",
+        "Diffusion",
+        "Tonicity",
+        "Water potential"
+      ]
+    },
+    { "at": 160, "front": null }
+  ],
+  "end": 175,
+  "learning": true,
+  "brain": {
+    "subject": "Biology",
+    "topicPath": ["Biology", "Cell biology", "Osmosis"],
+    "keyTerms": ["osmosis", "osmotic pressure", "tonicity"],
+    "openQuestions": ["Why does water move toward the side with more solute?"]
+  },
+  "expect": {
+    "episodes": 2,
+    "extractCalls": 1,
+    "main": {
+      "kind": "reading",
+      "source": "ax",
+      "minDwell": 140,
+      "minScrollBacks": 2,
+      "searches": ["osmosis vs diffusion"],
+      "textIncludes": ["Osmosis is the net movement of solvent molecules", "Desalination plants use reverse osmosis"]
+    },
+    "encounters": 1,
+    "understanding": "struggling",
+    "subject": "Biology",
+    "concepts": ["Cell biology", "Osmosis"]
+  }
+}

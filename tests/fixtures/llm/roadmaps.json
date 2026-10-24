@@ -1,0 +1,119 @@
+{
+  "description": "8 roadmap scenarios for P3. expect.startKeywords: one must appear in the first learn step (title or concepts); avoidStartKeywords must not. learn = allowed number of learn steps.",
+  "cases": [
+    {
+      "id": "cold-start",
+      "input": {
+        "goal": "I don't get the Calvin cycle",
+        "subject": null, "deadline": null, "minutesAvailable": null, "assistant": "ChatGPT", "language": "en",
+        "profile": "High-school senior taking IB Biology HL.",
+        "mastery": [], "encounters": [], "openQuestions": [], "doneSteps": [], "carry": []
+      },
+      "expect": { "offerPlacement": true, "learn": [3, 6], "startKeywords": ["photosynthesis", "overview", "light", "big picture", "calvin cycle", "carbon fixation", "stages", "atp", "chloroplast", "inputs"], "avoidStartKeywords": ["regeneration of rubp"], "carry": [], "language": "en" }
+    },
+    {
+      "id": "resume",
+      "input": {
+        "goal": "Understand when SN1 or SN2 happens",
+        "subject": { "id": "s_orgo", "name": "Organic Chemistry" }, "deadline": "2026-12-12", "minutesAvailable": 45, "assistant": "ChatGPT", "language": "en",
+        "profile": "First-year chemistry student at Aalto; studies in English.",
+        "mastery": [
+          { "concept": "Nucleophiles and electrophiles", "status": "mastered", "evidence": "4/4 in checkpoint 1" },
+          { "concept": "Leaving groups", "status": "learning", "evidence": "2/3 in checkpoint 1" },
+          { "concept": "Carbocation stability", "status": "struggling", "evidence": "missed 2 of 3 in checkpoint 1" }
+        ],
+        "encounters": [
+          { "seen": "Tertiary carbocations are stabilised by hyperconjugation and induction.", "bigPicture": "Organic Chemistry › Substitution › SN1 — why substrate matters", "understanding": "struggling" }
+        ],
+        "openQuestions": ["How does hyperconjugation stabilise a carbocation?"],
+        "doneSteps": ["Nucleophiles and electrophiles", "Leaving groups", "Checkpoint 1"],
+        "carry": ["Carbocation stability"]
+      },
+      "expect": { "offerPlacement": false, "learn": [2, 7], "startKeywords": ["carbocation", "hyperconjugation"], "avoidStartKeywords": ["nucleophiles and electrophiles", "leaving group"], "carry": ["Carbocation stability"], "language": "en", "maxMinutes": 60 }
+    },
+    {
+      "id": "struggling-prerequisite",
+      "input": {
+        "goal": "Eigenvalues and eigenvectors",
+        "subject": { "id": "s_linalg", "name": "Linear Algebra" }, "deadline": null, "minutesAvailable": null, "assistant": "Claude", "language": "en",
+        "profile": "First-year engineering student; comfortable with algebra.",
+        "mastery": [
+          { "concept": "Matrix multiplication", "status": "mastered", "evidence": "passed 2 reviews" },
+          { "concept": "Determinants", "status": "struggling", "evidence": "missed 2 of 3 questions; computed a 3×3 determinant wrong in a chat" }
+        ],
+        "encounters": [
+          { "seen": "det(A) via cofactor expansion along the first row with signs + − +.", "bigPicture": "Linear Algebra › Determinants — computing 3×3 determinants", "understanding": "struggling" }
+        ],
+        "openQuestions": ["Why does det(A) = 0 mean A is not invertible?"],
+        "doneSteps": [], "carry": []
+      },
+      "expect": { "offerPlacement": false, "learn": [3, 10], "startKeywords": ["determinant"], "avoidStartKeywords": ["matrix multiplication"], "carry": [], "language": "en" }
+    },
+    {
+      "id": "big-course",
+      "input": {
+        "goal": "Learn the whole Organic Chemistry I course",
+        "subject": { "id": "s_orgo", "name": "Organic Chemistry" }, "deadline": "2027-05-30", "minutesAvailable": null, "assistant": "ChatGPT", "language": "en",
+        "profile": "First-year chemistry student; finished high-school chemistry.",
+        "mastery": [], "encounters": [
+          { "seen": "Course outline: structure and bonding, acids and bases, stereochemistry, substitution, elimination, alkenes, carbonyl chemistry, aromatic chemistry, spectroscopy.", "bigPicture": "Organic Chemistry I course plan", "understanding": "unknown" }
+        ],
+        "openQuestions": [], "doneSteps": [], "carry": []
+      },
+      "expect": { "offerPlacement": false, "learn": [6, 15], "startKeywords": ["structure", "bonding", "hybridi", "orbital", "functional group", "lewis", "atom", "electron"], "avoidStartKeywords": ["aromatic", "spectroscopy", "carbonyl"], "carry": [], "language": "en", "nextMilestone": true }
+    },
+    {
+      "id": "tiny-question",
+      "input": {
+        "goal": "What's the difference between a nucleophile and a base?",
+        "subject": { "id": "s_orgo", "name": "Organic Chemistry" }, "deadline": null, "minutesAvailable": 15, "assistant": "ChatGPT", "language": "en",
+        "profile": "First-year chemistry student.",
+        "mastery": [ { "concept": "Lewis acids and bases", "status": "learning", "evidence": "1 encounter" } ],
+        "encounters": [], "openQuestions": [], "doneSteps": [], "carry": []
+      },
+      "expect": { "offerPlacement": false, "learn": [1, 5], "startKeywords": ["nucleophil", "base", "lewis", "electron pair"], "avoidStartKeywords": [], "carry": [], "language": "en", "maxMinutes": 25 }
+    },
+    {
+      "id": "finnish-content",
+      "input": {
+        "goal": "Haluan ymmärtää, mitä derivaatta tarkoittaa ja miten sen lasken",
+        "subject": { "id": "s_math", "name": "Matematiikka" }, "deadline": null, "minutesAvailable": null, "assistant": "ChatGPT", "language": "auto",
+        "profile": "Lukion toisen vuoden opiskelija, pitkä matematiikka.",
+        "mastery": [],
+        "encounters": [ { "seen": "Derivaatta on tangentin kulmakerroin; f(x)=x² → f'(x)=2x.", "bigPicture": "Matematiikka › Differentiaalilaskenta › Derivaatta", "understanding": "unclear" } ],
+        "openQuestions": ["Miten derivaatta lasketaan raja-arvona?"], "doneSteps": [], "carry": []
+      },
+      "expect": { "offerPlacement": false, "learn": [3, 7], "startKeywords": ["muutosnopeu", "tangent", "kulmakerro", "derivaat", "raja-arvo", "erotusosamäärä", "intuitio"], "avoidStartKeywords": [], "carry": [], "language": "fi" }
+    },
+    {
+      "id": "deadline-tomorrow",
+      "input": {
+        "goal": "Prepare for tomorrow's midterm on substitution and elimination (SN1, SN2, E1, E2)",
+        "subject": { "id": "s_orgo", "name": "Organic Chemistry" }, "deadline": "2026-10-25", "minutesAvailable": 90, "assistant": "ChatGPT", "language": "en",
+        "profile": "First-year chemistry student; studied SN2 well, weaker on eliminations.",
+        "mastery": [
+          { "concept": "SN2", "status": "mastered", "evidence": "5/5 in last exam" },
+          { "concept": "SN1", "status": "learning", "evidence": "3/5" },
+          { "concept": "E1 vs E2", "status": "struggling", "evidence": "1/4 in checkpoint" }
+        ],
+        "encounters": [], "openQuestions": ["How do I decide between E1 and E2?"], "doneSteps": [], "carry": ["E1 vs E2"]
+      },
+      "expect": { "offerPlacement": false, "learn": [2, 6], "startKeywords": ["e1", "e2", "elimination", "sn1", "decision", "flowchart", "choose", "deciding"], "avoidStartKeywords": ["sn2 basics"], "carry": ["E1 vs E2"], "language": "en", "maxMinutes": 90, "reasonMentions": ["tomorrow", "time", "minutes", "midterm", "exam", "high-yield"] }
+    },
+    {
+      "id": "mastered-basics",
+      "input": {
+        "goal": "Understand matrix diagonalization",
+        "subject": { "id": "s_linalg", "name": "Linear Algebra" }, "deadline": null, "minutesAvailable": null, "assistant": "Gemini", "language": "en",
+        "profile": "Second-year physics student.",
+        "mastery": [
+          { "concept": "Matrix multiplication", "status": "mastered", "evidence": "passed exam" },
+          { "concept": "Determinants", "status": "mastered", "evidence": "passed exam" },
+          { "concept": "Eigenvalues and eigenvectors", "status": "mastered", "evidence": "passed 2 spaced reviews" }
+        ],
+        "encounters": [], "openQuestions": [], "doneSteps": [], "carry": []
+      },
+      "expect": { "offerPlacement": false, "learn": [2, 7], "startKeywords": ["diagonaliz", "eigenbasis", "basis", "change of basis", "pdp", "similar", "eigenvector matri"], "avoidStartKeywords": ["what is a matrix", "determinant", "matrix multiplication"], "carry": [], "language": "en" }
+    }
+  ]
+}

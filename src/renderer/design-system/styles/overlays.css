@@ -1,0 +1,385 @@
+/* Overlays: tooltip, menu, popover, dialog, toast, command palette. Soft, large-shadow cards. */
+
+/* ── Tooltip ────────────────────────────────────────────────────────────── */
+
+.dd-tooltip {
+  z-index: var(--z-tooltip);
+  max-width: 260px;
+  padding: 4px 8px;
+  border-radius: var(--radius-control);
+  background: var(--c-tooltipBg);
+  color: var(--c-tooltipText);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  line-height: 1.4;
+  box-shadow: var(--shadow-md);
+  animation: dd-fade-in var(--dur-fast) var(--ease-out);
+}
+
+.dd-tooltip__sub {
+  display: block;
+  color: var(--c-tooltipSub);
+  font-weight: var(--weight-regular);
+}
+
+.dd-tooltip__kbd {
+  margin-left: 6px;
+  color: var(--c-tooltipSub);
+}
+
+/* ── Menu & popover ─────────────────────────────────────────────────────── */
+
+.dd-menu,
+.dd-popover {
+  z-index: var(--z-popover);
+  min-width: 220px;
+  max-width: 320px;
+  padding: 4px;
+  border-radius: var(--radius-menu);
+  background: var(--c-popBac);
+  box-shadow: var(--shadow-lg);
+  color: var(--c-texPri);
+  font-size: var(--text-ui);
+  animation: dd-pop-in var(--dur-fast) var(--ease-out);
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+}
+
+.dd-popover {
+  max-width: 360px;
+  padding: 8px;
+}
+
+.dd-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 0 8px;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  color: var(--c-texPri);
+}
+
+.dd-menu__item[data-highlighted] {
+  background: var(--c-hover);
+}
+
+.dd-menu__item[data-disabled] {
+  color: var(--c-texDis);
+  cursor: default;
+}
+
+.dd-menu__item--danger {
+  color: var(--c-red-ink);
+}
+
+.dd-menu__icon {
+  display: inline-flex;
+  width: 20px;
+  justify-content: center;
+  flex: none;
+  color: var(--c-icoSec);
+}
+
+.dd-menu__label-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dd-menu__check {
+  margin-left: auto;
+  color: var(--c-icoPri);
+  display: inline-flex;
+}
+
+.dd-menu__shortcut {
+  margin-left: auto;
+  color: var(--c-texTer);
+  font-size: var(--text-small);
+}
+
+.dd-menu__group-label {
+  padding: 6px 8px 4px;
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  color: var(--c-texSec);
+}
+
+.dd-menu__separator {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--c-borPri);
+}
+
+/* ── Dialog ─────────────────────────────────────────────────────────────── */
+
+.dd-dialog__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  background: var(--c-overlay);
+  animation: dd-fade-in var(--dur-base) var(--ease-out);
+}
+
+.dd-dialog {
+  position: fixed;
+  z-index: var(--z-dialog);
+  top: 14vh;
+  left: 50%;
+  width: min(520px, calc(100vw - 48px));
+  max-height: 76vh;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-50%);
+  border-radius: var(--radius-panel);
+  background: var(--c-popBac);
+  box-shadow: var(--shadow-lg);
+  color: var(--c-texPri);
+  animation: dd-pop-in var(--dur-base) var(--ease-out);
+  outline: none;
+}
+
+.dd-dialog--wide {
+  width: min(680px, calc(100vw - 48px));
+}
+
+.dd-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 20px 0;
+}
+
+.dd-dialog__titles {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dd-dialog__title {
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-body);
+}
+
+.dd-dialog__description {
+  font-size: var(--text-ui);
+  color: var(--c-texSec);
+}
+
+.dd-dialog__body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dd-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px 16px;
+}
+
+.dd-dialog__footer-note {
+  margin-right: auto;
+  font-size: var(--text-small);
+  color: var(--c-texSec);
+}
+
+/* ── Toasts (in-window confirmations) ───────────────────────────────────── */
+
+.dd-toaster {
+  position: fixed;
+  z-index: var(--z-toast);
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.dd-toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(480px, calc(100vw - 32px));
+  min-height: 40px;
+  padding: 8px 8px 8px 14px;
+  border-radius: 8px;
+  background: var(--c-tooltipBg);
+  color: var(--c-tooltipText);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--text-ui);
+  pointer-events: auto;
+  animation: dd-pop-in var(--dur-base) var(--ease-out);
+}
+
+.dd-toast--error .dd-toast__icon {
+  color: #ff8c84;
+}
+
+.dd-toast--success .dd-toast__icon {
+  color: #7fd3a3;
+}
+
+.dd-toast__icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.dd-toast__text {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 0;
+}
+
+.dd-toast__action {
+  flex: none;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: var(--radius-control);
+  color: #7cb6f2;
+  font-weight: var(--weight-medium);
+}
+
+.dd-toast__action:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dd-toast__close {
+  flex: none;
+  display: inline-flex;
+  padding: 4px;
+  border-radius: var(--radius-control);
+  color: var(--c-tooltipSub);
+}
+
+.dd-toast__close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ── Command palette (⌘K) ───────────────────────────────────────────────── */
+
+.dd-cmdk {
+  position: fixed;
+  z-index: var(--z-dialog);
+  top: 12vh;
+  left: 50%;
+  width: min(640px, calc(100vw - 48px));
+  transform: translateX(-50%);
+  border-radius: var(--radius-panel);
+  background: var(--c-popBac);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: dd-pop-in var(--dur-base) var(--ease-out);
+}
+
+.dd-cmdk__input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--c-borPri);
+  color: var(--c-icoSec);
+}
+
+.dd-cmdk__input {
+  flex: 1;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--c-texPri);
+  font-size: 17px;
+  outline: none;
+}
+
+.dd-cmdk__input:focus-visible {
+  box-shadow: none;
+}
+
+.dd-cmdk__list {
+  max-height: min(420px, 56vh);
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.dd-cmdk [cmdk-group-heading] {
+  padding: 8px 8px 4px;
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  color: var(--c-texSec);
+}
+
+.dd-cmdk__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 6px 8px;
+  border-radius: var(--radius-menu);
+  cursor: pointer;
+  color: var(--c-texPri);
+}
+
+.dd-cmdk__item[data-selected='true'] {
+  background: var(--c-hover);
+}
+
+.dd-cmdk__item-icon {
+  display: inline-flex;
+  justify-content: center;
+  width: 22px;
+  flex: none;
+  color: var(--c-icoSec);
+  font-size: 16px;
+}
+
+.dd-cmdk__item-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dd-cmdk__item-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dd-cmdk__item-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-small);
+  color: var(--c-texSec);
+}
+
+.dd-cmdk__empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--c-texSec);
+}
+
+.dd-cmdk__footer {
+  display: flex;
+  gap: 16px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--c-borPri);
+  font-size: var(--text-small);
+  color: var(--c-texTer);
+}

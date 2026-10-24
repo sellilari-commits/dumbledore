@@ -1,0 +1,284 @@
+{
+  "description": "30 labelled episodes for P1 (20 learning incl. AI chats, PDFs, slides, docs; 10 not learning). label.struggleEvidence marks episodes whose signals or chat really show difficulty; 'struggling' anywhere else counts as a guess.",
+  "student": {
+    "aboutMe": "First-year chemistry student at Aalto University (CHEM-A1200 Organic Chemistry I, MS-A0011 Linear Algebra, an academic writing course). Finnish native speaker; studies mostly in English.",
+    "language": "auto"
+  },
+  "subjects": [
+    { "id": "s_orgo", "name": "Organic Chemistry", "topConcepts": ["SN2", "nucleophiles", "leaving groups"] },
+    { "id": "s_linalg", "name": "Linear Algebra", "topConcepts": ["matrices", "determinants"] },
+    { "id": "s_writing", "name": "Academic Writing", "topConcepts": ["thesis statement"] }
+  ],
+  "cases": [
+    {
+      "id": "L01-wiki-sn1-struggle",
+      "label": { "isLearning": true, "subject": "s_orgo", "understanding": ["struggling", "unclear"], "struggleEvidence": true },
+      "episode": {
+        "app": "Google Chrome", "url": "https://en.wikipedia.org/wiki/SN1_reaction", "title": "SN1 reaction - Wikipedia", "kind": "reading", "aiProvider": null, "dwellSeconds": 412,
+        "signals": { "readingWpm": 84, "baselineWpm": 210, "scrollBacks": 4, "revisitsToday": 2, "searches": ["sn1 vs sn2 difference", "why tertiary carbocation stable"], "aiQuestions": [] },
+        "text": "[L] SN1 reaction\n[L] The unimolecular nucleophilic substitution (SN1) reaction is a substitution reaction in organic chemistry. The Hughes-Ingold symbol of the mechanism expresses two properties: \"SN\" stands for nucleophilic substitution and the \"1\" says that the rate-determining step is unimolecular.\n[L] Thus, the rate equation is often shown as having first-order dependence on the substrate and zero-order dependence on the nucleophile: rate = k[R–X].\n[L] Mechanism: 1. Formation of a carbocation by loss of the leaving group (slow, rate-determining). 2. Nucleophilic attack on the planar carbocation (fast), from either face, which leads to racemization. 3. Deprotonation if the nucleophile was neutral.\n[L] Scope: SN1 is favoured by tertiary substrates, because tertiary carbocations are stabilised by hyperconjugation and the inductive effect of the alkyl groups, and by polar protic solvents that stabilise the ions.\n[L] Primary carbocations are very unstable, so primary substrates react by SN2 instead."
+      }
+    },
+    {
+      "id": "L02-chatgpt-carbocation-repeat",
+      "label": { "isLearning": true, "subject": "s_orgo", "understanding": ["unclear", "struggling"], "struggleEvidence": true, "studentPrompts": 3 },
+      "episode": {
+        "app": "Google Chrome", "url": "https://chatgpt.com/c/68a1", "title": "ChatGPT", "kind": "ai_chat", "aiProvider": "chatgpt", "dwellSeconds": 380,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 1, "revisitsToday": 0, "searches": [], "aiQuestions": ["why are tertiary carbocations more stable", "i still dont get hyperconjugation", "can you explain it simpler"] },
+        "text": "[R] why are tertiary carbocations more stable\n[L] Tertiary carbocations are more stable than secondary or primary ones for two main reasons:\n[L] 1. Hyperconjugation: C–H σ bonds on neighbouring carbons can donate electron density into the empty p orbital of the carbocation. More alkyl groups = more neighbouring C–H bonds = more stabilisation.\n[L] 2. Inductive effect: alkyl groups push electron density toward the positive carbon.\n[R] i still dont get hyperconjugation\n[L] Think of the empty p orbital as a \"hole\". The electrons in a C–H bond right next to it can partially spread into that hole because the orbitals overlap. Spreading charge out lowers energy.\n[R] can you explain it simpler\n[L] Imagine the positive carbon as a person who needs help. Each neighbouring alkyl group is a friend who lends a little electron density. Three friends (tertiary) help more than one (primary)."
+      }
+    },
+    {
+      "id": "L03-pdf-eigenvalues",
+      "label": { "isLearning": true, "subject": "s_linalg", "understanding": ["unknown", "understood"], "struggleEvidence": false },
+      "episode": {
+        "app": "Preview", "url": null, "title": "Lecture05_Eigenvalues.pdf (page 3 of 14)", "kind": "reading", "aiProvider": null, "dwellSeconds": 305,
+        "signals": { "readingWpm": 190, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 0, "searches": [], "aiQuestions": [] },
+        "text": "[C] MS-A0011 Linear Algebra — Lecture 5\n[L] 5.1 Eigenvalues and eigenvectors\n[L] Definition. Let A be an n×n matrix. A nonzero vector v is an eigenvector of A if Av = λv for some scalar λ. The scalar λ is called the eigenvalue corresponding to v.\n[L] To find eigenvalues we solve det(A − λI) = 0, the characteristic equation.\n[L] Example. A = [[2, 1], [1, 2]]. det(A − λI) = (2 − λ)² − 1 = 0, so λ = 1 or λ = 3.\n[L] For λ = 3: (A − 3I)v = 0 gives v = t(1, 1). For λ = 1: v = t(1, −1).\n[L] Geometric meaning: an eigenvector keeps its direction under the transformation; it is only stretched by λ.\n[C] 3"
+      }
+    },
+    {
+      "id": "L04-slides-elimination",
+      "label": { "isLearning": true, "subject": "s_orgo", "understanding": ["unknown"], "struggleEvidence": false },
+      "episode": {
+        "app": "Microsoft PowerPoint", "url": null, "title": "CHEM-A1200_L7_Elimination.pptx", "kind": "reading", "aiProvider": null, "dwellSeconds": 240,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 0, "searches": [], "aiQuestions": [] },
+        "text": "[C] Lecture 7 — Elimination reactions: E1 and E2\n[L] E2: one concerted step; base removes a β-hydrogen while the leaving group departs\n[L] • rate = k[substrate][base]\n[L] • requires anti-periplanar H and leaving group\n[L] • strong, bulky bases favour E2 (e.g. t-BuOK)\n[L] E1: two steps via a carbocation\n[L] • rate = k[substrate]\n[L] • competes with SN1; favoured by heat and weak bases\n[L] Zaitsev's rule: the more substituted alkene is usually the major product\n[C] Slide 12 / 31"
+      }
+    },
+    {
+      "id": "L05-gdocs-essay-assignment",
+      "label": { "isLearning": true, "subject": "s_writing", "understanding": ["unknown", "unclear"], "struggleEvidence": false, "assignment": true },
+      "episode": {
+        "app": "Google Chrome", "url": "https://docs.google.com/document/d/1x9/edit", "title": "Essay 2 draft – Google Docs", "kind": "reading", "aiProvider": null, "dwellSeconds": 900,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 2, "revisitsToday": 1, "searches": ["how to write a strong thesis statement"], "aiQuestions": [] },
+        "text": "[C] Assignment 2: Argumentative essay (1,200 words) — LC-1310 Academic Writing — due Friday 30 October at 16:00\n[L] Instructions: take a clear position on a debated question in your field, support it with at least three peer-reviewed sources and address one counter-argument.\n[L] Draft — Should first-year chemistry labs switch to green solvents?\n[L] Thesis (draft): Green solvents are good and labs should use them more.\n[L] Comment from peer reviewer: \"Your thesis is too vague — what exactly should change, and why now?\"\n[L] Paragraph 1: Traditional solvents such as dichloromethane are toxic…"
+      }
+    },
+    {
+      "id": "L06-mycourses-problem-set",
+      "label": { "isLearning": true, "subject": "s_orgo", "understanding": ["unknown"], "struggleEvidence": false, "assignment": true },
+      "episode": {
+        "app": "Safari", "url": "https://mycourses.aalto.fi/mod/assign/view.php?id=1182", "title": "Problem set 4 | MyCourses", "kind": "reading", "aiProvider": null, "dwellSeconds": 150,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 1, "searches": [], "aiQuestions": [] },
+        "text": "[L] CHEM-A1200 Organic Chemistry I\n[L] Problem set 4: Substitution and elimination\n[L] Due: Tuesday, 3 November 2026, 23:59\n[L] Submission status: No attempt\n[L] 1. Rank the following substrates by SN2 rate: methyl bromide, 2-bromopropane, 1-bromobutane, 2-bromo-2-methylpropane. Explain.\n[L] 2. Predict the major product when 2-bromo-2-methylbutane is heated in ethanol. Give the mechanism.\n[L] 3. Why does (R)-2-bromobutane give (S)-2-butanol with NaOH?\n[C] Add submission"
+      }
+    },
+    {
+      "id": "L07-claude-determinant-wrong",
+      "label": { "isLearning": true, "subject": "s_linalg", "understanding": ["unclear", "struggling"], "struggleEvidence": true, "studentPrompts": 2 },
+      "episode": {
+        "app": "Claude", "url": null, "title": "Claude", "kind": "ai_chat", "aiProvider": "claude", "dwellSeconds": 420,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 0, "searches": [], "aiQuestions": ["how do i compute determinant of 3x3 matrix show steps", "so for [[2,0,1],[1,3,2],[1,1,1]] is it 1?"] },
+        "text": "[R] how do i compute determinant of 3x3 matrix show steps\n[L] Use cofactor expansion along the first row: det(A) = a11·det(M11) − a12·det(M12) + a13·det(M13), where Mij is the 2×2 matrix left after deleting row i and column j. Remember the alternating signs + − +.\n[R] so for [[2,0,1],[1,3,2],[1,1,1]] is it 1?\n[L] Close, but let's check each term: 2·(3·1 − 2·1) = 2·1 = 2; the middle term is 0 because a12 = 0; the last term is +1·(1·1 − 3·1) = −2. So det(A) = 2 + 0 − 2 = 0, not 1. It looks like the sign or the last minor went wrong. A determinant of 0 also tells you the matrix is not invertible."
+      }
+    },
+    {
+      "id": "L08-khan-video-matrix-mult",
+      "label": { "isLearning": true, "subject": "s_linalg", "understanding": ["unknown"], "struggleEvidence": false },
+      "episode": {
+        "app": "Google Chrome", "url": "https://www.khanacademy.org/math/linear-algebra/matrix-transformations", "title": "Matrix product examples (video) | Khan Academy", "kind": "reading", "aiProvider": null, "dwellSeconds": 540,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 0, "searches": [], "aiQuestions": [] },
+        "text": "[C] Matrix product examples\n[C] 4:12 / 9:47\n[C] so to get the entry in the first row, second column of the product, we take the first row of A\n[C] and dot it with the second column of B, so that's 1 times 5 plus 2 times 7, which is 19\n[C] and notice the product AB is only defined when the number of columns of A equals the number of rows of B\n[C] and in general AB is not equal to BA, matrix multiplication is not commutative\n[C] Up next: Matrix product associativity"
+      }
+    },
+    {
+      "id": "L09-anki-nucleophiles",
+      "label": { "isLearning": true, "subject": "s_orgo", "understanding": ["unknown", "understood", "unclear"], "struggleEvidence": false },
+      "episode": {
+        "app": "Anki", "url": null, "title": "Orgo::Reagents - Anki", "kind": "reading", "aiProvider": null, "dwellSeconds": 260,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 0, "searches": [], "aiQuestions": [] },
+        "text": "[C] Orgo::Reagents\n[C] Front: What makes a good nucleophile in a polar aprotic solvent?\n[C] Back: High electron density and charge; in polar aprotic solvents nucleophilicity follows basicity (F⁻ > Cl⁻ > Br⁻ > I⁻).\n[C] Again   Hard   Good   Easy\n[C] Front: Is water a good leaving group or a good nucleophile?\n[C] Back: Water is a good leaving group (weak base); it is only a weak nucleophile.\n[C] Due today: 34   Learned: 12"
+      }
+    },
+    {
+      "id": "L10-textbook-exercises",
+      "label": { "isLearning": true, "subject": "s_orgo", "understanding": ["unknown"], "struggleEvidence": false },
+      "episode": {
+        "app": "Preview", "url": null, "title": "Clayden_Ch15_Exercises.pdf (page 2 of 6)", "kind": "reading", "aiProvider": null, "dwellSeconds": 720,
+        "signals": { "readingWpm": 150, "baselineWpm": 210, "scrollBacks": 1, "revisitsToday": 0, "searches": [], "aiQuestions": [] },
+        "text": "[L] Problems — Chapter 15: Nucleophilic substitution at saturated carbon\n[L] 15.1 Which of these reactions will go by SN1 and which by SN2? (a) t-BuCl + MeOH (b) MeI + NaCN in DMSO (c) PhCH2Br + H2O.\n[L] 15.2 Explain why the rate of hydrolysis of t-BuCl does not depend on the concentration of hydroxide.\n[L] 15.3 Draw the transition state for the reaction of hydroxide with (S)-2-iodooctane and predict the configuration of the product.\n[L] 15.4 Suggest why neopentyl bromide reacts extremely slowly by both mechanisms."
+      }
+    },
+    {
+      "id": "L11-arxiv-attention",
+      "label": { "isLearning": true, "subject": null, "understanding": ["unknown"], "struggleEvidence": false },
+      "episode": {
+        "app": "Google Chrome", "url": "https://arxiv.org/abs/1706.03762", "title": "[1706.03762] Attention Is All You Need", "kind": "reading", "aiProvider": null, "dwellSeconds": 360,
+        "signals": { "readingWpm": 120, "baselineWpm": 210, "scrollBacks": 1, "revisitsToday": 0, "searches": ["what is self attention"], "aiQuestions": [] },
+        "text": "[L] Attention Is All You Need\n[L] Abstract: The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely.\n[L] 3.2.1 Scaled Dot-Product Attention: We compute the dot products of the query with all keys, divide each by √dk, and apply a softmax function to obtain the weights on the values. Attention(Q, K, V) = softmax(QKᵀ/√dk)V.\n[L] We suspect that for large values of dk, the dot products grow large in magnitude, pushing the softmax function into regions where it has extremely small gradients."
+      }
+    },
+    {
+      "id": "L12-python-docs-classes",
+      "label": { "isLearning": true, "subject": null, "understanding": ["unknown"], "struggleEvidence": false },
+      "episode": {
+        "app": "Safari", "url": "https://docs.python.org/3/tutorial/classes.html", "title": "9. Classes — Python 3.13 documentation", "kind": "reading", "aiProvider": null, "dwellSeconds": 480,
+        "signals": { "readingWpm": 170, "baselineWpm": 210, "scrollBacks": 2, "revisitsToday": 0, "searches": ["python self keyword"], "aiQuestions": [] },
+        "text": "[L] 9.3.2 Class Objects\n[L] Class objects support two kinds of operations: attribute references and instantiation.\n[L] Class instantiation uses function notation. Just pretend that the class object is a parameterless function that returns a new instance of the class.\n[L] The instantiation operation creates an empty object. Many classes like to create objects with instances customized to a specific initial state. Therefore a class may define a special method named __init__().\n[L] 9.3.4 Method Objects: the special thing about methods is that the instance object is passed as the first argument of the function. In our example, the call x.f() is exactly equivalent to MyClass.f(x)."
+      }
+    },
+    {
+      "id": "L13-fi-wiki-fotosynteesi",
+      "label": { "isLearning": true, "subject": null, "understanding": ["unknown"], "struggleEvidence": false, "language": "fi" },
+      "episode": {
+        "app": "Google Chrome", "url": "https://fi.wikipedia.org/wiki/Fotosynteesi", "title": "Fotosynteesi – Wikipedia", "kind": "reading", "aiProvider": null, "dwellSeconds": 330,
+        "signals": { "readingWpm": 160, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 0, "searches": ["fotosynteesi valoreaktiot"], "aiQuestions": [] },
+        "text": "[L] Fotosynteesi\n[L] Fotosynteesi on prosessi, jossa kasvit, levät ja syanobakteerit muuttavat valoenergiaa kemialliseksi energiaksi. Se tapahtuu kasvisolujen viherhiukkasissa eli kloroplasteissa.\n[L] Fotosynteesi jaetaan kahteen vaiheeseen: valoreaktioihin ja pimeäreaktioihin eli Calvinin kiertoon.\n[L] Valoreaktioissa tylakoidikalvoilla vesi hajoaa, jolloin vapautuu happea, ja syntyy ATP:tä ja NADPH:ta.\n[L] Calvinin kierrossa stroomassa hiilidioksidi sidotaan sokereiksi ATP:n ja NADPH:n energian avulla.\n[L] Kokonaisreaktio: 6 CO₂ + 6 H₂O → C₆H₁₂O₆ + 6 O₂"
+      }
+    },
+    {
+      "id": "L14-fi-chatgpt-derivaatta",
+      "label": { "isLearning": true, "subject": null, "understanding": ["unknown", "unclear"], "struggleEvidence": false, "language": "fi", "studentPrompts": 2 },
+      "episode": {
+        "app": "ChatGPT", "url": null, "title": "ChatGPT", "kind": "ai_chat", "aiProvider": "chatgpt", "dwellSeconds": 260,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 0, "searches": [], "aiQuestions": ["selitä mikä on derivaatta lukiolaiselle", "anna esimerkki"] },
+        "text": "[R] selitä mikä on derivaatta lukiolaiselle\n[L] Derivaatta kertoo, kuinka nopeasti funktion arvo muuttuu tietyssä kohdassa. Graafisesti se on tangentin kulmakerroin. Esimerkiksi jos f(x) on paikka ajan funktiona, f'(x) on nopeus.\n[R] anna esimerkki\n[L] Olkoon f(x) = x². Derivaatta on f'(x) = 2x. Kohdassa x = 3 funktion kasvunopeus on siis 6: kun x kasvaa vähän, f(x) kasvaa noin kuusi kertaa yhtä paljon."
+      }
+    },
+    {
+      "id": "L15-quiz-wrong-answer",
+      "label": { "isLearning": true, "subject": "s_orgo", "understanding": ["unclear", "struggling"], "struggleEvidence": true },
+      "episode": {
+        "app": "Google Chrome", "url": "https://mycourses.aalto.fi/mod/quiz/review.php?attempt=55", "title": "Weekly quiz 5: Review | MyCourses", "kind": "reading", "aiProvider": null, "dwellSeconds": 200,
+        "signals": { "readingWpm": 110, "baselineWpm": 210, "scrollBacks": 2, "revisitsToday": 0, "searches": [], "aiQuestions": [] },
+        "text": "[L] Weekly quiz 5 — Review\n[L] Grade: 3.00 out of 5.00 (60%)\n[L] Question 2: What happens to the stereochemistry when (R)-2-bromobutane reacts with hydroxide by SN2?\n[L] Your answer: The product is a racemic mixture. ✗ Incorrect\n[L] Feedback: SN2 is a concerted backside attack, so the configuration is inverted (Walden inversion): (R) gives (S). Racemization happens in SN1, via a planar carbocation.\n[L] Question 4: Which solvent favours SN2? Your answer: acetone ✓ Correct"
+      }
+    },
+    {
+      "id": "L16-youtube-mit-ocw",
+      "label": { "isLearning": true, "subject": "s_linalg", "understanding": ["unknown"], "struggleEvidence": false },
+      "episode": {
+        "app": "Google Chrome", "url": "https://www.youtube.com/watch?v=QVKj3LADCnA", "title": "3. Multiplication and Inverse Matrices - YouTube", "kind": "reading", "aiProvider": null, "dwellSeconds": 1100,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 0, "searches": [], "aiQuestions": [] },
+        "text": "[C] MIT 18.06 Linear Algebra, Spring 2005 — Lecture 3\n[C] if A inverse exists, then A inverse times A is the identity\n[C] and for square matrices the left inverse is also the right inverse\n[C] now here is the key case: a matrix has no inverse if I can find a nonzero vector x with Ax = 0\n[C] because then A inverse times zero would have to give me x, which is impossible\n[C] Gauss-Jordan: put A next to the identity and eliminate until A becomes I; then the identity has become A inverse\n[C] 24:31 / 46:48"
+      }
+    },
+    {
+      "id": "L17-notion-own-notes",
+      "label": { "isLearning": true, "subject": "s_orgo", "understanding": ["unknown", "understood"], "struggleEvidence": false },
+      "episode": {
+        "app": "Notion", "url": null, "title": "Orgo – mechanism summary", "kind": "reading", "aiProvider": null, "dwellSeconds": 420,
+        "signals": { "readingWpm": 200, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 1, "searches": [], "aiQuestions": [] },
+        "text": "[L] Orgo – mechanism summary (my notes)\n[L] SN2: one step, backside attack, inversion, rate = k[RX][Nu]; methyl > 1° > 2°; never 3°\n[L] SN1: two steps, carbocation, racemization, rate = k[RX]; 3° > 2°; polar protic solvent\n[L] E2: strong/bulky base, anti-periplanar, Zaitsev unless bulky base (Hofmann)\n[L] E1: heat, weak base, carbocation (competes with SN1)\n[L] TODO: make a flowchart for choosing the mechanism"
+      }
+    },
+    {
+      "id": "L18-exam-info-page",
+      "label": { "isLearning": true, "subject": "s_orgo", "understanding": ["unknown"], "struggleEvidence": false, "assignment": true },
+      "episode": {
+        "app": "Safari", "url": "https://mycourses.aalto.fi/course/view.php?id=4211&section=0", "title": "CHEM-A1200 - Organic Chemistry I | MyCourses", "kind": "reading", "aiProvider": null, "dwellSeconds": 95,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 0, "searches": [], "aiQuestions": [] },
+        "text": "[L] Announcements\n[L] Midterm exam: Saturday 12 December 2026, 9:00–12:00, hall A1. Covers chapters 1–6 (structure, acids and bases, stereochemistry, substitution and elimination).\n[L] Allowed: molecular model kit, non-programmable calculator.\n[L] Register in Sisu by 1 December.\n[L] Office hours: Thursdays 14–16 in Ke2."
+      }
+    },
+    {
+      "id": "L19-chatgpt-understood-sn2",
+      "label": { "isLearning": true, "subject": "s_orgo", "understanding": ["understood"], "struggleEvidence": false, "studentPrompts": 2 },
+      "episode": {
+        "app": "Google Chrome", "url": "https://chatgpt.com/c/77b2", "title": "ChatGPT", "kind": "ai_chat", "aiProvider": "chatgpt", "dwellSeconds": 240,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 0, "searches": [], "aiQuestions": ["I'm a first-year chem student. Explain SN2 inversion in 3 bullets, then quiz me with one question"] },
+        "text": "[R] I'm a first-year chem student. Explain SN2 inversion in 3 bullets, then quiz me with one question\n[L] • The nucleophile attacks the carbon from the side opposite the leaving group (backside attack).\n[L] • In the transition state the three other groups are flat, like an umbrella in the wind.\n[L] • As the leaving group departs, the groups flip to the other side: the configuration is inverted.\n[L] Question: what product configuration do you get from (R)-2-bromobutane + OH⁻?\n[R] (S)-2-butanol, because the hydroxide comes in from the back and everything flips like the umbrella\n[L] Exactly right — that's Walden inversion. Nicely explained."
+      }
+    },
+    {
+      "id": "L20-textbook-fast-read",
+      "label": { "isLearning": true, "subject": "s_orgo", "understanding": ["unknown"], "struggleEvidence": false },
+      "episode": {
+        "app": "Preview", "url": null, "title": "Clayden_Organic_Chemistry_Ch15.pdf (page 331 of 1234)", "kind": "reading", "aiProvider": null, "dwellSeconds": 600,
+        "signals": { "readingWpm": 260, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 0, "searches": [], "aiQuestions": [] },
+        "text": "[L] Nucleophilic substitution at saturated carbon\n[L] The leaving group: the best leaving groups are the conjugate bases of strong acids. Iodide, bromide and tosylate leave easily; hydroxide does not, which is why alcohols must be protonated or converted into tosylates before substitution.\n[L] The nucleophile: in an SN2 reaction the nucleophile appears in the rate equation, so its strength matters; in SN1 it does not.\n[L] Solvent effects: polar aprotic solvents such as DMSO and acetone leave anions unsolvated and highly reactive, accelerating SN2."
+      }
+    },
+    {
+      "id": "N01-instagram",
+      "label": { "isLearning": false },
+      "episode": {
+        "app": "Google Chrome", "url": "https://www.instagram.com/", "title": "Instagram", "kind": "other", "aiProvider": null, "dwellSeconds": 420,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 5, "searches": [], "aiQuestions": [] },
+        "text": "[L] aaltouniversity · Sponsored\n[C] Liked by veera.k and 1,204 others\n[L] Welcome week vibes 🎉 #aalto #otaniemi\n[L] mikko_skates Suggested for you · Follow\n[C] View all 38 comments\n[L] Stories: anna_k · teekkarit · hesburger"
+      }
+    },
+    {
+      "id": "N02-youtube-vlog",
+      "label": { "isLearning": false },
+      "episode": {
+        "app": "Google Chrome", "url": "https://www.youtube.com/watch?v=vlog123", "title": "I tried living on 5€ a day in Helsinki - YouTube", "kind": "other", "aiProvider": null, "dwellSeconds": 780,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 0, "searches": [], "aiQuestions": [] },
+        "text": "[C] okay guys so day three, I'm honestly so hungry right now\n[C] found this bakery that sells yesterday's bread for like 50 cents\n[C] don't forget to like and subscribe\n[C] 8:41 / 17:03\n[R] Up next: 24 hours in Lapland ❄️"
+      }
+    },
+    {
+      "id": "N03-yle-news-fi",
+      "label": { "isLearning": false, "language": "fi" },
+      "episode": {
+        "app": "Safari", "url": "https://yle.fi/uutiset", "title": "Yle Uutiset | Tuoreimmat uutiset", "kind": "other", "aiProvider": null, "dwellSeconds": 240,
+        "signals": { "readingWpm": 230, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 1, "searches": [], "aiQuestions": [] },
+        "text": "[L] Tuoreimmat\n[L] Lumipyry sekoittaa liikennettä Etelä-Suomessa – HSL:n bussit myöhässä\n[L] Hallitus esittää muutoksia asumistukeen ensi vuodelle\n[L] HIFK voitti Kärpät jatkoajalla 3–2\n[L] Sää: Pakkasta yöllä jopa −12 astetta"
+      }
+    },
+    {
+      "id": "N04-zalando-shopping",
+      "label": { "isLearning": false },
+      "episode": {
+        "app": "Google Chrome", "url": "https://www.zalando.fi/nike-air-max", "title": "Nike Air Max 90 - Zalando", "kind": "other", "aiProvider": null, "dwellSeconds": 300,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 3, "revisitsToday": 2, "searches": ["nike air max 90 size 43"], "aiQuestions": [] },
+        "text": "[L] Nike Sportswear AIR MAX 90 - Tennarit - white/black\n[L] 149,95 €\n[L] Valitse koko: 42 · 42.5 · 43 · 44\n[L] Lisää ostoskoriin\n[L] Ilmainen toimitus ja palautus · 100 päivän palautusoikeus\n[L] Asiakasarviot ★★★★☆ (412)"
+      }
+    },
+    {
+      "id": "N05-messages-smalltalk",
+      "label": { "isLearning": false },
+      "episode": {
+        "app": "WhatsApp", "url": null, "title": "WhatsApp", "kind": "other", "aiProvider": null, "dwellSeconds": 180,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 0, "searches": [], "aiQuestions": [] },
+        "text": "[L] Veera: are we still on for sauna tonight?\n[R] yes! 8pm?\n[L] Veera: perfect, bring snacks 😄\n[R] lol ok, chips or karjalanpiirakat?\n[L] Veera: both obviously\n[R] deal see u"
+      }
+    },
+    {
+      "id": "N06-system-settings",
+      "label": { "isLearning": false },
+      "episode": {
+        "app": "System Settings", "url": null, "title": "Wi-Fi", "kind": "other", "aiProvider": null, "dwellSeconds": 60,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 0, "searches": [], "aiQuestions": [] },
+        "text": "[L] Wi-Fi\n[L] eduroam · Connected · Secure\n[L] Known Networks: aalto open, DNA-WIFI-3F2A\n[L] Ask to join networks: Notify\n[L] Advanced…  Details…"
+      }
+    },
+    {
+      "id": "N07-netflix",
+      "label": { "isLearning": false },
+      "episode": {
+        "app": "Google Chrome", "url": "https://www.netflix.com/browse", "title": "Netflix", "kind": "other", "aiProvider": null, "dwellSeconds": 150,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 0, "searches": [], "aiQuestions": [] },
+        "text": "[L] Continue Watching for Ilari\n[L] Stranger Things · S5:E3\n[L] Top 10 in Finland Today\n[L] Because you watched Breaking Bad\n[L] New Releases · Comedies · Nordic Dramas"
+      }
+    },
+    {
+      "id": "N08-gmail-triage",
+      "label": { "isLearning": false },
+      "episode": {
+        "app": "Google Chrome", "url": "https://mail.google.com/mail/u/0/#inbox", "title": "Inbox (23) - Gmail", "kind": "other", "aiProvider": null, "dwellSeconds": 200,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 3, "searches": [], "aiQuestions": [] },
+        "text": "[L] Primary\n[L] Wolt — Your order from Hesburger is on its way\n[L] HSL — Your season ticket expires in 5 days\n[L] Spotify — Your 2026 Wrapped is coming\n[L] Zalando — 20% off sneakers this weekend\n[L] Kide.app — Ticket confirmation: Teekkari sitsit"
+      }
+    },
+    {
+      "id": "N09-spotify",
+      "label": { "isLearning": false },
+      "episode": {
+        "app": "Spotify", "url": null, "title": "Spotify", "kind": "other", "aiProvider": null, "dwellSeconds": 90,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 0, "searches": [], "aiQuestions": [] },
+        "text": "[L] Lo-fi beats to study to\n[L] 312 songs · 14 h 22 min\n[L] Now playing: Snowfall – Øneheart, reidenshi\n[L] Shuffle · Repeat · Queue"
+      }
+    },
+    {
+      "id": "N10-budget-sheet",
+      "label": { "isLearning": false },
+      "episode": {
+        "app": "Google Chrome", "url": "https://docs.google.com/spreadsheets/d/9a/edit", "title": "Budget 2026 – Google Sheets", "kind": "other", "aiProvider": null, "dwellSeconds": 330,
+        "signals": { "readingWpm": null, "baselineWpm": 210, "scrollBacks": 0, "revisitsToday": 0, "searches": [], "aiQuestions": [] },
+        "text": "[L] Month | Rent | Food | HSL | Fun | Savings\n[L] September | 420 | 230 | 30 | 85 | 50\n[L] October | 420 | 260 | 30 | 120 | 20\n[L] =SUM(B2:F2)  765\n[L] Note: too much on Wolt again"
+      }
+    }
+  ]
+}

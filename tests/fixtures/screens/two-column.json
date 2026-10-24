@@ -1,0 +1,99 @@
+{
+  "height" : 700,
+  "lines" : [
+    {
+      "h" : 28,
+      "text" : "Spaced Repetition and Long-Term Memory",
+      "w" : 476.07714772224426,
+      "x" : 261.96142613887787,
+      "y" : 36
+    },
+    {
+      "h" : 16,
+      "text" : "A. Student, B. Teacher · Journal of Study Skills, 2026",
+      "w" : 320.07421875,
+      "x" : 339.962890625,
+      "y" : 74
+    },
+    {
+      "h" : 19,
+      "text" : "Abstract. Reviewing material at growing intervals",
+      "w" : 352.1328125,
+      "x" : 50,
+      "y" : 120
+    },
+    {
+      "h" : 19,
+      "text" : "improves recall compared with massed practice. We",
+      "w" : 376.9609375,
+      "x" : 50,
+      "y" : 145
+    },
+    {
+      "h" : 19,
+      "text" : "tested 120 students over eight weeks. Those who used a",
+      "w" : 410.3125,
+      "x" : 50,
+      "y" : 170
+    },
+    {
+      "h" : 19,
+      "text" : "spaced schedule remembered 31 percent more on the",
+      "w" : 392.0859375,
+      "x" : 50,
+      "y" : 195
+    },
+    {
+      "h" : 19,
+      "text" : "final test, and the benefit was largest for difficult",
+      "w" : 349.984375,
+      "x" : 50,
+      "y" : 220
+    },
+    {
+      "h" : 19,
+      "text" : "concepts.",
+      "w" : 71.5703125,
+      "x" : 50,
+      "y" : 245
+    },
+    {
+      "h" : 19,
+      "text" : "Methods. Students were split into two groups. The",
+      "w" : 364.5625,
+      "x" : 530,
+      "y" : 120
+    },
+    {
+      "h" : 19,
+      "text" : "spaced group reviewed after one, three and seven days;",
+      "w" : 405.5390625,
+      "x" : 530,
+      "y" : 145
+    },
+    {
+      "h" : 19,
+      "text" : "the massed group reviewed everything the evening",
+      "w" : 369.3359375,
+      "x" : 530,
+      "y" : 170
+    },
+    {
+      "h" : 19,
+      "text" : "before. Both groups studied for the same total time and",
+      "w" : 401.125,
+      "x" : 530,
+      "y" : 195
+    },
+    {
+      "h" : 19,
+      "text" : "took the same quizzes.",
+      "w" : 166.8671875,
+      "x" : 530,
+      "y" : 220
+    }
+  ],
+  "name" : "two-column",
+  "scale" : 2,
+  "width" : 1000
+}

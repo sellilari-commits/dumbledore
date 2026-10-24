@@ -1,0 +1,295 @@
+/*
+ * Dumbledore design tokens — Notion's 2026 values (PLAN §3.2) as CSS variables.
+ *
+ * Light lives on :root. Dark applies when the system is dark (unless the page forces light with
+ * <html data-theme="light">) or when <html data-theme="dark"> is set. Every surface (app, panel,
+ * overlay, ask bar) imports this file; components use only these variables, never raw colours.
+ *
+ * Naming: Notion's own semantic names (--c-texPri, --c-bacSec, …) for the core palette, and
+ * --c-<colour>-{text,bg,ink} for the nine tag/callout colours (ink = AA-contrast text on bg).
+ */
+
+:root {
+  color-scheme: light;
+
+  /* ── Text ─────────────────────────────────────────────────────────────── */
+  --c-texPri: #2c2c2b;
+  --c-texSec: #73706b; /* Notion #7D7A75, nudged to pass WCAG AA (4.9:1) */
+  --c-texTer: #a19e99; /* placeholders and decoration only — never meaningful text */
+  --c-texDis: #bcbab6;
+
+  /* ── Backgrounds ──────────────────────────────────────────────────────── */
+  --c-bacPri: #ffffff; /* page */
+  --c-bacSec: #f9f8f7; /* sidebar, table headers */
+  --c-bacTer: #f0efed; /* pressed, chips */
+  --c-bacInt: #f4f3f3; /* hover */
+  --c-popBac: #ffffff; /* popovers, menus, dialogs */
+  --c-overlay: rgba(15, 15, 15, 0.36); /* dialog scrim */
+  --c-hover: rgba(55, 53, 47, 0.06); /* hover over any background (Notion) */
+  --c-pressed: rgba(55, 53, 47, 0.12);
+  --c-texSidebar: #5f5e5b; /* sidebar rows sit between primary and secondary */
+  --c-tooltipBg: #0f0f0f;
+  --c-tooltipText: #ffffff;
+  --c-tooltipSub: rgba(255, 255, 255, 0.62);
+
+  /* ── Borders & icons ──────────────────────────────────────────────────── */
+  --c-borPri: #e6e5e3; /* dividers, tables */
+  --c-borStr: #d4d3cf; /* inputs */
+  --c-icoPri: #383836;
+  --c-icoSec: #8e8b86;
+
+  /* ── Accent (buttons, links, focus) — same in both themes ─────────────── */
+  --c-accent: #2383e2; /* Notion --c-palUiBlu600 */
+  --c-accentHover: #0077d4;
+  --c-accentPressed: #006bc7;
+  --c-accentText: #ffffff;
+  --c-accentFill: #0077d4; /* primary button fill: white text at 4.6:1 (Notion's hover blue) */
+  --c-accentFillHover: #006bc7;
+  --c-accentFillPressed: #005fb3;
+  --c-link: #0077d4;
+  --c-accentTint: rgba(35, 131, 226, 0.14); /* selected rows */
+  --c-selection: rgba(35, 131, 226, 0.28);
+
+  /* ── Colour pairs (tags, callouts, status) ────────────────────────────── */
+  /* text = Notion's coloured text · bg = tinted background · ink = text on bg at ≥ 4.5:1 */
+  --c-gray-text: #7d7a75;
+  --c-gray-bg: #f0efed;
+  --c-gray-ink: #5f5d59;
+  --c-brown-text: #9f765a;
+  --c-brown-bg: #f5ede9;
+  --c-brown-ink: #7a5640;
+  --c-orange-text: #d27b2d;
+  --c-orange-bg: #fbebde;
+  --c-orange-ink: #95521a;
+  --c-yellow-text: #cb9434;
+  --c-yellow-bg: #f9f3dc;
+  --c-yellow-ink: #85601c;
+  --c-green-text: #50946e;
+  --c-green-bg: #e8f1ec;
+  --c-green-ink: #336b4c;
+  --c-blue-text: #387dc9;
+  --c-blue-bg: #e5f2fc;
+  --c-blue-ink: #245f9e;
+  --c-purple-text: #9a6bb4;
+  --c-purple-bg: #f3ebf9;
+  --c-purple-ink: #744b8c;
+  --c-pink-text: #c14c8a;
+  --c-pink-bg: #fae9f1;
+  --c-pink-ink: #9a356b;
+  --c-red-text: #cf5148;
+  --c-red-bg: #fce9e7;
+  --c-red-ink: #a8372f;
+
+  /* Meaning aliases (PLAN §3.2): use these in components, not the raw colours. */
+  --c-success: var(--c-green-text);
+  --c-successBg: var(--c-green-bg);
+  --c-danger: var(--c-red-text);
+  --c-dangerBg: var(--c-red-bg);
+  --c-warning: var(--c-orange-text);
+  --c-warningBg: var(--c-orange-bg);
+  --c-progress: #50946e; /* thin progress bars fill green */
+  --c-progressTrack: #ebeae8;
+
+  /* ── Shadows ──────────────────────────────────────────────────────────── */
+  --c-shaOutline: #2a1c0012;
+  --shadow-sm: 0 2px 4px #0000000a, 0 0 0 1px var(--c-shaOutline);
+  --shadow-md: 0 8px 12px #19191907, 0 2px 6px #19191907, 0 0 0 1px var(--c-shaOutline);
+  --shadow-lg: 0 20px 24px #1919190d, 0 5px 8px #19191907, 0 0 0 1px var(--c-shaOutline);
+  --shadow-button: inset 0 0 0 1px #0f0f0f1a, 0 1px 2px #0f0f0f1a;
+  --shadow-focus: #2383e291 0 0 0 1px inset, #2383e259 0 0 0 2px;
+
+  /* ── Typography ───────────────────────────────────────────────────────── */
+  --font-sans: ui-sans-serif, -apple-system, system-ui, 'Segoe UI Variable Display', 'Segoe UI',
+    Helvetica, 'Apple Color Emoji', Arial, sans-serif;
+  --font-mono: SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text-title: 40px; /* page title, bold */
+  --leading-title: 48px;
+  --text-h1: 30px;
+  --leading-h1: 39px;
+  --text-h2: 24px;
+  --leading-h2: 31px;
+  --text-h3: 20px;
+  --leading-h3: 26px;
+  --text-body: 16px;
+  --leading-body: 24px;
+  --text-ui: 14px; /* compact surfaces: sidebar, tables, panel, menus */
+  --leading-ui: 21px;
+  --text-meta: 13px;
+  --text-small: 12px;
+  --leading-small: 16px;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ── Spacing (4 px grid) ──────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-24: 96px;
+
+  /* ── Radii ────────────────────────────────────────────────────────────── */
+  --radius-control: 4px; /* buttons, inputs, tags, rows */
+  --radius-menu: 6px; /* menus, cards, callouts */
+  --radius-panel: 12px; /* panel, toast, quiz card, ask bar, dialogs */
+  --radius-round: 999px;
+
+  /* ── Layout ───────────────────────────────────────────────────────────── */
+  --sidebar-width: 240px;
+  --sidebar-row: 28px;
+  --topbar-height: 44px;
+  --content-width: 708px;
+  --traffic-lights-inset: 78px; /* room for macOS window buttons over the sidebar */
+
+  /* ── Motion ───────────────────────────────────────────────────────────── */
+  --dur-fast: 150ms;
+  --dur-base: 200ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ── Layers ───────────────────────────────────────────────────────────── */
+  --z-sticky: 10;
+  --z-popover: 100;
+  --z-dialog: 200;
+  --z-toast: 300;
+  --z-tooltip: 400;
+}
+
+/* Dark values, written once and applied by both selectors below. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --c-texPri: #f0efed;
+    --c-texSec: #ada9a3;
+    --c-texTer: #7d7a75;
+    --c-texDis: #5f5e59;
+    --c-bacPri: #191919;
+    --c-bacSec: #202020;
+    --c-bacTer: #383836;
+    --c-bacInt: #262626;
+    --c-popBac: #252525;
+    --c-overlay: rgba(0, 0, 0, 0.6);
+    --c-hover: rgba(255, 255, 255, 0.055);
+    --c-pressed: rgba(255, 255, 255, 0.1);
+    --c-texSidebar: #b6b3ad;
+    --c-tooltipBg: #3b3b39;
+    --c-tooltipText: #f0efed;
+    --c-tooltipSub: rgba(240, 239, 237, 0.62);
+    --c-borPri: #383836;
+    --c-borStr: #5f5e59;
+    --c-icoPri: #e6e5e3;
+    --c-icoSec: #ada9a3;
+    --c-accentTint: rgba(35, 131, 226, 0.22);
+    --c-link: #4c9be8;
+    --c-selection: rgba(35, 131, 226, 0.4);
+    --c-gray-text: #ada9a3;
+    --c-gray-bg: #383836;
+    --c-gray-ink: #d4d2ce;
+    --c-brown-text: #c19a7f;
+    --c-brown-bg: #45362d;
+    --c-brown-ink: #e2c3ad;
+    --c-orange-text: #e3995a;
+    --c-orange-bg: #53361f;
+    --c-orange-ink: #f3c194;
+    --c-yellow-text: #d9ad5c;
+    --c-yellow-bg: #504425;
+    --c-yellow-ink: #f0d395;
+    --c-green-text: #6db58d;
+    --c-green-bg: #263d30;
+    --c-green-ink: #a9dcbe;
+    --c-blue-text: #6aa6e6;
+    --c-blue-bg: #233850;
+    --c-blue-ink: #aecff3;
+    --c-purple-text: #b88fd0;
+    --c-purple-bg: #3c2d47;
+    --c-purple-ink: #dcc2ec;
+    --c-pink-text: #dd78ae;
+    --c-pink-bg: #4e2b3c;
+    --c-pink-ink: #f2bad7;
+    --c-red-text: #e6766d;
+    --c-red-bg: #502c29;
+    --c-red-ink: #f6b8b2;
+    --c-progress: #5aa77c;
+    --c-progressTrack: #333331;
+    --c-shaOutline: #383836;
+    --shadow-sm: 0 2px 4px #00000029, 0 0 0 1px var(--c-shaOutline);
+    --shadow-md: 0 8px 12px #0000002e, 0 2px 6px #0000001f, 0 0 0 1px var(--c-shaOutline);
+    --shadow-lg: 0 20px 24px #0000003d, 0 5px 8px #00000029, 0 0 0 1px var(--c-shaOutline);
+    --shadow-button: inset 0 0 0 1px #383836, 0 1px 2px #0000003d;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --c-texPri: #f0efed;
+  --c-texSec: #ada9a3;
+  --c-texTer: #7d7a75;
+  --c-texDis: #5f5e59;
+  --c-bacPri: #191919;
+  --c-bacSec: #202020;
+  --c-bacTer: #383836;
+  --c-bacInt: #262626;
+  --c-popBac: #252525;
+  --c-overlay: rgba(0, 0, 0, 0.6);
+  --c-hover: rgba(255, 255, 255, 0.055);
+  --c-pressed: rgba(255, 255, 255, 0.1);
+  --c-texSidebar: #b6b3ad;
+  --c-tooltipBg: #3b3b39;
+  --c-tooltipText: #f0efed;
+  --c-tooltipSub: rgba(240, 239, 237, 0.62);
+  --c-borPri: #383836;
+  --c-borStr: #5f5e59;
+  --c-icoPri: #e6e5e3;
+  --c-icoSec: #ada9a3;
+  --c-accentTint: rgba(35, 131, 226, 0.22);
+  --c-link: #4c9be8;
+  --c-selection: rgba(35, 131, 226, 0.4);
+  --c-gray-text: #ada9a3;
+  --c-gray-bg: #383836;
+  --c-gray-ink: #d4d2ce;
+  --c-brown-text: #c19a7f;
+  --c-brown-bg: #45362d;
+  --c-brown-ink: #e2c3ad;
+  --c-orange-text: #e3995a;
+  --c-orange-bg: #53361f;
+  --c-orange-ink: #f3c194;
+  --c-yellow-text: #d9ad5c;
+  --c-yellow-bg: #504425;
+  --c-yellow-ink: #f0d395;
+  --c-green-text: #6db58d;
+  --c-green-bg: #263d30;
+  --c-green-ink: #a9dcbe;
+  --c-blue-text: #6aa6e6;
+  --c-blue-bg: #233850;
+  --c-blue-ink: #aecff3;
+  --c-purple-text: #b88fd0;
+  --c-purple-bg: #3c2d47;
+  --c-purple-ink: #dcc2ec;
+  --c-pink-text: #dd78ae;
+  --c-pink-bg: #4e2b3c;
+  --c-pink-ink: #f2bad7;
+  --c-red-text: #e6766d;
+  --c-red-bg: #502c29;
+  --c-red-ink: #f6b8b2;
+  --c-progress: #5aa77c;
+  --c-progressTrack: #333331;
+  --c-shaOutline: #383836;
+  --shadow-sm: 0 2px 4px #00000029, 0 0 0 1px var(--c-shaOutline);
+  --shadow-md: 0 8px 12px #0000002e, 0 2px 6px #0000001f, 0 0 0 1px var(--c-shaOutline);
+  --shadow-lg: 0 20px 24px #0000003d, 0 5px 8px #00000029, 0 0 0 1px var(--c-shaOutline);
+  --shadow-button: inset 0 0 0 1px #383836, 0 1px 2px #0000003d;
+}
+
+/* Reduced motion: every transition and animation in the design system reads these. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+  }
+}

@@ -11,3 +11,4 @@ native/helper/build/
 *.log
 .install.log
 .DS_Store
+*.tsbuildinfo

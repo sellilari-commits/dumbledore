@@ -1,0 +1,206 @@
+/* Exam page: taking an exam (sticky progress strip, question blocks) and the results view. */
+
+/* ── Taking an exam ─────────────────────────────────────────────────────── */
+
+.ex-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ex-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 0 2px;
+  font-size: var(--text-meta);
+  color: var(--c-texSec);
+}
+
+.ex-strip {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 28px;
+  padding: 12px 0;
+  background: var(--c-bacPri);
+  border-bottom: 1px solid var(--c-borPri);
+}
+
+.ex-strip__label {
+  flex: none;
+  min-width: 128px;
+  font-size: var(--text-meta);
+  color: var(--c-texSec);
+  font-variant-numeric: tabular-nums;
+}
+
+.ex-strip .dd-progress {
+  flex: 1;
+}
+
+.ex-questions {
+  display: flex;
+  flex-direction: column;
+}
+
+.ex-question {
+  padding: 32px 0;
+  scroll-margin-top: 64px;
+}
+
+.ex-question + .ex-question {
+  border-top: 1px solid var(--c-borPri);
+}
+
+.ex-finish {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-top: 24px;
+  border-top: 1px solid var(--c-borPri);
+}
+
+.ex-finish__note {
+  font-size: var(--text-meta);
+  color: var(--c-texSec);
+}
+
+.ex-generating {
+  margin-top: 32px;
+}
+
+.ex-q-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 0 8px;
+}
+
+/* ── Results ────────────────────────────────────────────────────────────── */
+
+.ex-fix {
+  margin-top: 36px;
+}
+
+.ex-fix .dd-prompt {
+  background: var(--c-bacPri);
+}
+
+.ex-score {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 18px;
+  padding: 0 2px;
+}
+
+.ex-score__big {
+  font-size: var(--text-h1);
+  line-height: var(--leading-h1);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--c-texPri);
+}
+
+.ex-score__tag {
+  align-self: center;
+}
+
+.ex-score__sub {
+  flex-basis: 100%;
+  font-size: var(--text-ui);
+  color: var(--c-texSec);
+}
+
+.ex-concept-score {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ex-concept-score__n {
+  flex: none;
+  min-width: 28px;
+  color: var(--c-texSec);
+  font-size: var(--text-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.ex-gaps {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ex-gaps li::marker {
+  color: var(--c-texTer);
+}
+
+.ex-gaps__picked {
+  color: var(--c-texSec);
+}
+
+.ex-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.ex-next {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 0 2px;
+  font-size: var(--text-ui);
+  color: var(--c-texSec);
+}
+
+.ex-next__line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ex-next__line svg {
+  flex: none;
+  color: var(--c-icoSec);
+}
+
+.ex-next__line strong {
+  color: var(--c-texPri);
+  font-weight: var(--weight-medium);
+}
+
+.ex-review {
+  margin-top: 36px;
+}
+
+.ex-review .dd-toggle__title {
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+}
+
+.ex-review__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.ex-review__list > .dd-quiz-q {
+  padding: 22px 0;
+}
+
+.ex-review__list > .dd-quiz-q + .dd-quiz-q {
+  border-top: 1px solid var(--c-borPri);
+}

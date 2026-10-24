@@ -1,0 +1,31 @@
+{
+  "name": "incognito-window",
+  "description": "A Chrome Incognito window is frontmost for 40 s. Private windows are blocked by their title marker even though Chrome itself is allowed.",
+  "windows": {
+    "incognito": {
+      "pid": 501,
+      "bundleId": "com.google.Chrome",
+      "appName": "Google Chrome",
+      "windowId": 15,
+      "title": "Some private page - Google Chrome (Incognito)",
+      "url": "https://www.example.com/private-topic",
+      "source": "ax"
+    }
+  },
+  "timeline": [
+    {
+      "at": 0,
+      "front": "incognito",
+      "lines": ["A private page", "Something the student does not want remembered.", "More private text that must never be captured."]
+    },
+    { "at": 40, "front": null }
+  ],
+  "end": 55,
+  "learning": false,
+  "expect": {
+    "blocked": true,
+    "episodes": 0,
+    "extractCalls": 0,
+    "encounters": 0
+  }
+}

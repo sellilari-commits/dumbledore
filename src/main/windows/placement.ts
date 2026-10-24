@@ -1,0 +1,63 @@
+/**
+ * Where windows open, pure maths in global points: the panel beside the orb (toward the screen
+ * centre), the ask bar centred on the active display or over the focused field, and resizing
+ * that keeps a window's top edge and horizontal centre in place.
+ */
+import type { Rect } from '@shared/geometry'
+import { type DisplayInfo, ORB_SIZE, type OrbSpot } from '../overlay/geometry'
+
+export const PANEL_SIZE = { width: 380, height: 580 }
+export const ASKBAR_SIZE = { width: 560, height: 52 }
+const MARGIN = 8
+const GAP = 12
+
+export function clampRect(r: Rect, area: Rect, margin = MARGIN): Rect {
+  const width = Math.min(r.width, area.width - 2 * margin)
+  const height = Math.min(r.height, area.height - 2 * margin)
+  const x = Math.min(Math.max(r.x, area.x + margin), area.x + area.width - margin - width)
+  const y = Math.min(Math.max(r.y, area.y + margin), area.y + area.height - margin - height)
+  return {
+    x: Math.round(x),
+    y: Math.round(y),
+    width: Math.round(width),
+    height: Math.round(height),
+  }
+}
+
+/** The panel opens beside the orb, on the side facing the middle of the screen. */
+export function panelBounds(d: DisplayInfo, orb: OrbSpot, size = PANEL_SIZE): Rect {
+  const ox = d.bounds.x + orb.x
+  const oy = d.bounds.y + orb.y
+  const r = ORB_SIZE / 2
+  let x: number
+  let y: number
+  if (orb.edge === 'top' || orb.edge === 'bottom') {
+    x = ox - size.width / 2
+    y = orb.edge === 'top' ? oy + r + GAP : oy - r - GAP - size.height
+  } else {
+    const onRight = orb.x > d.bounds.width / 2
+    x = onRight ? ox - r - GAP - size.width : ox + r + GAP
+    y = oy - size.height / 2
+  }
+  return clampRect({ x, y, width: size.width, height: size.height }, d.workArea)
+}
+
+/** The ask bar sits over the focused field when there is one, else high on the active display. */
+export function askbarBounds(d: DisplayInfo, nearField: Rect | null, size = ASKBAR_SIZE): Rect {
+  const wa = d.workArea
+  if (nearField) {
+    const x = nearField.x + nearField.width / 2 - size.width / 2
+    let y = nearField.y - size.height - MARGIN
+    if (y < wa.y + MARGIN) y = nearField.y + nearField.height + MARGIN
+    return clampRect({ x, y, width: size.width, height: size.height }, wa)
+  }
+  const x = wa.x + (wa.width - size.width) / 2
+  const y = wa.y + Math.round(wa.height * 0.22)
+  return clampRect({ x, y, width: size.width, height: size.height }, wa)
+}
+
+/** New size for a window that grows with its content: top edge and centre stay put. */
+export function resizeKeepingTop(current: Rect, width: number, height: number, area: Rect): Rect {
+  const x = current.x + current.width / 2 - width / 2
+  return clampRect({ x, y: current.y, width, height }, area)
+}

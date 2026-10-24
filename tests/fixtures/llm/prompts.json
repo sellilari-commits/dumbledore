@@ -1,0 +1,168 @@
+{
+  "description": "30 cases for P4 (step writer) and P8 (improver). expect.mention: every group needs at least one of its alternatives in the output (intent kept). noHook: quick fact/task — no quiz hook expected.",
+  "profile": "First-year chemistry student at Aalto (Organic Chemistry I, Linear Algebra). Knows the basics of SN2; carbocations and determinants have been tricky.",
+  "step": [
+    {
+      "id": "s01-empty-chat-intuition",
+      "input": {
+        "assistant": "ChatGPT", "language": "en",
+        "step": { "title": "Why carbocation stability matters", "objective": "Can explain why tertiary carbocations are most stable", "move": "intuition", "promptDraft": "I'm a first-year chemistry student. Give me an intuitive explanation of why tertiary carbocations are more stable than primary ones, with an everyday analogy. No greetings or small talk. Short structured bullets, max ~150 words, bold key terms. Then ask me one question to check I got it, and wait." },
+        "chatExcerpt": "", "recentMisses": []
+      },
+      "expect": { "mention": [["carbocation"], ["tertiary", "3°"]], "language": "en" }
+    },
+    {
+      "id": "s02-confused-followup",
+      "input": {
+        "assistant": "ChatGPT", "language": "en",
+        "step": { "title": "Hyperconjugation", "objective": "Can explain hyperconjugation in one sentence", "move": "definition", "promptDraft": "I'm a first-year chemistry student. Define hyperconjugation and show how it stabilises a carbocation. No greetings or small talk. Short structured bullets, max ~150 words, bold key terms. Then ask me one question to check I got it, and wait." },
+        "chatExcerpt": "[R] what is hyperconjugation\n[L] Hyperconjugation is the delocalisation of electrons from a C–H σ bond into an adjacent empty p orbital…\n[R] i dont get what the p orbital has to do with it",
+        "recentMisses": []
+      },
+      "expect": { "mention": [["hyperconjugation"], ["p orbital", "p-orbital", "empty orbital", "orbital"]], "language": "en" }
+    },
+    {
+      "id": "s03-miss-carried",
+      "input": {
+        "assistant": "ChatGPT", "language": "en",
+        "step": { "title": "SN1 rate law", "objective": "Can explain why the SN1 rate ignores the nucleophile", "move": "contrast", "promptDraft": "I'm a first-year chemistry student. Contrast the SN1 and SN2 rate laws and explain what the rate-determining step is. No greetings or small talk. Short structured bullets, max ~150 words, bold key terms. Then ask me one question to check I got it, and wait." },
+        "chatExcerpt": "",
+        "recentMisses": [ { "concept": "SN1 rate law", "misconception": "A stronger nucleophile speeds up SN1" } ]
+      },
+      "expect": { "mention": [["rate"], ["nucleophile"], ["sn1"]], "language": "en" }
+    },
+    {
+      "id": "s04-already-covered",
+      "input": {
+        "assistant": "Claude", "language": "en",
+        "step": { "title": "Cofactor expansion", "objective": "Can compute a 3×3 determinant by cofactor expansion", "move": "worked_example", "promptDraft": "I'm a first-year engineering student. Walk me through computing a 3×3 determinant by cofactor expansion, step by step. No greetings or small talk. Short structured bullets, max ~150 words, bold key terms. Then ask me one question to check I got it, and wait." },
+        "chatExcerpt": "[R] how do you compute a 3x3 determinant\n[L] Use cofactor expansion along the first row: det(A) = a11·M11 − a12·M12 + a13·M13 with signs + − +. Example: … = 0.\n[R] ok that makes sense",
+        "recentMisses": []
+      },
+      "expect": { "mention": [["determinant", "cofactor"]], "language": "en" }
+    },
+    {
+      "id": "s05-predict-first",
+      "input": {
+        "assistant": "ChatGPT", "language": "en",
+        "step": { "title": "Predict the product", "objective": "Can predict SN2 stereochemistry", "move": "predict", "promptDraft": "I'm a first-year chemistry student. Before explaining, ask me to predict the product of (R)-2-bromobutane with NaOH, then explain whether I was right. No greetings or small talk. Short structured bullets, max ~150 words, bold key terms." },
+        "chatExcerpt": "", "recentMisses": []
+      },
+      "expect": { "mention": [["predict"], ["2-bromobutane", "bromobutane"]], "language": "en" }
+    },
+    {
+      "id": "s06-explain-back",
+      "input": {
+        "assistant": "ChatGPT", "language": "en",
+        "step": { "title": "Explain SN1 vs SN2 back", "objective": "Can explain the difference in own words", "move": "explain_back", "promptDraft": "I'm a first-year chemistry student. I'll explain the difference between SN1 and SN2 in my own words; correct my mistakes and tell me what I missed. No greetings or small talk. Short structured bullets, max ~150 words, bold key terms." },
+        "chatExcerpt": "[L] …so SN1 goes through a carbocation and SN2 is a single concerted step.", "recentMisses": []
+      },
+      "expect": { "mention": [["sn1"], ["sn2"], ["own words", "explain", "correct"]], "language": "en" }
+    },
+    {
+      "id": "s07-finnish",
+      "input": {
+        "assistant": "ChatGPT", "language": "fi",
+        "step": { "title": "Derivaatta muutosnopeutena", "objective": "Osaa selittää derivaatan muutosnopeutena", "move": "intuition", "promptDraft": "Olen lukion toisen vuoden opiskelija. Selitä derivaatta muutosnopeutena arkisen esimerkin avulla. Ei tervehdyksiä eikä small talkia. Lyhyet jäsennellyt luettelokohdat, enintään ~150 sanaa, avaintermit lihavoituna. Kysy sitten minulta yksi kysymys, jolla tarkistat että ymmärsin, ja odota vastaustani." },
+        "chatExcerpt": "", "recentMisses": []
+      },
+      "expect": { "mention": [["derivaat"], ["muutosnopeu", "nopeu"]], "language": "fi" }
+    },
+    {
+      "id": "s08-apply-new-case",
+      "input": {
+        "assistant": "Gemini", "language": "en",
+        "step": { "title": "Apply Le Chatelier", "objective": "Can predict equilibrium shifts", "move": "apply", "promptDraft": "I'm a first-year chemistry student. Give me two new equilibrium situations and let me predict which way each shifts using Le Chatelier's principle. No greetings or small talk. Short structured bullets, max ~150 words, bold key terms." },
+        "chatExcerpt": "[L] Le Chatelier's principle: when a system at equilibrium is disturbed, it shifts to partly undo the change.", "recentMisses": []
+      },
+      "expect": { "mention": [["le chatelier", "equilibrium"]], "language": "en" }
+    },
+    {
+      "id": "s09-big-picture",
+      "input": {
+        "assistant": "ChatGPT", "language": "en",
+        "step": { "title": "Where eigenvectors fit", "objective": "Can say why eigenvectors matter for diagonalization", "move": "big_picture", "promptDraft": "I'm a first-year engineering student. Show me the big picture: how eigenvalues and eigenvectors connect to diagonalization and why engineers care. No greetings or small talk. Short structured bullets, max ~150 words, bold key terms. Then ask me one question to check I got it, and wait." },
+        "chatExcerpt": "", "recentMisses": []
+      },
+      "expect": { "mention": [["eigen"], ["diagonaliz"]], "language": "en" }
+    },
+    {
+      "id": "s10-two-misses",
+      "input": {
+        "assistant": "ChatGPT", "language": "en",
+        "step": { "title": "Membrane transport recap", "objective": "Can tell osmosis and active transport apart", "move": "contrast", "promptDraft": "I'm a high-school biology student. Contrast osmosis and active transport with one example each. No greetings or small talk. Short structured bullets, max ~150 words, bold key terms. Then ask me one question to check I got it, and wait." },
+        "chatExcerpt": "",
+        "recentMisses": [
+          { "concept": "Osmosis", "misconception": "Water moves toward lower solute concentration" },
+          { "concept": "Active transport", "misconception": "Active transport moves substances down their gradient" }
+        ]
+      },
+      "expect": { "mention": [["osmosis"], ["active transport"]], "language": "en" }
+    },
+    {
+      "id": "s11-long-messy-chat",
+      "input": {
+        "assistant": "ChatGPT", "language": "en",
+        "step": { "title": "Matrix inverse via Gauss-Jordan", "objective": "Can invert a 2×2 matrix by Gauss-Jordan", "move": "worked_example", "promptDraft": "I'm a first-year engineering student. Walk me through inverting a 2×2 matrix with Gauss-Jordan elimination, one row operation per line. No greetings or small talk. Short structured bullets, max ~150 words, bold key terms. Then ask me one question to check I got it, and wait." },
+        "chatExcerpt": "[R] what is an inverse matrix\n[L] The inverse A⁻¹ satisfies A·A⁻¹ = I. Not every matrix has one: A is invertible exactly when det(A) ≠ 0.\n[R] why does det 0 mean no inverse\n[L] If det(A) = 0 the columns are linearly dependent, so A squashes space into a lower dimension and you can't undo it.\n[R] hmm ok kind of\n[L] Think of it like flattening a 3D object into a sheet of paper — you lose information.",
+        "recentMisses": []
+      },
+      "expect": { "mention": [["gauss", "row operation", "row-reduc", "inverse"]], "language": "en" }
+    },
+    {
+      "id": "s12-no-profile",
+      "input": {
+        "assistant": "Perplexity", "language": "en",
+        "step": { "title": "What a p-value means", "objective": "Can interpret a p-value correctly", "move": "definition", "promptDraft": "I'm a student learning statistics. Explain what a p-value is and what it is not. No greetings or small talk. Short structured bullets, max ~150 words, bold key terms. Then ask me one question to check I got it, and wait." },
+        "chatExcerpt": "", "recentMisses": [ { "concept": "p-value", "misconception": "The p-value is the probability that the null hypothesis is true" } ]
+      },
+      "expect": { "mention": [["p-value", "p value"], ["null hypothesis", "probability"]], "language": "en" }
+    },
+    {
+      "id": "s13-auto-language-en",
+      "input": {
+        "assistant": "ChatGPT", "language": "auto",
+        "step": { "title": "Newton's third law pairs", "objective": "Can identify third-law force pairs", "move": "contrast", "promptDraft": "I'm a first-year physics student. Show me how to tell a third-law pair from two forces that just balance, using a book on a table. No greetings or small talk. Short structured bullets, max ~150 words, bold key terms. Then ask me one question to check I got it, and wait." },
+        "chatExcerpt": "", "recentMisses": []
+      },
+      "expect": { "mention": [["third law", "third-law", "action"], ["book", "table", "normal force"]], "language": "en" }
+    },
+    {
+      "id": "s14-understood-already",
+      "input": {
+        "assistant": "ChatGPT", "language": "en",
+        "step": { "title": "Zaitsev vs Hofmann", "objective": "Can predict the major alkene with a bulky base", "move": "contrast", "promptDraft": "I'm a first-year chemistry student. Contrast Zaitsev and Hofmann products and when a bulky base changes the outcome. No greetings or small talk. Short structured bullets, max ~150 words, bold key terms. Then ask me one question to check I got it, and wait." },
+        "chatExcerpt": "[R] so with t-BuOK the less substituted alkene wins because the base is too bulky to reach the inner hydrogen?\n[L] Exactly — that's the Hofmann product. Nicely reasoned.",
+        "recentMisses": []
+      },
+      "expect": { "mention": [["zaitsev", "hofmann"]], "language": "en" }
+    },
+    {
+      "id": "s15-finnish-auto",
+      "input": {
+        "assistant": "ChatGPT", "language": "auto",
+        "step": { "title": "Calvinin kierto", "objective": "Osaa kertoa Calvinin kierron vaiheet", "move": "worked_example", "promptDraft": "Olen lukiolainen ja opiskelen biologiaa. Käy Calvinin kierron vaiheet läpi järjestyksessä. Ei tervehdyksiä eikä small talkia. Lyhyet jäsennellyt luettelokohdat, enintään ~150 sanaa, avaintermit lihavoituna. Kysy sitten minulta yksi kysymys, jolla tarkistat että ymmärsin, ja odota vastaustani." },
+        "chatExcerpt": "[R] mitä tapahtuu valoreaktioissa\n[L] Valoreaktioissa vesi hajoaa, vapautuu happea ja syntyy ATP:tä ja NADPH:ta, joita Calvinin kierto käyttää.",
+        "recentMisses": []
+      },
+      "expect": { "mention": [["calvin"]], "language": "fi" }
+    }
+  ],
+  "improve": [
+    { "id": "i01-osmosis", "input": { "assistant": "ChatGPT", "language": "auto", "draft": "what is osmosis", "context": "Reading: Cell membrane transport – Khan Academy" }, "expect": { "mention": [["osmosis"]], "language": "en" } },
+    { "id": "i02-recursion", "input": { "assistant": "ChatGPT", "language": "auto", "draft": "explain recursion", "context": "Python course, week 6" }, "expect": { "mention": [["recursion", "recursive"]], "language": "en" } },
+    { "id": "i03-carbocations", "input": { "assistant": "ChatGPT", "language": "auto", "draft": "why are tertiary carbocations more stable", "context": "Reading: SN1 reaction – Wikipedia" }, "expect": { "mention": [["carbocation"], ["tertiary"]], "language": "en" } },
+    { "id": "i04-quick-fact", "input": { "assistant": "ChatGPT", "language": "auto", "draft": "what year did ww2 end", "context": "" }, "expect": { "mention": [["ww2", "world war", "wwii"], ["year", "end", "when"]], "language": "en", "noHook": true } },
+    { "id": "i05-formula", "input": { "assistant": "ChatGPT", "language": "auto", "draft": "formula for compound interest", "context": "Personal finance article" }, "expect": { "mention": [["compound interest"], ["formula"]], "language": "en", "noHook": true } },
+    { "id": "i06-essay-for-me", "input": { "assistant": "ChatGPT", "language": "auto", "draft": "write my essay about green solvents in chemistry labs 1200 words", "context": "Assignment 2: Argumentative essay, LC-1310 Academic Writing, due Friday" }, "expect": { "mention": [["green solvent", "solvent"], ["essay", "thesis", "outline", "argument"]], "language": "en", "noHook": true } },
+    { "id": "i07-fi-integraali", "input": { "assistant": "ChatGPT", "language": "auto", "draft": "mikä on integraali ja miten se liittyy derivaattaan", "context": "Lukion pitkä matematiikka" }, "expect": { "mention": [["integraal"], ["derivaat"]], "language": "fi" } },
+    { "id": "i08-mitosis-meiosis", "input": { "assistant": "Claude", "language": "auto", "draft": "difference between mitosis and meiosis", "context": "IB Biology, cell division unit" }, "expect": { "mention": [["mitosis"], ["meiosis"]], "language": "en" } },
+    { "id": "i09-confused-eigen", "input": { "assistant": "ChatGPT", "language": "auto", "draft": "help me understand eigenvectors im so confused", "context": "Reading: Lecture05_Eigenvalues.pdf" }, "expect": { "mention": [["eigenvector"]], "language": "en" } },
+    { "id": "i10-big-o", "input": { "assistant": "ChatGPT", "language": "auto", "draft": "explain big O notation like im 5", "context": "" }, "expect": { "mention": [["big o", "big-o"]], "language": "en" } },
+    { "id": "i11-check-answer", "input": { "assistant": "ChatGPT", "language": "auto", "draft": "is the derivative of x^2 sin x equal to 2x cos x?", "context": "Calculus problem set 3" }, "expect": { "mention": [["derivative"], ["x^2 sin x", "x²sin x", "x^2·sin x", "x^2 sin(x)", "x² sin x", "x^2 * sin x"]], "language": "en" } },
+    { "id": "i12-vaccines", "input": { "assistant": "Perplexity", "language": "auto", "draft": "how do mRNA vaccines work", "context": "" }, "expect": { "mention": [["mrna"], ["vaccine"]], "language": "en" } },
+    { "id": "i13-flashcards", "input": { "assistant": "ChatGPT", "language": "auto", "draft": "make flashcards for these terms: nucleophile, electrophile, leaving group, carbocation, steric hindrance", "context": "Organic Chemistry I, chapter 15" }, "expect": { "mention": [["flashcard"], ["nucleophile"], ["steric"]], "language": "en", "noHook": true } },
+    { "id": "i14-translate", "input": { "assistant": "ChatGPT", "language": "auto", "draft": "translate to english: Fotosynteesi tapahtuu kloroplasteissa", "context": "" }, "expect": { "mention": [["translat"], ["fotosynteesi", "kloroplast"]], "language": "en", "noHook": true } },
+    { "id": "i15-fi-essee", "input": { "assistant": "ChatGPT", "language": "auto", "draft": "miten kirjoitan hyvän johdannon esseeseen", "context": "Äidinkielen kurssi, esseetehtävä" }, "expect": { "mention": [["johdan"], ["essee"]], "language": "fi" } }
+  ]
+}

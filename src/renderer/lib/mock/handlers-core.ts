@@ -1,0 +1,191 @@
+/**
+ * Mock handlers for app status, settings, read models, subjects, inbox, prompts and windows.
+ * Study, quiz, exam and chat handlers live in ./handlers-study.
+ */
+import type { InvokeChannel } from '@shared/ipc'
+import type { AppState } from '@shared/state'
+import type { HandlerMap, MockContext } from './context'
+import { examList, homeData, search, subjectDetail, subjectList } from './derive'
+import { mockId, nowIso } from './time'
+
+type CoreChannel = Exclude<
+  InvokeChannel,
+  | 'session.get'
+  | 'session.picker'
+  | 'session.start'
+  | 'session.next'
+  | 'session.end'
+  | 'quiz.get'
+  | 'quiz.answer'
+  | 'quiz.finish'
+  | 'exams.create'
+  | 'chat.history'
+  | 'chat.send'
+  | 'coach.runAction'
+  | 'ask.submit'
+  | 'nudge.act'
+>
+
+const COLORS = ['purple', 'pink', 'yellow', 'brown', 'red', 'blue', 'green', 'orange'] as const
+
+export function appState(ctx: MockContext): AppState {
+  const { db } = ctx
+  const now = Date.now()
+  const p = db.appState.permissions
+  if (db.grantAt.accessibility !== null && now >= db.grantAt.accessibility) p.accessibility = true
+  if (db.grantAt.screenRecording !== null && now >= db.grantAt.screenRecording) p.screenRecording = true
+  db.appState.capture.enabled = db.settings.captureEnabled
+  db.appState.capture.active = db.settings.captureEnabled && p.accessibility
+  db.appState.focusSubjectId = db.settings.focusSubjectId
+  db.appState.onboardingDone = db.settings.onboardingDone
+  return structuredClone(db.appState)
+}
+
+/** Opens another surface in a plain browser: a new tab on the matching page, still mocked. */
+export function openInBrowser(surface: string, route: string | null): void {
+  if (typeof window === 'undefined' || typeof window.open !== 'function') return
+  const page = surface === 'panel' ? 'panel.html' : 'app.html'
+  window.open(`${page}?mock=1#${route ?? (surface === 'panel' ? '/' : '/home')}`, '_blank')
+}
+
+export const coreHandlers: HandlerMap<CoreChannel> = {
+  'app.getState': (ctx) => appState(ctx),
+  'settings.get': (ctx) => structuredClone(ctx.db.settings),
+  'settings.update': (ctx, patch) => {
+    ctx.db.settings = { ...ctx.db.settings, ...patch }
+    ctx.changed('settings')
+    ctx.emit('state.changed', appState(ctx))
+    return structuredClone(ctx.db.settings)
+  },
+  'secrets.set': (ctx, { key, value }) => {
+    const set = value.trim().length > 0
+    ctx.db.settings.ai = { ...ctx.db.settings.ai, [key === 'groq' ? 'groqKeySet' : 'mistralKeySet']: set }
+    ctx.changed('settings')
+  },
+  'capture.setEnabled': (ctx, enabled) => {
+    ctx.db.settings.captureEnabled = enabled
+    ctx.changed('settings')
+    ctx.emit('state.changed', appState(ctx))
+  },
+  'permissions.status': (ctx) => appState(ctx).permissions,
+  'permissions.open': (ctx, kind) => {
+    // Simulates the student flipping the switch in System Settings a moment later.
+    ctx.db.grantAt[kind] = Date.now() + 2500
+    ctx.later(2600, () => ctx.emit('state.changed', appState(ctx)))
+  },
+  'providers.test': (ctx, id) => {
+    if (id === 'groq' && !ctx.db.settings.ai.groqKeySet)
+      return { ok: false, latencyMs: null, error: 'Add a Groq key first.' }
+    if (id === 'mistral' && !ctx.db.settings.ai.mistralKeySet)
+      return { ok: false, latencyMs: null, error: 'Add a Mistral key first.' }
+    const latency = { apple: 240, groq: 310, ovh: 880, mistral: 520 }[id]
+    return { ok: true, latencyMs: latency, error: null }
+  },
+  'providers.usage': (ctx) => structuredClone(ctx.db.usage),
+
+  'home.get': (ctx) => homeData(ctx.db),
+  'subjects.list': (ctx) => subjectList(ctx.db),
+  'subjects.get': (ctx, id) => subjectDetail(ctx.db, id),
+  'inbox.list': (ctx, { state, subjectId }) =>
+    ctx.db.encounters
+      .filter((e) => (state === null || e.inboxState === state) && (subjectId === null || e.subjectId === subjectId))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+  'exams.list': (ctx) => examList(ctx.db),
+  'search.query': (ctx, q) => search(ctx.db, q),
+
+  'subjects.create': (ctx, input) => {
+    const subject = {
+      id: mockId('sub'),
+      name: input.name.trim(),
+      emoji: input.emoji ?? '📘',
+      color: COLORS[ctx.db.subjects.length % COLORS.length] ?? 'blue',
+      description: '',
+      goal: input.goal,
+      deadline: input.deadline,
+      status: 'active' as const,
+      focus: 'normal' as const,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    }
+    ctx.db.subjects.push(subject)
+    ctx.changed('subjects', [subject.id])
+    return subject
+  },
+  'subjects.update': (ctx, { id, patch }) => {
+    const s = ctx.db.subjects.find((x) => x.id === id)
+    if (!s) throw new Error('That subject no longer exists.')
+    Object.assign(s, patch, { updatedAt: nowIso() })
+    ctx.changed('subjects', [id])
+    return { ...s }
+  },
+  'suggested.act': (ctx, { subjectId, action, intoId }) => {
+    const s = ctx.db.subjects.find((x) => x.id === subjectId)
+    if (!s) throw new Error('That suggestion is gone.')
+    if (action === 'accept') s.status = 'active'
+    if (action === 'dismiss') s.status = 'archived'
+    if (action === 'merge' && intoId) {
+      for (const c of ctx.db.concepts) if (c.subjectId === subjectId) c.subjectId = intoId
+      for (const e of ctx.db.encounters) if (e.subjectId === subjectId) e.subjectId = intoId
+      s.status = 'archived'
+    }
+    ctx.changed('subjects', [subjectId])
+    ctx.changed('inbox')
+  },
+  'inbox.act': (ctx, { encounterId, action, subjectId }) => {
+    const e = ctx.db.encounters.find((x) => x.id === encounterId)
+    if (!e) throw new Error('That item is gone.')
+    if (action === 'ignore') e.inboxState = 'ignored'
+    else {
+      e.inboxState = 'accepted'
+      if (action === 'assign') e.subjectId = subjectId
+    }
+    ctx.changed('inbox', [encounterId])
+  },
+  'assignments.add': (ctx, input) => {
+    const a = {
+      id: mockId('as'),
+      subjectId: input.subjectId,
+      title: input.title,
+      course: null,
+      dueAt: input.dueAt,
+      source: 'manual',
+      status: 'open' as const,
+      createdAt: nowIso(),
+    }
+    ctx.db.assignments.push(a)
+    ctx.changed('assignments', [a.id])
+    return a
+  },
+
+  'prompt.copy': async (_ctx, text) => {
+    try {
+      await navigator.clipboard?.writeText(text)
+    } catch {
+      // Clipboard access can be denied in a plain browser; the UI still confirms.
+    }
+  },
+  'prompt.sendToChat': (ctx) =>
+    ctx.db.appState.aiChat
+      ? { ok: true, reason: null }
+      : { ok: false, reason: 'No AI chat is open. Open ChatGPT and try again.' },
+
+  'overlay.getState': (ctx) => ({
+    displayId: 1,
+    orb: { x: 1400, y: 450, size: 40, visual: 'idle', thinking: false, progress: null, dot: 'none', paused: !ctx.db.settings.captureEnabled, docked: false },
+    dockTarget: null,
+    edge: 'right',
+    pill: null,
+    side: { next: null, quiz: false },
+    chip: null,
+    toasts: [],
+    quiz: null,
+    aiChat: ctx.db.appState.aiChat,
+  }),
+  'overlay.action': () => undefined,
+  'window.open': (ctx, { surface, route }) => {
+    if (surface === ctx.surface && route) ctx.emit('navigate', { route })
+    else if (surface !== ctx.surface) openInBrowser(surface, route)
+  },
+  'window.close': () => undefined,
+  'window.setSize': () => undefined,
+}

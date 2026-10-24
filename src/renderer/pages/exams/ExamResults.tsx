@@ -1,0 +1,248 @@
+/**
+ * Exam results: the score, a by-concept table, "Your gaps" with a repair prompt for the
+ * student's AI (Explore with ChatGPT / Copy prompt), what comes next, and a toggle to review
+ * every answer. Results come from 'quiz.finish' (called again for finished quizzes).
+ */
+import {
+  Button,
+  Callout,
+  type Column,
+  DatabaseTable,
+  ErrorState,
+  LoadingState,
+  PageHeader,
+  ProgressBar,
+  QuizQuestion,
+  Section,
+  Tag,
+  ToggleBlock,
+  toast,
+} from '@renderer/design-system'
+import { invoke } from '@renderer/lib/api'
+import { formatRelative } from '@renderer/lib/format'
+import { useAction, useAppState } from '@renderer/lib/queries'
+import { MASTERY, scoreColor } from '@renderer/lib/status'
+import type { Quiz, QuizResult } from '@shared/domain'
+import { useQuery } from '@tanstack/react-query'
+import { ArrowRight, CalendarClock, Copy, Send } from 'lucide-react'
+import { barColor, KIND_ICON } from './exam-utils'
+import './exam-page.css'
+
+type ConceptRow = QuizResult['byConcept'][number]
+
+const CONCEPT_COLUMNS: Column<ConceptRow>[] = [
+  {
+    key: 'concept',
+    header: 'Concept',
+    render: (r) => <span className="dd-table__title-cell">{r.conceptName}</span>,
+  },
+  {
+    key: 'score',
+    header: 'Score',
+    width: 190,
+    render: (r) => (
+      <span className="ex-concept-score">
+        <ProgressBar
+          value={r.total ? r.correct / r.total : 0}
+          color={barColor(r.total ? r.correct / r.total : null)}
+          label={`${r.conceptName}: ${r.correct} of ${r.total}`}
+          width={96}
+        />
+        <span className="ex-concept-score__n">
+          {r.correct}/{r.total}
+        </span>
+      </span>
+    ),
+  },
+  {
+    key: 'status',
+    header: 'Status',
+    width: 130,
+    render: (r) => <Tag color={MASTERY[r.status].color}>{MASTERY[r.status].label}</Tag>,
+  },
+]
+
+function GapsCallout({ result, assistant }: { result: QuizResult; assistant: string }) {
+  const send = useAction('prompt.sendToChat')
+  const copy = useAction('prompt.copy')
+  const prompt = result.fixPrompt
+  const copyPrompt = () => {
+    if (!prompt) return
+    copy.mutate(prompt, {
+      onSuccess: () => toast(`Prompt copied — paste it into ${assistant}`, { tone: 'success' }),
+      onError: (err) => toast(err.message, { tone: 'error' }),
+    })
+  }
+  const explore = () => {
+    if (!prompt) return
+    send.mutate(prompt, {
+      onSuccess: (res) =>
+        res.ok
+          ? toast(`Pasted into ${assistant} — read it, then press Enter there.`, {
+              tone: 'success',
+            })
+          : toast(res.reason ?? `Couldn’t reach ${assistant}.`, {
+              tone: 'error',
+              action: { label: 'Copy instead', onClick: copyPrompt },
+              ttlMs: 8000,
+            }),
+      onError: (err) => toast(err.message, { tone: 'error' }),
+    })
+  }
+  return (
+    <Callout icon="💡" title="Your gaps">
+      <ul className="ex-gaps">
+        {result.gaps.map((g, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: the same concept can appear twice
+          <li key={i}>
+            <strong>{g.concept}</strong>
+            <span className="ex-gaps__picked"> — you picked “{g.misconception}”</span>
+          </li>
+        ))}
+      </ul>
+      {prompt ? (
+        <>
+          <div className="dd-prompt">
+            <span className="dd-prompt__label">Prompt for {assistant}</span>
+            {prompt}
+          </div>
+          <div className="ex-actions">
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<Send size={14} />}
+              loading={send.isPending}
+              onClick={explore}
+            >
+              Explore with {assistant}
+            </Button>
+            <Button size="sm" icon={<Copy size={14} />} onClick={copyPrompt}>
+              Copy prompt
+            </Button>
+          </div>
+        </>
+      ) : null}
+    </Callout>
+  )
+}
+
+export interface ExamResultsProps {
+  quiz: Quiz
+  subjectLine: string
+}
+
+export function ExamResults({ quiz, subjectLine }: ExamResultsProps) {
+  const results = useQuery({
+    queryKey: ['quiz.finish', quiz.id],
+    queryFn: () => invoke('quiz.finish', quiz.id),
+    staleTime: Number.POSITIVE_INFINITY,
+  })
+  const app = useAppState()
+  const assistant = app.data?.aiChat?.provider ?? 'ChatGPT'
+  const when = formatRelative(quiz.completedAt)
+  const finished = quiz.completedAt
+    ? `Finished ${when === 'Yesterday' ? 'yesterday' : when}`
+    : 'Finished'
+  const header = (
+    <PageHeader
+      icon={KIND_ICON[quiz.kind]}
+      title={quiz.title}
+      subtitle={`${finished} · ${subjectLine}`}
+    />
+  )
+
+  if (results.isLoading)
+    return (
+      <>
+        {header}
+        <LoadingState caption="Scoring your answers…" lines={5} className="ex-generating" />
+      </>
+    )
+  if (results.isError || !results.data)
+    return (
+      <>
+        {header}
+        <ErrorState
+          title="Couldn’t score this exam"
+          error={results.error}
+          onRetry={() => void results.refetch()}
+        />
+      </>
+    )
+
+  const r = results.data
+  const perfect = r.total > 0 && r.correct === r.total
+  return (
+    <>
+      {header}
+      <div className="ex-score">
+        <span className="ex-score__big">{`${r.correct} / ${r.total}`}</span>
+        <Tag color={scoreColor(r.score)} className="ex-score__tag">
+          {`${Math.round(r.score * 100)}%`}
+        </Tag>
+        <span className="ex-score__sub">
+          {perfect
+            ? 'Every answer right.'
+            : `${r.total - r.correct} to work on — Dumbledore turned them into one prompt below.`}
+        </span>
+      </div>
+
+      <Section title="By concept">
+        <DatabaseTable
+          label="Score by concept"
+          columns={CONCEPT_COLUMNS}
+          rows={r.byConcept}
+          rowKey={(row) => row.conceptName}
+          footer={false}
+        />
+      </Section>
+
+      <div className="ex-fix">
+        {perfect || r.gaps.length === 0 ? (
+          <Callout icon="🎉" color="green" title="No gaps this time">
+            Dumbledore will space out the next review of these concepts.
+          </Callout>
+        ) : (
+          <GapsCallout result={r} assistant={assistant} />
+        )}
+        <div className="ex-next">
+          {r.nextTopic ? (
+            <div className="ex-next__line">
+              <ArrowRight size={16} aria-hidden />
+              <span>
+                Next up: <strong>{r.nextTopic}</strong>
+              </span>
+            </div>
+          ) : null}
+          {!perfect ? (
+            <div className="ex-next__line">
+              <CalendarClock size={16} aria-hidden />
+              <span>Dumbledore will re-test your gaps in 2 days.</span>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="ex-review">
+        <ToggleBlock title="Review your answers">
+          <div className="ex-review__list">
+            {quiz.questions.map((q, i) => {
+              const a = quiz.answers.find((x) => x.questionId === q.id)
+              return (
+                <QuizQuestion
+                  key={q.id}
+                  index={i}
+                  total={quiz.questions.length}
+                  question={q}
+                  chosenIndex={a?.chosenIndex ?? null}
+                  result={{ correct: a?.correct ?? false, correctIndex: q.correctIndex }}
+                  disabled
+                />
+              )
+            })}
+          </div>
+        </ToggleBlock>
+      </div>
+    </>
+  )
+}

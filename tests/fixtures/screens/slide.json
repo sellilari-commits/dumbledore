@@ -1,0 +1,56 @@
+{
+  "height" : 640,
+  "lines" : [
+    {
+      "align" : "center",
+      "h" : 52,
+      "text" : "Mitosis in Four Phases",
+      "w" : 451.6123046875,
+      "x" : 286.19384765625,
+      "y" : 70
+    },
+    {
+      "align" : "left",
+      "h" : 30,
+      "text" : "• Prophase: chromosomes condense and the spindle forms",
+      "w" : 655.2465114593506,
+      "x" : 120,
+      "y" : 190
+    },
+    {
+      "align" : "left",
+      "h" : 30,
+      "text" : "• Metaphase: chromosomes line up at the cell's equator",
+      "w" : 617.1410219073296,
+      "x" : 120,
+      "y" : 252
+    },
+    {
+      "align" : "left",
+      "h" : 30,
+      "text" : "• Anaphase: sister chromatids are pulled to opposite poles",
+      "w" : 644.9043383598328,
+      "x" : 120,
+      "y" : 314
+    },
+    {
+      "align" : "left",
+      "h" : 30,
+      "text" : "• Telophase: two nuclei form and the cell divides",
+      "w" : 532.5662130117416,
+      "x" : 120,
+      "y" : 376
+    },
+    {
+      "align" : "center",
+      "h" : 19,
+      "text" : "Biology 101 · Lecture 7",
+      "w" : 162.546875,
+      "x" : 430.7265625,
+      "y" : 590
+    }
+  ],
+  "name" : "slide",
+  "scale" : 2,
+  "width" : 1024
+}

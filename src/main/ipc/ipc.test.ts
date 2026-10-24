@@ -1,0 +1,217 @@
+import { type InvokeChannel, ipcInvoke } from '@shared/ipc'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { createHarness, flush, type Harness } from '../testing/harness'
+import { Broadcaster, EVENT_ROUTES } from './broadcast'
+import { createHandlers, type HandlerExtras } from './handlers'
+import { INVOKE_CHANNELS, type IpcMainLike, IpcValidationError, registerIpc, runHandler } from './register'
+import type { Handlers, InvokeContext } from './types'
+
+const APP: InvokeContext = { surface: 'app', displayId: null }
+const OVERLAY: InvokeContext = { surface: 'overlay', displayId: 1 }
+
+function fakeExtras() {
+  const calls: string[] = []
+  const extras: HandlerExtras = {
+    openSystemSettings: async (kind) => void calls.push(`settings:${kind}`),
+    setOverlayInteractive: (id, on) => void calls.push(`interactive:${id}:${on}`),
+    showOrbMenu: () => void calls.push('menu'),
+    setWindowSize: (s, w, h) => void calls.push(`size:${s}:${w}x${h}`),
+  }
+  return { extras, calls }
+}
+
+describe('IPC handlers', () => {
+  let h: Harness
+  let handlers: Handlers
+  let calls: string[]
+  const seen = new Set<InvokeChannel>()
+  const call = async <C extends InvokeChannel>(channel: C, payload?: unknown, ctx = APP) => {
+    seen.add(channel)
+    return runHandler(channel, handlers, payload, ctx, true)
+  }
+
+  beforeEach(async () => {
+    h = await createHarness()
+    const f = fakeExtras()
+    handlers = createHandlers(h.core, f.extras)
+    calls = f.calls
+  })
+
+  it('has a handler for every ipcInvoke channel', () => {
+    expect(Object.keys(handlers).sort()).toEqual(Object.keys(ipcInvoke).sort())
+  })
+
+  it('answers every channel with a contract-valid response', async () => {
+    const { repos } = h.services
+    const orgo = repos.subjects.findByName('Organic Chemistry')
+    const suggested = repos.subjects.findByName('Cell Biology')
+    const encounter = repos.encounters.list({ limit: 1 })[0]
+    if (!orgo || !suggested || !encounter) throw new Error('seed missing')
+
+    expect((await call('app.getState')).helper).toBe('connected')
+    expect((await call('settings.get')).theme).toBe('system')
+    expect((await call('settings.update', { theme: 'dark' })).theme).toBe('dark')
+    await call('secrets.set', { key: 'groq', value: 'gsk_test' })
+    expect(repos.settings.get().ai.groqKeySet).toBe(true)
+    await call('capture.setEnabled', false)
+    expect(h.core.appState().capture).toEqual({ enabled: false, active: false })
+    await call('capture.setEnabled', true)
+    expect((await call('permissions.status')).accessibility).toBe(true)
+    await call('permissions.open', 'screenRecording')
+    expect((await call('providers.test', 'groq')).ok).toBe(true)
+    expect((await call('providers.usage')).limits.length).toBeGreaterThan(0)
+
+    expect((await call('home.get')).continue).toEqual([])
+    expect((await call('subjects.list')).length).toBe(3)
+    expect((await call('subjects.get', orgo.id)).subject.name).toBe('Organic Chemistry')
+    expect((await call('inbox.list', { state: null, subjectId: null })).length).toBe(2)
+    expect(await call('exams.list')).toEqual([])
+    expect((await call('search.query', 'carbocation')).length).toBeGreaterThan(0)
+
+    const physics = await call('subjects.create', { name: 'Physics', emoji: '⚛️', goal: null, deadline: null })
+    expect((await call('subjects.update', { id: physics.id, patch: { goal: 'Pass' } })).goal).toBe('Pass')
+    await call('suggested.act', { subjectId: suggested.id, action: 'accept', intoId: null })
+    await call('inbox.act', { encounterId: encounter.id, action: 'accept', subjectId: null })
+    expect((await call('assignments.add', { title: 'Lab report', subjectId: null, dueAt: null })).title).toBe(
+      'Lab report',
+    )
+
+    expect(await call('session.get')).toBeNull()
+    expect((await call('session.picker')).subjects.length).toBeGreaterThan(0)
+    const started = await call('session.start', { subjectId: orgo.id, goal: null, question: null })
+    expect(started).toMatchObject({ subjectId: orgo.id, phase: 'step', index: 0 })
+    expect((await call('session.next'))?.index).toBe(1)
+    const atCheckpoint = await call('session.next')
+    expect(atCheckpoint?.phase).toBe('checkpoint')
+    const quizId = h.core.overlay.state.quiz?.quizId
+    if (!quizId) throw new Error('checkpoint quiz did not open')
+    const quiz = await call('quiz.get', quizId)
+    const first = quiz.questions[0]
+    if (!first) throw new Error('empty quiz')
+    expect((await call('quiz.answer', { quizId, questionId: first.id, chosenIndex: first.correctIndex })).correct).toBe(
+      true,
+    )
+    expect((await call('quiz.finish', quizId)).total).toBe(quiz.questions.length)
+    expect((await call('exams.create', { subjectIds: [orgo.id], count: 5, focus: 'weak', difficulty: 'mixed' })).status).toBe(
+      'generating',
+    )
+
+    expect(await call('chat.history', 'panel')).toEqual([])
+    const reply = await call('chat.send', { thread: 'panel', text: 'What should I focus on?' })
+    expect(reply.role).toBe('assistant')
+    expect(h.deltas.at(-1)).toMatchObject({ thread: 'panel', done: true })
+    await call('coach.runAction', { type: 'set_focus', subjectId: orgo.id })
+    expect(repos.settings.get().focusSubjectId).toBe(orgo.id)
+    expect((await call('ask.submit', { text: 'What should I focus on?' })).reply).toContain('Focus')
+    const nudge = repos.nudges.add({
+      kind: 'tip',
+      title: 'Tip',
+      body: 'Try explaining it back.',
+      action: null,
+      dedupeKey: 'tip-1',
+    })
+    await call('nudge.act', { nudgeId: nudge.id, action: 'dismiss' })
+    expect(repos.nudges.listSince('1970-01-01T00:00:00.000Z')[0]?.outcome).toBe('dismissed')
+
+    await call('prompt.copy', 'copied text')
+    expect(h.platform.clipboard).toBe('copied text')
+    expect(await call('prompt.sendToChat', 'hello chat')).toMatchObject({ ok: false })
+
+    expect((await call('overlay.getState')).displayId).toBe(1)
+    await call('overlay.action', { type: 'hover', inside: true }, OVERLAY)
+    expect(calls).toContain('interactive:1:true')
+    await call('window.open', { surface: 'panel', route: '/picker' })
+    expect(h.surfaces.log).toContain('open:panel:/picker')
+    await call('window.close', 'panel')
+    await call('window.setSize', { surface: 'askbar', width: 560, height: 200 })
+    expect(calls).toContain('size:askbar:560x200')
+    await call('session.end')
+    expect(await call('session.get')).toBeNull()
+
+    expect([...seen].sort()).toEqual([...INVOKE_CHANNELS].sort())
+  })
+
+  it('rejects payloads that do not match the contract', async () => {
+    await expect(call('subjects.get', '')).rejects.toBeInstanceOf(IpcValidationError)
+    await expect(call('quiz.answer', { quizId: 'q', questionId: 'x', chosenIndex: 7 })).rejects.toThrow(
+      /Invalid payload for "quiz.answer"/,
+    )
+    await expect(call('overlay.action', { type: 'explode' }, OVERLAY)).rejects.toThrow(IpcValidationError)
+    await expect(call('settings.update', { theme: 'neon' })).rejects.toThrow(IpcValidationError)
+  })
+
+  it('routes overlay clicks to the router without waiting for the work', async () => {
+    await call('overlay.action', { type: 'orbClick' }, OVERLAY)
+    await flush()
+    expect(h.surfaces.log).toContain('open:panel:/')
+    await call('overlay.action', { type: 'orbLongPress' }, OVERLAY)
+    await flush()
+    expect(h.surfaces.log).toContain('open:askbar')
+    await call('overlay.action', { type: 'pillClick' }, OVERLAY)
+    await flush()
+    expect(h.surfaces.log).toContain('open:panel:/picker')
+    await call('overlay.action', { type: 'orbContextMenu' }, OVERLAY)
+    expect(calls).toContain('menu')
+  })
+
+  it('drags the orb in the coordinates of the sending overlay', async () => {
+    await call('overlay.action', { type: 'orbDrag', x: 50, y: 400, done: true }, OVERLAY)
+    expect(h.core.overlay.state.edge).toBe('left')
+  })
+})
+
+describe('registerIpc', () => {
+  function fakeIpc() {
+    const listeners = new Map<string, (event: { sender: unknown }, ...args: unknown[]) => unknown>()
+    const ipc: IpcMainLike = {
+      handle: (channel, listener) => void listeners.set(channel, listener),
+      removeHandler: (channel) => void listeners.delete(channel),
+    }
+    return { ipc, listeners }
+  }
+
+  it('registers every channel under the invoke prefix and removes them again', async () => {
+    const h = await createHarness()
+    const { ipc, listeners } = fakeIpc()
+    const off = registerIpc(ipc, createHandlers(h.core, fakeExtras().extras), {
+      identify: (event) => (event.sender === 'trusted' ? APP : null),
+    })
+    expect([...listeners.keys()].sort()).toEqual(INVOKE_CHANNELS.map((c) => `dd:invoke:${c}`).sort())
+    const getSettings = listeners.get('dd:invoke:settings.get')
+    await expect(getSettings?.({ sender: 'trusted' })).resolves.toMatchObject({ theme: 'system' })
+    await expect(getSettings?.({ sender: 'evil' })).rejects.toThrow(/unknown sender/)
+    off()
+    expect(listeners.size).toBe(0)
+  })
+
+  it('reports handler errors and invalid responses', async () => {
+    const h = await createHarness()
+    const { ipc, listeners } = fakeIpc()
+    const errors: string[] = []
+    const handlers = createHandlers(h.core, fakeExtras().extras)
+    handlers['settings.get'] = () => ({ nope: true }) as never
+    registerIpc(ipc, handlers, {
+      identify: () => APP,
+      validateResponses: true,
+      onError: (channel) => void errors.push(channel),
+    })
+    await expect(listeners.get('dd:invoke:settings.get')?.({ sender: 1 })).rejects.toThrow(/invalid response/)
+    await expect(listeners.get('dd:invoke:subjects.get')?.({ sender: 1 }, 'sub_missing')).rejects.toThrow(
+      /not found/,
+    )
+    expect(errors).toEqual(['settings.get', 'subjects.get'])
+  })
+})
+
+describe('Broadcaster', () => {
+  it('routes events to their surfaces and validates payloads', () => {
+    const sent: string[] = []
+    const out = new Broadcaster({ send: (surfaces, channel) => void sent.push(`${surfaces.join(',')}|${channel}`) }, true)
+    out.emit('memory.changed', { scope: 'subjects', ids: ['sub_1'] })
+    out.emit('navigate', { route: '/home' }, ['app'])
+    out.emit('navigate', { route: '/home' })
+    out.emit('memory.changed', { scope: 'nonsense', ids: [] } as never)
+    expect(sent).toEqual(['panel,askbar,app|dd:event:memory.changed', 'app|dd:event:navigate'])
+    expect(EVENT_ROUTES['overlay.changed']).toEqual(['overlay'])
+  })
+})

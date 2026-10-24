@@ -1,0 +1,120 @@
+/* Full app window frame: sidebar + main column, hidden title bar with traffic lights. */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  overflow: hidden;
+}
+
+.dd-app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background: var(--c-bacPri);
+}
+
+.dd-app__main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-bacPri);
+}
+
+.dd-app__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dd-app__scroll {
+    scroll-behavior: auto;
+  }
+}
+
+/* When the sidebar is hidden, the top bar makes room for the traffic lights. */
+.dd-topbar--inset {
+  padding-left: var(--traffic-lights-inset);
+}
+
+/* Sidebar chrome: the top 44 px row holds the macOS traffic lights (left 78 px). */
+.dd-app-sidebar__chrome {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: var(--topbar-height);
+  flex: none;
+  padding: 0 10px 0 var(--traffic-lights-inset);
+  -webkit-app-region: drag;
+}
+
+.dd-app-sidebar__chrome > * {
+  -webkit-app-region: no-drag;
+}
+
+.dd-app-sidebar__collapse {
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.dd-sidebar:hover .dd-app-sidebar__collapse,
+.dd-app-sidebar__collapse:focus-visible {
+  opacity: 1;
+}
+
+.dd-app-sidebar__workspace {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  margin: 0 8px 6px;
+  padding: 0 8px 0 6px;
+  border-radius: var(--radius-menu);
+  color: var(--c-texPri);
+  font-weight: var(--weight-semibold);
+}
+
+.dd-app-sidebar__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: var(--c-texPri);
+  color: var(--c-bacPri);
+}
+
+.dd-app-sidebar__footer {
+  flex: none;
+  padding: 6px 8px 10px;
+  box-shadow: inset 0 1px 0 var(--c-borPri);
+}
+
+.dd-app-sidebar__status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-green-text);
+}
+
+.dd-app-sidebar__status-dot[data-on='false'] {
+  background: var(--c-texTer);
+}
+
+.dd-app-sidebar__emoji {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Error boundary fallback */
+.dd-app__crash {
+  padding: 96px 24px;
+}

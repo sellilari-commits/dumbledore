@@ -1,0 +1,442 @@
+/* Controls: buttons, icon buttons, inputs, switch, checkbox, radio rows, choice chips, keycaps. */
+
+.dd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius-control);
+  font-size: var(--text-ui);
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.dd-btn--sm {
+  height: 28px;
+  padding: 0 8px;
+  font-size: var(--text-ui);
+}
+
+.dd-btn--xs {
+  height: 24px;
+  padding: 0 6px;
+  font-size: var(--text-small);
+  gap: 4px;
+}
+
+.dd-btn svg {
+  flex: none;
+}
+
+.dd-btn--primary {
+  background: var(--c-accentFill);
+  color: var(--c-accentText);
+  box-shadow: inset 0 0 0 1px #0f0f0f1a, 0 1px 2px #0f0f0f1a;
+}
+
+.dd-btn--primary:hover {
+  background: var(--c-accentFillHover);
+}
+
+.dd-btn--primary:active {
+  background: var(--c-accentFillPressed);
+}
+
+.dd-btn--secondary {
+  background: var(--c-bacPri);
+  color: var(--c-texPri);
+  box-shadow: var(--shadow-button);
+}
+
+.dd-btn--secondary:hover {
+  background: var(--c-bacInt);
+}
+
+.dd-btn--secondary:active {
+  background: var(--c-bacTer);
+}
+
+.dd-btn--ghost {
+  color: var(--c-texSec);
+}
+
+.dd-btn--ghost:hover {
+  background: var(--c-hover);
+  color: var(--c-texPri);
+}
+
+.dd-btn--ghost:active {
+  background: var(--c-pressed);
+}
+
+.dd-btn--danger {
+  background: var(--c-bacPri);
+  color: var(--c-red-ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-red-text) 45%, transparent);
+}
+
+.dd-btn--danger:hover {
+  background: var(--c-red-bg);
+}
+
+.dd-btn:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.dd-btn__shortcut {
+  margin-left: 2px;
+  font-weight: var(--weight-regular);
+  opacity: 0.7;
+}
+
+.dd-btn--block {
+  width: 100%;
+}
+
+.dd-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-control);
+  color: var(--c-icoSec);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.dd-icon-btn--sm {
+  width: 24px;
+  height: 24px;
+}
+
+.dd-icon-btn:hover {
+  background: var(--c-hover);
+  color: var(--c-icoPri);
+}
+
+.dd-icon-btn:active,
+.dd-icon-btn[data-state='open'] {
+  background: var(--c-pressed);
+  color: var(--c-icoPri);
+}
+
+.dd-icon-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ── Inputs ─────────────────────────────────────────────────────────────── */
+
+.dd-input,
+.dd-textarea {
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--c-bacPri);
+  box-shadow: inset 0 0 0 1px var(--c-borStr);
+  color: var(--c-texPri);
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.dd-input {
+  height: 32px;
+  padding: 4px 10px;
+}
+
+.dd-input--lg {
+  height: 40px;
+  padding: 6px 12px;
+  font-size: var(--text-body);
+}
+
+.dd-textarea {
+  padding: 8px 10px;
+  resize: vertical;
+  min-height: 72px;
+}
+
+.dd-input:hover,
+.dd-textarea:hover {
+  box-shadow: inset 0 0 0 1px var(--c-texTer);
+}
+
+.dd-input:focus,
+.dd-textarea:focus,
+.dd-input:focus-visible,
+.dd-textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.dd-input[aria-invalid='true'] {
+  box-shadow: inset 0 0 0 1px var(--c-red-text);
+}
+
+.dd-input:disabled,
+.dd-textarea:disabled {
+  opacity: 0.6;
+}
+
+.dd-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dd-field__label {
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  color: var(--c-texSec);
+}
+
+.dd-field__hint {
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+  color: var(--c-texSec);
+}
+
+.dd-field__error {
+  font-size: var(--text-small);
+  color: var(--c-red-ink);
+}
+
+/* ── Switch (Notion toggle) ─────────────────────────────────────────────── */
+
+.dd-switch {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 18px;
+  padding: 2px;
+  border-radius: var(--radius-round);
+  background: var(--c-borStr);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.dd-switch[data-state='checked'] {
+  background: var(--c-accent);
+}
+
+.dd-switch:disabled {
+  opacity: 0.45;
+}
+
+.dd-switch__thumb {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 15, 15, 0.2);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.dd-switch[data-state='checked'] .dd-switch__thumb {
+  transform: translateX(12px);
+}
+
+.dd-switch:focus-visible {
+  border-radius: var(--radius-round);
+}
+
+/* ── Checkbox (Notion to-do) ────────────────────────────────────────────── */
+
+.dd-checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1.5px var(--c-icoPri);
+  color: #fff;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.dd-checkbox:hover {
+  background: var(--c-hover);
+}
+
+.dd-checkbox[aria-checked='true'] {
+  background: var(--c-accent);
+  box-shadow: none;
+}
+
+.dd-checkbox:disabled {
+  cursor: default;
+}
+
+/* ── Radio rows (quiz options, settings choices) ────────────────────────── */
+
+.dd-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dd-radio-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--radius-menu);
+  box-shadow: inset 0 0 0 1px var(--c-borPri);
+  text-align: left;
+  color: var(--c-texPri);
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.dd-radio-row:hover:not(:disabled) {
+  background: var(--c-hover);
+}
+
+.dd-radio-row[aria-checked='true'] {
+  background: var(--c-accentTint);
+  box-shadow: inset 0 0 0 1px var(--c-accent);
+}
+
+.dd-radio-row[data-tone='correct'] {
+  background: var(--c-green-bg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-green-text) 55%, transparent);
+  color: var(--c-green-ink);
+}
+
+.dd-radio-row[data-tone='wrong'] {
+  background: var(--c-red-bg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-red-text) 55%, transparent);
+  color: var(--c-red-ink);
+}
+
+.dd-radio-row[data-tone='muted'] {
+  color: var(--c-texSec);
+}
+
+.dd-radio-row:disabled {
+  cursor: default;
+}
+
+.dd-radio-row__dot {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2.5px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--c-icoSec);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dd-radio-row[aria-checked='true'] .dd-radio-row__dot {
+  box-shadow: inset 0 0 0 5px var(--c-accent);
+}
+
+.dd-radio-row[data-tone='correct'] .dd-radio-row__dot,
+.dd-radio-row[data-tone='wrong'] .dd-radio-row__dot {
+  box-shadow: none;
+}
+
+.dd-radio-row__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dd-radio-row__hint {
+  font-size: var(--text-meta);
+  line-height: 18px;
+  color: var(--c-texSec);
+}
+
+.dd-radio-row[data-tone='correct'] .dd-radio-row__hint,
+.dd-radio-row[data-tone='wrong'] .dd-radio-row__hint {
+  color: inherit;
+  opacity: 0.85;
+}
+
+.dd-radio-row__key {
+  margin-left: auto;
+  flex: none;
+  color: var(--c-texTer);
+  font-size: var(--text-small);
+}
+
+/* ── Choice chips (5 / 10 / 20) ─────────────────────────────────────────── */
+
+.dd-choices {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--c-bacTer);
+}
+
+.dd-choice {
+  height: 26px;
+  min-width: 44px;
+  padding: 0 10px;
+  border-radius: var(--radius-control);
+  color: var(--c-texSec);
+  font-size: var(--text-ui);
+  font-weight: var(--weight-medium);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.dd-choice:hover {
+  color: var(--c-texPri);
+}
+
+.dd-choice[aria-checked='true'] {
+  background: var(--c-bacPri);
+  color: var(--c-texPri);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Keycaps ────────────────────────────────────────────────────────────── */
+
+.dd-kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  font-family: var(--font-sans);
+  font-size: var(--text-small);
+  line-height: 1;
+  color: var(--c-texTer);
+  letter-spacing: 0.02em;
+}
+
+.dd-kbd--boxed {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  justify-content: center;
+  border-radius: var(--radius-control);
+  background: var(--c-bacPri);
+  box-shadow: var(--shadow-button);
+  color: var(--c-texSec);
+}

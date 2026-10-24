@@ -1,0 +1,280 @@
+/**
+ * P1 Extractor (tier `extract`): screen-text episodes → "is the student learning?" plus the three
+ * parts (seen / big picture / understanding), open questions, assignments, and — for AI chats —
+ * the student's own prompts scored for coaching. Full variant with two few-shot examples for
+ * cloud models; compact variant for Apple's 4K on-device context.
+ */
+import type { ExtractInput, ExtractOutput } from '@engine/brain-contract'
+import { UnderstandingStatus } from '@shared/domain'
+import { z } from 'zod'
+import { looksFinnish } from '../llm/text'
+import { type PromptSpec, tag } from './shared'
+
+const LlmItem = z.object({
+  topicPath: z.array(z.string()),
+  seen: z.string().min(1),
+  bigPicture: z.string().min(1),
+  evidence: z.string(),
+  understanding: UnderstandingStatus,
+  openQuestions: z.array(z.string()),
+  keyTerms: z.array(z.string()),
+  subjectMatchId: z.string().nullable(),
+  subjectNewName: z.string().nullable(),
+  assignment: z
+    .object({ title: z.string(), course: z.string().nullable(), dueAt: z.string().nullable() })
+    .nullable(),
+})
+const LlmPrompt = z.object({
+  text: z.string(),
+  hasContext: z.boolean(),
+  hasStructure: z.boolean(),
+  asksToBeQuizzed: z.boolean(),
+  asksForExamples: z.boolean(),
+})
+export const LlmExtract = z.object({
+  results: z.array(
+    z.object({
+      episodeId: z.string(),
+      reason: z.string(),
+      isLearning: z.boolean(),
+      confidence: z.number(),
+      items: z.array(LlmItem),
+      studentPrompts: z.array(LlmPrompt),
+    }),
+  ),
+})
+export type LlmExtract = z.infer<typeof LlmExtract>
+
+const RULES = `LEARNING: course material, textbooks, lecture slides or notes, papers, documentation or tutorials being studied, explanations in AI chats, practice problems, flashcards, educational videos (captions/slides), assignments, exam or deadline information.
+NOT LEARNING: social media, news, shopping, entertainment, messaging small talk, email triage, settings screens, routine work where nothing new is being learned, UI noise (menus, buttons, ads, cookie banners). When unsure, isLearning=false. Never invent anything the text does not support.`
+
+const ITEM_RULES = `For each learning episode give one item per distinct topic (usually 1, at most 3):
+- topicPath: broad → specific, 2–4 levels, e.g. ["Organic Chemistry","Nucleophilic substitution","SN1"].
+- seen: the actual content on screen — the specific claim, definition, formula or example as shown, paraphrased in ≤ 60 words, keeping key terms and symbols. For AI chats: what the AI explained.
+- bigPicture: one sentence: what the student was most likely trying to understand, and why (course, exam, assignment, curiosity).
+- evidence, then understanding: quote concrete signals or chat text as evidence, then choose
+  understood = positive evidence (correct answer, correct explain-back);
+  unclear = some sign of difficulty (one rephrased question, "simpler please", slowish reading);
+  struggling = strong or repeated signs (scrolled back 3+ times, much slower than usual, the same question asked again, "I don't get it", wrong answers);
+  unknown = no evidence either way (the default; never guess struggling).
+- openQuestions: up to 3 questions the student probably still has, phrased as they would ask; [] when nothing suggests one.
+- keyTerms: 3–8 terms from the text.
+- subjectMatchId: id of the listed subject this belongs to, else null. subjectNewName: only when no listed subject fits and this is a genuine area of study (short course-like name, e.g. "Linear Algebra"), else null. Never fill both.
+- assignment: only when the text names an assignment, exam or deadline: {title, course or null, dueAt as YYYY-MM-DD or null}; resolve relative dates ("Friday") from <today>. Otherwise null.`
+
+const CHAT_RULES = `AI-chat episodes (kind="ai_chat"): lines tagged [R] are usually the student's messages, [L] the AI's. A repeated or rephrased question is evidence of confusion. Put every student message in studentPrompts: text, hasContext (states their level, course, what they know or what confuses them), hasStructure (asks for a format, steps, length or numbered points), asksToBeQuizzed, asksForExamples. For other episodes studentPrompts is [].`
+
+const OUTPUT_RULES = `Return one result per episode, in input order, with its episodeId. reason: ≤ 15 words. confidence: how sure you are about isLearning (0–1). Non-learning episodes: items [] and studentPrompts [].`
+
+const EXAMPLES = `Example input:
+<episode id="x1" kind="reading" app="Safari" title="Photosynthesis – Khan Academy" dwell="4m10s">
+<signals>reading=slow (90 wpm vs 200 usual) · scrolled_back=4</signals>
+<text>
+[L] The light-dependent reactions take place in the thylakoid membranes.
+[L] The ATP and NADPH they make power the Calvin cycle in the stroma.
+</text>
+</episode>
+<episode id="x2" kind="other" app="Instagram" title="Instagram" dwell="2m0s">
+<signals>(none)</signals>
+<text>[C] Liked by anna_k and 212 others · Suggested for you · Follow</text>
+</episode>
+Example output:
+{"results":[{"episodeId":"x1","reason":"Studying photosynthesis on Khan Academy","isLearning":true,"confidence":0.95,"items":[{"topicPath":["Biology","Photosynthesis","Light-dependent reactions"],"seen":"Light-dependent reactions happen in the thylakoid membranes; the ATP and NADPH they make power the Calvin cycle in the stroma.","bigPicture":"Understanding how the two stages of photosynthesis connect, likely for a biology course.","evidence":"Read at 90 wpm vs 200 usual and scrolled back 4 times.","understanding":"struggling","openQuestions":["How do ATP and NADPH actually drive the Calvin cycle?"],"keyTerms":["thylakoid","ATP","NADPH","Calvin cycle","stroma"],"subjectMatchId":null,"subjectNewName":"Biology","assignment":null}],"studentPrompts":[]},{"episodeId":"x2","reason":"Social media feed","isLearning":false,"confidence":0.97,"items":[],"studentPrompts":[]}]}
+
+Example input:
+<episode id="x3" kind="ai_chat" app="Google Chrome" title="ChatGPT" dwell="3m5s">
+<signals>ai_questions=["what is a derivative","explain it simpler pls"]</signals>
+<text>
+[R] what is a derivative
+[L] A derivative measures how fast a function changes at a point: the slope of its tangent line.
+[R] explain it simpler pls
+[L] Think of speed: if f(t) is your position, f'(t) is how fast you are going right now.
+</text>
+</episode>
+Example output:
+{"results":[{"episodeId":"x3","reason":"Asking ChatGPT what a derivative is","isLearning":true,"confidence":0.95,"items":[{"topicPath":["Mathematics","Calculus","Derivatives"],"seen":"The AI explained a derivative as the instantaneous rate of change (slope of the tangent line), with position and speed as the analogy: f'(t) is the speed.","bigPicture":"Getting an intuitive grasp of what a derivative means, probably early in a calculus course.","evidence":"Asked 'explain it simpler pls' right after the first explanation.","understanding":"unclear","openQuestions":["How do I actually calculate a derivative?"],"keyTerms":["derivative","rate of change","tangent line","slope"],"subjectMatchId":null,"subjectNewName":"Calculus","assignment":null}],"studentPrompts":[{"text":"what is a derivative","hasContext":false,"hasStructure":false,"asksToBeQuizzed":false,"asksForExamples":false},{"text":"explain it simpler pls","hasContext":false,"hasStructure":false,"asksToBeQuizzed":false,"asksForExamples":false}]}]}`
+
+const SYSTEM_FULL = `You are the perception module of a study coach running on a student's Mac. You receive text read from the student's screen during one or more episodes (a continuous stretch in one app or page) plus behaviour signals. For each episode decide whether the student was trying to learn or understand something; if so, record it so precisely that a tutor could pick up exactly where the student is.
+
+${RULES}
+
+${ITEM_RULES}
+
+${CHAT_RULES}
+
+${OUTPUT_RULES}
+
+${EXAMPLES}`
+
+const SYSTEM_COMPACT = `You are the perception module of a study coach. From screen text of one episode plus behaviour signals, decide whether the student was trying to learn something, and if so record it precisely.
+
+${RULES}
+
+${ITEM_RULES}
+
+${CHAT_RULES}
+
+${OUTPUT_RULES}`
+
+function formatDwell(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds))
+  const m = Math.floor(s / 60)
+  return m > 0 ? `${m}m${s % 60}s` : `${s}s`
+}
+
+export function formatSignals(sig: ExtractInput['episodes'][number]['signals']): string {
+  const parts: string[] = []
+  if (sig.readingWpm != null && sig.baselineWpm != null && sig.baselineWpm > 0) {
+    const r = sig.readingWpm / sig.baselineWpm
+    const pace = r < 0.6 ? 'slow' : r > 1.5 ? 'fast (skimming)' : 'normal'
+    parts.push(
+      `reading=${pace} (${Math.round(sig.readingWpm)} wpm vs ${Math.round(sig.baselineWpm)} usual)`,
+    )
+  } else if (sig.readingWpm != null) {
+    parts.push(`reading=${Math.round(sig.readingWpm)} wpm`)
+  }
+  if (sig.scrollBacks > 0) parts.push(`scrolled_back=${sig.scrollBacks}`)
+  if (sig.revisitsToday > 0) parts.push(`revisits_today=${sig.revisitsToday}`)
+  if (sig.searches.length) parts.push(`searches=${JSON.stringify(sig.searches.slice(0, 5))}`)
+  if (sig.aiQuestions.length)
+    parts.push(`ai_questions=${JSON.stringify(sig.aiQuestions.slice(0, 5))}`)
+  return parts.length ? parts.join(' · ') : '(none)'
+}
+
+export function buildExtractUser(input: ExtractInput, today: string): string {
+  const subjects = input.subjects.length
+    ? input.subjects
+        .map(
+          (s) =>
+            `- id=${s.id} · ${s.name}${s.topConcepts.length ? ` · concepts: ${s.topConcepts.slice(0, 8).join(', ')}` : ''}`,
+        )
+        .join('\n')
+    : '(none yet)'
+  const episodes = input.episodes.map((ep) =>
+    tag(
+      'episode',
+      `${tag('signals', formatSignals(ep.signals))}\n${tag('text', ep.text || '(empty)')}`,
+      {
+        id: ep.id,
+        kind: ep.kind,
+        app: ep.app,
+        ai: ep.aiProvider,
+        url: ep.url,
+        title: ep.title,
+        dwell: formatDwell(ep.dwellSeconds),
+      },
+    ),
+  )
+  return [
+    tag('today', today),
+    tag(
+      'student',
+      `${input.student.aboutMe || '(no profile)'} · language: ${input.student.language}`,
+    ),
+    tag('subjects', subjects),
+    ...episodes,
+  ].join('\n')
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}([T ][\d:.]+(Z|[+-]\d{2}:?\d{2})?)?$/
+const clean = (xs: string[], max: number) =>
+  [...new Set(xs.map((x) => x.trim()).filter(Boolean))].slice(0, max)
+
+export function finalizeExtract(out: LlmExtract, input: ExtractInput): ExtractOutput {
+  const subjectIds = new Set(input.subjects.map((s) => s.id))
+  return {
+    results: input.episodes.map((ep, i) => {
+      const r = out.results.find((x) => x.episodeId === ep.id) ?? out.results[i]
+      if (!r) {
+        return {
+          episodeId: ep.id,
+          isLearning: false,
+          confidence: 0,
+          reason: 'No result from the model',
+          items: [],
+          studentPrompts: [],
+        }
+      }
+      const items = r.isLearning
+        ? r.items.slice(0, 3).map((it) => {
+            const evidence = it.evidence.trim()
+            const status =
+              (it.understanding === 'struggling' || it.understanding === 'understood') &&
+              evidence.length < 8
+                ? 'unknown'
+                : it.understanding
+            const matchId =
+              it.subjectMatchId && subjectIds.has(it.subjectMatchId) ? it.subjectMatchId : null
+            const topicPath = clean(it.topicPath, 4)
+            const newName = matchId ? null : it.subjectNewName?.trim() || topicPath[0] || null
+            return {
+              subject: { matchId, newName },
+              topicPath: topicPath.length ? topicPath : [newName ?? ep.title ?? ep.app],
+              seen: it.seen.trim(),
+              bigPicture: it.bigPicture.trim(),
+              understanding: { status, evidence },
+              openQuestions: clean(it.openQuestions, 3),
+              keyTerms: clean(it.keyTerms, 10),
+              assignment: it.assignment?.title.trim()
+                ? {
+                    title: it.assignment.title.trim(),
+                    course: it.assignment.course?.trim() || null,
+                    dueAt:
+                      it.assignment.dueAt && ISO_DATE.test(it.assignment.dueAt.trim())
+                        ? it.assignment.dueAt.trim()
+                        : null,
+                  }
+                : null,
+            }
+          })
+        : []
+      return {
+        episodeId: ep.id,
+        isLearning: r.isLearning,
+        confidence: Math.min(1, Math.max(0, r.confidence)),
+        reason: r.reason.trim(),
+        items,
+        studentPrompts:
+          ep.kind === 'ai_chat'
+            ? r.studentPrompts
+                .filter((p) => p.text.trim())
+                .map((p) => ({ ...p, text: p.text.trim() }))
+            : [],
+      }
+    }),
+  }
+}
+
+export const extractPrompt: PromptSpec<ExtractInput, LlmExtract, ExtractOutput> = {
+  id: 'P1',
+  task: 'extract',
+  version: 1,
+  tier: 'extract',
+  temperature: 0.1,
+  maxOutputTokens: 2400,
+  reasoningEffort: 'low',
+  schemaName: 'extraction',
+  schema: LlmExtract,
+  onDeviceOk: true,
+  cacheable: true,
+  language: (input) =>
+    looksFinnish(input.episodes.map((e) => `${e.title ?? ''}\n${e.text}`).join('\n')) ? 'fi' : 'en',
+  build: (input, ctx) => ({
+    system: ctx.onDevice ? SYSTEM_COMPACT : SYSTEM_FULL,
+    user: buildExtractUser(input, ctx.today),
+  }),
+  check(out, input) {
+    const issues: string[] = []
+    const ids = new Set(out.results.map((r) => r.episodeId))
+    const missing = input.episodes.filter((e) => !ids.has(e.id)).map((e) => e.id)
+    if (missing.length && out.results.length < input.episodes.length) {
+      issues.push(`missing results for episodes: ${missing.join(', ')}`)
+    }
+    for (const r of out.results) {
+      if (r.isLearning && r.items.length === 0)
+        issues.push(`episode ${r.episodeId} is learning but has no items`)
+    }
+    return issues
+  },
+  finalize: finalizeExtract,
+}

@@ -1,0 +1,1 @@
+{"at":"2026-10-24T15:10:33.904Z","suite":"extraction","file":"2026-10-24-extraction.md","pass":true,"thresholds":{"precision":1,"recall":0.95,"three parts always filled":1,"\"struggling\" without evidence":0,"episodes that errored":0},"models":["ovh:gpt-oss-20b","ovh:gpt-oss-120b"],"prompts":"P1v1 P3v1 P4v1 P5v1 P5vv1 P8v1","args":"eval-prompts extraction --provider ovh"}

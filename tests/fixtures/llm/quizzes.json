@@ -1,0 +1,126 @@
+{
+  "description": "10 checkpoint inputs × 5 questions = 50 questions for P5; every question is answered blind by the verifier.",
+  "cases": [
+    {
+      "id": "q01-carbocations",
+      "input": {
+        "concepts": ["Carbocation stability", "SN1 mechanism"],
+        "probes": [
+          { "concept": "Carbocation stability", "misconception": "Primary carbocations are the most stable because they are least crowded" },
+          { "concept": "SN1 mechanism", "misconception": "The nucleophile concentration affects the SN1 rate" }
+        ],
+        "carry": ["Leaving groups"], "n": 5, "language": "en",
+        "studied": "[L] SN1 happens in two steps: the leaving group leaves first (slow, rate-determining), giving a planar carbocation; then the nucleophile attacks from either face, so a chiral substrate gives a racemic mix. Rate = k[R–X], independent of the nucleophile. Tertiary carbocations are most stable: alkyl groups donate electron density by hyperconjugation and induction. Good leaving groups are weak bases (I⁻, Br⁻, TsO⁻); OH⁻ is a poor leaving group unless protonated. Polar protic solvents stabilise the ions and favour SN1."
+      }
+    },
+    {
+      "id": "q02-sn2",
+      "input": {
+        "concepts": ["SN2 mechanism", "Steric hindrance", "Solvent effects"],
+        "probes": [
+          { "concept": "SN2 mechanism", "misconception": "SN2 gives a racemic product" },
+          { "concept": "Steric hindrance", "misconception": "Tertiary substrates react fastest by SN2" },
+          { "concept": "Solvent effects", "misconception": "Polar protic solvents speed up SN2 by stabilising the nucleophile" }
+        ],
+        "carry": [], "n": 5, "language": "en",
+        "studied": "[L] SN2 is one concerted step: the nucleophile attacks the carbon from the back while the leaving group leaves, inverting the configuration (Walden inversion). Rate = k[R–X][Nu]. Bulky groups block the backside, so the order is methyl > primary > secondary, and tertiary substrates essentially do not react by SN2. Polar aprotic solvents (DMSO, acetone, DMF) leave anions unsolvated and reactive, accelerating SN2; protic solvents hydrogen-bond to the nucleophile and slow it down."
+      }
+    },
+    {
+      "id": "q03-determinants",
+      "input": {
+        "concepts": ["Determinant properties", "Invertibility"],
+        "probes": [
+          { "concept": "Determinant properties", "misconception": "det(A + B) = det(A) + det(B)" },
+          { "concept": "Invertibility", "misconception": "A matrix with a zero entry cannot be invertible" }
+        ],
+        "carry": ["Cofactor expansion"], "n": 5, "language": "en",
+        "studied": "[L] The determinant of a square matrix measures how the linear map scales volume. det(AB) = det(A)·det(B), det(Aᵀ) = det(A), swapping two rows flips the sign, multiplying a row by k multiplies det by k, and adding a multiple of one row to another leaves det unchanged. A is invertible exactly when det(A) ≠ 0. For a 3×3 matrix, cofactor expansion along the first row: det(A) = a11·M11 − a12·M12 + a13·M13."
+      }
+    },
+    {
+      "id": "q04-eigen",
+      "input": {
+        "concepts": ["Eigenvalues", "Eigenvectors"],
+        "probes": [
+          { "concept": "Eigenvectors", "misconception": "The zero vector counts as an eigenvector" },
+          { "concept": "Eigenvalues", "misconception": "Eigenvalues are the diagonal entries of any matrix" }
+        ],
+        "carry": [], "n": 5, "language": "en",
+        "studied": "[L] A nonzero vector v is an eigenvector of A if Av = λv; λ is its eigenvalue. Eigenvalues solve det(A − λI) = 0. Example: A = [[2,1],[1,2]] has λ = 3 with v = (1,1) and λ = 1 with v = (1,−1). Geometrically, an eigenvector keeps its direction under A and is only scaled by λ. For triangular matrices the eigenvalues are the diagonal entries; in general they are not. The sum of eigenvalues equals the trace and their product equals the determinant."
+      }
+    },
+    {
+      "id": "q05-photosynthesis",
+      "input": {
+        "concepts": ["Light-dependent reactions", "Calvin cycle"],
+        "probes": [
+          { "concept": "Light-dependent reactions", "misconception": "The oxygen released comes from carbon dioxide" },
+          { "concept": "Calvin cycle", "misconception": "The Calvin cycle does not depend on light at all" }
+        ],
+        "carry": [], "n": 5, "language": "en",
+        "studied": "[L] Photosynthesis has two linked stages. In the light-dependent reactions on the thylakoid membranes, light energy splits water (photolysis), releasing O₂ and producing ATP and NADPH. In the Calvin cycle in the stroma, the enzyme RuBisCO fixes CO₂ onto RuBP; ATP and NADPH then reduce the products to G3P, some of which leaves to make glucose while the rest regenerates RuBP. The Calvin cycle needs a steady supply of ATP and NADPH, so it stops soon after the light goes out."
+      }
+    },
+    {
+      "id": "q06-fi-derivaatta",
+      "input": {
+        "concepts": ["Derivaatan määritelmä", "Derivaatta muutosnopeutena"],
+        "probes": [
+          { "concept": "Derivaatan määritelmä", "misconception": "Derivaatta on funktion arvo kyseisessä pisteessä" },
+          { "concept": "Derivaatta muutosnopeutena", "misconception": "Negatiivinen derivaatta tarkoittaa, että funktion arvo on negatiivinen" }
+        ],
+        "carry": [], "n": 5, "language": "fi",
+        "studied": "[L] Derivaatta f'(a) kertoo funktion hetkellisen muutosnopeuden kohdassa a. Graafisesti se on kuvaajalle kohtaan a piirretyn tangentin kulmakerroin. Määritelmä: f'(a) = lim h→0 (f(a+h) − f(a))/h. Esimerkiksi f(x) = x² antaa f'(x) = 2x, joten f'(3) = 6. Jos derivaatta on positiivinen, funktio on kasvava; jos negatiivinen, vähenevä – riippumatta siitä, onko funktion arvo itse positiivinen vai negatiivinen. Jos f(t) on paikka, f'(t) on nopeus."
+      }
+    },
+    {
+      "id": "q07-python-classes",
+      "input": {
+        "concepts": ["Classes and instances", "The self parameter"],
+        "probes": [
+          { "concept": "Classes and instances", "misconception": "Changing an instance attribute changes it for every instance" },
+          { "concept": "The self parameter", "misconception": "self is a keyword that must be passed explicitly when calling a method" }
+        ],
+        "carry": [], "n": 5, "language": "en",
+        "studied": "[L] A class is a blueprint; calling it creates an instance. __init__ sets up the new instance's attributes. When you call obj.method(), Python passes obj automatically as the first argument, conventionally named self, so obj.method() is the same as Class.method(obj). Attributes assigned on self belong to that instance only; attributes defined in the class body are shared by all instances unless an instance assigns its own value with the same name."
+      }
+    },
+    {
+      "id": "q08-supply-demand",
+      "input": {
+        "concepts": ["Demand shifts vs movements", "Market equilibrium"],
+        "probes": [
+          { "concept": "Demand shifts vs movements", "misconception": "A price change shifts the demand curve" },
+          { "concept": "Market equilibrium", "misconception": "A rise in demand lowers the equilibrium price" }
+        ],
+        "carry": [], "n": 5, "language": "en",
+        "studied": "[L] The demand curve shows quantity demanded at each price. A change in the good's own price moves along the curve; changes in income, tastes, prices of substitutes or complements, or expectations shift the whole curve. Equilibrium is where quantity supplied equals quantity demanded. If demand shifts right while supply is unchanged, both equilibrium price and quantity rise. A price ceiling below equilibrium creates a shortage."
+      }
+    },
+    {
+      "id": "q09-newton",
+      "input": {
+        "concepts": ["Newton's first law", "Newton's third law"],
+        "probes": [
+          { "concept": "Newton's first law", "misconception": "A moving object needs a constant net force to keep moving" },
+          { "concept": "Newton's third law", "misconception": "Action and reaction forces cancel because they act on the same object" }
+        ],
+        "carry": ["Net force and acceleration"], "n": 5, "language": "en",
+        "studied": "[L] First law: an object keeps its velocity (possibly zero) unless a net force acts on it. Second law: F_net = m·a, so acceleration is in the direction of the net force. Third law: forces come in pairs; if A pushes B, B pushes A with an equal and opposite force. The two forces act on different objects, so they never cancel each other. A book resting on a table: gravity and the normal force balance, but they are not a third-law pair."
+      }
+    },
+    {
+      "id": "q10-membrane-transport",
+      "input": {
+        "concepts": ["Osmosis", "Active transport"],
+        "probes": [
+          { "concept": "Osmosis", "misconception": "In osmosis water moves toward lower solute concentration" },
+          { "concept": "Active transport", "misconception": "Active transport moves substances down their concentration gradient" }
+        ],
+        "carry": ["Diffusion"], "n": 5, "language": "en",
+        "studied": "[L] Diffusion is the net movement of particles from higher to lower concentration, needing no energy. Osmosis is the diffusion of water across a selectively permeable membrane toward the side with higher solute concentration (lower water potential). A red blood cell in pure water swells and may burst. Active transport uses ATP and carrier proteins such as the Na⁺/K⁺ pump to move substances against their concentration gradient."
+      }
+    }
+  ]
+}
