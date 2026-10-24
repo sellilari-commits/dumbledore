@@ -1,6 +1,7 @@
 import type { LearnItem } from '@shared/domain'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createHarness, type Harness, inChatGPT } from '../testing/harness'
+import { CHECKPOINT_QUESTION } from './session-flow'
 
 /** The lost-step bug: a step counts as delivered only once its paste is confirmed. */
 describe('SessionFlow — failed pastes', () => {
@@ -67,5 +68,62 @@ describe('SessionFlow — failed pastes', () => {
     await h.core.sessions.next()
     expect(h.core.services.study.current()?.index).toBe(0)
     expect(currentItem()?.promptSent).not.toBeNull()
+  })
+})
+
+describe('SessionFlow — checkpoint: "Do you want to have a quiz or continue?"', () => {
+  let h: Harness
+  beforeEach(async () => {
+    h = await createHarness()
+    await inChatGPT(h)
+  })
+
+  const toCheckpoint = async () => {
+    const orgo = h.services.repos.subjects.findByName('Organic Chemistry')
+    if (!orgo) throw new Error('seed subject missing')
+    await h.core.sessions.start({ subjectId: orgo.id, goal: null, question: null })
+    await h.core.sessions.next()
+    const r = await h.core.sessions.next()
+    if (r.instruction.kind !== 'quiz') throw new Error('no checkpoint reached')
+    return r.instruction
+  }
+  const choices = () => h.core.overlay.toasts.list().filter((t) => t.body === CHECKPOINT_QUESTION)
+  const choice = () => {
+    const [c] = choices()
+    if (!c) throw new Error('no checkpoint question')
+    return c
+  }
+
+  it('asks instead of opening the quiz; Quiz opens the card', async () => {
+    const quiz = await toCheckpoint()
+    expect(h.core.overlay.state.quiz).toBeNull()
+    expect(choice()).toMatchObject({ ttlMs: 0 })
+    expect(choice().actions.map((a) => a.label)).toEqual(['Quiz', 'Continue'])
+    await h.core.overlay.toasts.act(choice().id, 'quiz')
+    expect(h.core.overlay.state.quiz).toEqual({ quizId: quiz.quizId })
+    expect(choices()).toEqual([])
+  })
+
+  it('Continue skips the checkpoint and pastes the next step', async () => {
+    const quiz = await toCheckpoint()
+    const writes = h.helper.callsTo('input.write').length
+    await h.core.overlay.toasts.act(choice().id, 'continue')
+    const session = h.core.services.study.current()
+    expect(session?.items.find((i) => i.id === quiz.itemId)?.status).toBe('skipped')
+    expect(h.helper.callsTo('input.write')).toHaveLength(writes + 1)
+    expect(h.core.overlay.state.quiz).toBeNull()
+    expect(choices()).toEqual([])
+  })
+
+  it('closing the question leaves the checkpoint; the next tap asks again (once)', async () => {
+    await toCheckpoint()
+    h.core.overlay.toasts.dismiss(choice().id)
+    expect(choices()).toEqual([])
+    const again = await h.core.sessions.next()
+    expect(again.instruction.kind).toBe('quiz')
+    expect(choices()).toHaveLength(1)
+    await h.core.sessions.next()
+    expect(choices()).toHaveLength(1)
+    expect(h.core.overlay.state.quiz).toBeNull()
   })
 })

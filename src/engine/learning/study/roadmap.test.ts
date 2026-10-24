@@ -10,6 +10,7 @@ import {
   closeItem,
   completionSummary,
   currentIndex,
+  deferCheckpoint,
   recentMisses,
 } from './roadmap-ops'
 import { deriveSubjectName, resolveSubject } from './subject-resolver'
@@ -117,6 +118,26 @@ describe('roadmap ops', () => {
     expect(recentMisses(r)).toEqual([
       { concept: 'Carbocation stability', misconception: 'Primary is most stable' },
     ])
+  })
+
+  it('"Continue" skips a checkpoint and carries everything it covers into the next one', () => {
+    let r: Roadmap = { ...make(), carry: ['Nucleophiles'] }
+    r = closeItem(closeItem(r, 0, NOW), 1, NOW)
+    const cp1 = r.items[2] as CheckpointItem
+    const cp2Before = r.items[4] as CheckpointItem
+    const after = deferCheckpoint(r, cp1.id, NOW)
+    expect(after.items[2]).toMatchObject({ status: 'skipped', score: null })
+    expect(after.items[3]?.status).toBe('current')
+    expect(after.carry).toEqual(['Nucleophiles', ...cp1.covers])
+    const cp2 = after.items[4] as CheckpointItem
+    expect(cp2.covers).toEqual(
+      expect.arrayContaining([...cp2Before.covers, ...cp1.covers, 'Nucleophiles']),
+    )
+    expect(cp2.nQuestions).toBeGreaterThan(cp2Before.nQuestions)
+    expect(cp2.quizId).toBeNull()
+    // Already skipped (or not a checkpoint): nothing changes.
+    expect(deferCheckpoint(after, cp1.id, NOW)).toBe(after)
+    expect(deferCheckpoint(after, after.items[3]?.id ?? '', NOW)).toBe(after)
   })
 
   it('gives carried concepts without a diagnosed misconception a generic probe', () => {

@@ -39,7 +39,11 @@ export const RETURN_HOME_MS = 1500
 export const HIDE_INTO_EDGE_MS = 1200
 export const NUDGE_DOT_MS = 60 * 60 * 1000
 /** The only boxes shown beside the orb: answers to an explicit gesture. */
-const SHOWN_TOASTS: ReadonlySet<ToastPurpose> = new Set(['selection', 'instruction-reply'])
+const SHOWN_TOASTS: ReadonlySet<ToastPurpose> = new Set([
+  'selection',
+  'instruction-reply',
+  'checkpoint-choice',
+])
 
 export type NudgeChoice = 'accept' | 'dismiss' | 'snooze'
 
@@ -237,8 +241,9 @@ export class OverlayController {
   }
 
   /**
-   * No pop-up boxes beside the orb (Ilari, 2026-10-25), except the two that answer an explicit
-   * gesture: the menu for selected text and the reply to a `/d …` instruction. A nudge goes
+   * No pop-up boxes beside the orb (Ilari, 2026-10-25), except the ones that answer an explicit
+   * gesture: the menu for selected text, the reply to a `/d …` instruction and the checkpoint's
+   * "quiz or continue?" question. A nudge goes
    * straight to the orb's attention dot (still reachable from the panel); errors are logged. The
    * timer's macOS notification is separate and stays.
    */
@@ -247,6 +252,11 @@ export class OverlayController {
     if (spec.nudgeId) this.collapseNudge(spec.nudgeId)
     else if (spec.kind === 'error') console.warn('[overlay]', spec.title, spec.body)
     return ''
+  }
+
+  /** Removes one box (e.g. a stale question that was asked again). */
+  removeToast(toastId: string): void {
+    this.toasts.removeWhere((t) => t.id === toastId)
   }
 
   /** Removes a nudge from the toasts and the orange dot (after the user acted on it). */

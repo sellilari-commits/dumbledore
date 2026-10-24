@@ -84,10 +84,11 @@ describe('StudyService — full session', () => {
     const prefetchedId = checkpoint(roadmapOf(h), 2).quizId
     expect(prefetchedId).not.toBeNull()
 
-    // Checkpoint 1: the prefetched quiz opens; Next can't skip it.
+    // Checkpoint 1: the prefetched quiz is handed out; Next can't skip it. The shell asks
+    // "quiz or continue?" first, so the engine doesn't open the card itself.
     const quiz1 = await s.next(chat())
     expect(quiz1).toEqual({ kind: 'quiz', quizId: prefetchedId, itemId: r.items[2]?.id })
-    expect(h.quizOpens).toContain(prefetchedId)
+    expect(h.quizOpens).toEqual([])
     expect(callsOf(h, 'makeCheckpoint')).toHaveLength(1)
     expect(s.current()).toMatchObject({ phase: 'checkpoint', index: 2, nextAction: 'open_quiz' })
     expect(await s.next(chat())).toEqual(quiz1)
@@ -211,6 +212,27 @@ describe('StudyService — full session', () => {
       inboxState: 'accepted',
       topicPath: ['Organic Chemistry', 'Leaving groups'],
     })
+  })
+})
+
+describe('StudyService — "Continue" at a checkpoint', () => {
+  it('skips the checkpoint, carries its concepts and hands out the next step', async () => {
+    const { h, subject } = orgoHarness()
+    const s = h.service
+    await s.start({ subjectId: subject.id, goal: null, question: null }, chat())
+    await s.next(chat())
+    await flush()
+    const atCheckpoint = await s.next(chat())
+    expect(atCheckpoint.kind).toBe('quiz')
+    const cp1 = checkpoint(roadmapOf(h), 2)
+    const next = await s.skipCheckpoint(cp1.id, chat())
+    const r = roadmapOf(h)
+    expect(next).toMatchObject({ kind: 'paste', itemId: r.items[3]?.id })
+    expect(r.items[2]?.status).toBe('skipped')
+    expect(r.carry).toEqual(expect.arrayContaining(cp1.covers))
+    expect(checkpoint(r, 4).covers).toEqual(expect.arrayContaining(cp1.covers))
+    expect(s.current()).toMatchObject({ phase: 'step', index: 3 })
+    expect(h.quizOpens).toEqual([])
   })
 })
 

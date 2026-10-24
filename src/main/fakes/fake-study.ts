@@ -103,6 +103,16 @@ export class FakeStudyService implements StudyService {
     return this.enter(roadmap, this.index + 1, ctx)
   }
 
+  /** "Continue" at a checkpoint: skip it (no score) and paste the next step. */
+  async skipCheckpoint(itemId: Id, ctx: ChatContext): Promise<StepInstruction> {
+    const roadmap = this.roadmapId ? this.deps.repos.roadmaps.get(this.roadmapId) : null
+    if (!roadmap) return { kind: 'wait', reason: 'No study session is running.' }
+    const item = roadmap.items[this.index]
+    if (item?.kind !== 'checkpoint' || item.id !== itemId) return this.next(ctx)
+    this.setItem(roadmap, this.index, { status: 'skipped' })
+    return this.enter(roadmap, this.index + 1, ctx)
+  }
+
   /** The shell couldn't paste step `itemId`: it no longer counts as delivered. */
   pasteFailed(itemId: Id): void {
     const roadmap = this.roadmapId ? this.deps.repos.roadmaps.get(this.roadmapId) : null

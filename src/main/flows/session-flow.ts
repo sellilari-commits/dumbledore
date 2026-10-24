@@ -1,7 +1,8 @@
 /**
  * Study-session flow (F2): asks StudyService for the next StepInstruction and carries it out —
- * paste the prompt into the AI chat (ChatWriter) with a coach-tip toast, open the checkpoint quiz
- * card, or finish the roadmap and schedule the follow-up. A step counts as delivered only once the
+ * paste the prompt into the AI chat (ChatWriter) with a coach-tip toast, ask "quiz or continue?" at
+ * a checkpoint (Quiz opens the quiz card, Continue skips it and pastes the next step), or finish
+ * the roadmap and schedule the follow-up. A step counts as delivered only once the
  * paste is confirmed: a failed, cancelled or skipped paste is reported back (`pasteFailed`), so the
  * next tap pastes the same step again; the failure toast's "Try again" does that at once.
  */
@@ -26,7 +27,11 @@ export interface SessionFlowDeps {
   writer: ChatWriter
   thinking: Thinking
   surfaces: SurfaceControl
-  overlay: { openQuiz(quizId: string): void; showToast(spec: ToastSpec): string }
+  overlay: {
+    openQuiz(quizId: string): void
+    showToast(spec: ToastSpec): string
+    removeToast?(toastId: string): void
+  }
   /** Runs a coach action (late-bound: CoachActions depends on this flow). */
   runAction?: (action: CoachAction) => Promise<void>
 }
@@ -45,7 +50,12 @@ export interface StepResult {
   write: WriteOutcome | null
 }
 
+export const CHECKPOINT_QUESTION = 'Do you want to have a quiz or continue?'
+
 export class SessionFlow {
+  /** The open "quiz or continue?" box, replaced when the question is asked again. */
+  private choiceToast: string | null = null
+
   constructor(private readonly deps: SessionFlowDeps) {}
 
   /** Late binding: CoachActions is built after this flow and depends on it. */
@@ -73,8 +83,10 @@ export class SessionFlow {
 
   /** Carries out what the study engine asked for. */
   async perform(instruction: StepInstruction, opts: StepOptions = {}): Promise<StepResult> {
-    const { overlay, writer, surfaces, study } = this.deps
+    const { overlay, writer, study } = this.deps
     let write: WriteOutcome | null = null
+    // The session moved past the checkpoint: its "quiz or continue?" box is stale.
+    if (instruction.kind !== 'quiz') this.dropChoice()
     if (opts.signal?.aborted) {
       if (instruction.kind === 'paste') study.pasteFailed(instruction.itemId)
       return { session: study.current(), instruction, write }
@@ -97,8 +109,7 @@ export class SessionFlow {
         break
       }
       case 'quiz':
-        if (surfaces.isOpen('panel')) await surfaces.close('panel')
-        overlay.openQuiz(instruction.quizId)
+        this.askCheckpoint(instruction.quizId, instruction.itemId)
         break
       case 'complete':
         this.complete(instruction.summary)
@@ -113,6 +124,62 @@ export class SessionFlow {
         break
     }
     return { session: study.current(), instruction, write }
+  }
+
+  /**
+   * A checkpoint is next: ask "quiz or continue?" instead of opening the quiz. The box stays until
+   * answered; closing it leaves the checkpoint current, so the next tap asks again.
+   */
+  private askCheckpoint(quizId: string, itemId: string): void {
+    this.dropChoice()
+    const id = this.deps.overlay.showToast({
+      kind: 'tip',
+      purpose: 'checkpoint-choice',
+      title: 'Checkpoint',
+      body: CHECKPOINT_QUESTION,
+      ttlMs: 0,
+      actions: [
+        { id: 'quiz', label: 'Quiz', primary: true, run: () => this.openQuiz(quizId) },
+        {
+          id: 'continue',
+          label: 'Continue',
+          run: async () => {
+            await this.continuePast(itemId)
+          },
+        },
+      ],
+      onDismiss: () => {
+        this.choiceToast = null
+      },
+    })
+    this.choiceToast = id || null
+  }
+
+  private dropChoice(): void {
+    if (this.choiceToast) this.deps.overlay.removeToast?.(this.choiceToast)
+    this.choiceToast = null
+  }
+
+  /** "Quiz": the checkpoint quiz card, as before. */
+  async openQuiz(quizId: string): Promise<void> {
+    this.choiceToast = null
+    const { surfaces, overlay } = this.deps
+    if (surfaces.isOpen('panel')) await surfaces.close('panel')
+    overlay.openQuiz(quizId)
+  }
+
+  /** "Continue": skip the checkpoint (its concepts carry on) and paste the next step. */
+  async continuePast(itemId: string): Promise<StepResult | null> {
+    this.choiceToast = null
+    try {
+      const instruction = await this.deps.thinking.run('Writing the next prompt…', () =>
+        this.deps.study.skipCheckpoint(itemId, this.context()),
+      )
+      return await this.perform(instruction)
+    } catch (error) {
+      console.warn('[session] continue past checkpoint failed', error)
+      return null
+    }
   }
 
   /**

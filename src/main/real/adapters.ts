@@ -28,6 +28,7 @@ export function withoutSessionEcho(study: StudyService): StudyService {
     start: (input, ctx) => study.start(input, ctx),
     next: (ctx) => study.next(ctx),
     pasteFailed: (itemId) => study.pasteFailed(itemId),
+    skipCheckpoint: (itemId, ctx) => study.skipCheckpoint(itemId, ctx),
     pause: () => study.pause(),
     end: () => study.end(),
     onChange: () => () => {},

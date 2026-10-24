@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type InvokeChannel, ipcInvoke } from '@shared/ipc'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
+import { CHECKPOINT_QUESTION } from '../flows/session-flow'
 import {
   createHarness,
   flush,
@@ -112,6 +113,14 @@ describe('IPC handlers', () => {
     expect((await call('session.next'))?.index).toBe(1)
     const atCheckpoint = await call('session.next')
     expect(atCheckpoint?.phase).toBe('checkpoint')
+    // "Do you want to have a quiz or continue?" → Quiz.
+    const choice = h.core.overlay.state.toasts.find((t) => t.body === CHECKPOINT_QUESTION)
+    if (!choice) throw new Error('no checkpoint question')
+    await call(
+      'overlay.action',
+      { type: 'toastAction', toastId: choice.id, actionId: 'quiz' },
+      OVERLAY,
+    )
     const quizId = h.core.overlay.state.quiz?.quizId
     if (!quizId) throw new Error('checkpoint quiz did not open')
     const quiz = await call('quiz.get', quizId)

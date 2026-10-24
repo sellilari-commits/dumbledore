@@ -6,6 +6,7 @@ import { FakeBrain } from '@engine/testing/fake-brain'
 import { currentTopic, listTopics } from '@shared/topics'
 import { describe, expect, it } from 'vitest'
 import { makeFocused } from '../fakes/fake-helper'
+import { CHECKPOINT_QUESTION } from '../flows/session-flow'
 import { CHAT_FRAME, chatInput, createHarness, flush, inChatGPT, NOTES } from '../testing/harness'
 
 /** A harness whose taps act at once (no double-tap window); the guard has its own tests. */
@@ -167,6 +168,12 @@ describe('ShortcutRouter', () => {
     // The student sent the pasted step, so the box is empty again (text in it would be rewritten).
     h.helper.state.fieldValue = ''
     await h.core.router.gesture('tap')
+    // It asks first: "Do you want to have a quiz or continue?"; Quiz opens the card.
+    expect(h.core.overlay.state.quiz).toBeNull()
+    const choice = h.core.overlay.state.toasts.find((t) => t.body === CHECKPOINT_QUESTION)
+    if (!choice) throw new Error('no checkpoint question')
+    expect(choice.actions.map((a) => a.label)).toEqual(['Quiz', 'Continue'])
+    await h.core.overlay.toasts.act(choice.id, 'quiz')
     expect(h.core.overlay.state.quiz).not.toBeNull()
     // With the quiz card open, a tap acts as Enter on the overlay.
     expect(await h.core.router.gesture('tap')).toEqual({ kind: 'enter', surface: 'overlay' })

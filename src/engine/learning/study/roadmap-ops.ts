@@ -104,33 +104,57 @@ export function applyCheckpointOutcome(
     ...roadmap.carry.filter((c) => missed.has(norm(c)) || !passed.has(norm(c))),
     ...outcome.missed,
   ])
-  let next = withItem(roadmap, { ...item, quizId: outcome.quizId, score: outcome.score }, nowIso)
+  const next = withItem(roadmap, { ...item, quizId: outcome.quizId, score: outcome.score }, nowIso)
   next.carry = carry
-  const upcoming = next.items.find(
+  return closeItem(carryIntoNext(next, idx, carry, outcome.gaps, nowIso), idx, nowIso, 'done')
+}
+
+/**
+ * "Continue" at a checkpoint instead of its quiz: it is skipped without a score, and everything it
+ * covers is carried into the next checkpoint (widened the same way as for misses), so nothing goes
+ * untested. A checkpoint that is unknown, done or already skipped leaves the roadmap unchanged.
+ */
+export function deferCheckpoint(roadmap: Roadmap, itemId: Id, nowIso: string): Roadmap {
+  const idx = roadmap.items.findIndex((i) => i.id === itemId)
+  const item = roadmap.items[idx]
+  if (!isCheckpoint(item) || item.status === 'done' || item.status === 'skipped') return roadmap
+  const carry = uniqueNames([...roadmap.carry, ...item.covers])
+  const next = cloneRoadmap(roadmap)
+  next.carry = carry
+  return closeItem(carryIntoNext(next, idx, carry, item.probes, nowIso), idx, nowIso, 'skipped')
+}
+
+/** Widens the next open checkpoint after `idx` to re-test every carried concept (+1 question each). */
+function carryIntoNext(
+  roadmap: Roadmap,
+  idx: number,
+  carry: string[],
+  gaps: Probe[],
+  nowIso: string,
+): Roadmap {
+  const upcoming = roadmap.items.find(
     (i): i is CheckpointItem =>
       isCheckpoint(i) && i.idx > idx && i.status !== 'done' && i.status !== 'skipped',
   )
-  if (upcoming && carry.length > 0) {
-    const carried = new Set(carry.map(norm))
-    const nQuestions = questionsFor(upcoming.nQuestions, carry.length)
-    next = withItem(
-      next,
-      {
-        ...upcoming,
-        covers: uniqueNames([...upcoming.covers, ...carry]),
-        probes: uniqueBy(
-          [...upcoming.probes, ...outcome.gaps.filter((g) => carried.has(norm(g.concept)))],
-          (p) => `${norm(p.concept)}|${norm(p.misconception)}`,
-        ),
-        nQuestions,
-        title: checkpointTitle(checkpointOrdinal(next, upcoming.id), nQuestions),
-        // A quiz made before this miss can't re-test it; make a fresh one just in time.
-        quizId: null,
-      },
-      nowIso,
-    )
-  }
-  return closeItem(next, idx, nowIso, 'done')
+  if (!upcoming || carry.length === 0) return roadmap
+  const carried = new Set(carry.map(norm))
+  const nQuestions = questionsFor(upcoming.nQuestions, carry.length)
+  return withItem(
+    roadmap,
+    {
+      ...upcoming,
+      covers: uniqueNames([...upcoming.covers, ...carry]),
+      probes: uniqueBy(
+        [...upcoming.probes, ...gaps.filter((g) => carried.has(norm(g.concept)))],
+        (p) => `${norm(p.concept)}|${norm(p.misconception)}`,
+      ),
+      nQuestions,
+      title: checkpointTitle(checkpointOrdinal(roadmap, upcoming.id), nQuestions),
+      // A quiz made before this miss can't re-test it; make a fresh one just in time.
+      quizId: null,
+    },
+    nowIso,
+  )
 }
 
 /**

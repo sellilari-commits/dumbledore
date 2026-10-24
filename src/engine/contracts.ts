@@ -410,6 +410,12 @@ export interface StudyService {
    * hands out the same prompt again instead of advancing. Unknown or finished items are ignored.
    */
   pasteFailed(itemId: Id): void
+  /**
+   * The student chose "Continue" at checkpoint `itemId` instead of its quiz: the checkpoint is
+   * skipped, everything it covers carries into the next checkpoint, and the next instruction
+   * (usually the next step's paste) is returned. Unknown or finished checkpoints just continue.
+   */
+  skipCheckpoint(itemId: Id, ctx: ChatContext): Promise<StepInstruction>
   pause(): void
   end(): void
   onChange(listener: (session: SessionState | null) => void): () => void

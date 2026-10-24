@@ -7,6 +7,7 @@
 import type { StepInstruction } from '@shared/state'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { StepResult } from '../flows/session-flow'
+import { CHECKPOINT_QUESTION } from '../flows/session-flow'
 import { startShell } from './shell-kit'
 import {
   CHATGPT,
@@ -110,8 +111,12 @@ describe('composeReal: study session in an AI chat', () => {
     const checkpointCall = brain.calls.find((c) => c.method === 'makeCheckpoint')
     expect(JSON.stringify(checkpointCall?.input)).toContain('The Calvin cycle uses ATP and NADPH')
 
-    // Next: the checkpoint quiz opens on the overlay (nothing pasted).
+    // Next: a checkpoint. Dumbledore asks "quiz or continue?" (nothing pasted); Quiz opens it.
     const quizId = quizOf(await shell.core.sessions.next())
+    expect(shell.core.overlay.state.quiz).toBeNull()
+    const choice = shell.core.overlay.state.toasts.find((t) => t.body === CHECKPOINT_QUESTION)
+    if (!choice) throw new Error('no checkpoint question')
+    await shell.core.overlay.toasts.act(choice.id, 'quiz')
     expect(shell.core.overlay.state.quiz).toEqual({ quizId })
     expect(services.study.current()?.phase).toBe('checkpoint')
     expect(helper.writes()).toHaveLength(2)

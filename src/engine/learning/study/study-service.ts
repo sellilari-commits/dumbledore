@@ -18,6 +18,7 @@ import {
   closeItem,
   completionSummary,
   currentIndex,
+  deferCheckpoint,
   isCheckpoint,
   isDelivered,
   isLearn,
@@ -106,6 +107,29 @@ export class StudyServiceImpl implements StudyService {
       const advanced = closeItem(roadmap, idx, this.deps.clock.nowIso())
       this.save(roadmap, advanced)
       touchConcepts(this.deps, roadmap.subjectId, item.concepts)
+      return await this.deliverCurrent(ctx)
+    } finally {
+      this.gate.finish(seq)
+    }
+  }
+
+  async skipCheckpoint(itemId: Id, ctx: ChatContext): Promise<StepInstruction> {
+    const meta = this.meta
+    if (!meta) throw new StudyError('No study session is running.')
+    if (meta.phase === 'planning') return planningWait()
+    const waiting = this.gate.waiting()
+    if (waiting) return waiting
+    const seq = this.gate.begin('next')
+    try {
+      if (ctx.assistant) meta.assistant = ctx.assistant
+      const roadmap = this.load()
+      const deferred = deferCheckpoint(roadmap, itemId, this.deps.clock.nowIso())
+      if (deferred !== roadmap) {
+        this.save(roadmap, deferred)
+        this.quizzes.clearFailures(itemId)
+        this.settle()
+      }
+      if (deferred.status === 'done') return this.complete(deferred)
       return await this.deliverCurrent(ctx)
     } finally {
       this.gate.finish(seq)
@@ -263,7 +287,7 @@ export class StudyServiceImpl implements StudyService {
       this.quizzes.clearFailures(item.id)
       this.settle()
       this.emitChange()
-      this.deps.bus.emit('quiz:open', { quizId: quiz.id })
+      // The shell asks "quiz or continue?" first and opens the quiz card only on "Quiz".
       return { kind: 'quiz', quizId: quiz.id, itemId: item.id }
     } catch (error) {
       return this.checkpointFailed(item, ctx, error)
