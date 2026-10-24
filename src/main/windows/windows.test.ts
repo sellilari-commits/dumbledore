@@ -1,13 +1,20 @@
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { CHAT_PANEL_WIDTH, chatPanelHeight, isPromptRoute } from '@shared/chat-panel'
+import {
+  CHAT_PANEL_WIDTH,
+  chatPanelHeight,
+  chatSizeLimits,
+  clampChatSize,
+  isPromptRoute,
+} from '@shared/chat-panel'
 import { describe, expect, it, vi } from 'vitest'
 import { DISPLAY, SECOND_DISPLAY } from '../testing/harness'
 import { fileChatSpotStore, memoryChatSpotStore } from './chat-spots'
 import {
   askbarBounds,
   askbarOpenBounds,
+  askbarResize,
   chatBounds,
   chatOpenBounds,
   clampRect,
@@ -15,6 +22,7 @@ import {
   panelBounds,
   panelOpenSize,
   resizeKeepingTop,
+  sameRect,
 } from './placement'
 import { mimeType, resolveRendererPath, responseHeaders } from './protocol'
 import { devCsp, isExternalLink, isOwnUrl, PROD_CSP, pageUrl, rendererBase } from './urls'
@@ -207,6 +215,52 @@ describe('window placement', () => {
     })
   })
 
+  it('reopens the chat at the size the student resized it to, within the limits', () => {
+    const orb = { displayId: 1, x: 1480, y: 491, edge: 'right' as const }
+    const saved = { x: 120, y: 100, width: 600, height: 700 }
+    expect(chatOpenBounds(DISPLAY, orb, saved)).toEqual(saved)
+    // Off this display: beside the orb again, but still at the student's size.
+    const beside = chatOpenBounds(DISPLAY, orb, { ...saved, x: 2000 })
+    expect(beside).toMatchObject({ width: 600, height: 700 })
+    expect(beside.x + beside.width).toBeLessThanOrEqual(orb.x)
+    // Too small or too big is pulled back inside 320 × 360 … 900 × (work area − margin).
+    expect(chatOpenBounds(DISPLAY, orb, { x: 100, y: 100, width: 100, height: 100 })).toMatchObject(
+      {
+        width: 320,
+        height: 360,
+      },
+    )
+    const huge = chatOpenBounds(DISPLAY, orb, { x: 10, y: 40, width: 4000, height: 4000 })
+    expect(huge.width).toBe(900)
+    expect(huge.height).toBe(DISPLAY.workArea.height - 16)
+    expect(huge.y + huge.height).toBeLessThanOrEqual(wa.y + wa.height)
+  })
+
+  it('only the chat is resizable; the study box keeps its fixed size', () => {
+    const limits = askbarResize(null, DISPLAY.workArea)
+    expect(limits).toEqual({
+      min: { width: 320, height: 360 },
+      max: { width: 900, height: DISPLAY.workArea.height - 16 },
+    })
+    expect(askbarResize('/', DISPLAY.workArea)).toEqual(limits)
+    expect(askbarResize('prompt', DISPLAY.workArea)).toBeNull()
+    expect(askbarResize('#/prompt', DISPLAY.workArea)).toBeNull()
+    // A tiny screen never makes the minimum larger than the maximum.
+    const tiny = chatSizeLimits({ width: 300, height: 300 })
+    expect(tiny.min.width).toBeLessThanOrEqual(tiny.max.width)
+    expect(tiny.min.height).toBeLessThanOrEqual(tiny.max.height)
+    expect(clampChatSize({ width: 500, height: 500 }, DISPLAY.workArea)).toEqual({
+      width: 500,
+      height: 500,
+    })
+    expect(
+      sameRect({ x: 0, y: 0, width: 380, height: 520 }, { x: 1, y: 0, width: 381, height: 520 }),
+    ).toBe(true)
+    expect(
+      sameRect({ x: 0, y: 0, width: 380, height: 520 }, { x: 0, y: 0, width: 420, height: 520 }),
+    ).toBe(false)
+  })
+
   it('the chat is dragged by its header; the header buttons stay clickable', () => {
     const file = resolve(__dirname, '../../renderer/surfaces/askbar/askbar.css')
     const css = readFileSync(file, 'utf8').replace(/\s+/g, ' ')
@@ -223,6 +277,15 @@ describe('window placement', () => {
       store.save({ '1': { x: 10, y: 20 } })
       expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ '1': { x: 10, y: 20 } })
       expect(fileChatSpotStore(file).load()).toEqual({ '1': { x: 10, y: 20 } })
+      // The size comes back with the spot; a half or bad size is dropped, the spot kept.
+      store.save({
+        '1': { x: 10, y: 20, width: 500, height: 600 },
+        '2': { x: 5, y: 6, width: 0, height: 600 },
+      })
+      expect(fileChatSpotStore(file).load()).toEqual({
+        '1': { x: 10, y: 20, width: 500, height: 600 },
+        '2': { x: 5, y: 6 },
+      })
       const mem = memoryChatSpotStore({ '2': { x: 1, y: 2 } })
       mem.save({ '2': { x: 3, y: 4 } })
       expect(mem.load()).toEqual({ '2': { x: 3, y: 4 } })

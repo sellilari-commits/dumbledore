@@ -1,7 +1,7 @@
 /*
- * Ask bar: a card that fills its window. The double-tap chat is a fixed 380 × 520 box beside the
- * orb (data-layout="panel"): a header, the conversation scrolling in the middle, the input pinned
- * at the bottom (Notion AI's layout). The study box is a Spotlight-like 560 × 52 bar (data-layout="bar"). The window is
+ * Ask bar: a card that fills its window. The double-tap chat is a box beside the orb (380 × 520 at
+ * first; the student drags and resizes it, main remembers both) (data-layout="panel"): a header,
+ * the conversation scrolling in the middle, the input pinned at the bottom (Notion AI's layout). The study box is a Spotlight-like 560 × 52 bar (data-layout="bar"). The window is
  * transparent; the card draws its own rounded edge. Depth comes from the native window shadow in
  * Electron (and from .ask-stage in the browser mock).
  */
@@ -491,7 +491,7 @@ body {
 /* ── Double-tap chat: a tall vertical panel ───────────────────────────── */
 
 .ask[data-layout="panel"] {
-  height: min(100vh, var(--ask-panel-h, 100vh));
+  height: 100vh;
   max-height: none;
 }
 
@@ -559,11 +559,15 @@ body {
   margin-top: 0;
 }
 
-/* Browser mock: the panel stands beside a fake orb at the right edge. */
+/* Browser mock: the panel stands beside a fake orb at the right edge, at its first size. */
 .ask-stage:has(.ask[data-layout="panel"]) {
   top: 50%;
   left: auto;
   right: 72px;
   width: 380px;
   transform: translateY(-50%);
+}
+
+.ask-stage .ask[data-layout="panel"] {
+  height: min(520px, calc(100vh - 16px));
 }

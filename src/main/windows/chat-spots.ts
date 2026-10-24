@@ -1,10 +1,10 @@
 /**
- * Where the student dragged the double-tap chat, per display, kept in a small JSON file in the
- * data folder so the chat reopens there after a restart. Read and write errors are ignored: the
+ * Where the student dragged the double-tap chat, and how big they made it, per display, kept in a
+ * small JSON file in the data folder so the chat reopens there after a restart. Read and write errors are ignored: the
  * chat then simply opens beside the orb.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
-import type { ChatSpots } from './placement'
+import type { ChatSpot, ChatSpots } from './placement'
 
 export interface ChatSpotStore {
   load(): ChatSpots
@@ -19,9 +19,16 @@ export function fileChatSpotStore(file: string): ChatSpotStore {
         if (!data || typeof data !== 'object') return {}
         const spots: ChatSpots = {}
         for (const [id, v] of Object.entries(data as Record<string, unknown>)) {
-          const s = v as { x?: unknown; y?: unknown } | null
-          if (s && Number.isFinite(s.x) && Number.isFinite(s.y))
-            spots[id] = { x: Number(s.x), y: Number(s.y) }
+          const s = v as { x?: unknown; y?: unknown; width?: unknown; height?: unknown } | null
+          if (!s || !Number.isFinite(s.x) || !Number.isFinite(s.y)) continue
+          const spot: ChatSpot = { x: Number(s.x), y: Number(s.y) }
+          const w = Number(s.width)
+          const h = Number(s.height)
+          if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
+            spot.width = w
+            spot.height = h
+          }
+          spots[id] = spot
         }
         return spots
       } catch {

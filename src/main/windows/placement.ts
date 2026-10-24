@@ -4,7 +4,7 @@
  * the study box centred on the active display or over the focused field, and resizing that keeps a
  * window's top edge and horizontal centre in place.
  */
-import { chatPanelSize, isPromptRoute } from '@shared/chat-panel'
+import { chatPanelSize, chatSizeLimits, clampChatSize, isPromptRoute } from '@shared/chat-panel'
 import type { Rect } from '@shared/geometry'
 import { type DisplayInfo, ORB_SIZE, type OrbSpot } from '../overlay/geometry'
 
@@ -61,8 +61,11 @@ export function panelBounds(d: DisplayInfo, orb: OrbSpot, size = PANEL_SIZE): Re
  * screen), vertically centred on it and kept on screen; it never covers the orb. Without an orb
  * spot it stands at the right edge of the work area, vertically centred.
  */
-export function chatBounds(d: DisplayInfo, orb: OrbSpot | null): Rect {
-  const size = chatPanelSize(d.workArea.height)
+export function chatBounds(
+  d: DisplayInfo,
+  orb: OrbSpot | null,
+  size: { width: number; height: number } = chatPanelSize(d.workArea.height),
+): Rect {
   if (orb && orb.displayId === d.id) return panelBounds(d, orb, size)
   const wa = d.workArea
   const x = wa.x + wa.width - size.width - MARGIN - ORB_SIZE - GAP
@@ -70,16 +73,23 @@ export function chatBounds(d: DisplayInfo, orb: OrbSpot | null): Rect {
   return clampRect({ x, y, width: size.width, height: size.height }, wa)
 }
 
-/** Where the student last dragged the chat on each display: its top-left, global points. */
-export type ChatSpot = { x: number; y: number }
+/**
+ * Where the student last dragged the chat on each display (its top-left, global points) and, once
+ * they resized it, its size.
+ */
+export type ChatSpot = { x: number; y: number; width?: number; height?: number }
 export type ChatSpots = Record<string, ChatSpot>
 
 /**
- * The chat at the spot the student dragged it to on this display, kept on screen; beside the orb
- * when there is no saved spot or its centre is no longer on the display (it changed or moved).
+ * The chat at the spot the student dragged it to on this display, at the size they gave it (within
+ * the resize limits), kept on screen; beside the orb when there is no saved spot or its centre is
+ * no longer on the display (it changed or moved).
  */
 export function chatOpenBounds(d: DisplayInfo, orb: OrbSpot | null, saved?: ChatSpot): Rect {
-  const size = chatPanelSize(d.workArea.height)
+  const size =
+    saved?.width && saved.height
+      ? clampChatSize({ width: saved.width, height: saved.height }, d.workArea)
+      : chatPanelSize(d.workArea.height)
   if (saved) {
     const r = { x: saved.x, y: saved.y, ...size }
     const c = { x: r.x + r.width / 2, y: r.y + r.height / 2 }
@@ -87,7 +97,7 @@ export function chatOpenBounds(d: DisplayInfo, orb: OrbSpot | null, saved?: Chat
     const inside = c.x >= wa.x && c.x <= wa.x + wa.width && c.y >= wa.y && c.y <= wa.y + wa.height
     if (inside) return clampRect(r, wa)
   }
-  return chatBounds(d, orb)
+  return chatBounds(d, orb, size)
 }
 
 /** The study box sits over the focused field when there is one, else high on the active display. */
@@ -117,6 +127,27 @@ export function askbarOpenBounds(
   savedChat?: ChatSpot,
 ): Rect {
   return isPromptRoute(route) ? askbarBounds(d, nearField) : chatOpenBounds(d, orb, savedChat)
+}
+
+/**
+ * Whether the Ask bar's window can be resized by the student, and within which limits: the chat
+ * can (by its edges, within the chat limits of the work area it opens on); the study box cannot.
+ */
+export function askbarResize(
+  route: string | null | undefined,
+  area: { width: number; height: number },
+): { min: { width: number; height: number }; max: { width: number; height: number } } | null {
+  return isPromptRoute(route) ? null : chatSizeLimits(area)
+}
+
+/** True when two rects differ by less than `tol` points on every side (a no-op move or resize). */
+export function sameRect(a: Rect, b: Rect, tol = 2): boolean {
+  return (
+    Math.abs(a.x - b.x) < tol &&
+    Math.abs(a.y - b.y) < tol &&
+    Math.abs(a.width - b.width) < tol &&
+    Math.abs(a.height - b.height) < tol
+  )
 }
 
 /** New size for a window that grows with its content: top edge and centre stay put. */

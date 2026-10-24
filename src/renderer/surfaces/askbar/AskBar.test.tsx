@@ -1,4 +1,3 @@
-import { CHAT_PANEL_WIDTH, chatPanelHeight } from '@shared/chat-panel'
 import type { ChatMessage } from '@shared/domain'
 import type { InvokeChannel } from '@shared/ipc'
 import type { AskResult } from '@shared/state'
@@ -63,18 +62,17 @@ afterEach(() => {
 })
 
 describe('AskBar', () => {
-  it('opens focused as a tall vertical chat panel and asks main for its size', () => {
+  it('opens focused as the chat panel and never resizes its window (the student does)', () => {
     const local = askApi()
     render(<AskBar api={local.api} />)
     expect(input().placeholder).toBe(PLACEHOLDER)
     expect(document.activeElement).toBe(input())
-    expect(callsTo(local, 'window.setSize')[0]).toEqual({
-      surface: 'askbar',
-      width: CHAT_PANEL_WIDTH,
-      height: chatPanelHeight(window.screen?.availHeight ?? 0),
-    })
+    fireEvent.focus(window)
+    expect(callsTo(local, 'window.setSize')).toEqual([])
     const card = document.querySelector('.ask')
     expect(card?.getAttribute('data-layout')).toBe('panel')
+    // The card fills whatever size the window has.
+    expect((card as HTMLElement | null)?.style.getPropertyValue('--ask-panel-h')).toBe('')
     // Empty chat: a calm hint fills the panel above the input.
     expect(screen.getByTestId('ask-empty').textContent).toBe(EMPTY_CHAT)
     expect(screen.getByRole('heading', { name: CHAT_TITLE })).toBeTruthy()
@@ -222,17 +220,16 @@ describe('AskBar', () => {
     expect(screen.queryByRole('log')).toBeNull()
   })
 
-  it('coming back to the window reloads the chat and re-sends its size', async () => {
+  it('coming back to the window reloads the chat and leaves its size alone', async () => {
     const local = askApi()
     render(<AskBar api={local.api} />)
     await flush()
-    const before = callsTo(local, 'window.setSize').length
     act(() => {
       window.dispatchEvent(new Event('focus'))
     })
     await flush()
     expect(callsTo(local, 'chat.history').length).toBeGreaterThanOrEqual(2)
-    expect(callsTo(local, 'window.setSize').length).toBe(before + 1)
+    expect(callsTo(local, 'window.setSize')).toEqual([])
   })
 
   it('an action chip runs coach.runAction, then closes the bar', async () => {

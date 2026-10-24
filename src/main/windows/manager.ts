@@ -5,8 +5,9 @@
  *   senders (only our own webContents are answered).
  * - Typing surfaces (panel, ask bar) remember the previous frontmost app when they open,
  *   activate Dumbledore so typing works (#52915), hide on blur, and hand focus back on close.
- * - The double-tap chat can be dragged by its header; where it lands is remembered per display
- *   (ChatSpotStore) and it reopens there while that spot is still on screen.
+ * - The double-tap chat can be dragged by its header and resized by its edges; where it lands and
+ *   its size are remembered per display (ChatSpotStore) and it reopens there while that spot is
+ *   still on screen. Main owns the chat's size: the page never resizes it.
  * - The app window is created on demand and destroyed on close; the Dock icon shows only while
  *   it is open (accessory activation policy otherwise).
  * - The overlay never has focus, so quiz-card keys are injected into it (`forwardKey`).
@@ -30,11 +31,13 @@ import { OverlayWindows } from './overlays'
 import {
   ASKBAR_SIZE,
   askbarOpenBounds,
+  askbarResize,
   type ChatSpots,
   PANEL_SIZE,
   panelBounds,
   panelOpenSize,
   resizeKeepingTop,
+  sameRect,
 } from './placement'
 import { pageUrl } from './urls'
 
@@ -75,7 +78,7 @@ export class WindowManager implements SurfaceControl, EventSink {
   private readonly chatStore: ChatSpotStore
   private readonly chatSpots: ChatSpots
   /** The Ask bar's last position set by us, so our own moves are not taken for a drag. */
-  private askbarPlaced: { x: number; y: number } | null = null
+  private askbarPlaced: Rect | null = null
 
   constructor(private readonly opts: WindowManagerOptions) {
     this.chatStore = opts.chatSpots ?? memoryChatSpotStore()
@@ -125,7 +128,11 @@ export class WindowManager implements SurfaceControl, EventSink {
     if (surface === 'askbar') this.askbarRouteOpened = opts.route ?? null
     const win = this.ensureTyping(surface, opts.route ?? null)
     const bounds = await this.placement(surface, opts)
-    if (surface === 'askbar') this.askbarPlaced = { x: bounds.x, y: bounds.y }
+    if (surface === 'askbar') {
+      // Limits first: the study box must be free to shrink to 52 pt, the chat must not.
+      this.applyAskbarResize(win, opts.route ?? null, bounds)
+      this.askbarPlaced = { ...bounds }
+    }
     win.setBounds(bounds)
     await this.showTyping(win)
   }
@@ -162,6 +169,8 @@ export class WindowManager implements SurfaceControl, EventSink {
   setSize(surface: TypingSurface, width: number, height: number): void {
     const win = this.typing[surface]
     if (!win || win.isDestroyed()) return
+    // The chat's size is the student's (they resize it by its edges); only the study box auto-fits.
+    if (surface === 'askbar' && !isPromptRoute(this.askbarRouteOpened)) return
     const w = Math.round(Math.min(Math.max(width, 280), 800))
     const h = Math.round(
       Math.min(Math.max(height, 44), surface === 'askbar' ? Math.max(CHAT_PANEL_HEIGHT, 600) : 900),
@@ -170,7 +179,7 @@ export class WindowManager implements SurfaceControl, EventSink {
     const area = displayAt(this.displays(), rectCenter(current))?.workArea ?? current
     if (surface === 'panel') this.panelFitted = { width: w, height: h }
     const next = resizeKeepingTop(current, w, h, area)
-    if (surface === 'askbar') this.askbarPlaced = { x: next.x, y: next.y }
+    if (surface === 'askbar') this.askbarPlaced = { ...next }
     win.setBounds(next)
     refreshShadow(win)
   }
@@ -233,7 +242,13 @@ export class WindowManager implements SurfaceControl, EventSink {
     finishTyping(win)
     this.register(win, surface, null)
     win.on('blur', () => this.onTypingBlur(win))
-    if (surface === 'askbar') win.on('moved', () => this.rememberChatSpot(win))
+    if (surface === 'askbar') {
+      win.on('moved', () => this.rememberChatSpot(win))
+      win.on('resized', () => {
+        refreshShadow(win)
+        this.rememberChatSpot(win)
+      })
+    }
     win.on('closed', () => {
       if (this.typing[surface] === win) this.typing[surface] = null
     })
@@ -265,16 +280,31 @@ export class WindowManager implements SurfaceControl, EventSink {
     return askbarOpenBounds(target, opts.route, anchor, opts.nearField ?? null, saved)
   }
 
-  /** The student dragged the chat: remember where, for the display it now stands on. */
+  /** The chat resizes by its edges within its limits; the study box does not resize. */
+  private applyAskbarResize(win: BrowserWindow, route: string | null, bounds: Rect): void {
+    const area = displayAt(this.displays(), rectCenter(bounds))?.workArea ?? bounds
+    const limits = askbarResize(route, area)
+    if (limits) {
+      win.setMinimumSize(limits.min.width, limits.min.height)
+      win.setMaximumSize(limits.max.width, limits.max.height)
+      win.setResizable(true)
+    } else {
+      win.setResizable(false)
+      win.setMinimumSize(0, 0)
+      win.setMaximumSize(0, 0)
+    }
+  }
+
+  /** The student dragged or resized the chat: remember where and how big, for that display. */
   private rememberChatSpot(win: BrowserWindow): void {
     if (win.isDestroyed() || isPromptRoute(this.askbarRouteOpened)) return
-    const { x, y, width, height } = win.getBounds()
+    const now = win.getBounds()
     const placed = this.askbarPlaced
-    if (placed && Math.abs(placed.x - x) < 2 && Math.abs(placed.y - y) < 2) return
-    const display = displayAt(this.displays(), rectCenter({ x, y, width, height }))
+    if (placed && sameRect(placed, now)) return
+    const display = displayAt(this.displays(), rectCenter(now))
     if (!display) return
-    this.askbarPlaced = { x, y }
-    this.chatSpots[String(display.id)] = { x, y }
+    this.askbarPlaced = { ...now }
+    this.chatSpots[String(display.id)] = now
     this.chatStore.save(this.chatSpots)
   }
 

@@ -12,7 +12,7 @@
  */
 import type { DumbledoreApi } from '@shared/ipc'
 import { SquarePen } from 'lucide-react'
-import { type CSSProperties, type KeyboardEvent, useEffect, useRef, useState } from 'react'
+import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { SpectaclesGlyph } from '../overlay/glyph/SpectaclesGlyph'
 import { AskLog } from './AskLog'
 import { TopicCarousel } from './TopicCarousel'
@@ -130,7 +130,7 @@ export function AskBar({ api }: { api: DumbledoreApi }) {
       data-mode={open ? 'chat' : 'bar'}
       data-layout={prompting ? 'bar' : 'panel'}
       data-prompt={prompting || undefined}
-      style={prompting ? { maxHeight } : ({ '--ask-panel-h': `${maxHeight}px` } as CSSProperties)}
+      style={prompting ? { maxHeight } : undefined}
     >
       {!prompting && (
         <header className="ask__head">
