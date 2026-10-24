@@ -9,7 +9,7 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
 | _nothing in progress_ | | | | | |
-| 2026-10-24 21:05 | Olle / Claude | Ink & paper look: ink accents instead of blue, warm paper backgrounds, light & dark | `src/renderer/design-system/tokens.css`, `src/renderer/design-system/base.css` (links), `docs/DESIGN.md` (tokens), `tests/e2e-sim/__screenshots__/` | main | Colours only; no layout or component changes |
+| 2026-10-24 21:05 | Olle / Claude | Ink & paper look: ink accents, parchment backgrounds, ink line icons instead of interface emojis, Inbox → Memory | `src/renderer/design-system/` (tokens.css, base.css, Callout/EmptyState), `src/renderer/pages/` (icons and wording only), `src/renderer/surfaces/app/`, `src/renderer/surfaces/panel/`, `src/renderer/surfaces/askbar/askbar.css`, `src/renderer/surfaces/overlay/` (toast, quiz result, suggestion chip icons only), `docs/DESIGN.md`, `tests/e2e-sim/` | main | Visual and wording only; routes, data and behaviour unchanged |
 
 ## Done recently
 
