@@ -148,6 +148,38 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
         for (const a of assignments.values()) if (a.subjectId === fromId) a.subjectId = intoId
         subjects.delete(fromId)
       },
+      remove(id) {
+        must(subjects.get(id), `subject ${id}`)
+        const episodeIds = new Set<Id>()
+        for (const e of [...encounters.values()]) {
+          if (e.subjectId !== id) continue
+          if (e.episodeId) episodeIds.add(e.episodeId)
+          encounters.delete(e.id)
+        }
+        for (const episodeId of episodeIds)
+          if (![...encounters.values()].some((e) => e.episodeId === episodeId))
+            episodes.delete(episodeId)
+        const conceptIds = new Set(
+          [...concepts.values()].filter((c) => c.subjectId === id).map((c) => c.id),
+        )
+        for (const c of concepts.values())
+          if (c.parentId && conceptIds.has(c.parentId)) c.parentId = null
+        for (const e of encounters.values())
+          if (e.conceptId && conceptIds.has(e.conceptId)) e.conceptId = null
+        for (const cid of conceptIds) concepts.delete(cid)
+        for (const r of [...roadmaps.values()]) if (r.subjectId === id) roadmaps.delete(r.id)
+        for (const a of [...assignments.values()]) if (a.subjectId === id) assignments.delete(a.id)
+        for (const q of [...quizzes.values()]) {
+          if (!q.subjectIds.includes(id)) continue
+          q.subjectIds = q.subjectIds.filter((s) => s !== id)
+          if (q.subjectIds.length === 0) quizzes.delete(q.id)
+        }
+        for (let i = chat.length - 1; i >= 0; i--)
+          if (chat[i]?.thread === `subject:${id}`) chat.splice(i, 1)
+        for (const n of [...nudges.values()])
+          if (JSON.stringify(n.action ?? null).includes(`"${id}"`)) nudges.delete(n.id)
+        subjects.delete(id)
+      },
     },
 
     concepts: {

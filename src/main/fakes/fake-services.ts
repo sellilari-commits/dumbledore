@@ -93,6 +93,12 @@ export class FakeSubjectService implements SubjectService {
     return this.repos.subjects.update(id, patch)
   }
 
+  remove(id: Id): void {
+    this.repos.subjects.remove(id)
+    if (this.repos.settings.get().focusSubjectId === id)
+      this.repos.settings.update({ focusSubjectId: null })
+  }
+
   actSuggested(subjectId: Id, action: 'accept' | 'dismiss' | 'merge', intoId: Id | null): void {
     if (action === 'merge') {
       if (!intoId) throw new Error('Merging needs a target subject')

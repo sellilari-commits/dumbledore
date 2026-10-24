@@ -1,15 +1,17 @@
 /**
  * Top-bar actions of a subject page: the Focus toggle (subject.focus + the global focus subject,
  * which together decide what the picker and nudges favour) and "Generate exam" (the shared
- * New exam dialog with this subject preselected).
+ * New exam dialog with this subject preselected) and the trash button (Delete subject dialog).
  */
-import { Button, Tooltip, toast } from '@renderer/design-system'
+import { Button, IconButton, Tooltip, toast } from '@renderer/design-system'
 import { invoke } from '@renderer/lib/api'
 import { keys, useAction, useSettings } from '@renderer/lib/queries'
 import { useShell } from '@renderer/lib/shell'
 import type { SubjectSummary } from '@shared/domain'
 import { useQueryClient } from '@tanstack/react-query'
-import { Crosshair, FilePenLine } from 'lucide-react'
+import { Crosshair, FilePenLine, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { DeleteSubjectDialog } from './DeleteSubjectDialog'
 
 export function FocusToggle({ subject }: { subject: SubjectSummary }) {
   const qc = useQueryClient()
@@ -69,5 +71,19 @@ export function GenerateExamButton({ subjectId }: { subjectId: string }) {
     >
       Generate exam
     </Button>
+  )
+}
+
+export function DeleteSubjectButton({ subject }: { subject: SubjectSummary }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <Tooltip content="Delete subject" sub="Dumbledore forgets everything about it">
+        <IconButton label="Delete subject" size="sm" onClick={() => setOpen(true)}>
+          <Trash2 size={14} strokeWidth={2} />
+        </IconButton>
+      </Tooltip>
+      <DeleteSubjectDialog subject={open ? subject : null} onOpenChange={setOpen} />
+    </>
   )
 }

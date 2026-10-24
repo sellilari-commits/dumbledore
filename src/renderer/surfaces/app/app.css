@@ -105,13 +105,22 @@ body {
   background: var(--c-green-text);
 }
 
-.dd-app-sidebar__status-dot[data-on='false'] {
+.dd-app-sidebar__status-dot[data-on="false"] {
   background: var(--c-texTer);
 }
 
 .dd-app-sidebar__emoji {
   font-size: 16px;
   line-height: 1;
+}
+
+/* Trash button on a subject row: shows on hover (layout.css) and on keyboard focus. */
+.dd-sidebar__hover-action:has(.dd-app-sidebar__delete:focus-visible) {
+  opacity: 1;
+}
+
+.dd-app-sidebar__delete:hover {
+  color: var(--c-red-text);
 }
 
 /* Error boundary fallback */

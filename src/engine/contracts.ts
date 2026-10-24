@@ -6,6 +6,7 @@
  */
 import type {
   Answer,
+  AnswerResult,
   Assignment,
   ChatMessage,
   Concept,
@@ -15,13 +16,12 @@ import type {
   Id,
   InboxState,
   IsoDate,
-  Nudge,
   NotionColor,
+  Nudge,
   Profile,
   Quiz,
   QuizKind,
   QuizResult,
-  AnswerResult,
   Roadmap,
   Settings,
   SettingsPatch,
@@ -92,6 +92,11 @@ export interface SubjectRepo {
   update(id: Id, patch: Partial<Omit<Subject, 'id' | 'createdAt' | 'updatedAt'>>): Subject
   /** Moves concepts, encounters, roadmaps, quizzes and assignments, then deletes `fromId`. */
   merge(fromId: Id, intoId: Id): void
+  /**
+   * Deletes a subject and everything remembered about it: its concepts, encounters (and their
+   * screen text), roadmaps, assignments, chat, nudges and the exams that cover only it.
+   */
+  remove(id: Id): void
 }
 
 export interface ConceptRepo {
@@ -100,7 +105,12 @@ export interface ConceptRepo {
   /** Case- and whitespace-insensitive within the subject. */
   findByName(subjectId: Id, name: string): Concept | null
   /** Creates the concept (and its parent by name, if given and missing) or returns the existing one. */
-  upsert(input: { subjectId: Id; name: string; parentName?: string | null; summary?: string }): Concept
+  upsert(input: {
+    subjectId: Id
+    name: string
+    parentName?: string | null
+    summary?: string
+  }): Concept
   update(
     id: Id,
     patch: Partial<
@@ -176,7 +186,10 @@ export interface AssignmentRepo {
     source: string
   }): Assignment
   list(filter: { status?: Assignment['status']; subjectId?: Id; limit?: number }): Assignment[]
-  update(id: Id, patch: Partial<Pick<Assignment, 'status' | 'subjectId' | 'dueAt' | 'title'>>): Assignment
+  update(
+    id: Id,
+    patch: Partial<Pick<Assignment, 'status' | 'subjectId' | 'dueAt' | 'title'>>,
+  ): Assignment
 }
 
 export interface NudgeRepo {
@@ -217,7 +230,11 @@ export interface LlmCallRecord {
 export interface UsageRepo {
   record(call: LlmCallRecord): void
   rowsSince(sinceIso: IsoDate): UsageSummary['rows']
-  countSince(provider: ProviderId, model: string, sinceIso: IsoDate): { requests: number; tokens: number }
+  countSince(
+    provider: ProviderId,
+    model: string,
+    sinceIso: IsoDate,
+  ): { requests: number; tokens: number }
 }
 
 export interface SearchRepo {
@@ -336,6 +353,8 @@ export interface QueryService {
 export interface SubjectService {
   create(input: NewSubjectInput): Subject
   update(id: Id, patch: SubjectPatch): Subject
+  /** Deletes the subject and everything Dumbledore remembers about it. */
+  remove(id: Id): void
   actSuggested(subjectId: Id, action: 'accept' | 'dismiss' | 'merge', intoId: Id | null): void
   actInbox(encounterId: Id, action: 'accept' | 'ignore' | 'assign', subjectId: Id | null): void
   addAssignment(input: NewAssignmentInput): Assignment

@@ -91,6 +91,7 @@ export const ipcInvoke = {
   // Subjects, inbox, assignments
   'subjects.create': { req: NewSubjectInput, res: Subject },
   'subjects.update': { req: z.object({ id: Id, patch: SubjectPatch }), res: Subject },
+  'subjects.delete': { req: z.object({ id: Id, confirm: z.literal(true) }), res: Void },
   'suggested.act': {
     req: z.object({
       subjectId: Id,

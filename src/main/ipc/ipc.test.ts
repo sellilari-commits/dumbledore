@@ -183,6 +183,8 @@ describe('IPC handlers', () => {
     expect(dump.profile.aboutMe).toBe('Second-year chemistry student')
     expect(dump.chat.panel.length).toBe(2)
     expect(JSON.stringify(dump)).not.toContain('AIza-test')
+    await call('subjects.delete', { id: physics.id, confirm: true })
+    expect((await call('subjects.list')).map((s) => s.name)).not.toContain('Physics')
     await call('data.deleteAll', { confirm: true })
     expect(calls).toContain('deleteAll')
 

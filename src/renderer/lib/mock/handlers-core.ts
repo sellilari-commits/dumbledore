@@ -160,6 +160,25 @@ export const coreHandlers: HandlerMap<CoreChannel> = {
     ctx.changed('subjects', [id])
     return { ...s }
   },
+  'subjects.delete': (ctx, { id }) => {
+    const db = ctx.db
+    if (!db.subjects.some((x) => x.id === id)) throw new Error('That subject no longer exists.')
+    const only = (ids: string[]) => ids.length === 1 && ids[0] === id
+    db.subjects = db.subjects.filter((x) => x.id !== id)
+    db.concepts = db.concepts.filter((c) => c.subjectId !== id)
+    db.encounters = db.encounters.filter((e) => e.subjectId !== id)
+    db.assignments = db.assignments.filter((a) => a.subjectId !== id)
+    db.roadmaps = db.roadmaps.filter((r) => r.subjectId !== id)
+    db.quizzes = db.quizzes.filter((q) => !only(q.subjectIds))
+    for (const q of db.quizzes) q.subjectIds = q.subjectIds.filter((s) => s !== id)
+    db.chat = db.chat.filter((m) => m.thread !== `subject:${id}`)
+    if (db.settings.focusSubjectId === id) {
+      db.settings.focusSubjectId = null
+      db.appState.focusSubjectId = null
+    }
+    ctx.changed('subjects', [id])
+    ctx.changed('inbox')
+  },
   'suggested.act': (ctx, { subjectId, action, intoId }) => {
     const s = ctx.db.subjects.find((x) => x.id === subjectId)
     if (!s) throw new Error('That suggestion is gone.')

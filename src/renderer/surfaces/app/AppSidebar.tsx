@@ -1,7 +1,7 @@
 /**
  * The app's left rail: traffic-light row (with a hover-only collapse button), the
  * "Dumbledore" workspace row, Search / Home / Inbox / Exams / Settings, the Subjects list
- * (+ New subject) and a capture status row at the bottom.
+ * (+ New subject; a trash button on hover deletes one) and a capture status row at the bottom.
  */
 import {
   IconButton,
@@ -15,7 +15,19 @@ import {
 } from '@renderer/design-system'
 import { useAction, useAppState, useInbox, useSubjects } from '@renderer/lib/queries'
 import { useShell } from '@renderer/lib/shell'
-import { ChevronsLeft, FilePenLine, House, Inbox, Plus, Search, Settings } from 'lucide-react'
+import { DeleteSubjectDialog } from '@renderer/pages/subject/DeleteSubjectDialog'
+import type { SubjectSummary } from '@shared/domain'
+import {
+  ChevronsLeft,
+  FilePenLine,
+  House,
+  Inbox,
+  Plus,
+  Search,
+  Settings,
+  Trash2,
+} from 'lucide-react'
+import { useState } from 'react'
 import { useLocation } from 'wouter'
 
 const ICON = { size: 18, strokeWidth: 1.75 } as const
@@ -23,9 +35,14 @@ const ICON = { size: 18, strokeWidth: 1.75 } as const
 function SubjectsList({ location }: { location: string }) {
   const subjects = useSubjects()
   const setNewSubject = useShell((s) => s.setNewSubject)
+  const [deleting, setDeleting] = useState<SubjectSummary | null>(null)
   if (subjects.isLoading)
     return (
-      <div style={{ padding: '6px 14px', display: 'grid', gap: 10 }} aria-label="Loading subjects">
+      <div
+        role="status"
+        style={{ padding: '6px 14px', display: 'grid', gap: 10 }}
+        aria-label="Loading subjects"
+      >
         <Skeleton width="70%" />
         <Skeleton width="55%" />
       </div>
@@ -42,8 +59,23 @@ function SubjectsList({ location }: { location: string }) {
           active={location.startsWith(`/subjects/${s.id}`)}
           muted={s.status === 'suggested'}
           meta={s.status === 'suggested' ? 'Suggested' : s.focus === 'focus' ? 'Focus' : undefined}
+          hoverAction={
+            <IconButton
+              label={`Delete ${s.name}`}
+              size="sm"
+              className="dd-app-sidebar__delete"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setDeleting(s)
+              }}
+            >
+              <Trash2 size={14} strokeWidth={1.75} />
+            </IconButton>
+          }
         />
       ))}
+      <DeleteSubjectDialog subject={deleting} onOpenChange={(open) => !open && setDeleting(null)} />
       {subjects.isError ? (
         <SidebarItem muted label="Couldn’t load subjects" onClick={() => subjects.refetch()} />
       ) : null}
@@ -83,7 +115,11 @@ export function AppSidebar({ collapsed }: { collapsed: boolean }) {
     <Sidebar collapsed={collapsed}>
       <div className="dd-app-sidebar__chrome">
         <Tooltip content="Close sidebar" shortcut="⌘\">
-          <IconButton label="Close sidebar" className="dd-app-sidebar__collapse" onClick={shell.toggleSidebar}>
+          <IconButton
+            label="Close sidebar"
+            className="dd-app-sidebar__collapse"
+            onClick={shell.toggleSidebar}
+          >
             <ChevronsLeft {...ICON} />
           </IconButton>
         </Tooltip>
@@ -102,7 +138,12 @@ export function AppSidebar({ collapsed }: { collapsed: boolean }) {
             meta="⌘K"
             onClick={() => shell.setPalette(true)}
           />
-          <SidebarItem icon={<House {...ICON} />} label="Home" href="/home" active={location === '/home'} />
+          <SidebarItem
+            icon={<House {...ICON} />}
+            label="Home"
+            href="/home"
+            active={location === '/home'}
+          />
           <SidebarItem
             icon={<Inbox {...ICON} />}
             label="Inbox"

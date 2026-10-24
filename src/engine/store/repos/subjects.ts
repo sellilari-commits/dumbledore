@@ -99,6 +99,11 @@ export function createSubjectRepo(ctx: StoreCtx): SubjectRepo {
       if (fromId === intoId) return
       ctx.db.transaction(() => mergeSubjects(ctx, fromId, intoId))()
     },
+
+    remove(id) {
+      must(row(id), `subject ${id}`)
+      ctx.db.transaction(() => removeSubject(ctx, id))()
+    },
   }
   return repo
 }
@@ -140,4 +145,45 @@ function mergeSubjects(ctx: StoreCtx, fromId: string, intoId: string): void {
   const fromSeq = stmt('SELECT seq FROM subjects WHERE id = ?').pluck().get(fromId) as number
   stmt('DELETE FROM subjects WHERE id = ?').run(fromId)
   index.remove('subject', Number(fromSeq))
+}
+
+function removeSubject(ctx: StoreCtx, id: string): void {
+  const { stmt, index } = ctx
+  const encounters = stmt('SELECT seq, episode_id FROM encounters WHERE subject_id = ?').all(
+    id,
+  ) as {
+    seq: number
+    episode_id: string | null
+  }[]
+  for (const e of encounters) index.remove('encounter', Number(e.seq))
+  stmt('DELETE FROM encounters WHERE subject_id = ?').run(id)
+  // The raw screen text behind them, unless another subject's encounter still uses it.
+  for (const e of encounters) {
+    if (!e.episode_id) continue
+    stmt(
+      'DELETE FROM episodes WHERE id = ? AND NOT EXISTS (SELECT 1 FROM encounters WHERE episode_id = ?)',
+    ).run(e.episode_id, e.episode_id)
+  }
+  const conceptSeqs = stmt('SELECT seq FROM concepts WHERE subject_id = ?')
+    .pluck()
+    .all(id) as number[]
+  for (const seq of conceptSeqs) index.remove('concept', Number(seq))
+  stmt('DELETE FROM assignments WHERE subject_id = ?').run(id)
+  const quizzes = stmt(
+    'SELECT q.seq, q.id, q.kind, q.subject_ids FROM quizzes q WHERE EXISTS (SELECT 1 FROM json_each(q.subject_ids) j WHERE j.value = ?)',
+  ).all(id) as { seq: number; id: string; kind: string; subject_ids: string }[]
+  for (const q of quizzes) {
+    const rest = (JSON.parse(q.subject_ids) as string[]).filter((s) => s !== id)
+    if (rest.length > 0) {
+      stmt('UPDATE quizzes SET subject_ids = ? WHERE id = ?').run(JSON.stringify(rest), q.id)
+      continue
+    }
+    if (q.kind === 'exam') index.remove('exam', Number(q.seq))
+    stmt('DELETE FROM quizzes WHERE id = ?').run(q.id)
+  }
+  stmt('DELETE FROM chat_messages WHERE thread = ?').run(`subject:${id}`)
+  stmt('DELETE FROM nudges WHERE action LIKE ?').run(`%"${id}"%`)
+  const seq = stmt('SELECT seq FROM subjects WHERE id = ?').pluck().get(id) as number
+  stmt('DELETE FROM subjects WHERE id = ?').run(id) // concepts and roadmaps cascade
+  index.remove('subject', Number(seq))
 }

@@ -130,6 +130,17 @@ export function createSubjectService(deps: SubjectServiceDeps): SubjectService {
       return subject
     },
 
+    remove(id) {
+      mustSubject(id)
+      repos.transaction(() => {
+        repos.subjects.remove(id)
+        if (repos.settings.get().focusSubjectId === id)
+          repos.settings.update({ focusSubjectId: null })
+      })
+      emit('subjects', [id])
+      emit('inbox', [])
+    },
+
     actSuggested(subjectId, action, intoId) {
       mustSubject(subjectId)
       if (action === 'merge') {

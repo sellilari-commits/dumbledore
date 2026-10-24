@@ -146,6 +146,19 @@ describe.each([
       service.addAssignment({ title: 'x', subjectId: 'sub_missing', dueAt: null }),
     ).toThrow()
   })
+  it('deletes a subject, clears it as the focus and announces it', () => {
+    const s = service.create({ name: 'Chemistry', emoji: null, goal: null, deadline: null })
+    repos.settings.update({ focusSubjectId: s.id })
+    events.length = 0
+    service.remove(s.id)
+    expect(repos.subjects.get(s.id)).toBeNull()
+    expect(repos.settings.get().focusSubjectId).toBeNull()
+    expect(events).toEqual([
+      { scope: 'subjects', ids: [s.id] },
+      { scope: 'inbox', ids: [] },
+    ])
+    expect(() => service.remove(s.id)).toThrow(/not found/)
+  })
 })
 
 describe('SubjectService assign with relink (sqlite)', () => {

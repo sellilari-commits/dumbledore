@@ -21,7 +21,7 @@ import { ConceptSortMenu, ConceptsView } from './ConceptsView'
 import { ExamsView, NewExamButton } from './ExamsView'
 import { RoadmapView } from './RoadmapView'
 import { SeenView } from './SeenView'
-import { FocusToggle, GenerateExamButton } from './SubjectActions'
+import { DeleteSubjectButton, FocusToggle, GenerateExamButton } from './SubjectActions'
 import { SubjectHeader } from './SubjectHeader'
 import { type ConceptSort, DEFAULT_SORT, isView, type SubjectView } from './subject-utils'
 import './subject.css'
@@ -179,6 +179,7 @@ export function SubjectPage() {
 
   const actions = detail ? (
     <>
+      <DeleteSubjectButton subject={detail.subject} />
       <FocusToggle subject={detail.subject} />
       {detail.subject.status === 'active' ? (
         <GenerateExamButton subjectId={detail.subject.id} />

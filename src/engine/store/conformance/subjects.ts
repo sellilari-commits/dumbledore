@@ -1,6 +1,6 @@
 /** Conformance: SubjectRepo and ConceptRepo (including merge). */
 import { describe, expect, it } from 'vitest'
-import { type ConformanceTarget, encounterInput, quiz, roadmap } from './fixtures'
+import { type ConformanceTarget, encounterInput, episode, quiz, roadmap } from './fixtures'
 
 export function subjectSuite(t: () => ConformanceTarget): void {
   describe('subjects', () => {
@@ -121,6 +121,43 @@ export function subjectSuite(t: () => ConformanceTarget): void {
       expect(repos.quizzes.get('quz_1')?.subjectIds).toEqual([into.id])
       expect(repos.assignments.list({}).find((a) => a.id === asg.id)?.subjectId).toBe(into.id)
       expect(() => repos.subjects.merge(from.id, into.id)).toThrow(/not found/)
+    })
+
+    it('removes a subject and everything remembered about it', () => {
+      const { repos } = t()
+      const gone = repos.subjects.create({ name: 'Stereochemistry' })
+      const kept = repos.subjects.create({ name: 'Biology' })
+      const concept = repos.concepts.upsert({ subjectId: gone.id, name: 'Enantiomers' })
+      const keptConcept = repos.concepts.upsert({ subjectId: kept.id, name: 'Mitosis' })
+      repos.episodes.save(episode({ id: 'epi_gone' }))
+      repos.episodes.save(episode({ id: 'epi_kept' }))
+      repos.encounters.add(
+        encounterInput({ subjectId: gone.id, conceptId: concept.id, episodeId: 'epi_gone' }),
+      )
+      const keptEnc = repos.encounters.add(
+        encounterInput({ subjectId: kept.id, conceptId: keptConcept.id, episodeId: 'epi_kept' }),
+      )
+      repos.roadmaps.save(roadmap(gone.id))
+      repos.quizzes.save(quiz({ id: 'quz_only', subjectIds: [gone.id] }))
+      repos.quizzes.save(quiz({ id: 'quz_both', subjectIds: [gone.id, kept.id] }))
+      repos.assignments.upsert({ subjectId: gone.id, title: 'PS 5', dueAt: null, source: 'x' })
+
+      repos.subjects.remove(gone.id)
+
+      expect(repos.subjects.get(gone.id)).toBeNull()
+      expect(repos.subjects.list().map((s) => s.id)).toEqual([kept.id])
+      expect(repos.concepts.get(concept.id)).toBeNull()
+      expect(repos.concepts.get(keptConcept.id)).not.toBeNull()
+      expect(repos.encounters.list({}).map((e) => e.id)).toEqual([keptEnc.id])
+      expect(repos.episodes.get('epi_gone')).toBeNull()
+      expect(repos.episodes.get('epi_kept')).not.toBeNull()
+      expect(repos.roadmaps.get('rdm_1')).toBeNull()
+      expect(repos.quizzes.get('quz_only')).toBeNull()
+      expect(repos.quizzes.get('quz_both')?.subjectIds).toEqual([kept.id])
+      expect(repos.assignments.list({})).toEqual([])
+      expect(repos.search.query('Stereochem', 10)).toEqual([])
+      expect(repos.search.query('Enantiomers', 10)).toEqual([])
+      expect(() => repos.subjects.remove(gone.id)).toThrow(/not found/)
     })
   })
 }

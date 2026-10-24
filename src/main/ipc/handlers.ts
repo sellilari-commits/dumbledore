@@ -163,6 +163,11 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
       memory('subjects', [id])
       return subject
     },
+    'subjects.delete': ({ id }) => {
+      subjects.remove(id)
+      memory('subjects', [id])
+      memory('inbox', [])
+    },
     'suggested.act': ({ subjectId, action, intoId }) => {
       subjects.actSuggested(subjectId, action, intoId)
       memory('subjects', [subjectId, intoId])
