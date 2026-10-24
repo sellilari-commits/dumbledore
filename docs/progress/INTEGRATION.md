@@ -103,3 +103,19 @@ brain.spend() // { eur, capEur }; not in the Brain contract
   ChatRepo can't list threads.
 - Electron 45 is installed. `npm run dev` starts the orb and the tray. The smoke spec
   (`tests/e2e-sim/shell-smoke.spec.ts`) needs `npx electron-vite build` first.
+
+## I0 Real engine (landed)
+
+- `composeReal(opts)` in `src/main/real/compose-real.ts` builds every service from the real lanes:
+  SQLite store in the data folder, helper socket client, perception stack and extraction worker,
+  study, prompts, quizzes (wired to the study's checkpoint handler), mastery, follow-ups, queries,
+  subjects and memory mirror, and the brain with the persistent usage log and the €10 cap.
+- It returns `{ services, fakes, engine, settled(), close() }`. `close()` stops everything and
+  closes the database; the app calls it on quit and before "Delete everything".
+- `src/main/app.ts` uses it by default. `DUMBLEDORE_FAKES=1` (and test mode) keep the fakes with
+  demo data.
+- Known mismatches, worked around in `src/main/real/adapters.ts` (requests in
+  `docs/progress/I0-real-engine.md`): duplicate `session:changed` and nudge toasts are dropped;
+  the shell's nudge actions can't reach `FollowUpRuntime.act`, so the 1-hour snooze timer is
+  skipped; the provider test is one small writeNudge call; the helper client's start can block
+  up to 10 s.
