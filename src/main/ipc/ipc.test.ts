@@ -257,6 +257,37 @@ describe('IPC handlers', () => {
     await expect(call('prompt.write', { context: '' })).rejects.toThrow(IpcValidationError)
   })
 
+  it('names the usual AI and opens it with the prompt when no AI chat is open', async () => {
+    const { repos } = h.services
+    const subject = repos.subjects.create({ name: 'Egyptian History' })
+    repos.encounters.add({
+      subjectId: subject.id,
+      conceptId: null,
+      episodeId: null,
+      seen: 'Ramesses II ruled for 66 years.',
+      bigPicture: 'The New Kingdom.',
+      topicPath: ['Egyptian History', 'New Kingdom'],
+      understanding: 'understood',
+      evidence: '',
+      openQuestions: [],
+      keyTerms: [],
+      source: {
+        app: 'Google Chrome',
+        bundleId: 'com.google.Chrome',
+        url: 'https://claude.ai/chat/1',
+        title: 'Claude',
+      },
+      dwellSeconds: 600,
+    })
+    const state = await call('app.getState')
+    expect(state.assistant).toEqual({ key: 'claude', name: 'Claude', open: false })
+    const out = await call('prompt.sendToChat', 'Explain why the Sphinx is 4th dynasty')
+    expect(out).toEqual({ ok: true, reason: null, opened: { name: 'Claude', prefilled: true } })
+    expect(calls.at(-1)).toBe(
+      'open:https://claude.ai/new?q=Explain%20why%20the%20Sphinx%20is%204th%20dynasty',
+    )
+  })
+
   it('refuses data.deleteAll without the explicit confirmation', async () => {
     await expect(call('data.deleteAll', {})).rejects.toThrow(IpcValidationError)
     await expect(call('data.deleteAll', { confirm: false })).rejects.toThrow(IpcValidationError)

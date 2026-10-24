@@ -1,7 +1,8 @@
 /**
  * "Your gaps" on the results page: one row per missed concept (what the student picked, or the
  * engine's diagnosis in words, plus links to the questions), the repair prompt, and the two ways
- * to hand it to the student's AI — Explore with ChatGPT (pasted, never sent) or Copy prompt.
+ * to hand it to the student's AI — Explore with <their AI> (pasted into the open chat, or their usual AI
+ * opened with the prompt; never sent) or Copy prompt.
  */
 import { Button, Callout, toast } from '@renderer/design-system'
 import { errorToast } from '@renderer/lib/errors'
@@ -20,7 +21,7 @@ export interface ExamGapsProps {
   rows: GapRow[]
   /** The repair prompt from 'quiz.finish'; null hides the prompt and its actions. */
   prompt: string | null
-  /** The student's AI chat, e.g. "ChatGPT". */
+  /** The student's AI: the open chat, else the one they usually use ("Claude"), else "your AI". */
   assistant: string
   /** Opens "Review your answers" at question n (1-based). */
   onShowQuestion: (n: number) => void
@@ -41,15 +42,22 @@ export function ExamGaps({ rows, prompt, assistant, onShowQuestion }: ExamGapsPr
     if (!prompt) return
     send.mutate(prompt, {
       onSuccess: (res) =>
-        res.ok
-          ? toast(`Pasted into ${assistant} — read it, then press Enter there.`, {
-              tone: 'success',
-            })
-          : toast(res.reason ?? `Couldn’t reach ${assistant}.`, {
-              tone: 'error',
-              action: { label: 'Copy instead', onClick: copyPrompt },
-              ttlMs: 8000,
-            }),
+        res.opened
+          ? toast(
+              res.opened.prefilled
+                ? `Opened ${res.opened.name} with your prompt typed in — read it, then press Enter there.`
+                : `Opened ${res.opened.name} — your prompt is copied: paste it with ⌘V.`,
+              { tone: 'success', ttlMs: 8000 },
+            )
+          : res.ok
+            ? toast(`Pasted into ${assistant} — read it, then press Enter there.`, {
+                tone: 'success',
+              })
+            : toast(res.reason ?? `Couldn’t reach ${assistant}.`, {
+                tone: 'error',
+                action: { label: 'Copy instead', onClick: copyPrompt },
+                ttlMs: 8000,
+              }),
       onError: (err) => errorToast(err),
     })
   }

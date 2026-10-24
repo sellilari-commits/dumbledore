@@ -177,6 +177,7 @@ async function start(paths: AppPaths): Promise<void> {
       })
       return r.canceled ? [] : r.filePaths
     },
+    openExternal: (url) => shell.openExternal(url),
   })
   const unregister = registerIpc(ipcMain, handlers, {
     identify: windows.identify,

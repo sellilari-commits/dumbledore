@@ -206,7 +206,7 @@ describe('ShortcutRouter', () => {
     })
     const toast = toastNamed(h, 'Selected text')
     expect(toast?.actions.map((a) => a.label)).toEqual([
-      'Explain with ChatGPT',
+      'Explain with your AI',
       'Add to a roadmap',
       'Quiz me',
     ])

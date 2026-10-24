@@ -84,7 +84,7 @@ export function ExamResults({ quiz, subjectLine }: ExamResultsProps) {
   })
   const app = useAppState()
   const [reviewOpen, setReviewOpen] = useState(false)
-  const assistant = app.data?.aiChat?.provider ?? 'ChatGPT'
+  const assistant = app.data?.assistant?.name ?? app.data?.aiChat?.provider ?? 'your AI'
   const when = formatRelative(quiz.completedAt)
   const finished = quiz.completedAt
     ? `Finished ${when === 'Yesterday' ? 'yesterday' : when}`

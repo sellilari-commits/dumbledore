@@ -181,9 +181,17 @@ export const ipcInvoke = {
 
   // Prompts
   'prompt.copy': { req: z.string(), res: Void },
+  /**
+   * Pastes into the open AI chat; with none open, copies the prompt and opens the student's usual
+   * AI (prefilled where the site allows), and says which in `opened`.
+   */
   'prompt.sendToChat': {
     req: z.string(),
-    res: z.object({ ok: z.boolean(), reason: z.string().nullable() }),
+    res: z.object({
+      ok: z.boolean(),
+      reason: z.string().nullable(),
+      opened: z.object({ name: z.string(), prefilled: z.boolean() }).nullable().optional(),
+    }),
   },
   /**
    * The prompt box (right ⌥ hold): Dumbledore writes a prompt from what the student asked for and

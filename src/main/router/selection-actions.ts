@@ -2,6 +2,7 @@
  * Tap on selected text (F4 d): a toast offering "Explain with <assistant>", "Add to a roadmap"
  * and "Quiz me" for the selection.
  */
+import { usualAssistantFrom } from '@engine/perception/ai-chat/usual'
 import type { RouterDeps } from './shortcut-router'
 
 type Deps = Pick<
@@ -21,7 +22,10 @@ export function explainPrompt(selection: string): string {
 }
 
 export function selectionToast(deps: Deps, text: string): void {
-  const assistant = deps.perception.aiChat()?.assistant ?? 'ChatGPT'
+  const assistant =
+    deps.perception.aiChat()?.assistant ??
+    usualAssistantFrom(deps.repos, Date.now())?.name ??
+    'your AI'
   deps.overlay.showToast({
     kind: 'info',
     purpose: 'selection',

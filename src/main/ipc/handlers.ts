@@ -4,6 +4,7 @@
  * wiring turns those into window events. Overlay actions that start work (clicks) return at once
  * and run in the background, so the overlay never waits on the LLM.
  */
+import { assistantLink, usualAssistantFrom } from '@engine/perception/ai-chat/usual'
 import type { Settings } from '@shared/domain'
 import type { MemoryScope, OverlayAction } from '@shared/state'
 import { buildExport, writeExport } from '../data/export'
@@ -34,6 +35,8 @@ export interface HandlerExtras {
   deleteAllData: () => Promise<void>
   /** File picker for study material; [] when cancelled. */
   pickMaterialFiles: () => Promise<string[]>
+  /** Opens a web address in the default browser (the student's AI, to explore a prompt). */
+  openExternal: (url: string) => Promise<void>
 }
 
 export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers {
@@ -41,6 +44,15 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
   const { bus, repos, queries, study, quizzes, subjects, helper } = services
   const memory = (scope: MemoryScope, ids: (string | null)[]) =>
     bus.emit('memory:changed', { scope, ids: ids.filter((id): id is string => id !== null) })
+  /** The AI the student studies with most, from their recent captures. */
+  const usualFromCaptures = () => usualAssistantFrom(repos, services.clock.now())
+  /** The open AI chat, else the usual one: one name for every label and link. */
+  const studentAssistant = () => {
+    const open = services.perception.aiChat()
+    if (open) return { key: open.key, name: open.assistant, open: true }
+    const usual = usualFromCaptures()
+    return usual ? { key: usual.key, name: usual.name, open: false } : null
+  }
   const materials = new MaterialsFlow({
     repos,
     brain: services.brain,
@@ -117,7 +129,7 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
 
   return {
     // App status & settings
-    'app.getState': () => core.appState(),
+    'app.getState': () => ({ ...core.appState(), assistant: studentAssistant() }),
     'settings.get': () => repos.settings.get(),
     'settings.update': (patch) => {
       repos.settings.update(patch)
@@ -277,8 +289,18 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
     // Prompts
     'prompt.copy': (text) => hooks.platform.writeClipboard(text),
     'prompt.sendToChat': async (text) => {
+      if (!services.perception.aiChat()) {
+        // No AI chat open: copy the prompt and open the student's usual AI instead.
+        const usual = usualFromCaptures()
+        const link = usual ? assistantLink(usual, text) : null
+        if (usual && link) {
+          await hooks.platform.writeClipboard(text)
+          await extras.openExternal(link.url)
+          return { ok: true, reason: null, opened: { name: usual.name, prefilled: link.prefilled } }
+        }
+      }
       const out = await core.writer.write({ text, mode: 'insert', target: 'chat' })
-      return { ok: out.ok, reason: out.reason }
+      return { ok: out.ok, reason: out.reason, opened: null }
     },
     'prompt.write': ({ context }) => core.promptWriter.write(context),
 

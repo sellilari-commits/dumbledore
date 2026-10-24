@@ -56,6 +56,14 @@ export const AppState = z.object({
   focusSubjectId: Id.nullable(),
   now: NowContext.nullable(),
   aiChat: z.object({ provider: z.string() }).nullable(),
+  /**
+   * The student's AI for labels and links: the open AI chat, else the one they usually study with
+   * (learned from their captures); null when Dumbledore hasn't seen one yet.
+   */
+  assistant: z
+    .object({ key: z.string(), name: z.string(), open: z.boolean() })
+    .nullable()
+    .optional(),
   onboardingDone: z.boolean(),
   version: z.string(),
 })
