@@ -95,31 +95,17 @@ export function defaultHome(d: DisplayInfo, size = ORB_SIZE): OrbSpot {
   }
 }
 
-/** Latches a dropped orb to the nearest edge, or into a corner when close to two edges. */
-export function snapToEdge(d: DisplayInfo, x: number, y: number, size = ORB_SIZE): OrbSpot {
+/**
+ * Latches a dropped orb to the right edge (Ilari, 2026-10-24: the orb always lives on the right
+ * side of the screen). A drag only moves it up and down; x is ignored.
+ */
+export function snapToEdge(d: DisplayInfo, _x: number, y: number, size = ORB_SIZE): OrbSpot {
   const wa = localWorkArea(d)
   const r = size / 2
-  const leftX = wa.x + EDGE_INSET + r
   const rightX = wa.x + wa.width - EDGE_INSET - r
   const topY = wa.y + EDGE_INSET + r
   const bottomY = wa.y + wa.height - EDGE_INSET - r
-  const px = clamp(x, wa.x, wa.x + wa.width)
-  const py = clamp(y, wa.y, wa.y + wa.height)
-  const dl = px - wa.x
-  const dr = wa.x + wa.width - px
-  const dt = py - wa.y
-  const db = wa.y + wa.height - py
-  const horiz: Edge = dl <= dr ? 'left' : 'right'
-  const vert: Edge = dt <= db ? 'top' : 'bottom'
-  const dh = Math.min(dl, dr)
-  const dv = Math.min(dt, db)
-  const sideX = horiz === 'left' ? leftX : rightX
-  const sideY = vert === 'top' ? topY : bottomY
-  if (dh <= CORNER_SNAP && dv <= CORNER_SNAP) {
-    return { displayId: d.id, x: sideX, y: sideY, edge: horiz }
-  }
-  if (dh <= dv) return { displayId: d.id, x: sideX, y: clamp(py, topY, bottomY), edge: horiz }
-  return { displayId: d.id, x: clamp(px, leftX, rightX), y: sideY, edge: vert }
+  return { displayId: d.id, x: rightX, y: clamp(y, topY, bottomY), edge: 'right' }
 }
 
 /** Re-latches a saved spot so it stays on screen after the display changed size. */

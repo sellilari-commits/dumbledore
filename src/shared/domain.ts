@@ -424,7 +424,7 @@ export const DEFAULT_SETTINGS: Settings = {
   cadence: { activeMs: 2000, idleMs: 10000 },
   excludedBundleIds: [],
   excludedHosts: [],
-  orb: { visible: true, followChatBoxes: true, hideIntoEdge: false, home: null },
+  orb: { visible: true, followChatBoxes: false, hideIntoEdge: false, home: null },
   shortcut: {
     key: 'rightOption',
     fallbackChord: 'Control+Option+D',

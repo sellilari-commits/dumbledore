@@ -217,7 +217,8 @@ describe('IPC handlers', () => {
 
   it('drags the orb in the coordinates of the sending overlay', async () => {
     await call('overlay.action', { type: 'orbDrag', x: 50, y: 400, done: true }, OVERLAY)
-    expect(h.core.overlay.state.edge).toBe('left')
+    // The orb always lives on the right edge; a drag only moves it up and down.
+    expect(h.core.overlay.state.edge).toBe('right')
   })
 })
 

@@ -137,7 +137,8 @@ describe('TestControlServer', () => {
     expect(h.perception.aiChat()?.assistant).toBe('ChatGPT')
     await http(info, 'POST', '/fake/helper/state', { focused, fieldValue: '', emitFocus: true })
     const overlay = (await http(info, 'GET', '/state/overlay')).json as { orb: { docked: boolean } }
-    expect(overlay.orb.docked).toBe(true)
+    // The orb stays on the right edge; it no longer docks beside chat boxes by default.
+    expect(overlay.orb.docked).toBe(false)
     const tap = await http(info, 'POST', '/gesture', { gesture: 'tap' })
     // An empty chat box with no session studies the subject worked on last.
     expect(tap.json).toEqual({ decision: { kind: 'studyLast' } })

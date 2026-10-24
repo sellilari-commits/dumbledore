@@ -42,6 +42,8 @@ function setup() {
   const clock = new FakeClock()
   const bus = createEngineBus()
   const repos = createMemoryRepos(clock)
+  // Docking beside chat boxes is off by default; these tests cover it switched on.
+  repos.settings.update({ orb: { ...repos.settings.get().orb, followChatBoxes: true } })
   let chat: AiChatInfo | null = null
   const states: OverlayState[] = []
   const nudgeChoices: string[] = []
@@ -90,19 +92,16 @@ describe('OverlayController', () => {
     expect(s.side).toEqual({ next: null, quiz: false })
   })
 
-  it('latches a dropped orb to the nearest edge and saves it as home', () => {
+  it('latches a dropped orb to the right edge and saves it as home', () => {
     t.controller.dragOrb(1, 300, 400, false)
     expect(t.controller.state.orb).toMatchObject({ x: 300, y: 400 })
     expect(t.controller.state.edge).toBe('free')
     t.controller.dragOrb(1, 60, 420, true)
     const s = t.controller.state
-    expect(s.orb).toMatchObject({ x: EDGE_INSET + ORB_SIZE / 2, y: 420 })
-    expect(s.edge).toBe('left')
-    expect(t.repos.settings.get().orb.home).toEqual({
-      displayId: 1,
-      x: EDGE_INSET + ORB_SIZE / 2,
-      y: 420,
-    })
+    const rightX = DISPLAY.workArea.x + DISPLAY.workArea.width - EDGE_INSET - ORB_SIZE / 2
+    expect(s.orb).toMatchObject({ x: rightX, y: 420 })
+    expect(s.edge).toBe('right')
+    expect(t.repos.settings.get().orb.home).toEqual({ displayId: 1, x: rightX, y: 420 })
   })
 
   it('moves the orb to another display when dropped there, and restores the saved home', () => {

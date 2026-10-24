@@ -32,48 +32,29 @@ describe('defaultHome', () => {
 })
 
 describe('snapToEdge', () => {
-  it('latches to the nearest side edge and keeps the height', () => {
-    expect(snapToEdge(DISPLAY, 40, 500)).toEqual({ displayId: 1, x: LEFT_X, y: 500, edge: 'left' })
-    expect(snapToEdge(DISPLAY, 1400, 400)).toEqual({
-      displayId: 1,
-      x: RIGHT_X,
-      y: 400,
-      edge: 'right',
-    })
+  it('always latches to the right edge and keeps the height', () => {
+    const drops: [number, number][] = [
+      [40, 500],
+      [1400, 400],
+      [700, 300],
+    ]
+    for (const [x, y] of drops) {
+      expect(snapToEdge(DISPLAY, x, y)).toEqual({ displayId: 1, x: RIGHT_X, y, edge: 'right' })
+    }
   })
 
-  it('latches to top and bottom when those are nearer', () => {
-    expect(snapToEdge(DISPLAY, 700, 60)).toEqual({ displayId: 1, x: 700, y: TOP_Y, edge: 'top' })
-    expect(snapToEdge(DISPLAY, 700, 960)).toEqual({
-      displayId: 1,
-      x: 700,
-      y: BOTTOM_Y,
-      edge: 'bottom',
-    })
-  })
-
-  it('goes into a corner when close to two edges', () => {
-    const near = CORNER_SNAP - 10
-    expect(snapToEdge(DISPLAY, 1512 - near, 33 + near)).toEqual({
-      displayId: 1,
-      x: RIGHT_X,
-      y: TOP_Y,
-      edge: 'right',
-    })
-    expect(snapToEdge(DISPLAY, 5, 980)).toEqual({
-      displayId: 1,
-      x: LEFT_X,
-      y: BOTTOM_Y,
-      edge: 'left',
-    })
-  })
-
-  it('clamps points dropped outside the work area', () => {
+  it('clamps the height to the work area', () => {
     expect(snapToEdge(DISPLAY, -300, 10)).toEqual({
       displayId: 1,
-      x: LEFT_X,
+      x: RIGHT_X,
       y: TOP_Y,
-      edge: 'left',
+      edge: 'right',
+    })
+    expect(snapToEdge(DISPLAY, 700, 2000)).toEqual({
+      displayId: 1,
+      x: RIGHT_X,
+      y: BOTTOM_Y,
+      edge: 'right',
     })
   })
 })
