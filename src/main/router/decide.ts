@@ -7,7 +7,8 @@
  * instruction, the student's own text → rewrite it in place (also during a session), empty → the
  * next step of a running session, else study the subject worked on last · (a) session in an AI
  * chat → next step · (b) `/d …` line in another field → instruction · (c) selection → actions
- * toast · (d) AI chat open → study the subject worked on last · (e) else → toggle the mini panel.
+ * toast · (d) outline showing → clear it · (e) reading a page (PDF, article) → outline what to
+ * read · (f) AI chat open → study the subject worked on last · (g) else → toggle the mini panel.
  * A click on the suggestion chip is a tap, except that it inserts the suggested prompt into an
  * empty box.
  *
@@ -38,6 +39,10 @@ export interface RouteContext {
   } | null
   /** The helper reported secure keyboard input (e.g. a password prompt). */
   secureInput: boolean
+  /** The front window is a page being read (PDF, article), not an AI chat. */
+  reading?: boolean
+  /** Outline marks are showing over the page. */
+  outlineShown?: boolean
   /** undefined = not read yet; null = could not be read. */
   fieldText?: string | null
   selection?: string | null
@@ -65,6 +70,8 @@ export type Decision =
   | { kind: 'unreadable' }
   | { kind: 'selection'; text: string }
   | { kind: 'togglePanel' }
+  | { kind: 'outline' }
+  | { kind: 'clearOutline' }
   | { kind: 'need'; what: 'fieldText' | 'selection' }
 
 const INSTRUCTION = /^\s*\/d\s+(\S.*)$/
@@ -147,6 +154,8 @@ function decideTap(input: 'tap' | 'chip', ctx: RouteContext): Decision {
   if (ctx.selection === undefined) return { kind: 'need', what: 'selection' }
   const selection = ctx.selection?.trim()
   if (selection) return { kind: 'selection', text: selection }
+  if (ctx.outlineShown) return { kind: 'clearOutline' }
+  if (ctx.reading) return { kind: 'outline' }
   if (chat) return { kind: 'studyLast' }
   return { kind: 'togglePanel' }
 }

@@ -22,6 +22,7 @@ import type { FocusedElement } from '@shared/helper-protocol'
 import { type ChatWriter, snapshotOf } from '../chat/chat-writer'
 import type { AskFlow } from '../flows/ask-flow'
 import { chatContext } from '../flows/context'
+import type { OutlineResult } from '../flows/outline-flow'
 import type { SessionFlow } from '../flows/session-flow'
 import type { Thinking } from '../flows/thinking'
 import type { ToastSpec } from '../overlay/toasts'
@@ -54,6 +55,13 @@ export interface RouterDeps {
   writer: Pick<ChatWriter, 'write'>
   thinking: Thinking
   pending: PendingWork
+  /** Outline of the page being read (right ⌥ on a PDF or article); absent until wired. */
+  outline?: {
+    reading(): boolean
+    shown(): boolean
+    run(signal: AbortSignal): Promise<OutlineResult>
+    clear(): void
+  }
 }
 
 export interface GestureOptions {
@@ -95,6 +103,8 @@ export class ShortcutRouter {
           }
         : null,
       secureInput: opts.secureInput ?? false,
+      reading: this.deps.outline?.reading() ?? false,
+      outlineShown: this.deps.outline?.shown() ?? false,
     }
     let decision = decide(input, ctx)
     while (decision.kind === 'need') {
@@ -189,6 +199,18 @@ export class ShortcutRouter {
         )
         return
       }
+      case 'outline': {
+        const outline = this.deps.outline
+        if (!outline) return
+        await pending.run(async (signal) => {
+          const r = await thinking.run('Outlining what to read…', () => outline.run(signal))
+          this.outlineToast(r)
+        })
+        return
+      }
+      case 'clearOutline':
+        this.deps.outline?.clear()
+        return
       case 'refuseSecure':
         overlay.showToast(REFUSE_SECURE)
         return
@@ -247,6 +269,29 @@ export class ShortcutRouter {
         else await surfaces.open('panel', { route: '/' })
         return
     }
+  }
+
+  /** Says why nothing was outlined; a shown outline speaks for itself. */
+  private outlineToast(r: OutlineResult): void {
+    const { overlay } = this.deps
+    if (r.kind === 'unreadable')
+      overlay.showToast({
+        kind: 'info',
+        title: 'Can’t read this page yet',
+        body: 'Scroll to the text you’re studying, or allow Screen Recording for PDFs, and try again.',
+      })
+    else if (r.kind === 'noSubject')
+      overlay.showToast({
+        kind: 'info',
+        title: 'Which subject is this for?',
+        body: 'Add the subject in Dumbledore first, or read a little longer so it can tell.',
+      })
+    else if (r.kind === 'nothing')
+      overlay.showToast({
+        kind: 'info',
+        title: 'Nothing to mark here',
+        body: 'This page doesn’t touch your goal or your gaps for this subject.',
+      })
   }
 
   private key() {

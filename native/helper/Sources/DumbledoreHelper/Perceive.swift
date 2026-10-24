@@ -108,12 +108,12 @@ enum Perceiver {
     let axChars = ax?.chars ?? 0
     let wantOcr = p.allowOcr && (p.forceOcr || axChars < minAXChars || ocrBundleIds.contains(t.app.bundleId))
     if wantOcr, let win = t.window, let frame, let ocr = ocrWindow(win, frame: frame, key: key, params: p, session: session) {
-      return make(.ocr, changed: ocr.changed, hash: ocr.hash, lines: ocr.lines)
+      return make(.ocr, changed: ocr.changed || p.fresh, hash: ocr.hash, lines: ocr.lines)
     }
     let lines = ax?.lines ?? []
     let hash = "ax:" + fnv1a64(lines.map(\.text).joined(separator: "\n"))
     let changed = session.update(key, hash: hash)
-    return make(.ax, changed: changed, hash: hash, lines: lines)
+    return make(.ax, changed: changed || p.fresh, hash: hash, lines: lines)
   }
 
   private static func ocrWindow(_ win: WindowInfo, frame: CGRect, key: String, params p: PerceiveParams,
@@ -123,7 +123,7 @@ enum Perceiver {
     let dhash = DHash.compute(image)
     let now = monoMs()
     Log.debug("captured \(image.width)x\(image.height) in \(Int(now - started)) ms")
-    if let prev = session.state(key), let pd = prev.dhash, let at = prev.ocrAt, prev.hash.hasPrefix("ocr:"),
+    if !p.fresh, let prev = session.state(key), let pd = prev.dhash, let at = prev.ocrAt, prev.hash.hasPrefix("ocr:"),
        DHash.distance(pd, dhash) < max(1, p.minChange), now - at < ocrMaxAgeMs {
       return (false, prev.hash, [])
     }

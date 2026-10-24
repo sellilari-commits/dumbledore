@@ -123,6 +123,8 @@ export const helperMethods = {
       forceOcr: z.boolean().default(false),
       maxChars: z.number().int().default(20000),
       excludeBundleIds: z.array(z.string()).default([]),
+      /** An explicit request (the outline): lines even when the window is unchanged. */
+      fresh: z.boolean().default(false),
     }),
     result: z.object({ windows: z.array(PerceivedWindow) }),
   },

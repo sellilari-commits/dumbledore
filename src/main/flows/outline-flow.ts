@@ -29,7 +29,7 @@ export type OutlineResult =
 export interface OutlineFlowDeps {
   repos: Repos
   /** The front window with line boxes in global screen points, or null. */
-  frontWindow: () => PerceivedWindow | null
+  frontWindow: () => Promise<PerceivedWindow | null>
   /** The subject this page belongs to (perception's link, else the last one studied). */
   subjectFor: (window: PerceivedWindow) => Id | null
   /** P15 (Brain.outline once wired). */
@@ -72,7 +72,7 @@ export class OutlineFlow {
 
   async run(signal?: AbortSignal): Promise<OutlineResult> {
     const { repos } = this.deps
-    const win = this.deps.frontWindow()
+    const win = await this.deps.frontWindow()
     const lines = (win?.lines ?? []).filter(
       (l): l is typeof l & { box: Rect } => l.box !== null && l.text.trim().length > 0,
     )

@@ -140,17 +140,20 @@ struct PerceiveParams: Decodable {
   let forceOcr: Bool
   let maxChars: Int
   let excludeBundleIds: [String]
+  /// An explicit request (the outline): return the lines even when the window is unchanged.
+  let fresh: Bool
 
-  enum CodingKeys: String, CodingKey { case scope, minChange, allowOcr, forceOcr, maxChars, excludeBundleIds }
+  enum CodingKeys: String, CodingKey { case scope, minChange, allowOcr, forceOcr, maxChars, excludeBundleIds, fresh }
 
   init(scope: PerceiveScope, minChange: Int = 6, allowOcr: Bool = true, forceOcr: Bool = false,
-       maxChars: Int = 20000, excludeBundleIds: [String] = []) {
+       maxChars: Int = 20000, excludeBundleIds: [String] = [], fresh: Bool = false) {
     self.scope = scope
     self.minChange = minChange
     self.allowOcr = allowOcr
     self.forceOcr = forceOcr
     self.maxChars = maxChars
     self.excludeBundleIds = excludeBundleIds
+    self.fresh = fresh
   }
 
   init(from decoder: Decoder) throws {
@@ -161,6 +164,7 @@ struct PerceiveParams: Decodable {
     forceOcr = try c.decodeIfPresent(Bool.self, forKey: .forceOcr) ?? false
     maxChars = try c.decodeIfPresent(Int.self, forKey: .maxChars) ?? 20000
     excludeBundleIds = try c.decodeIfPresent([String].self, forKey: .excludeBundleIds) ?? []
+    fresh = try c.decodeIfPresent(Bool.self, forKey: .fresh) ?? false
   }
 }
 

@@ -80,7 +80,7 @@ describe('OutlineFlow', () => {
   const flow = (over: Partial<ConstructorParameters<typeof OutlineFlow>[0]> = {}) =>
     new OutlineFlow({
       repos,
-      frontWindow: page,
+      frontWindow: async () => page(),
       subjectFor: () => subjectId,
       outline: async (input) => {
         inputs.push(input)
@@ -118,7 +118,7 @@ describe('OutlineFlow', () => {
   })
 
   it('says when the page can’t be read or has no subject', async () => {
-    expect(await flow({ frontWindow: () => null }).run()).toEqual({ kind: 'unreadable' })
+    expect(await flow({ frontWindow: async () => null }).run()).toEqual({ kind: 'unreadable' })
     expect(await flow({ subjectFor: () => null }).run()).toEqual({ kind: 'noSubject' })
     expect(shown).toEqual([])
   })

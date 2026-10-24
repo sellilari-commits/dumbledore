@@ -13,7 +13,7 @@ import type { EngineBus } from '@engine/events'
 import type { Id, Nudge, Settings } from '@shared/domain'
 import { type Rect, rectCenter } from '@shared/geometry'
 import type { FocusedElement } from '@shared/helper-protocol'
-import type { OverlayState, SessionState, Toast } from '@shared/state'
+import type { OutlineOverlay, OverlayState, SessionState, Toast } from '@shared/state'
 import {
   canHideIntoEdge,
   type DisplayInfo,
@@ -76,6 +76,7 @@ interface Dock {
 export class OverlayController {
   readonly toasts: ToastCenter
   readonly timer: FocusTimer
+  private outline: OutlineOverlay | null = null
   private displays: DisplayInfo[] = []
   private home: OrbSpot | null = null
   private readonly homes = new Map<number, OrbSpot>()
@@ -130,8 +131,23 @@ export class OverlayController {
       }),
       bus.on('quiz:open', ({ quizId }) => this.openQuiz(quizId)),
       bus.on('settings:changed', ({ settings }) => this.onSettings(settings)),
+      // Outline marks sit on a page: another window, or the same one scrolled, clears them.
+      bus.on('perception:window', ({ window }) => {
+        if (this.outline && (window.changed || window.windowId !== this.outline.windowId))
+          this.setOutline(null)
+      }),
     )
     this.update()
+  }
+
+  /** Outline marks over the page being read (null clears them). */
+  setOutline(outline: OutlineOverlay | null): void {
+    this.outline = outline
+    this.update()
+  }
+
+  get outlineShown(): boolean {
+    return this.outline !== null
   }
 
   dispose(): void {
@@ -538,6 +554,7 @@ export class OverlayController {
       aiChat: this.aiChat,
       timer: this.timer.state,
       timerMinutes: this.timerMinutes,
+      outline: this.outline,
     }
   }
 }

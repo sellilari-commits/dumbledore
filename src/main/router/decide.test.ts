@@ -139,6 +139,21 @@ describe('decide — the F4 tap table', () => {
     expect(decide('tap', ctx({ aiChat: CHAT, selection: '' }))).toEqual({ kind: 'studyLast' })
   })
 
+  it('outlines a page being read, and a second tap clears the marks', () => {
+    expect(decide('tap', ctx({ reading: true, selection: '' }))).toEqual({ kind: 'outline' })
+    expect(decide('tap', ctx({ reading: true, aiChat: CHAT, selection: '' }))).toEqual({
+      kind: 'outline',
+    })
+    expect(decide('tap', ctx({ reading: true, outlineShown: true, selection: '' }))).toEqual({
+      kind: 'clearOutline',
+    })
+    // A selection still wins: the student marked something themselves.
+    expect(decide('tap', ctx({ reading: true, selection: 'SN1' }))).toEqual({
+      kind: 'selection',
+      text: 'SN1',
+    })
+  })
+
   it('(f) toggles the mini panel anywhere else', () => {
     expect(decide('tap', ctx({ selection: null }))).toEqual({ kind: 'togglePanel' })
     expect(decide('tap', ctx({ focused: notesField, fieldText: 'hello', selection: '' }))).toEqual({

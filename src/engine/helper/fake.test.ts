@@ -43,6 +43,7 @@ describe('FakeHelper', () => {
       forceOcr: false,
       maxChars: 20000,
       excludeBundleIds: [],
+      fresh: false,
     })
   })
 
