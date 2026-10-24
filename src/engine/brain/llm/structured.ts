@@ -116,6 +116,7 @@ export async function runStructured<I, L, O>(
       deadline,
       signal: opts?.signal,
       estimatedTokens: estimate(cloud) + spec.maxOutputTokens,
+      outputTokens: spec.maxOutputTokens,
       language: spec.language(input),
       onDeviceOk: device !== null,
       onDeviceTokens: device ? estimate(device) + spec.maxOutputTokens : undefined,

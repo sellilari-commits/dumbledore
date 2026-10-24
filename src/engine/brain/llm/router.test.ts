@@ -323,19 +323,22 @@ describe('Router follow-up calls', () => {
     const t = setup([OVH])
     t.ovh.fallback = { text: 'ok' }
     const start = t.clock.now()
-    const out = await t.router.run(t.plan({ tier: 'reason', deadline: start + 120_000 }), async (a) => {
-      const req = {
-        system: 's',
-        messages: [{ role: 'user' as const, content: 'u' }],
-        output: { kind: 'text' as const },
-        temperature: 0,
-        maxOutputTokens: 10,
-        reasoningEffort: null,
-      }
-      await a.call(req)
-      await a.call(req)
-      return (await a.call(req)).text // third call in a minute: must wait for OVHcloud's 2 req/min
-    })
+    const out = await t.router.run(
+      t.plan({ tier: 'reason', deadline: start + 120_000 }),
+      async (a) => {
+        const req = {
+          system: 's',
+          messages: [{ role: 'user' as const, content: 'u' }],
+          output: { kind: 'text' as const },
+          temperature: 0,
+          maxOutputTokens: 10,
+          reasoningEffort: null,
+        }
+        await a.call(req)
+        await a.call(req)
+        return (await a.call(req)).text // third call in a minute: must wait for OVHcloud's 2 req/min
+      },
+    )
     expect(out).toBe('ok')
     expect(t.clock.now() - start).toBe(30_000)
   })

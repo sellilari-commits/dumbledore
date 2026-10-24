@@ -1,8 +1,8 @@
 /**
- * createBrain(): the real Brain (src/engine/brain-contract.ts). Wires the backends (Groq,
- * OVHcloud, Mistral, Apple on-device), the router, the response cache and the prompt modules,
- * and adds the per-method logic around them: extraction chunking for the on-device context,
- * exam batching, verifier batching and the coach stream.
+ * createBrain(): the real Brain (src/engine/brain-contract.ts). Wires the backends (Gemini first,
+ * then Apple on-device, Groq, OVHcloud, Mistral), the router with its spend cap, the response
+ * cache and the prompt modules, and adds the per-method logic around them: extraction chunking for
+ * the on-device context, exam batching, verifier batching and the coach stream.
  */
 import {
   type Brain,
@@ -39,9 +39,11 @@ import { runCoach } from './coach'
 import { createAppleBackend } from './llm/apple-backend'
 import { createMemoryCache, type ResponseCache } from './llm/cache'
 import { createCloudBackend } from './llm/cloud-backend'
+import { createGeminiBackend } from './llm/gemini-backend'
 import { createKeyGetter, type KeyGetter } from './llm/keys'
 import { Router } from './llm/router'
 import { resolveRoutes } from './llm/routes'
+import type { SpendSummary } from './llm/spend'
 import { deadlineFor, type RunnerDeps, runStructured } from './llm/structured'
 import { clip } from './llm/text'
 import type { Backend } from './llm/types'
@@ -74,11 +76,15 @@ export interface BrainDeps {
   cache?: ResponseCache | null
   limits?: Partial<Record<ProviderId, Partial<ProviderLimits>>>
   tierTokensPerDay?: Partial<Record<LlmTier, number>>
+  /** Hard cap on paid (Gemini) spend in EUR; default DUMBLEDORE_BUDGET_EUR or 10. */
+  spendCapEur?: number
   fetch?: typeof globalThis.fetch
 }
 
 export interface BrainHandle extends Brain {
   readonly router: Router
+  /** All-time paid-provider spend (from the usage log) and the cap, EUR. */
+  spend(): SpendSummary
 }
 
 const EXTRACT_CLOUD_CHARS = 6000
@@ -118,6 +124,7 @@ export function createBrain(deps: BrainDeps = {}): BrainHandle {
   const clock = deps.clock ?? systemClock
   const keys = deps.keys ?? createKeyGetter()
   const backends: Partial<Record<ProviderId, Backend>> = {
+    gemini: createGeminiBackend({ keys, fetch: deps.fetch }),
     apple: createAppleBackend({
       helper: deps.helper ?? null,
       clock,
@@ -136,6 +143,7 @@ export function createBrain(deps: BrainDeps = {}): BrainHandle {
     routes: deps.routes ?? ((tier) => resolveRoutes(tier, deps.settings?.()?.ai.modelOverrides)),
     limits: deps.limits,
     tierTokensPerDay: deps.tierTokensPerDay,
+    spendCapEur: deps.spendCapEur,
   })
   const runner: RunnerDeps = {
     router,
@@ -147,13 +155,20 @@ export function createBrain(deps: BrainDeps = {}): BrainHandle {
   /** True when extraction for this language would start on the on-device model. */
   async function onDeviceFirst(language: string): Promise<boolean> {
     if (language === 'fi') return false
-    const first = router.routesFor('extract')[0]
-    if (first?.provider !== 'apple') return false
-    return (await backends.apple?.availability())?.ok ?? false
+    // First route that could serve now: has a backend, is available and (if paid) within budget.
+    for (const route of router.routesFor('extract')) {
+      const backend = backends[route.provider]
+      if (!backend || router.spend.check(route.provider, route.model, 0, 0)) continue
+      if (!(await backend.availability()).ok) continue
+      return route.provider === 'apple'
+    }
+    return false
   }
 
   return {
     router,
+
+    spend: () => router.spend.summary(),
 
     async extract(raw: ExtractInput, opts?: CallOptions): Promise<ExtractOutput> {
       const input = ExtractInput.parse(raw)

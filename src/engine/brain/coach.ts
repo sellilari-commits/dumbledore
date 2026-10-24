@@ -37,6 +37,7 @@ export async function* runCoach(
       deadline: deadlineFor('coach', clock, opts),
       signal: opts?.signal,
       estimatedTokens: estimateMessagesTokens(system, messages) + maxOutputTokens,
+      outputTokens: maxOutputTokens,
       language: looksFinnish(input.message) ? 'fi' : 'en',
       onDeviceOk: false,
     },

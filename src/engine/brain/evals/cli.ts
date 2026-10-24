@@ -1,12 +1,16 @@
 /**
  * Eval CLI body (launched by tools/eval-prompts.ts under tsconfig.node.json so aliases resolve).
- *   eval-prompts [extraction|roadmaps|quizzes|prompts|all] [--limit N] [--provider ovh|groq|mistral]
- *                [--route tier=provider:model[,provider:model]] [--concurrency N] [--timeout ms] [--no-write]
- * Calls real providers (OVHcloud works without a key; GROQ_API_KEY / MISTRAL_API_KEY from env or .env.local).
+ *   eval-prompts [extraction|roadmaps|quizzes|prompts|all] [--limit N]
+ *                [--provider gemini|ovh|groq|mistral] [--route tier=provider:model[,provider:model]]
+ *                [--concurrency N] [--timeout ms] [--max-eur N] [--no-write]
+ * Calls real providers: Gemini (paid; GEMINI_API_KEY via env, .env.local or DUMBLEDORE_ENV_FILES),
+ * OVHcloud (keyless), Groq / Mistral when their keys exist. --max-eur (default 0.50) is the spend
+ * cap for the whole invocation: once reached, paid routes are skipped as over-budget.
  */
 import type { LlmTier, ModelRoute, ProviderId } from '@shared/llm'
 import type { LlmCallRecord, UsageRepo } from '../../contracts'
 import { createBrain } from '../brain'
+import { costEur, formatEur } from '../llm/prices'
 import { parseRouteList, resolveRoutes } from '../llm/routes'
 import { extractPrompt } from '../prompts/p01-extract'
 import { roadmapPrompt } from '../prompts/p03-roadmap'
@@ -35,6 +39,7 @@ interface Args {
   routes: Partial<Record<LlmTier, ModelRoute[]>>
   concurrency: number
   timeoutMs: number
+  maxEur: number
   write: boolean
 }
 
@@ -46,6 +51,7 @@ export function parseArgs(argv: string[]): Args {
     routes: {},
     concurrency: 2,
     timeoutMs: 600_000,
+    maxEur: 0.5,
     write: true,
   }
   for (let i = 0; i < argv.length; i++) {
@@ -55,6 +61,7 @@ export function parseArgs(argv: string[]): Args {
     else if (a === '--provider') args.provider = next() as ProviderId
     else if (a === '--concurrency') args.concurrency = Math.max(1, Number(next()))
     else if (a === '--timeout') args.timeoutMs = Number(next())
+    else if (a === '--max-eur') args.maxEur = Math.max(0, Number(next()) || 0)
     else if (a === '--no-write') args.write = false
     else if (a === '--route') {
       const [tier, list] = next().split('=')
@@ -71,7 +78,26 @@ export function parseArgs(argv: string[]): Args {
 function recordingUsage(records: LlmCallRecord[]): UsageRepo {
   return {
     record: (c) => void records.push(c),
-    rowsSince: () => [],
+    rowsSince(sinceIso) {
+      const rows = new Map<string, ReturnType<UsageRepo['rowsSince']>[number]>()
+      for (const r of records.filter((x) => x.at >= sinceIso)) {
+        const key = `${r.provider}:${r.model}`
+        const row = rows.get(key) ?? {
+          provider: r.provider,
+          model: r.model,
+          calls: 0,
+          failures: 0,
+          tokensIn: 0,
+          tokensOut: 0,
+        }
+        row.calls++
+        if (!r.ok) row.failures++
+        row.tokensIn += r.tokensIn
+        row.tokensOut += r.tokensOut
+        rows.set(key, row)
+      }
+      return [...rows.values()]
+    },
     countSince(provider, model, sinceIso) {
       const rs = records.filter(
         (r) => r.provider === provider && r.model === model && r.at >= sinceIso,
@@ -93,6 +119,7 @@ export async function main(argv: string[], root = process.cwd()): Promise<number
     cache: null,
     helper: null,
     routes: routeFor,
+    spendCapEur: args.maxEur,
   })
   const routesText = TIERS.map(
     (t) =>
@@ -133,6 +160,13 @@ export async function main(argv: string[], root = process.cwd()): Promise<number
       args: ['eval-prompts', ...argv].join(' '),
     }
     const suiteRecords = records.slice(startIdx)
+    const spent = suiteRecords.reduce(
+      (n, r) => n + costEur(r.provider, r.model, r.tokensIn, r.tokensOut),
+      0,
+    )
+    process.stdout.write(
+      `  ${formatEur(spent)} this suite · ${formatEur(brain.spend().eur)} of ${formatEur(args.maxEur)} this run\n`,
+    )
     for (const t of result.thresholds) {
       process.stdout.write(`  ${t.pass ? '✓' : '✗'} ${t.name}: ${t.value} (${t.target})\n`)
     }

@@ -62,7 +62,7 @@ function system(input: RoadmapInput, lang: string): string {
   const a = input.assistant || 'their AI assistant'
   return `You are the curriculum designer of a study coach. Build the shortest path that takes this student from where they are now to genuinely understanding the goal. The teaching happens in the student's own AI assistant (${a}) through prompts you draft; short multiple-choice checkpoints prove understanding along the way.
 
-1. Map the territory: the concepts the goal needs, from prerequisites to core ideas to applications. Size to the goal: a narrow question → 3–5 learn steps; a chapter or topic → 6–10; a whole course → 10–15 (if it is bigger, cover only the first milestone and name the next one in nextMilestone; otherwise nextMilestone is null).
+1. Map the territory: the concepts the goal needs, from prerequisites to core ideas to applications. Size to the goal: a narrow question → 3–5 learn steps; a chapter or topic → 6–10; a whole course → 10–15 (if it is bigger, cover only the first milestone — still 6–10 learn steps — and name the next one in nextMilestone; otherwise nextMilestone is null).
 2. Find the starting point.
    - Skip concepts with solid evidence of mastery (status "mastered", passed checkpoints or exams).
    - Start at the earliest prerequisite that is not mastered or shows struggle ("struggling" status, "struggling"/"unclear" encounters, open questions).
@@ -70,8 +70,8 @@ function system(input: RoadmapInput, lang: string): string {
    - startReason: one sentence to the student ("you"), citing the evidence, e.g. "You already handle X; you stumbled on Y twice, so we start there."
    - offerPlacement: true only when there is no evidence at all (no mastery, encounters or done steps).
 3. Time: if the deadline is within 2 days or little time is available, keep only the highest-yield steps (estimatedMinutes must fit the time available) and say so in startReason.
-4. Learn steps: one idea each, 3–8 minutes, ordered so each step needs only earlier ones. objective is observable ("Can explain why…", "Can solve…"). move is one of intuition, definition, worked_example, contrast, apply, explain_back, predict, big_picture — vary them and include at least one explain_back or predict step. concepts: 1–3 short concept names; reuse names from <mastery> when they match.
-5. Checkpoints: after every 2–3 learn steps and always as the last item. covers = the concepts taught since the previous checkpoint (the last checkpoint covers the roadmap's key concepts). probes = one per covered concept: the misconception a question should test. nQuestions = 3 plus 1 per carried concept it re-tests (max 5). Every concept in <carry> (missed before) must be in the covers and probes of the first checkpoint.
+4. Learn steps: one idea each, 3–8 minutes, ordered so each step needs only earlier ones. estimatedMinutes = the learn steps' minutes added up + 3 per checkpoint (never more than 8 per learn step). objective is observable ("Can explain why…", "Can solve…"). move is one of intuition, definition, worked_example, contrast, apply, explain_back, predict, big_picture — vary them and include at least one explain_back or predict step. concepts: 1–3 short concept names; reuse names from <mastery> when they match.
+5. Checkpoints: never more than 3 learn steps in a row — put a checkpoint after every 2nd or 3rd learn step, and always one as the last item (e.g. learn, learn, checkpoint, learn, learn, learn, checkpoint). covers = the concepts taught since the previous checkpoint (the last checkpoint covers the roadmap's key concepts). probes = one per covered concept: the misconception a question should test. nQuestions = 3 plus 1 per carried concept it re-tests (max 5). Every concept in <carry> (missed before) must be in the covers and probes of the first checkpoint.
 6. promptDraft for every learn step: the exact message the student will paste into ${a} to learn that step. Make it specific to the objective and the move (predict: "Before you explain, ask me to predict…"; worked_example: "Walk me through one example step by step"; explain_back: "Let me explain X back to you, then correct my mistakes"; contrast: "Show how X differs from Y with one example each").
 
 ${studentPromptRules(a, lang)}
@@ -180,7 +180,7 @@ export function finalizeRoadmap(plan: LlmRoadmap, input: RoadmapInput, lang: str
 export const roadmapPrompt: PromptSpec<RoadmapInput, LlmRoadmap, RoadmapPlan> = {
   id: 'P3',
   task: 'buildRoadmap',
-  version: 1,
+  version: 2,
   tier: 'reason',
   temperature: 0.3,
   maxOutputTokens: 6000,

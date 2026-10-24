@@ -30,7 +30,7 @@ function system(input: ImproveInput, lang: string): string {
 - Add one line of their context from <student> and <context> (only facts given there).
 - If they are trying to understand a concept: ask for a short structured explanation and add an active-learning hook.
 - If they clearly want a quick fact, a translation or a task done: keep it short and only add context and the format they need (no quiz hook).
-- If they ask the AI to do graded work for them (write my essay, solve my homework), turn it into a request for guidance and hints.
+- If they ask the AI to do graded work for them (write my essay, solve my homework), turn it into a request for guidance and hints (outline, thesis ideas, feedback on their own attempt) — no quiz hook: it is a task, not a concept to check.
 
 ${studentPromptRules(a, lang)}
 
@@ -48,7 +48,7 @@ function user(input: ImproveInput): string {
 export const improvePrompt: PromptSpec<ImproveInput, PromptWithTip, PromptWithTip> = {
   id: 'P8',
   task: 'improvePrompt',
-  version: 1,
+  version: 2,
   tier: 'write',
   temperature: 0.5,
   maxOutputTokens: 900,

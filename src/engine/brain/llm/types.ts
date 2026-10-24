@@ -1,9 +1,10 @@
 /**
  * Provider-neutral types for the LLM layer: one request/response shape every backend speaks
- * (Groq, OVHcloud, Mistral through the AI SDK; Apple's on-device model through the helper), and
- * the normalised error the router uses to decide between retry, fall-through and give-up.
+ * (Gemini, Groq, OVHcloud, Mistral through the AI SDK; Apple's on-device model through the
+ * helper), and the normalised error the router uses to decide between retry, fall-through and
+ * give-up.
  */
-import type { ProviderId } from '@shared/llm'
+import type { LlmTier, ProviderId } from '@shared/llm'
 
 export type JsonSchema = Record<string, unknown>
 
@@ -35,6 +36,8 @@ export interface BackendRequest {
   maxOutputTokens: number
   reasoningEffort: ReasoningEffort | null
   tools?: ToolDef[]
+  /** Set by the router; backends may tune to it (Gemini picks its thinking level per tier). */
+  tier?: LlmTier
   signal: AbortSignal
 }
 
@@ -73,6 +76,8 @@ export interface Backend {
   availability(): Promise<Availability>
   /** Whether this model honours a JSON schema response format (else plain JSON mode is used). */
   supportsJsonSchema(model: string): boolean
+  /** Most output tokens a request may be billed for, thinking included (default: the max). */
+  billableOutputTokens?(model: string, tier: LlmTier, maxOutputTokens: number): number
   generate(req: BackendRequest): Promise<BackendResult>
   stream(req: BackendRequest): AsyncIterable<StreamPart>
 }

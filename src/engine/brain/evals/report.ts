@@ -5,6 +5,7 @@
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { LlmCallRecord } from '../../contracts'
+import { costEur, formatEur } from '../llm/prices'
 import { type SuiteResult, usageTable } from './common'
 
 export interface RunMeta {
@@ -19,6 +20,11 @@ export function localDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+/** Estimated paid spend of these calls (prices.ts; thinking tokens are in tokensOut). */
+export function spendOf(records: LlmCallRecord[]): number {
+  return records.reduce((n, x) => n + costEur(x.provider, x.model, x.tokensIn, x.tokensOut), 0)
+}
+
 export function renderReport(r: SuiteResult, meta: RunMeta, records: LlmCallRecord[]): string {
   const passAll = r.thresholds.every((t) => t.pass)
   const lines = [
@@ -29,6 +35,8 @@ export function renderReport(r: SuiteResult, meta: RunMeta, records: LlmCallReco
     `Routes: ${meta.routes}`,
     '',
     `Prompt versions: ${meta.promptVersions}`,
+    '',
+    `Estimated spend: **${formatEur(spendOf(records))}** (src/engine/brain/llm/prices.ts; EUR = USD; thinking tokens billed as output)`,
     '',
     '## Thresholds (PLAN §9.2)',
     '',
@@ -78,6 +86,7 @@ export function writeReport(
       pass: r.thresholds.every((t) => t.pass),
       thresholds: Object.fromEntries(r.thresholds.map((t) => [t.name, t.value])),
       models,
+      spendEur: Math.round(spendOf(records) * 1e6) / 1e6,
       prompts: meta.promptVersions,
       args: meta.args,
     })}\n`,

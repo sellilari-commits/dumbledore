@@ -65,3 +65,29 @@ Behaviour the shell must respect:
   (true by default).
 - Blocked windows (password managers, private browsing) leak no text, title or URL into helper
   replies, bus events, LLM input or the database (`src/engine/perception/pipeline.test.ts`).
+
+## L2b Brain (landed)
+
+Wiring:
+
+```ts
+const brain = createBrain({
+  clock,
+  usage: repos.usage, // persistent usage log: daily budgets and the €10 spend cap
+  helper, // Apple on-device model
+  redact, // from src/engine/privacy
+  settings: () => repos.settings.get(), // model overrides per tier, on-device switch
+  // keys: default createKeyGetter() reads env + DUMBLEDORE_ENV_FILES (only the 4 key names)
+  // spendCapEur: default DUMBLEDORE_BUDGET_EUR or 10
+})
+brain.spend() // { eur, capEur }; not in the Brain contract
+```
+
+- Gemini 3.5 is primary: flash-lite for triage/extract, flash for reason/write/chat. Thinking is
+  minimal for triage/extract/write and low for reason/chat. Above the cap Gemini is skipped as
+  `over-budget` and calls fall through to OVHcloud and Apple on-device.
+- No Groq or Mistral key on this Mac; those routes are skipped.
+- `writeStep` rejects with BrainTimeoutError after 2.5 s and callers use the step's promptDraft.
+  Flash p90 is 2.4 s, so some steps will use the draft; consider flash-lite for `write` if that
+  shows up in dogfooding.
+- `gemini-3.5-flash` is no longer on Google's pricing page and may be retired; 3.6 Flash is listed.

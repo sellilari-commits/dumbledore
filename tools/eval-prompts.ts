@@ -1,8 +1,10 @@
 /**
- * Live prompt evals against the free providers (docs/PLAN.md §9.2). Results → docs/evals/.
+ * Live prompt evals (docs/PLAN.md §9.2) against Gemini (paid, primary) or the free providers.
+ * Results → docs/evals/<date>-<suite>.md (with the estimated spend) + docs/evals/history.jsonl.
  *
  *   npx tsx tools/eval-prompts.ts [extraction|roadmaps|quizzes|prompts|all] [--limit N]
- *       [--provider ovh|groq|mistral] [--route tier=provider:model] [--concurrency N] [--no-write]
+ *       [--provider gemini|ovh|groq|mistral] [--route tier=provider:model] [--concurrency N]
+ *       [--max-eur 0.5] [--no-write]
  *
  * tsx reads the root tsconfig.json, which has no path aliases, so this launcher re-runs itself
  * with --tsconfig tsconfig.node.json; the eval code lives in src/engine/brain/evals/.

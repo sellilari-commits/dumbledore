@@ -2,7 +2,7 @@
  * Scripted Backend for unit tests: queue replies (text, errors, delays) or install a handler;
  * every request is recorded. Delays honour the request's abort signal like a real HTTP call.
  */
-import type { ProviderId } from '@shared/llm'
+import type { LlmTier, ProviderId } from '@shared/llm'
 import { TimeoutReason } from '../llm/cloud-backend'
 import {
   type Availability,
@@ -56,6 +56,8 @@ export class FakeBackend implements Backend {
   jsonSchema = true
   /** Used when the queue is empty. */
   fallback: FakeReply | null = null
+  /** Optional worst-case billed output (thinking), like the Gemini backend reports. */
+  billableOutputTokens?: (model: string, tier: LlmTier, maxOutputTokens: number) => number
 
   constructor(
     readonly provider: ProviderId,

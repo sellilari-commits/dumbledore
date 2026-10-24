@@ -3,7 +3,8 @@
  * providers that are unavailable, out of budget, too small for the request or wrong for the
  * language; waits on per-model token buckets when the wait is short, otherwise falls through;
  * retries 429/5xx/timeouts with backoff; enforces the task deadline; redacts every cloud request;
- * logs every call to the usage repo.
+ * logs every call to the usage repo; skips paid routes ('over-budget') once the spend cap
+ * (spend.ts) would be passed.
  */
 import { BrainTimeoutError, BrainUnavailableError } from '@engine/brain-contract'
 import {
@@ -19,6 +20,8 @@ import type { UsageRepo } from '../../contracts'
 import { DailyBudget } from './budget'
 import { TimeoutReason, toBackendError } from './cloud-backend'
 import { RateLimiter } from './limits'
+import { priceOf } from './prices'
+import { capFromEnv, SpendTracker } from './spend'
 import { estimateMessagesTokens } from './text'
 import {
   type Backend,
@@ -38,6 +41,8 @@ export interface RouterDeps {
   routes?: (tier: LlmTier) => ModelRoute[]
   limits?: Partial<Record<ProviderId, Partial<ProviderLimits>>>
   tierTokensPerDay?: Partial<Record<LlmTier, number>>
+  /** Hard cap on paid-provider spend, EUR (default: DUMBLEDORE_BUDGET_EUR or 10). */
+  spendCapEur?: number
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>
 }
 
@@ -49,6 +54,8 @@ export interface CallPlan {
   signal?: AbortSignal
   /** Input + max output tokens of one call, for buckets and size checks. */
   estimatedTokens: number
+  /** The max output part of estimatedTokens (spend estimate; default: all of it, the safe side). */
+  outputTokens?: number
   /** Content language ("en", "fi", …); Finnish never goes to the on-device model. */
   language: string
   /** False when the task must not use the on-device model (no schema, too weak, …). */
@@ -114,6 +121,7 @@ export function abortError(): Error {
 export class Router {
   readonly limiter: RateLimiter
   readonly budget: DailyBudget
+  readonly spend: SpendTracker
   private readonly sleep: (ms: number, signal: AbortSignal) => Promise<void>
 
   constructor(private readonly deps: RouterDeps) {
@@ -124,11 +132,25 @@ export class Router {
       limitsFor: (p, m) => this.limitsFor(p, m),
       tierTokensPerDay: deps.tierTokensPerDay,
     })
+    this.spend = new SpendTracker(deps.usage ?? null, deps.spendCapEur ?? capFromEnv())
     this.sleep = deps.sleep ?? defaultSleep(deps.clock)
   }
 
   limitsFor(provider: ProviderId, _model: string): ProviderLimits {
     return { ...PROVIDER_LIMITS[provider], ...this.deps.limits?.[provider] }
+  }
+
+  /** 'over-budget' when this call's worst-case cost would pass the spend cap. */
+  private overSpend(
+    plan: CallPlan,
+    route: ModelRoute,
+    backend: Backend,
+    totalTokens: number,
+    outputTokens: number | undefined,
+  ): string | null {
+    const out = Math.min(totalTokens, outputTokens ?? totalTokens)
+    const billed = backend.billableOutputTokens?.(route.model, plan.tier, out) ?? out
+    return this.spend.check(route.provider, route.model, totalTokens - out, billed)
   }
 
   routesFor(tier: LlmTier): ModelRoute[] {
@@ -172,7 +194,9 @@ export class Router {
         skipped.push(`${key}: request larger than tokens/minute limit`)
         continue
       }
-      const over = this.budget.check(route.provider, route.model, plan.tier, plan.estimatedTokens)
+      const over =
+        this.budget.check(route.provider, route.model, plan.tier, plan.estimatedTokens) ??
+        this.overSpend(plan, route, backend, plan.estimatedTokens, plan.outputTokens)
       if (over) {
         skipped.push(`${key}: ${over}`)
         continue
@@ -304,12 +328,20 @@ export class Router {
   ): Promise<BackendResult> {
     const clock = this.deps.clock
     const req = this.redactRequest(route.provider, raw)
-    const est = estimateMessagesTokens(req.system, req.messages) + req.maxOutputTokens
+    const inputEst = estimateMessagesTokens(req.system, req.messages)
+    const est = inputEst + req.maxOutputTokens
+    // Every call (repairs too) must fit under the spend cap.
+    if (this.overSpend(plan, route, backend, est, req.maxOutputTokens)) {
+      throw new BackendError('unavailable', 'over-budget')
+    }
     // Follow-up calls (repairs) also respect the buckets: wait if it fits the deadline.
     const wait = this.limiter.waitMs(route.provider, route.model, est)
     if (wait > 0) {
       if (wait >= plan.deadline - clock.now() - MIN_ATTEMPT_MS[plan.tier]) {
-        throw new BackendError('rate_limit', `no ${route.provider}:${route.model} slot before the deadline`)
+        throw new BackendError(
+          'rate_limit',
+          `no ${route.provider}:${route.model} slot before the deadline`,
+        )
       }
       const control = new AbortController()
       const onAbort = () => control.abort(plan.signal?.reason)
@@ -331,7 +363,12 @@ export class Router {
     this.limiter.take(route.provider, route.model, est)
     const started = clock.now()
     try {
-      const res = await backend.generate({ ...req, model: route.model, signal: control.signal })
+      const res = await backend.generate({
+        ...req,
+        model: route.model,
+        tier: plan.tier,
+        signal: control.signal,
+      })
       const tokensIn = res.usage.inputTokens ?? estimateMessagesTokens(req.system, req.messages)
       const tokensOut = res.usage.outputTokens ?? 0
       this.limiter.observe(route.provider, route.model, res.headers)
@@ -343,7 +380,8 @@ export class Router {
       const be = toBackendError(err, control.signal)
       this.limiter.observe(route.provider, route.model, be.headers)
       this.limiter.settle(route.provider, route.model, est, null)
-      this.record(plan, route, 0, 0, clock.now() - started, `${be.kind}: ${be.message}`)
+      const [tin, tout] = this.unknownUsage(plan, route, backend, be, inputEst, req.maxOutputTokens)
+      this.record(plan, route, tin, tout, clock.now() - started, `${be.kind}: ${be.message}`)
       throw be
     } finally {
       cancelTimer()
@@ -385,6 +423,7 @@ export class Router {
         for await (const part of backend.stream({
           ...req,
           model: route.model,
+          tier: plan.tier,
           signal: control.signal,
         })) {
           if (part.type === 'finish') {
@@ -410,7 +449,16 @@ export class Router {
         const be = toBackendError(err, control.signal)
         this.limiter.observe(route.provider, route.model, be.headers)
         this.limiter.settle(route.provider, route.model, est, null)
-        this.record(plan, route, 0, 0, clock.now() - started, `${be.kind}: ${be.message}`)
+        const inputEst = est - req.maxOutputTokens
+        const [tin, tout] = this.unknownUsage(
+          plan,
+          route,
+          backend,
+          be,
+          inputEst,
+          req.maxOutputTokens,
+        )
+        this.record(plan, route, tin, tout, clock.now() - started, `${be.kind}: ${be.message}`)
         if (be.kind === 'aborted' || plan.signal?.aborted) throw abortError()
         if (be.kind === 'rate_limit')
           this.limiter.cooldown(route.provider, route.model, be.retryAfterMs ?? 20_000)
@@ -425,6 +473,24 @@ export class Router {
     throw new BrainUnavailableError(plan.task, errors.join('; ') || 'no model configured')
   }
 
+  /**
+   * Tokens to log for a failed call. A paid request cut off by a timeout or cancel may still be
+   * billed, so it is logged at its worst case (input + max billable output); others as 0.
+   */
+  private unknownUsage(
+    plan: CallPlan,
+    route: ModelRoute,
+    backend: Backend,
+    err: BackendError,
+    inputTokens: number,
+    maxOutputTokens: number,
+  ): [number, number] {
+    if (err.kind !== 'timeout' && err.kind !== 'aborted') return [0, 0]
+    if (!priceOf(route.provider, route.model)) return [0, 0]
+    const out = backend.billableOutputTokens?.(route.model, plan.tier, maxOutputTokens)
+    return [inputTokens, out ?? maxOutputTokens]
+  }
+
   private record(
     plan: CallPlan,
     route: ModelRoute,
@@ -433,6 +499,7 @@ export class Router {
     latencyMs: number,
     error: string | null,
   ): void {
+    let logged = false
     try {
       this.deps.usage?.record({
         at: this.deps.clock.nowIso(),
@@ -446,8 +513,10 @@ export class Router {
         ok: error === null,
         error: error ? error.slice(0, 300) : null,
       })
+      logged = !!this.deps.usage
     } catch {
       // usage logging must never break a call
     }
+    if (!logged) this.spend.addUnlogged(route.provider, route.model, tokensIn, tokensOut)
   }
 }
