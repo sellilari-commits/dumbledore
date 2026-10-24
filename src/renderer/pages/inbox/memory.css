@@ -1,0 +1,433 @@
+/* Memory page: toolbar (views + search), loose notes, subjects with their topic rows and notes,
+   the Recent timeline. Calm, Notion-like: no cards, hairlines only, colour only where it means. */
+
+.mem-toolbar {
+  margin-top: 8px;
+}
+
+.mem-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--c-icoSec);
+}
+
+.mem-search .dd-input {
+  width: 200px;
+  height: 28px;
+  border-color: transparent;
+  background: var(--c-bacSec);
+  font-size: var(--text-ui);
+}
+
+.mem-search .dd-input:focus {
+  border-color: var(--c-borStr);
+  background: var(--c-bacPri);
+}
+
+.mem-body {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  padding: 24px 0 64px;
+}
+
+.mem-section-label,
+.mem-day__label {
+  margin: 0 0 8px;
+  color: var(--c-texSec);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.01em;
+}
+
+.mem-quiet {
+  margin: 4px 0;
+  color: var(--c-texTer);
+  font-size: var(--text-ui);
+}
+
+.mem-quiet--center {
+  padding: 48px 0;
+  text-align: center;
+}
+
+/* ── Subjects and topics ─────────────────────────────────────────────────── */
+
+.mem-subject__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: var(--text-h3);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-h3);
+}
+
+.mem-subject__emoji {
+  font-size: 1.05em;
+}
+
+.mem-topics,
+.mem-notes,
+.mem-loose-list,
+.mem-entries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mem-topic__row,
+.mem-entry__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 6px 0 calc(var(--depth, 0) * 20px);
+  border-radius: var(--radius-control);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.mem-topic__row:hover,
+.mem-entry__row:hover {
+  background: var(--c-hover);
+}
+
+.mem-topic__toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--c-icoSec);
+  cursor: pointer;
+}
+
+.mem-topic__toggle:disabled {
+  visibility: hidden;
+}
+
+.mem-topic__chev {
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.mem-topic__toggle[aria-expanded="true"] .mem-topic__chev {
+  transform: rotate(90deg);
+}
+
+.mem-topic__dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c-texTer);
+}
+
+.mem-topic__dot[data-status="new"] {
+  background: none;
+  box-shadow: inset 0 0 0 1.25px var(--c-texTer);
+}
+
+.mem-topic__dot[data-status="struggling"] {
+  background: var(--c-orange-text);
+}
+
+.mem-topic__dot[data-status="mastered"] {
+  background: var(--c-green-text);
+}
+
+.mem-topic__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-texPri);
+  font: inherit;
+  font-size: var(--text-body);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mem-topic__rename {
+  flex: 1;
+  height: 26px;
+}
+
+.mem-topic__count,
+.mem-entry__time {
+  flex: none;
+  color: var(--c-texTer);
+  font-size: var(--text-small);
+}
+
+.mem-topic__actions,
+.mem-note__actions {
+  display: inline-flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.mem-topic__row:hover .mem-topic__actions,
+.mem-topic__row:focus-within .mem-topic__actions,
+.mem-note:hover .mem-note__actions,
+.mem-note:focus-within .mem-note__actions {
+  opacity: 1;
+}
+
+.mem-topic__notes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0 12px calc(var(--depth, 0) * 20px + 46px);
+}
+
+/* A topic: big picture, then its sources with their notes. */
+.mem-topic__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 2px 0 16px calc(var(--depth, 0) * 20px + 46px);
+}
+
+.mem-topic__summary {
+  margin: 0;
+  max-width: 64ch;
+  color: var(--c-texSec);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+}
+
+.mem-topic__sources {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mem-sourceblock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mem-sourceblock > .mem-notes {
+  padding-left: 2px;
+}
+
+/* ── Notes ───────────────────────────────────────────────────────────────── */
+
+.mem-note,
+.mem-loose {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 3px 0;
+}
+
+.mem-note__mark {
+  flex: none;
+  margin-top: 5px;
+  color: var(--c-icoSec);
+}
+
+.mem-note__mark[data-kind="flag"] {
+  color: var(--c-orange-text);
+}
+
+.mem-note__dot {
+  flex: none;
+  width: 4px;
+  height: 4px;
+  margin: 10px 4px 0;
+  border-radius: 50%;
+  background: var(--c-texSec);
+}
+
+.mem-note__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mem-note__text {
+  color: var(--c-texPri);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  overflow-wrap: anywhere;
+}
+
+.mem-note__edit {
+  width: 100%;
+  font-size: var(--text-body);
+}
+
+.mem-page {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mem-source {
+  color: var(--c-texTer);
+  font-size: var(--text-small);
+}
+
+.mem-page > .mem-source {
+  margin-bottom: 2px;
+}
+
+.mem-source__link {
+  color: var(--c-texSec);
+  text-decoration: underline;
+  text-decoration-color: var(--c-borStr);
+  text-underline-offset: 2px;
+}
+
+.mem-source__link:hover {
+  color: var(--c-texPri);
+  text-decoration-color: currentColor;
+}
+
+.mem-unplaced {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding-left: 26px;
+}
+
+.mem-unplaced__label {
+  color: var(--c-texTer);
+  font-size: var(--text-small);
+}
+
+/* ── Loose notes ─────────────────────────────────────────────────────────── */
+
+.mem-loose {
+  align-items: center;
+  padding: 6px 6px;
+  border-radius: var(--radius-control);
+}
+
+.mem-loose:hover {
+  background: var(--c-hover);
+}
+
+.mem-loose .mem-note__mark,
+.mem-loose .mem-note__dot {
+  align-self: flex-start;
+  margin-top: 6px;
+}
+
+.mem-loose__del {
+  opacity: 0;
+}
+
+.mem-loose:hover .mem-loose__del,
+.mem-loose:focus-within .mem-loose__del {
+  opacity: 1;
+}
+
+/* ── Recent ──────────────────────────────────────────────────────────────── */
+
+.mem-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.mem-entry__main {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mem-entry__title {
+  overflow: hidden;
+  color: var(--c-texPri);
+  font-size: var(--text-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.mem-entry__title {
+  color: var(--c-texPri);
+}
+
+.mem-entry__where {
+  overflow: hidden;
+  color: var(--c-texTer);
+  font-size: var(--text-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mem-entry__notes {
+  padding: 2px 0 10px 32px;
+}
+
+/* ── Subject select (File to…) ──────────────────────────────────────────── */
+
+.ib-select {
+  max-width: 260px;
+  gap: 6px;
+  color: var(--c-texSec);
+}
+
+.ib-select__text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ib-select svg {
+  color: var(--c-icoSec);
+}
+
+.ib-select__hint {
+  color: var(--c-texTer);
+}
+
+/* ── Loading ─────────────────────────────────────────────────────────────── */
+
+.mem-skeleton {
+  display: flex;
+  flex-direction: column;
+}
+
+.mem-skeleton__item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 0;
+}
+
+@media (max-width: 720px) {
+  .mem-search .dd-input {
+    width: 140px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mem-topic__chev,
+  .mem-topic__row,
+  .mem-entry__row,
+  .mem-topic__actions,
+  .mem-note__actions {
+    transition: none;
+  }
+}

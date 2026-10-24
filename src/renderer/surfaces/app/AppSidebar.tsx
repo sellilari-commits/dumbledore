@@ -13,7 +13,7 @@ import {
   SpectaclesGlyph,
   Tooltip,
 } from '@renderer/design-system'
-import { useAction, useAppState, useInbox, useSubjects } from '@renderer/lib/queries'
+import { useAction, useAppState, useSubjects } from '@renderer/lib/queries'
 import { useShell } from '@renderer/lib/shell'
 import { DeleteSubjectDialog } from '@renderer/pages/subject/DeleteSubjectDialog'
 import type { SubjectSummary } from '@shared/domain'
@@ -109,8 +109,6 @@ function CaptureStatus() {
 export function AppSidebar({ collapsed }: { collapsed: boolean }) {
   const [location] = useLocation()
   const shell = useShell()
-  const inbox = useInbox('new')
-  const newCount = inbox.data?.length ?? 0
   return (
     <Sidebar collapsed={collapsed}>
       <div className="dd-app-sidebar__chrome">
@@ -149,7 +147,6 @@ export function AppSidebar({ collapsed }: { collapsed: boolean }) {
             label="Memory"
             href="/inbox"
             active={location === '/inbox'}
-            badge={newCount}
           />
           <SidebarItem
             icon={<FilePenLine {...ICON} />}

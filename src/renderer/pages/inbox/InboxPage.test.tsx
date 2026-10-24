@@ -1,7 +1,7 @@
 /**
- * Inbox against the mock API: rows with the three parts and the source, keep / ignore / restore /
- * file under a subject, suggested subjects (add, merge, dismiss), loose notes (file, delete), the
- * state and subject filters, and the first-day / loading / error states.
+ * Memory page against the mock API: By topic (subjects, topics with their big picture and sources,
+ * notes), Recent (by day, one entry per page), links to the source pages, edit and delete in
+ * place, filing a loose note, search, and the empty / error states. No Keep / Ignore anywhere.
  */
 import { useToasts } from '@renderer/design-system'
 import { renderWithApp } from '@renderer/lib/test-utils'
@@ -9,175 +9,149 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { InboxPage } from './InboxPage'
 
-const toasts = () => useToasts.getState().toasts.map((t) => t.text)
-const render = (scenario?: 'empty' | 'slow' | 'error') =>
+const render = (scenario?: 'empty' | 'error') =>
   renderWithApp(<InboxPage />, { route: '/inbox', scenario })
-const encounter = (r: ReturnType<typeof render>, id: string) =>
-  r.api.db.encounters.find((e) => e.id === id)
 
-/** Opens a Radix menu from its trigger and picks an item. */
 async function pick(trigger: HTMLElement, item: RegExp) {
   fireEvent.keyDown(trigger, { key: 'Enter' })
   fireEvent.click(await screen.findByRole('menuitem', { name: item }))
 }
 
+const topicRow = async (name: string) =>
+  (await screen.findByRole('button', { name })).closest('li') as HTMLElement
+
 beforeEach(() => {
   useToasts.setState({ toasts: [] })
 })
 
-describe('InboxPage', () => {
-  it('shows new extractions with the three parts and their source', async () => {
+describe('Memory page · By topic', () => {
+  it('lists subjects with their topics, big picture and sources', async () => {
     render()
-    const row = await screen.findByRole('article', { name: 'SN1 reaction – Wikipedia' })
-    expect(within(row).getByText('Seen')).toBeTruthy()
-    expect(within(row).getByText(/Rate = k\[R–X\]/)).toBeTruthy()
-    expect(within(row).getByText('Big picture')).toBeTruthy()
-    expect(within(row).getByText(/Nucleophilic substitution › SN1 vs SN2/)).toBeTruthy()
-    expect(within(row).getByText('Understanding')).toBeTruthy()
-    expect(within(row).getByText('Struggling')).toBeTruthy()
-    expect(within(row).getByText('Google Chrome · en.wikipedia.org · 7 min')).toBeTruthy()
-    expect(within(row).getByText('38 min ago')).toBeTruthy()
-    expect(screen.getAllByRole('article')).toHaveLength(6)
-    expect(screen.getByRole('tab', { name: /New/ }).textContent).toContain('6')
-    expect(screen.getByText(/Watching your screen · \d+ new today/)).toBeTruthy()
+    expect(await screen.findByRole('region', { name: 'Organic Chemistry' })).toBeTruthy()
+    const topic = await topicRow('Carbocation stability')
+    expect(within(topic).getByText(/3° > 2° > 1° > methyl/)).toBeTruthy()
+    const sources = within(topic).getByRole('region', { name: 'Sources for Carbocation stability' })
+    expect(within(sources).getAllByTestId('mem-source')).toHaveLength(2)
+    expect(within(sources).getByText('Carbocation – LibreTexts')).toBeTruthy()
+    expect(within(sources).getByText(/hyperconjugation/)).toBeTruthy()
   })
 
-  it('keeps an item: it leaves New at once and shows under Kept', async () => {
-    const r = render()
-    const row = await screen.findByRole('article', { name: 'SN1 reaction – Wikipedia' })
-    fireEvent.click(within(row).getByRole('button', { name: 'Keep' }))
-    expect(screen.queryByRole('article', { name: 'SN1 reaction – Wikipedia' })).toBeNull()
-    await waitFor(() => expect(encounter(r, 'enc_sn1_wiki')?.inboxState).toBe('accepted'))
-    expect(toasts()).toContain('Kept in 🧪 Organic Chemistry')
-    fireEvent.click(screen.getByRole('tab', { name: /Kept/ }))
-    expect(await screen.findByRole('article', { name: 'SN1 reaction – Wikipedia' })).toBeTruthy()
+  it('links a source to its page, and shows a plain name when there is no url', async () => {
+    render()
+    const topic = await topicRow('Carbocation stability')
+    const link = within(topic).getByRole('link', { name: 'Carbocation – LibreTexts' })
+    expect(link.getAttribute('href')).toBe('https://chem.libretexts.org/Carbocation')
+    expect(link.getAttribute('target')).toBe('_blank')
+    // The ChatGPT note has no url: its source is plain text, not a link.
+    expect(within(topic).getByText('ChatGPT')).toBeTruthy()
+    expect(within(topic).queryByRole('link', { name: 'ChatGPT' })).toBeNull()
   })
 
-  it('ignores an item and restores it from Ignored', async () => {
-    const r = render()
-    const row = await screen.findByRole('article', { name: 'Plate tectonics' })
-    fireEvent.click(within(row).getByRole('button', { name: 'Ignore' }))
-    await waitFor(() => expect(encounter(r, 'enc_plates')?.inboxState).toBe('ignored'))
-    fireEvent.click(screen.getByRole('tab', { name: /Ignored/ }))
-    const ignored = await screen.findByRole('article', { name: 'Plate tectonics' })
-    fireEvent.click(within(ignored).getByRole('button', { name: 'Restore' }))
-    await waitFor(() => expect(encounter(r, 'enc_plates')?.inboxState).toBe('accepted'))
+  it('has no Keep / Ignore, no suggested subjects and no capture line', async () => {
+    render()
+    await screen.findByRole('region', { name: 'Organic Chemistry' })
+    expect(screen.queryByRole('button', { name: /^Keep/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Ignore/ })).toBeNull()
+    expect(screen.queryByText('Suggested subjects')).toBeNull()
+    expect(screen.queryByText(/Watching your screen/)).toBeNull()
   })
 
-  it('files an unfiled item under a subject', async () => {
+  it('edits a note in place', async () => {
     const r = render()
-    const row = await screen.findByRole('article', { name: 'Spaced repetition – Wikipedia' })
-    expect(within(row).getByText('Choose a subject')).toBeTruthy()
-    await pick(
-      within(row).getByRole('button', { name: /File “Spaced repetition/ }),
-      /Linear Algebra/,
+    const topic = await topicRow('SN1 mechanism')
+    fireEvent.click(within(topic).getByRole('button', { name: 'Edit note' }))
+    const box = within(topic).getByRole('textbox', { name: 'Edit note' })
+    fireEvent.change(box, { target: { value: 'SN1: rate depends only on the substrate.' } })
+    fireEvent.keyDown(box, { key: 'Enter' })
+    await waitFor(() =>
+      expect(r.api.db.notes.find((n) => n.id === 'note_sn1')?.text).toBe(
+        'SN1: rate depends only on the substrate.',
+      ),
     )
-    await waitFor(() => expect(encounter(r, 'enc_spacing')?.subjectId).toBe('sub_linalg'))
-    expect(encounter(r, 'enc_spacing')?.inboxState).toBe('accepted')
-    expect(toasts()).toContain('Filed under 📐 Linear Algebra')
   })
 
-  it('filters by subject and shows unfiled items', async () => {
-    render()
-    await screen.findAllByRole('article')
-    await pick(screen.getByRole('button', { name: 'Filter by subject' }), /Linear Algebra/)
-    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(2))
-    expect(screen.getByRole('article', { name: 'Problem set 4 – MATH 2400' })).toBeTruthy()
-    await pick(screen.getByRole('button', { name: 'Filter by subject' }), /Unfiled/)
-    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(1))
-    expect(screen.getByRole('article', { name: 'Spaced repetition – Wikipedia' })).toBeTruthy()
+  it('deletes a note with its ✕', async () => {
+    const r = render()
+    const topic = await topicRow('SN1 mechanism')
+    fireEvent.click(within(topic).getByRole('button', { name: 'Delete note' }))
+    await waitFor(() =>
+      expect(r.api.db.notes.find((n) => n.id === 'note_sn1')?.status ?? 'gone').not.toBe('active'),
+    )
   })
 
-  it('shows every state under All, kept ones without a Keep button', async () => {
+  it('renames a topic and deletes one after a confirm', async () => {
+    const r = render()
+    const topic = await topicRow('SN1 mechanism')
+    fireEvent.click(within(topic).getByRole('button', { name: 'Rename SN1 mechanism' }))
+    const input = within(topic).getByRole('textbox', { name: 'Topic name' })
+    fireEvent.change(input, { target: { value: 'SN1' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await waitFor(() => expect(r.api.db.concepts.find((c) => c.id === 'con_sn1')?.name).toBe('SN1'))
+    const leaving = await topicRow('Leaving groups')
+    fireEvent.click(within(leaving).getByRole('button', { name: 'Delete Leaving groups' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete topic' }))
+    await waitFor(() => expect(r.api.db.concepts.some((c) => c.id === 'con_leaving')).toBe(false))
+  })
+
+  it('shows loose notes on top and files one to a subject', async () => {
+    const r = render()
+    const loose = await screen.findByRole('region', { name: 'Loose notes' })
+    expect(within(loose).getAllByTestId('mem-loose')).toHaveLength(2)
+    const link = within(loose).getAllByRole('link', { name: 'Tampere – Wikipedia' })[0]
+    expect(link?.getAttribute('href')).toBe('https://en.wikipedia.org/wiki/Tampere')
+    const trigger = within(loose).getAllByRole('button', { name: /^File “/ })[0] as HTMLElement
+    await pick(trigger, /Geography/)
+    await waitFor(() =>
+      expect(
+        r.api.db.notes.filter((n) => n.subjectId === null && n.status === 'active'),
+      ).toHaveLength(1),
+    )
+  })
+
+  it('search filters notes and topics', async () => {
     render()
-    await screen.findAllByRole('article')
-    fireEvent.click(screen.getByRole('tab', { name: 'All' }))
-    const kept = await screen.findByRole('article', {
-      name: 'Lecture 7 – Substitution reactions.pdf',
+    await topicRow('Carbocation stability')
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search notes' }), {
+      target: { value: 'hyperconjugation' },
     })
-    expect(within(kept).getByText('Kept')).toBeTruthy()
-    expect(within(kept).queryByRole('button', { name: 'Keep' })).toBeNull()
-    expect(screen.getAllByRole('article').length).toBe(9)
+    expect(await screen.findByText(/Alkyl groups stabilise/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'SN1 mechanism' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Loose notes' })).toBeNull()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search notes' }), {
+      target: { value: 'zzz-nothing' },
+    })
+    expect(await screen.findByText(/Nothing matches/)).toBeTruthy()
   })
+})
 
-  it('merges a suggested subject into another one', async () => {
-    const r = render()
-    const suggested = await screen.findByRole('region', { name: 'Suggested subjects' })
-    expect(within(suggested).getByText('Geography')).toBeTruthy()
-    await pick(
-      within(suggested).getByRole('button', { name: 'Merge Geography into another subject' }),
-      /Organic Chemistry/,
-    )
-    await waitFor(() =>
-      expect(r.api.db.subjects.find((s) => s.id === 'sub_geo')?.status).toBe('archived'),
-    )
-    expect(encounter(r, 'enc_plates')?.subjectId).toBe('sub_orgo')
-    await waitFor(() =>
-      expect(screen.queryByRole('region', { name: 'Suggested subjects' })).toBeNull(),
-    )
-  })
-
-  it('adds a suggested subject', async () => {
-    const r = render()
-    fireEvent.click(await screen.findByRole('button', { name: 'Add Geography as a subject' }))
-    await waitFor(() =>
-      expect(r.api.db.subjects.find((s) => s.id === 'sub_geo')?.status).toBe('active'),
-    )
-    expect(toasts()).toContain('🌍 Geography added to your subjects')
-  })
-
-  it('dismisses a suggested subject', async () => {
-    const r = render()
-    fireEvent.click(await screen.findByRole('button', { name: 'Dismiss Geography' }))
-    await waitFor(() =>
-      expect(r.api.db.subjects.find((s) => s.id === 'sub_geo')?.status).toBe('archived'),
-    )
-    expect(toasts()).toContain('Dismissed Geography')
-  })
-
-  it('lists loose notes newest first, files one under a subject and deletes another', async () => {
-    const r = render()
-    const list = await screen.findByRole('list', { name: 'Loose notes' })
-    const items = within(list).getAllByRole('listitem')
-    expect(items.map((li) => li.querySelector('.ib-loose__text')?.textContent)).toEqual([
-      'Tampere got full city rights on 1 October 1779.',
-      'James Finlayson founded a cotton mill in Tampere in 1820.',
-    ])
-    expect(within(items[1] as HTMLElement).getByText(/^Tampere – Wikipedia · /)).toBeTruthy()
-    await pick(
-      within(items[1] as HTMLElement).getByRole('button', { name: /under a subject/ }),
-      /Organic Chemistry/,
-    )
-    await waitFor(() =>
-      expect(r.api.db.notes.find((n) => n.id === 'note_loose1')?.subjectId).toBe('sub_orgo'),
-    )
-    expect(toasts()).toContain('Filed under 🧪 Organic Chemistry')
-    fireEvent.click(within(items[0] as HTMLElement).getByRole('button', { name: 'Delete note' }))
-    await waitFor(() =>
-      expect(r.api.db.notes.find((n) => n.id === 'note_loose2')?.status).toBe('deleted'),
-    )
-    await waitFor(() => expect(screen.queryByRole('list', { name: 'Loose notes' })).toBeNull())
-  })
-
-  it('explains capture on the first day', async () => {
-    render('empty')
-    expect(await screen.findByText('Nothing captured yet')).toBeTruthy()
-    expect(screen.queryByRole('region', { name: 'Suggested subjects' })).toBeNull()
-  })
-
-  it('shows specific loading copy while the inbox loads', () => {
-    render('slow')
+describe('Memory page · Recent', () => {
+  it('switches to a timeline by day with one linked entry per page', async () => {
+    render()
+    await topicRow('Carbocation stability')
+    fireEvent.click(screen.getByRole('tab', { name: /Recent/ }))
+    const today = await screen.findByRole('region', { name: 'Today' })
+    const entries = within(today).getAllByTestId('mem-entry')
+    const tampere = entries.find((e) => within(e).queryByText('Tampere – Wikipedia'))
+    expect(tampere).toBeTruthy()
+    expect(within(tampere as HTMLElement).getByText(/2 notes in Loose notes/)).toBeTruthy()
     expect(
-      screen
-        .getAllByRole('status')
-        .map((s) => s.textContent)
-        .join(' '),
-    ).toContain('Gathering what Dumbledore noticed while you studied…')
+      within(tampere as HTMLElement)
+        .getByRole('link', { name: 'Tampere – Wikipedia' })
+        .getAttribute('href'),
+    ).toBe('https://en.wikipedia.org/wiki/Tampere')
+  })
+})
+
+describe('Memory page · states', () => {
+  it('shows one calm line when there is nothing yet', async () => {
+    render('empty')
+    expect(
+      await screen.findByText('Read or highlight something and it shows up here.'),
+    ).toBeTruthy()
   })
 
-  it('shows an error with a retry when the inbox fails to load', async () => {
+  it('shows an error with a retry', async () => {
     render('error')
     expect(await screen.findByText('Couldn’t load your memory')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /try again/i })).toBeTruthy()
   })
 })

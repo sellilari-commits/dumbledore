@@ -86,8 +86,15 @@ for (const theme of ['light', 'dark'] as const) {
     test('inbox', async ({ page }) => {
       await open(page, '/inbox', theme)
       await expect(page.getByRole('heading', { name: 'Memory', exact: true })).toBeVisible()
-      await expect(page.getByRole('article').first()).toBeVisible()
+      await expect(page.getByRole('region', { name: 'Organic Chemistry' })).toBeVisible()
       await shoot(page, `ui-inbox-${theme}`)
+    })
+
+    test('memory recent', async ({ page }) => {
+      await open(page, '/inbox', theme)
+      await page.getByRole('tab', { name: /Recent/ }).click()
+      await expect(page.getByRole('region', { name: 'Today' })).toBeVisible()
+      await shoot(page, `ui-inbox-recent-${theme}`)
     })
   })
 }
@@ -105,7 +112,7 @@ test.describe('home & inbox states', () => {
     await shoot(page, 'ui-home-loading-light')
 
     await open(page, '/inbox', 'light', 'empty')
-    await expect(page.getByText('Nothing captured yet')).toBeVisible()
+    await expect(page.getByText('Nothing here yet')).toBeVisible()
     await shoot(page, 'ui-inbox-empty-light')
 
     await open(page, '/inbox', 'light', 'error')
@@ -140,13 +147,14 @@ test.describe('home & inbox interactions', () => {
     await expect(page).toHaveURL(/#\/exams\/quiz_/)
   })
 
-  test('keeping an inbox item takes it out of New', async ({ page }) => {
+  test('memory: a source links to its page, and a note can be deleted', async ({ page }) => {
     await open(page, '/inbox', 'light')
-    const first = page.getByRole('article').first()
-    const title = await first.getAttribute('aria-label')
-    await first.getByRole('button', { name: 'Keep' }).click()
-    await expect(page.getByRole('article', { name: title ?? '' })).toHaveCount(0)
-    await page.getByRole('tab', { name: /Kept/ }).click()
-    await expect(page.getByRole('article', { name: title ?? '' })).toBeVisible()
+    const link = page.getByRole('link', { name: 'Carbocation – LibreTexts' })
+    await expect(link).toHaveAttribute('href', 'https://chem.libretexts.org/Carbocation')
+    await expect(page.getByRole('button', { name: /^Keep/ })).toHaveCount(0)
+    const note = page.getByTestId('mem-note').filter({ hasText: 'SN1 goes through a carbocation' })
+    await note.hover()
+    await note.getByRole('button', { name: 'Delete note' }).click()
+    await expect(note).toHaveCount(0)
   })
 })

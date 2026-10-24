@@ -3,7 +3,8 @@
  * notes. The writes ('notes.update', 'concepts.delete', …) go through `useAction`; queries.ts
  * lists what each of them refreshes.
  */
-import { useQuery } from '@tanstack/react-query'
+import type { SubjectTree } from '@shared/state'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { invoke } from './api'
 
 export const memoryKeys = {
@@ -20,3 +21,19 @@ export const useSubjectTree = (subjectId: string) =>
 
 export const useLooseNotes = () =>
   useQuery({ queryKey: memoryKeys.loose(), queryFn: () => invoke('notes.loose') })
+
+/** Every listed subject's tree at once (the Memory page); `trees` follows `subjectIds`. */
+export function useSubjectTrees(subjectIds: string[]) {
+  return useQueries({
+    queries: subjectIds.map((id) => ({
+      queryKey: memoryKeys.tree(id),
+      queryFn: () => invoke('subjects.tree', id),
+    })),
+    combine: (results) => ({
+      trees: results.map((r) => r.data as SubjectTree | undefined),
+      isLoading: results.some((r) => r.isLoading),
+      error: results.find((r) => r.error)?.error ?? null,
+      refetch: () => Promise.all(results.map((r) => r.refetch())),
+    }),
+  })
+}

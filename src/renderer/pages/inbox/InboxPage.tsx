@@ -1,75 +1,52 @@
 /**
- * Memory (/inbox) — what Dumbledore knows: new extractions with their three parts and source,
- * to keep, file under a subject or ignore (inbox.act); suggested subjects (suggested.act);
- * loose notes from casual reading to file or delete (LooseNotes); filters by state and
- * subject; a capture line with today's count. Acted-on rows leave the
- * view at once (optimistic) and come back with an error toast if the call fails.
+ * Memory (/inbox) — what you know. Two views over the same notes:
+ * - By topic: each subject's topic tree, notes grouped by the page they came from;
+ * - Recent: a timeline by day, one entry per page with where its notes went.
+ * Loose notes sit on top when there are any; one search box filters both views. Every note's
+ * source links to its page. Nothing here asks the student to approve anything.
  */
 import {
-  Button,
   EmptyState,
   ErrorState,
+  Input,
   LoadingState,
   PageHeader,
   Skeleton,
-  toast,
+  ViewTabs,
 } from '@renderer/design-system'
-import { errorToast } from '@renderer/lib/errors'
-import { useAction, useAppState, useInbox, useSubjects } from '@renderer/lib/queries'
-import type { Encounter, SubjectSummary } from '@shared/domain'
-import { Archive, Brain, CheckCheck, EyeOff, Search } from 'lucide-react'
-import { type ReactNode, useState } from 'react'
+import { useLooseNotes, useSubjectTrees } from '@renderer/lib/memory-queries'
+import { useSubjects } from '@renderer/lib/queries'
+import type { Note } from '@shared/domain'
+import { Brain, Clock3, ListTree, Search } from 'lucide-react'
+import { type ReactNode, useMemo, useState } from 'react'
 import { PageFrame } from '../PageFrame'
-import { EncounterRow } from './EncounterRow'
-import { InboxFilters } from './InboxFilters'
-import {
-  type InboxAction,
-  isToday,
-  type StateFilter,
-  type SubjectFilter,
-  staysInView,
-  UNFILED,
-} from './inbox-utils'
+import { SubjectBlock } from './ByTopicView'
 import { LooseNotes } from './LooseNotes'
-import { SuggestedSubjects } from './SuggestedSubjects'
-import './inbox.css'
+import {
+  buildSection,
+  filterSection,
+  type MemoryView,
+  matchesNote,
+  recentTimeline,
+  type SubjectSection,
+} from './memory-model'
+import { RecentView } from './RecentView'
+import './memory.css'
 
-function CaptureLine({ newItems }: { newItems: Encounter[] | undefined }) {
-  const app = useAppState()
-  const setCapture = useAction('capture.setEnabled')
-  const on = app.data?.capture.enabled ?? false
-  const today = (newItems ?? []).filter((e) => isToday(e.createdAt)).length
-  if (!app.data) return null
-  return (
-    <div className="ib-capture">
-      <span className="ib-capture__dot" data-on={on} aria-hidden />
-      <span>
-        {on ? 'Watching your screen' : 'Capture is paused'}
-        {newItems ? ` · ${today} new today` : null}
-      </span>
-      <Button
-        size="xs"
-        variant="ghost"
-        loading={setCapture.isPending}
-        onClick={() => setCapture.mutate(!on)}
-      >
-        {on ? 'Pause' : 'Resume'}
-      </Button>
-    </div>
-  )
-}
+const VIEWS = [
+  { value: 'topics', label: 'By topic', icon: <ListTree size={14} strokeWidth={1.75} /> },
+  { value: 'recent', label: 'Recent', icon: <Clock3 size={14} strokeWidth={1.75} /> },
+] as const
 
-function ListSkeleton() {
+function PageSkeleton() {
   return (
-    <LoadingState caption="Gathering what Dumbledore noticed while you studied…">
-      <div className="ib-skeleton" aria-hidden>
-        {[0.56, 0.44, 0.62].map((w) => (
-          <div key={w} className="ib-skeleton__item">
+    <LoadingState caption="Gathering what you know…">
+      <div className="mem-skeleton" aria-hidden>
+        {[0.4, 0.55, 0.3].map((w) => (
+          <div key={w} className="mem-skeleton__item">
             <Skeleton width={`${w * 100}%`} height={16} />
-            <Skeleton width="34%" height={12} />
-            <Skeleton width="92%" />
-            <Skeleton width="78%" />
-            <Skeleton width={96} height={20} radius={4} />
+            <Skeleton width="72%" />
+            <Skeleton width="58%" />
           </div>
         ))}
       </div>
@@ -77,145 +54,126 @@ function ListSkeleton() {
   )
 }
 
-function emptyCopy(
-  state: StateFilter,
-  filtered: boolean,
-): { icon: ReactNode; title: string; body: string } {
-  if (filtered)
-    return {
-      icon: <Search size={28} strokeWidth={1.5} />,
-      title: 'Nothing here for this subject',
-      body: 'Try another subject or show all subjects.',
-    }
-  if (state === 'new')
-    return {
-      icon: <CheckCheck size={28} strokeWidth={1.5} />,
-      title: 'You’re all caught up',
-      body: 'New things Dumbledore notices while you study land here first, so you decide what it keeps.',
-    }
-  if (state === 'accepted')
-    return {
-      icon: <Archive size={28} strokeWidth={1.5} />,
-      title: 'Nothing kept yet',
-      body: 'Items you keep feed your roadmaps, reviews and exams.',
-    }
-  if (state === 'ignored')
-    return {
-      icon: <EyeOff size={28} strokeWidth={1.5} />,
-      title: 'Nothing ignored',
-      body: 'Ignored items stay out of your roadmaps and reviews.',
-    }
-  return {
-    icon: <Brain size={28} strokeWidth={1.5} />,
-    title: 'Nothing captured yet',
-    body: 'Study the way you normally do. Dumbledore picks up what you read and asks you here before it files anything.',
-  }
-}
-
 export function InboxPage() {
-  const [state, setState] = useState<StateFilter>('new')
-  const [subject, setSubject] = useState<SubjectFilter>(null)
-  const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set())
-  const list = useInbox(state === 'all' ? null : state, subject === UNFILED ? null : subject)
-  const fresh = useInbox('new')
+  const [view, setView] = useState<MemoryView>('topics')
+  const [query, setQuery] = useState('')
   const subjects = useSubjects()
-  const act = useAction('inbox.act')
-  const all: SubjectSummary[] = (subjects.data ?? []).filter((s) => s.status !== 'archived')
+  const listed = useMemo(
+    () => (subjects.data ?? []).filter((s) => s.status !== 'archived'),
+    [subjects.data],
+  )
+  const trees = useSubjectTrees(listed.map((s) => s.id))
+  const loose = useLooseNotes()
 
-  const onAct = (e: Encounter, action: InboxAction, subjectId: string | null) => {
-    const target = all.find((s) => s.id === (action === 'assign' ? subjectId : e.subjectId))
-    if (!staysInView(e, action, subjectId, { state, subject }))
-      setLeaving((prev) => new Set(prev).add(e.id))
-    act.mutate(
-      { encounterId: e.id, action, subjectId: action === 'assign' ? subjectId : null },
-      {
-        onSuccess: () =>
-          toast(
-            action === 'ignore'
-              ? 'Ignored — it won’t shape your roadmaps'
-              : target
-                ? `${action === 'assign' ? 'Filed under' : 'Kept in'} ${target.emoji} ${target.name}`
-                : 'Kept',
-            { tone: action === 'ignore' ? 'info' : 'success' },
-          ),
-        onError: (err) => {
-          setLeaving((prev) => {
-            const next = new Set(prev)
-            next.delete(e.id)
-            return next
-          })
-          errorToast(err)
-        },
-      },
-    )
-  }
+  const sections = useMemo(() => {
+    const out: SubjectSection[] = []
+    listed.forEach((s, i) => {
+      const tree = trees.trees[i]
+      if (tree) out.push(buildSection(s, tree))
+    })
+    return out
+  }, [listed, trees.trees])
 
-  const rows = (list.data ?? []).filter(
-    (e) => !leaving.has(e.id) && (subject !== UNFILED || e.subjectId === null),
+  const searching = query.trim() !== ''
+  const looseNotes = (loose.data ?? []).filter((n) => matchesNote(n, query))
+  const shownSections = sections
+    .map((s) => filterSection(s, query))
+    .filter((s): s is SubjectSection => s !== null)
+
+  const recent = useMemo(() => {
+    const where = new Map<string, string>()
+    const all: Note[] = [...(loose.data ?? [])]
+    for (const s of sections) {
+      for (const t of s.topics) {
+        for (const p of t.pages)
+          for (const n of p.notes) {
+            all.push(n)
+            where.set(n.id, `${s.subject.name} › ${t.concept.name}`)
+          }
+      }
+      for (const p of s.unplaced)
+        for (const n of p.notes) {
+          all.push(n)
+          where.set(n.id, s.subject.name)
+        }
+    }
+    return { all, where }
+  }, [sections, loose.data])
+  const days = recentTimeline(
+    recent.all.filter((n) => matchesNote(n, query)),
+    (n) => recent.where.get(n.id) ?? null,
   )
 
+  const loading = subjects.isLoading || trees.isLoading || loose.isLoading
+  const error = subjects.error ?? trees.error ?? loose.error
+  const nothingAtAll =
+    !loading &&
+    sections.every((s) => s.topics.length === 0 && s.unplaced.length === 0) &&
+    (loose.data ?? []).length === 0
+
   let body: ReactNode
-  if (list.isLoading) body = <ListSkeleton />
-  else if (list.isError)
+  if (loading) body = <PageSkeleton />
+  else if (error)
     body = (
       <ErrorState
         title="Couldn’t load your memory"
-        error={list.error}
-        onRetry={() => void list.refetch()}
+        error={error}
+        onRetry={() => {
+          void subjects.refetch()
+          void trees.refetch()
+          void loose.refetch()
+        }}
       />
     )
-  else if (rows.length === 0) {
-    // No subjects and nothing in view: a first day, so explain capture instead of "caught up".
-    const firstDay = subject === null && subjects.data?.length === 0
-    const copy = emptyCopy(firstDay || state === 'all' ? 'all' : state, subject !== null)
+  else if (nothingAtAll)
     body = (
-      <EmptyState icon={copy.icon} title={copy.title}>
-        {copy.body}
+      <EmptyState icon={<Brain size={28} strokeWidth={1.5} />} title="Nothing here yet">
+        Read or highlight something and it shows up here.
       </EmptyState>
     )
-  } else
+  else if (searching && shownSections.length === 0 && looseNotes.length === 0)
+    body = <p className="mem-quiet mem-quiet--center">Nothing matches “{query.trim()}”.</p>
+  else if (view === 'topics')
     body = (
-      <div className="ib-list">
-        {rows.map((e) => (
-          <EncounterRow
-            key={e.id}
-            encounter={e}
-            subjects={all}
-            busy={act.isPending && act.variables?.encounterId === e.id}
-            onAct={(action, subjectId) => onAct(e, action, subjectId)}
-          />
+      <>
+        <LooseNotes notes={looseNotes} subjects={listed} />
+        {shownSections.map((s) => (
+          <SubjectBlock key={s.subject.id} section={s} searching={searching} />
         ))}
-      </div>
+      </>
     )
+  else body = <RecentView days={days} searching={searching} />
 
   return (
     <PageFrame crumbs={[{ label: 'Memory' }]}>
       <PageHeader
         icon={<Brain size={44} strokeWidth={1.5} />}
         title="Memory"
-        subtitle="What Dumbledore picked up while you studied. Keep what’s right, file it under a subject, or ignore it."
-      >
-        <CaptureLine newItems={fresh.data} />
-      </PageHeader>
-      <SuggestedSubjects subjects={all} />
-      <LooseNotes subjects={all} />
-      <div className="ib-section">
-        <InboxFilters
-          state={state}
-          subject={subject}
-          newCount={fresh.data?.length}
-          subjects={all}
-          onState={(next) => {
-            setLeaving(new Set())
-            setState(next)
-          }}
-          onSubject={(next) => {
-            setLeaving(new Set())
-            setSubject(next)
-          }}
+        subtitle="What you know, by topic. Everything comes from what you read and highlight."
+      />
+      <div className="mem-toolbar">
+        <ViewTabs
+          label="Memory view"
+          tabs={VIEWS}
+          value={view}
+          onChange={(v) => setView(v)}
+          right={
+            <div className="mem-search">
+              <Search size={14} strokeWidth={1.75} aria-hidden />
+              <Input
+                aria-label="Search notes"
+                placeholder="Search notes"
+                value={query}
+                onChange={(e) => setQuery(e.currentTarget.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setQuery('')
+                }}
+              />
+            </div>
+          }
         />
-        {body}
       </div>
+      <div className="mem-body">{body}</div>
     </PageFrame>
   )
 }

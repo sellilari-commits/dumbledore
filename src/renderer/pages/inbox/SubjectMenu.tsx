@@ -1,6 +1,6 @@
 /**
- * SubjectMenu: Notion's borderless "select" button that opens a menu of subjects. Used to file
- * an inbox item under a subject, to merge a suggested subject, and as the subject filter.
+ * SubjectMenu: Notion's borderless "select" button that opens a menu of subjects. Used to file a
+ * loose note to a subject on the Memory page.
  */
 import { Menu, MenuItem, MenuLabel, MenuSeparator } from '@renderer/design-system'
 import type { SubjectSummary } from '@shared/domain'

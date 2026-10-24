@@ -1,16 +1,15 @@
 /**
- * Loose notes on the Memory page (docs/NOTES.md §10.4): notes from casual reading that matched no
- * subject, newest first, with where they came from. Each can be filed under a subject
- * ('notes.file', unplaced in that subject until consolidation places it) or deleted with its ✕.
- * The section hides itself when there are none.
+ * Loose notes on the Memory page (docs/NOTES.md §10.4): notes from reading that matched no subject,
+ * newest first, as compact rows with their source link, "File to…" ('notes.file') and ✕. Shown
+ * only when there are any.
  */
-import { IconButton, Section, toast } from '@renderer/design-system'
+import { IconButton, toast } from '@renderer/design-system'
 import { errorToast } from '@renderer/lib/errors'
-import { formatRelative } from '@renderer/lib/format'
-import { useLooseNotes } from '@renderer/lib/memory-queries'
 import { useAction } from '@renderer/lib/queries'
 import type { Note, SubjectSummary } from '@shared/domain'
-import { Highlighter, StickyNote, X } from 'lucide-react'
+import { Flag, X } from 'lucide-react'
+import { SourceLine } from './MemoryNotes'
+import { sourceLink } from './memory-model'
 import { SubjectMenu } from './SubjectMenu'
 
 const report = (err: Error) => errorToast(err)
@@ -28,38 +27,33 @@ function LooseNote({ note, subjects }: { note: Note; subjects: SubjectSummary[] 
     onError: report,
   })
   return (
-    <li className="ib-loose" data-kind={note.kind}>
+    <li className="mem-loose" data-kind={note.kind} data-testid="mem-loose">
       {note.kind === 'highlight' ? (
-        <Highlighter
-          className="ib-loose__mark"
-          size={13}
-          strokeWidth={1.75}
-          aria-label="Highlight"
-        />
+        <Flag className="mem-note__mark" data-kind="flag" size={12} aria-label="Highlight" />
       ) : (
-        <span className="ib-loose__dot" aria-hidden />
+        <span className="mem-note__dot" aria-hidden />
       )}
-      <div className="ib-loose__body">
-        <span className="ib-loose__text">{note.text}</span>
-        <span className="ib-loose__meta">
-          {[note.source.title ?? note.source.app, formatRelative(note.createdAt)].join(' · ')}
-        </span>
+      <div className="mem-note__body">
+        <span className="mem-note__text">{note.text}</span>
+        <SourceLine source={sourceLink(note)} at={note.createdAt} />
       </div>
       <SubjectMenu
-        label={`File “${note.text.slice(0, 40)}” under a subject`}
-        heading="File under"
+        label={`File “${note.text.slice(0, 40)}” to a subject`}
+        heading="File to"
         subjects={subjects}
         value={null}
-        disabled={file.isPending}
+        disabled={file.isPending || subjects.length === 0}
         align="end"
+        className="mem-loose__file"
         onPick={(subjectId) => file.mutate({ id: note.id, subjectId, conceptId: null })}
       >
-        File
+        File to…
       </SubjectMenu>
       <IconButton
         label="Delete note"
         size="sm"
-        className="ib-loose__del"
+        className="mem-loose__del"
+        disabled={remove.isPending}
         onClick={() => remove.mutate(note.id)}
       >
         <X size={14} strokeWidth={1.75} />
@@ -68,20 +62,16 @@ function LooseNote({ note, subjects }: { note: Note; subjects: SubjectSummary[] 
   )
 }
 
-export function LooseNotes({ subjects }: { subjects: SubjectSummary[] }) {
-  const notes = useLooseNotes()
-  if (!notes.data || notes.data.length === 0) return null
+export function LooseNotes({ notes, subjects }: { notes: Note[]; subjects: SubjectSummary[] }) {
+  if (notes.length === 0) return null
   return (
-    <Section
-      id="inbox-loose"
-      title="Loose notes"
-      icon={<StickyNote size={14} strokeWidth={1.75} />}
-    >
-      <ul className="ib-loose-list" aria-label="Loose notes">
-        {notes.data.map((n) => (
+    <section className="mem-loose-section" aria-label="Loose notes">
+      <h2 className="mem-section-label">Loose notes</h2>
+      <ul className="mem-loose-list">
+        {notes.map((n) => (
           <LooseNote key={n.id} note={n} subjects={subjects} />
         ))}
       </ul>
-    </Section>
+    </section>
   )
 }

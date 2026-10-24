@@ -16,6 +16,7 @@ function note(
   text: string,
   title: string,
   ago: number,
+  url: string | null = null,
 ): Note {
   return {
     id,
@@ -25,7 +26,7 @@ function note(
     kind,
     text,
     keywords: [],
-    source: { ...wiki, title },
+    source: { ...wiki, url, title },
     status: 'active',
     mergedInto: null,
     pinned: false,
@@ -45,6 +46,7 @@ export function demoNotes(): Note[] {
       'A nucleophile donates an electron pair to an electrophile.',
       'Nucleophile – Wikipedia',
       2 * DAY,
+      'https://en.wikipedia.org/wiki/Nucleophile',
     ),
     note(
       'note_lg1',
@@ -54,6 +56,7 @@ export function demoNotes(): Note[] {
       'Good leaving groups are weak bases, like I⁻, Br⁻ and TsO⁻.',
       'Leaving group – Wikipedia',
       30 * HOUR,
+      'https://en.wikipedia.org/wiki/Leaving_group',
     ),
     note(
       'note_cc1',
@@ -72,6 +75,7 @@ export function demoNotes(): Note[] {
       'Alkyl groups stabilise the positive charge by hyperconjugation.',
       'Carbocation – LibreTexts',
       5 * HOUR,
+      'https://chem.libretexts.org/Carbocation',
     ),
     note(
       'note_sn1',
@@ -90,6 +94,7 @@ export function demoNotes(): Note[] {
       'Polar protic solvents stabilise ions in solution.',
       'Solvent effects – Khan Academy',
       2 * HOUR,
+      'https://www.khanacademy.org/science/organic-chemistry',
     ),
     note(
       'note_geo1',
@@ -99,6 +104,7 @@ export function demoNotes(): Note[] {
       'The lithosphere is broken into about fifteen major plates that move a few centimetres a year.',
       'Plate tectonics – Wikipedia',
       26 * HOUR,
+      'https://en.wikipedia.org/wiki/Plate_tectonics',
     ),
     note(
       'note_loose1',
@@ -108,6 +114,7 @@ export function demoNotes(): Note[] {
       'James Finlayson founded a cotton mill in Tampere in 1820.',
       'Tampere – Wikipedia',
       40 * 60_000,
+      'https://en.wikipedia.org/wiki/Tampere',
     ),
     note(
       'note_loose2',
@@ -117,6 +124,7 @@ export function demoNotes(): Note[] {
       'Tampere got full city rights on 1 October 1779.',
       'Tampere – Wikipedia',
       38 * 60_000,
+      'https://en.wikipedia.org/wiki/Tampere',
     ),
   ]
 }
