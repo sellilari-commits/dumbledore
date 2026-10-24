@@ -6,6 +6,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { cx } from '../cx'
 import '../styles/display.css'
 import { Button } from './Button'
+import { SpectaclesGlyph } from './SpectaclesGlyph'
 import { Spinner } from './Spinner'
 
 export function Divider({ vertical, className }: { vertical?: boolean; className?: string }) {
@@ -60,6 +61,7 @@ export function LoadingState({ caption, lines = 4, children, className }: Loadin
 }
 
 export interface EmptyStateProps {
+  /** Defaults to Dumbledore's mark on full-size, centred empty states. */
   icon?: ReactNode
   title: string
   children?: ReactNode
@@ -78,6 +80,7 @@ export function EmptyState({
   align = 'center',
   className,
 }: EmptyStateProps) {
+  const shownIcon = icon ?? (compact || align === 'left' ? null : <SpectaclesGlyph size={36} />)
   return (
     <div
       className={cx(
@@ -87,9 +90,9 @@ export function EmptyState({
         className,
       )}
     >
-      {icon ? (
+      {shownIcon ? (
         <div className="dd-empty__icon" aria-hidden>
-          {icon}
+          {shownIcon}
         </div>
       ) : null}
       <div className="dd-empty__title">{title}</div>

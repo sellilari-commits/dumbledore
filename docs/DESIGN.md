@@ -32,7 +32,15 @@ Code: `src/renderer/design-system/` (tokens, base, components, styles). Screens:
 | `--c-popBac`                | menus, popovers, dialogs                                              |
 | `--c-borPri` / `--c-borStr` | dividers and table grid / input borders                               |
 | `--c-icoPri` / `--c-icoSec` | icons; UI icons are Lucide at 1.5–1.75 stroke in `--c-icoSec`         |
-| `--c-accent*`, `--c-link`   | primary buttons, links, focus, selection — the only blue              |
+| `--c-accentFill*`           | primary buttons: ink (#2C2C2B) light, lighter midnight dark           |
+| `--c-accent*`, `--c-link`   | midnight: orb rings, switches, checks, focus, selection, links        |
+| `--c-panelBac`              | mini panel card: warm paper #FAF9F6 / #252525                         |
+
+**Brand accents** (2026-10-24, light touch). The layout and type stay Notion; colour that isn't
+meaning is Dumbledore's own: ink for the one primary action (the app icon's tile), midnight for
+rings, progress and selection, warm paper for the mini panel. Empty states without their own icon
+show the mark (`EmptyState` default). The mark's geometry lives in `src/shared/brand-mark.ts`;
+`npm run icons` rebuilds the app icon, favicon and SVGs from it.
 
 **Colour pairs** `--c-<colour>-{text,bg,ink}` for gray, brown, orange, yellow, green, blue, purple,
 pink, red (`ink` = AA text on `bg`). Fixed meanings — use the maps in `lib/status.ts`
@@ -63,11 +71,11 @@ quiz card, ask bar (`--radius-panel`). **Shadows** — `--shadow-sm` cards · `-
 
 | Component                                                               | Use for                                                                    | Notes                                                       |
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `Button` primary                                                        | the one main action of a surface                                           | blue; `shortcut="⌘E"` shows the hint                        |
+| `Button` primary                                                        | the one main action of a surface                                           | ink; `shortcut="⌘E"` shows the hint                         |
 | `Button` secondary / ghost                                              | other actions / quiet actions in bars and footers                          | `danger` for destructive; `loading` keeps width             |
 | `IconButton`                                                            | icon-only actions                                                          | `label` is required (tooltip + screen reader)               |
 | `Tag`                                                                   | status, type, score                                                        | colour = meaning (table above)                              |
-| `ProgressBar`                                                           | mastery, exam progress                                                     | thin 4 px, green default; give it a `label`                 |
+| `ProgressBar`                                                           | mastery, exam progress                                                     | thin 4 px, midnight default; give it a `label`              |
 | `Callout`                                                               | something to act on or notice (gaps, struggling, tips)                     | emoji + bold title; `color` tints it                        |
 | `ToggleBlock`                                                           | detail people open on demand (review answers, step prompts)                | controlled or not                                           |
 | `Choices`                                                               | 2–4 short exclusive options in one line (5/10/20, difficulty)              | segmented control                                           |
@@ -135,7 +143,7 @@ ellipsis (…). Prompts are pasted, never sent — say so ("read it, then press 
 
 ## Do / Don't
 
-- Do keep one primary (blue) button per surface; everything else secondary or ghost.
+- Do keep one primary (ink) button per surface; everything else secondary or ghost.
 - Do use colour only through the meaning map; grey for everything else.
 - Do label icon buttons and progress bars; keep focus rings (`--shadow-focus`, keyboard only).
 - Do test both themes — `ui-screens.spec.ts` shoots every route light and dark.
