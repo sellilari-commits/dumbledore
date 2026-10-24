@@ -103,15 +103,29 @@ describe('CaptureScheduler', () => {
     const idleTicks = batches.length
     expect(idleTicks).toBeLessThanOrEqual(5) // 0 s, 2 s, then every 10 s
     helper.idleSeconds = 400
-    const before = helper.callsOf('perceive').length
+    const before = batches.length
     await runFor(clock, 30_000)
-    expect(helper.callsOf('perceive').length).toBe(before)
+    // While paused it only peeks at the front window; an unchanged screen captures nothing.
+    expect(batches.length).toBe(before)
     expect(pauses).toEqual(['idle'])
     expect(scheduler.isActive()).toBe(false)
     helper.idleSeconds = 1
     await runFor(clock, 6000)
     expect(resumes).toBe(1)
-    expect(helper.callsOf('perceive').length).toBeGreaterThan(before)
+    expect(batches.length).toBeGreaterThan(before)
+  })
+
+  it('keeps capturing while idle when the screen changes by itself (a video, a lecture)', async () => {
+    scheduler.start()
+    await runFor(clock, 100)
+    helper.idleSeconds = 400
+    await runFor(clock, 30_000)
+    expect(scheduler.isActive()).toBe(false)
+    const before = batches.length
+    helper.front = { ...wiki, lines: ['Lecture 4: osmotic pressure', 'π = iMRT'] }
+    await runFor(clock, 30_000)
+    expect(batches.length).toBeGreaterThan(before)
+    expect(batches.at(-1)?.front?.lines.map((l) => l.text)).toContain('π = iMRT')
   })
 
   it('doubles intervals in Low Power Mode', async () => {

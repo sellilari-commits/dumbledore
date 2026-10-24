@@ -197,13 +197,28 @@ export class CaptureScheduler {
       this.deps.log?.('[perception] input while marked locked: unlock event missed, resuming')
       this.locked = false
     }
-    const cadence = cadenceFor({
+    let cadence = cadenceFor({
       idleSeconds,
       locked: this.locked,
       lowPower: this.deps.isLowPower?.() ?? false,
       activeMs: settings.cadence.activeMs,
       idleMs: settings.cadence.idleMs,
     })
+    // Idle is not the same as nothing happening: a video, a lecture or a page that updates by
+    // itself keeps capture on even without input (Ilari, 2026-10-24).
+    let probe: PerceivedWindow | null = null
+    if (cadence.mode === 'paused' && !this.locked) {
+      const res = await helper.call('perceive', {
+        scope: 'frontmost',
+        excludeBundleIds: [...new Set([...excludedBundleIds(settings), ...this.learnedExclusions])],
+        allowOcr: settings.ocrEnabled,
+      })
+      const win = res.windows[0] ?? null
+      if (win?.changed) {
+        probe = win
+        cadence = { mode: 'idle', intervalMs: Math.max(1, settings.cadence.idleMs) }
+      }
+    }
     if (cadence.mode === 'paused') {
       this.pause(this.locked ? 'locked' : 'idle')
       return cadence.intervalMs
@@ -221,8 +236,12 @@ export class CaptureScheduler {
     const perceiveParams = { excludeBundleIds: exclude, allowOcr: settings.ocrEnabled }
     let front: PerceivedWindow | null = null
     if (frontmost && !frontBlocked) {
-      const res = await helper.call('perceive', { scope: 'frontmost', ...perceiveParams })
-      const win = res.windows[0] ?? null
+      // Reuse the idle probe's read: perceiving again would report "unchanged" with no lines.
+      const win =
+        probe && probe.pid === frontmost.pid
+          ? probe
+          : ((await helper.call('perceive', { scope: 'frontmost', ...perceiveParams }))
+              .windows[0] ?? null)
       // The front window may have changed between the two calls: check what we actually got.
       const reason = win ? blockReason(win, win.url, win.title, settings) : null
       if (reason) frontBlocked = reason
