@@ -11,6 +11,7 @@ import {
   EpisodeSignals,
   ExamSpec,
   MasteryStatus,
+  NoteKind,
   Probe,
   TeachingMove,
   UnderstandingStatus,
@@ -138,6 +139,57 @@ export const ExtractOutput = z.object({
 })
 export type ExtractOutput = z.infer<typeof ExtractOutput>
 
+// ─── P13 Consolidation ──────────────────────────────────────────────────────────────────────
+
+/** One subject's tree and notes for the restructuring pass (docs/NOTES.md §5). */
+export const ConsolidateInput = z.object({
+  subject: z.object({ id: z.string(), name: z.string(), goal: z.string().nullable() }),
+  language: Lang,
+  concepts: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      parentId: z.string().nullable(),
+      summary: z.string(),
+      status: MasteryStatus,
+      mastery: z.number(),
+    }),
+  ),
+  notes: z.array(
+    z.object({
+      id: z.string(),
+      conceptId: z.string().nullable(),
+      kind: NoteKind,
+      text: z.string(),
+      /** Edited by the student: never rewritten, merged or moved. */
+      pinned: z.boolean(),
+    }),
+  ),
+  edges: z.array(z.object({ fromId: z.string(), toId: z.string() })),
+})
+export type ConsolidateInput = z.infer<typeof ConsolidateInput>
+
+/** The model's proposals, ids mapped back; consolidate/apply.ts validates every one. */
+export const ConsolidateOutput = z.object({
+  summaries: z.array(z.object({ conceptId: z.string(), summary: z.string() })),
+  mergeConcepts: z.array(z.object({ fromId: z.string(), intoId: z.string() })),
+  mergeNotes: z.array(
+    z.object({ fromId: z.string(), intoId: z.string(), text: z.string().nullable() }),
+  ),
+  /** The subject's top level: 3–9 topics, each an existing concept or a new name, with children. */
+  topics: z.array(
+    z.object({
+      conceptId: z.string().nullable(),
+      name: z.string(),
+      children: z.array(z.string()),
+    }),
+  ),
+  placeNotes: z.array(z.object({ noteId: z.string(), conceptId: z.string() })),
+  edges: z.array(z.object({ fromId: z.string(), toId: z.string(), why: z.string() })),
+  openQuestions: z.array(z.object({ conceptId: z.string().nullable(), question: z.string() })),
+})
+export type ConsolidateOutput = z.infer<typeof ConsolidateOutput>
+
 // ─── P3 Roadmapper ──────────────────────────────────────────────────────────────────────────
 
 export const RoadmapInput = z.object({
@@ -155,6 +207,25 @@ export const RoadmapInput = z.object({
   openQuestions: z.array(z.string()),
   doneSteps: z.array(z.string()),
   carry: z.array(z.string()),
+  /** The subject's structure from notes consolidation (docs/NOTES.md §6); all optional. */
+  tree: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        parentId: z.string().nullable(),
+        status: MasteryStatus,
+        mastery: z.number(),
+        summary: z.string(),
+      }),
+    )
+    .optional(),
+  /** Prerequisites by concept id: `fromId` comes before `toId`. */
+  edges: z.array(z.object({ fromId: z.string(), toId: z.string() })).optional(),
+  /** Up to 3 notes per concept (highlights and the student's own edits first). */
+  keyNotes: z.array(z.object({ conceptId: z.string(), text: z.string() })).optional(),
+  /** Concept names in the order to teach, computed in code: prerequisites first, mastered skipped. */
+  suggestedOrder: z.array(z.string()).optional(),
 })
 export type RoadmapInput = z.infer<typeof RoadmapInput>
 
@@ -377,6 +448,8 @@ export interface Brain {
   /** P0: cheap yes/no "learnable content?" for a window of episodes, judged together. */
   triage(input: TriageInput, opts?: CallOptions): Promise<TriageOutput>
   extract(input: ExtractInput, opts?: CallOptions): Promise<ExtractOutput>
+  /** P13: restructure one subject's notes and concept tree (summaries, merges, topics, edges). */
+  consolidate(input: ConsolidateInput, opts?: CallOptions): Promise<ConsolidateOutput>
   buildRoadmap(input: RoadmapInput, opts?: CallOptions): Promise<RoadmapPlan>
   writeStep(input: StepInput, opts?: CallOptions): Promise<StepOutput>
   makeCheckpoint(input: CheckpointInput, opts?: CallOptions): Promise<QuestionDraft[]>

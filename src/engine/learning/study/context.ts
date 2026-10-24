@@ -1,11 +1,14 @@
 /**
  * Context assembly for the roadmapper (P3, PLAN R32): everything memory knows about a subject —
  * profile, mastery table with evidence, newest encounters, open questions, done steps and carried
- * misses of earlier roadmaps, the deadline — packed into a RoadmapInput.
+ * misses of earlier roadmaps, the deadline — packed into a RoadmapInput. Since notes phase 2 it
+ * also carries the subject's structure (docs/NOTES.md §6): the concept tree, prerequisite edges,
+ * key notes, and the study order computed here, which the roadmap must follow.
  */
-import type { Concept, Quiz, Subject } from '@shared/domain'
+import type { Concept, Note, Quiz, Subject } from '@shared/domain'
 import type { RoadmapInput } from '../../brain-contract'
 import type { Repos } from '../../contracts'
+import { studyOrder } from '../consolidate/order'
 import { isLearn } from './roadmap-ops'
 import { head, languageOf, norm, profileText, uniqueNames } from './text'
 
@@ -14,6 +17,10 @@ const MASTERY_LIMIT = 40
 const QUESTION_LIMIT = 10
 const DONE_STEP_LIMIT = 30
 const CARRY_LIMIT = 5
+const TREE_LIMIT = 40
+const ORDER_LIMIT = 25
+const KEY_NOTES_PER_CONCEPT = 3
+const KEY_NOTE_CHARS = 200
 
 export interface RoadmapContext {
   input: RoadmapInput
@@ -92,7 +99,68 @@ export function assembleRoadmapContext(repos: Repos, req: ContextRequest): Roadm
       openQuestions,
       doneSteps,
       carry,
+      ...roadmapStructure(repos, subject.id, concepts),
     },
+  }
+}
+
+type Structure = Pick<RoadmapInput, 'tree' | 'edges' | 'keyNotes' | 'suggestedOrder'>
+
+/**
+ * The subject's structure for P3: the study order (prerequisites first, mastered skipped), the
+ * tree around it (≤ 40 concepts, the ordered ones and their ancestors first), the edges between
+ * them, and up to 3 key notes per concept (highlights and the student's own edits first).
+ */
+export function roadmapStructure(
+  repos: Repos,
+  subjectId: string,
+  concepts: readonly Concept[],
+): Structure {
+  if (concepts.length === 0) return {}
+  const notes = repos.notes.list({ subjectId })
+  const noteCounts = new Map<string, number>()
+  for (const n of notes)
+    if (n.conceptId) noteCounts.set(n.conceptId, (noteCounts.get(n.conceptId) ?? 0) + 1)
+  const edges = repos.edges.list(subjectId)
+  const order = studyOrder({ concepts, edges, noteCounts }).slice(0, ORDER_LIMIT)
+
+  const byId = new Map(concepts.map((c) => [c.id, c]))
+  const keep = new Set<string>()
+  const add = (c: Concept) => {
+    const chain: string[] = []
+    for (let x: Concept | undefined = c; x && !keep.has(x.id); x = byId.get(x.parentId ?? ''))
+      chain.push(x.id)
+    if (keep.size + chain.length <= TREE_LIMIT) for (const id of chain) keep.add(id)
+  }
+  for (const c of order) add(c)
+  for (const c of [...concepts].sort((a, b) =>
+    (b.lastSeenAt ?? '').localeCompare(a.lastSeenAt ?? ''),
+  ))
+    add(c)
+  const tree = concepts.filter((c) => keep.has(c.id))
+
+  const rankNote = (n: Note) => (n.kind === 'highlight' ? 0 : n.pinned ? 1 : 2)
+  const keyNotes = tree.flatMap((c) =>
+    notes
+      .filter((n) => n.conceptId === c.id && n.kind !== 'question')
+      .sort((a, b) => rankNote(a) - rankNote(b) || b.updatedAt.localeCompare(a.updatedAt))
+      .slice(0, KEY_NOTES_PER_CONCEPT)
+      .map((n) => ({ conceptId: c.id, text: head(n.text, KEY_NOTE_CHARS) })),
+  )
+  return {
+    tree: tree.map((c) => ({
+      id: c.id,
+      name: c.name,
+      parentId: c.parentId && keep.has(c.parentId) ? c.parentId : null,
+      status: c.status,
+      mastery: c.mastery,
+      summary: head(c.summary, 240),
+    })),
+    edges: edges
+      .filter((e) => keep.has(e.fromId) && keep.has(e.toId))
+      .map((e) => ({ fromId: e.fromId, toId: e.toId })),
+    keyNotes,
+    suggestedOrder: order.map((c) => c.name),
   }
 }
 

@@ -22,6 +22,7 @@ import { capFromEnv } from '@engine/brain/llm/spend'
 import type { Brain } from '@engine/brain-contract'
 import { systemClock } from '@engine/clock'
 import { createEngineBus } from '@engine/events'
+import { createConsolidation } from '@engine/learning/consolidate'
 import { createFollowUpService } from '@engine/learning/followup/followup-service'
 import { createMasteryModel } from '@engine/learning/mastery'
 import { createQuizService } from '@engine/learning/quiz'
@@ -86,6 +87,7 @@ export function composeReal(opts: RealComposeOptions = {}): RealComposition {
   const brain: Brain = opts.brain ?? (handle as BrainHandle)
 
   const mastery = createMasteryModel({ repos })
+  const consolidation = createConsolidation({ repos, brain, bus, clock, relink: repos.relink, log })
   const stack = createPerceptionStack({
     helper,
     repos,
@@ -191,6 +193,12 @@ export function composeReal(opts: RealComposeOptions = {}): RealComposition {
         stop: () => stack.stop(),
       },
       { name: 'follow-ups', start: () => followUps.start(), stop: () => followUps.stop() },
+      // Notes consolidation (docs/NOTES.md §5): ~10 new notes, nightly, or a subject opened.
+      {
+        name: 'consolidation',
+        start: () => consolidation.start(),
+        stop: () => consolidation.stop(),
+      },
     ],
     log,
   )

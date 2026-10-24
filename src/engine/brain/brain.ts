@@ -10,6 +10,8 @@ import {
   CheckpointInput,
   type CoachEvent,
   CoachInput,
+  ConsolidateInput,
+  type ConsolidateOutput,
   ExamInput,
   ExtractInput,
   type ExtractOutput,
@@ -60,6 +62,7 @@ import { improvePrompt } from './prompts/p08-improve'
 import { suggestPrompt } from './prompts/p09-suggest'
 import { nudgePrompt } from './prompts/p11-nudge'
 import { profilePrompt } from './prompts/p12-profile'
+import { consolidatePrompt } from './prompts/p13-consolidate'
 
 export interface BrainDeps {
   clock?: Clock
@@ -191,6 +194,9 @@ export function createBrain(deps: BrainDeps = {}): BrainHandle {
       }
       return { results }
     },
+
+    consolidate: (raw: ConsolidateInput, opts?: CallOptions): Promise<ConsolidateOutput> =>
+      runStructured(runner, consolidatePrompt, ConsolidateInput.parse(raw), opts),
 
     buildRoadmap: (raw: RoadmapInput, opts?: CallOptions): Promise<RoadmapPlan> =>
       runStructured(runner, roadmapPrompt, RoadmapInput.parse(raw), opts),

@@ -18,6 +18,7 @@ import type { BackendResult, ChatTurn, JsonSchema } from './types'
 export const DEFAULT_TIMEOUTS: Record<string, number> = {
   triage: 20_000,
   extract: 60_000,
+  consolidate: 90_000,
   buildRoadmap: 45_000,
   writeStep: 2_500,
   makeCheckpoint: 30_000,

@@ -12,6 +12,8 @@ import type {
   CheckpointInput,
   CoachEvent,
   CoachInput,
+  ConsolidateInput,
+  ConsolidateOutput,
   ExamInput,
   ExtractInput,
   ExtractOutput,
@@ -124,6 +126,25 @@ export class FakeBrain implements Brain {
           studentPrompts: [],
         }
       }),
+    }
+  }
+
+  /** Summaries from each concept's first note; no structural changes. */
+  async consolidate(input: ConsolidateInput, opts?: CallOptions): Promise<ConsolidateOutput> {
+    this.record('consolidate', input)
+    if (this.overrides.consolidate) return this.overrides.consolidate(input, opts)
+    const summaries = input.concepts.flatMap((c) => {
+      const note = input.notes.find((n) => n.conceptId === c.id)
+      return note ? [{ conceptId: c.id, summary: note.text }] : []
+    })
+    return {
+      summaries,
+      mergeConcepts: [],
+      mergeNotes: [],
+      topics: [],
+      placeNotes: [],
+      edges: [],
+      openQuestions: [],
     }
   }
 

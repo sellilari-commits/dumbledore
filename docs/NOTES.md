@@ -246,3 +246,22 @@ Also decided the same day: active capture checks for screen changes every second
   at the whole tree.
 - The memory file shows notes under their concept and unplaced notes under "Other notes";
   encounters keep the existing cap (100), not 20.
+
+## 12. Phase 2 as built (2026-10-25)
+
+- **Consolidation** (`src/engine/learning/consolidate/`): P13 on the `reason` tier, one call per
+  subject, with short refs (c1…, n1…). Triggers: ≥ 10 new or changed notes since the last pass
+  (checked every 5 min), nightly (first check after 03:00 local) for any change, and
+  `subject:viewed` (emitted by `subjects.get`, so the app's subject page and the panel) at most
+  once per 10 min per subject when something changed. Never during a study session on that
+  subject; a failed pass waits 30 min. `subjects.consolidated_at` records the last pass.
+- **Validation** (`apply.ts`): ids must exist in the subject; pinned notes are never merged,
+  reworded or moved; a pinned summary (`Concept.summaryPinned`, set when the student edits it) is
+  never rewritten; summaries only for concepts with notes; topics only with noted children; no
+  tree loops (a topic moves to the top level first); edges through the EdgeRepo (no cycles); at
+  most 9 top-level topics, the rest sharing one "Other topics". Concept merges use SQLite's
+  `relink` fold. Open questions become `question` notes.
+- **Roadmap** (`study/context.ts` → P3 v3): `tree` (≤ 40), `edges`, `keyNotes` (≤ 3 per concept,
+  highlights and pinned first) and `suggestedOrder` from `studyOrder` (prerequisites first, tree
+  order as the tie-break, mastered and note-less topic containers skipped). P3 must keep that
+  order; `check` asks for one repair when a step teaches a concept before an earlier one.

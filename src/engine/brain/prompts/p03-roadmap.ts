@@ -3,6 +3,8 @@
  * roadmap from where they are: learn steps (one idea, a teaching move, a prompt draft for their
  * AI) and checkpoints (covers, misconception probes). Post-processing enforces the checkpoint
  * rules of docs/PLAN.md §6.6 (spacing, a final checkpoint, carried concepts, question counts).
+ * With the subject's structure (docs/NOTES.md §6: tree, prerequisites, key notes) it follows the
+ * study order computed in code; `check` asks for a repair when steps break that order.
  */
 import type { RoadmapInput, RoadmapPlan } from '@engine/brain-contract'
 import { Probe, TeachingMove } from '@shared/domain'
@@ -67,6 +69,7 @@ function system(input: RoadmapInput, lang: string): string {
    - Skip concepts with solid evidence of mastery (status "mastered", passed checkpoints or exams).
    - Start at the earliest prerequisite that is not mastered or shows struggle ("struggling" status, "struggling"/"unclear" encounters, open questions).
    - Steps in <done_steps> are finished: never repeat them; continue after them.
+   - When <suggested_order> is given, it is the order to teach in: prerequisites first, mastered concepts already left out, the first item is where the student is ready to start. Keep that order (you may group, split or leave out concepts the goal does not need), and use the concept names from it. <prerequisites> says which concept needs which; <key_notes> is what the student has already read or highlighted — build on it in the prompt drafts ("You read that…").
    - startReason: one sentence to the student ("you"), citing the evidence, e.g. "You already handle X; you stumbled on Y twice, so we start there."
    - offerPlacement: true only when there is no evidence at all (no mastery, encounters or done steps).
 3. Time: if the deadline is within 2 days or little time is available, keep only the highest-yield steps (estimatedMinutes must fit the time available) and say so in startReason.
@@ -101,7 +104,67 @@ function user(input: RoadmapInput, today: string): string {
     tag('open_questions', bullets(input.openQuestions.slice(0, 10))),
     tag('done_steps', bullets(input.doneSteps)),
     tag('carry', bullets(input.carry)),
+    ...structureTags(input),
   ].join('\n')
+}
+
+/** The subject's structure, when memory has one (docs/NOTES.md §6). */
+function structureTags(input: RoadmapInput): string[] {
+  const tree = input.tree ?? []
+  if (tree.length === 0) return []
+  const name = new Map(tree.map((c) => [c.id, c.name]))
+  const depth = (id: string | null): number => {
+    let d = 0
+    for (let x = id; x && d < 6; d++) x = tree.find((c) => c.id === x)?.parentId ?? null
+    return d
+  }
+  const lines = tree.map(
+    (c) =>
+      `${'  '.repeat(depth(c.parentId))}- ${c.name} [${c.status} ${c.mastery.toFixed(2)}]${c.summary ? `: ${c.summary}` : ''}`,
+  )
+  const prereqs = (input.edges ?? []).flatMap((e) => {
+    const a = name.get(e.fromId)
+    const b = name.get(e.toId)
+    return a && b ? [`${a} → ${b}`] : []
+  })
+  const notes = (input.keyNotes ?? []).flatMap((n) => {
+    const c = name.get(n.conceptId)
+    return c ? [`${c}: ${n.text}`] : []
+  })
+  const order = (input.suggestedOrder ?? []).map((c, i) => `${i + 1}. ${c}`)
+  return [
+    tag('tree', lines.join('\n')),
+    tag('prerequisites', bullets(prereqs)),
+    tag('key_notes', bullets(notes)),
+    tag('suggested_order', order.join('\n') || '(none)'),
+  ]
+}
+
+/**
+ * Learn steps that teach a concept before one that comes earlier in the study order. Only names
+ * found in the order count; grouping and leaving concepts out are fine.
+ */
+export function orderIssues(plan: LlmRoadmap, input: RoadmapInput): string[] {
+  const order = (input.suggestedOrder ?? []).map(norm)
+  if (order.length < 2) return []
+  const issues: string[] = []
+  let highest = -1
+  let highestName = ''
+  plan.items.forEach((item, i) => {
+    if (item.kind !== 'learn') return
+    const ranks = item.concepts.map((c) => order.indexOf(norm(c))).filter((r) => r >= 0)
+    if (ranks.length === 0) return
+    const first = Math.min(...ranks)
+    if (first < highest)
+      issues.push(
+        `items.${i}: teaches "${input.suggestedOrder?.[first]}" after "${highestName}"; follow <suggested_order>`,
+      )
+    if (Math.max(...ranks) > highest) {
+      highest = Math.max(...ranks)
+      highestName = input.suggestedOrder?.[highest] ?? ''
+    }
+  })
+  return issues
 }
 
 type Item = RoadmapPlan['items'][number]
@@ -180,7 +243,7 @@ export function finalizeRoadmap(plan: LlmRoadmap, input: RoadmapInput, lang: str
 export const roadmapPrompt: PromptSpec<RoadmapInput, LlmRoadmap, RoadmapPlan> = {
   id: 'P3',
   task: 'buildRoadmap',
-  version: 2,
+  version: 3,
   tier: 'reason',
   temperature: 0.3,
   maxOutputTokens: 6000,
@@ -194,8 +257,8 @@ export const roadmapPrompt: PromptSpec<RoadmapInput, LlmRoadmap, RoadmapPlan> = 
     const lang = roadmapLanguage(input)
     return { system: system(input, lang), user: user(input, ctx.today) }
   },
-  check(plan) {
-    const issues: string[] = []
+  check(plan, input) {
+    const issues: string[] = [...orderIssues(plan, input)]
     plan.items.forEach((item, i) => {
       if (item.kind !== 'learn') return
       const words = checkStudentPrompt(item.promptDraft, {
