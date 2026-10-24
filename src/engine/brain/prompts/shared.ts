@@ -29,6 +29,8 @@ export interface PromptSpec<I, L, O> {
   tier: LlmTier
   temperature: number
   maxOutputTokens: number
+  /** Output cap on Apple's on-device model (4K context, one item per call); default maxOutputTokens. */
+  onDeviceMaxOutputTokens?: number
   reasoningEffort: ReasoningEffort | null
   schemaName: string
   schema: ZodType<L>

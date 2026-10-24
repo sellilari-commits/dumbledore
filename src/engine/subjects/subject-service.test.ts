@@ -121,6 +121,29 @@ describe.each([
     expect(() => service.actInbox(e1.id, 'assign', null)).toThrow()
   })
 
+  it('files a loose encounter with its notes, and ignoring one deletes its notes', () => {
+    const source = { app: 'Chrome', bundleId: null, url: null, title: 'Tampere' }
+    const loose = repos.encounters.add(encounterInput({ topicPath: ['Tampere'] }))
+    const other = repos.encounters.add(encounterInput({ topicPath: ['Memes'] }))
+    const note = (encounterId: string, text: string) =>
+      repos.notes.add({
+        subjectId: null,
+        conceptId: null,
+        encounterId,
+        kind: 'fact',
+        text,
+        source,
+      }).note
+    const kept = note(loose.id, 'Tampere was founded in 1779')
+    const dropped = note(other.id, 'A meme about cats')
+    const history = service.create({ name: 'History', emoji: null, goal: null, deadline: null })
+    service.actInbox(loose.id, 'assign', history.id)
+    expect(repos.notes.get(kept.id)).toMatchObject({ subjectId: history.id, status: 'active' })
+    expect(repos.notes.list({ subjectId: null })).toHaveLength(1)
+    service.actInbox(other.id, 'ignore', null)
+    expect(repos.notes.get(dropped.id)?.status).toBe('deleted')
+  })
+
   it('assigns an encounter to another subject and gives the target its concept', () => {
     const from = repos.subjects.create({ name: 'Biology' })
     const to = repos.subjects.create({ name: 'Chemistry' })

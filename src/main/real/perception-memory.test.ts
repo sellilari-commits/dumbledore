@@ -15,7 +15,7 @@ describe('composeReal: perception → memory', () => {
     await disposeRig(rig)
   })
 
-  it('turns a page the student read into an Inbox encounter and a suggested subject', async () => {
+  it('turns a page the student read into a loose Inbox encounter the student can file', async () => {
     rig = createRig({ compose: { tuning: { memoryDebounceMs: 0 } } })
     const { services, screen, clock, comp } = rig
     const closed: Episode[] = []
@@ -45,14 +45,20 @@ describe('composeReal: perception → memory', () => {
     expect(encounter?.openQuestions).toEqual(['How does Photosynthesis work?'])
     expect(changes.some((c) => c.scope === 'inbox')).toBe(true)
 
-    const suggested = services.queries.subjects().filter((s) => s.status === 'suggested')
-    expect(suggested.map((s) => s.name)).toEqual(['Photosynthesis'])
-    const subject = suggested[0]
-    expect(encounter?.subjectId).toBe(subject?.id)
+    // One casual read creates no subject: the encounter stays loose until it is filed.
+    expect(services.queries.subjects()).toEqual([])
+    expect(encounter?.subjectId).toBeNull()
     expect(services.repos.episodes.listUnextracted(10)).toEqual([])
 
-    // Accepting the suggestion makes it a subject with a memory file (MemoryMirror via the bus).
-    services.subjects.actSuggested(subject?.id ?? '', 'accept', null)
+    // Filing it under a new subject gives that subject a memory file (MemoryMirror via the bus).
+    const subject = services.subjects.create({
+      name: 'Photosynthesis',
+      emoji: null,
+      goal: null,
+      deadline: null,
+    })
+    services.subjects.actInbox(encounter?.id ?? '', 'assign', subject.id)
+    expect(services.repos.encounters.list({ subjectId: subject.id })).toHaveLength(1)
     clock.advance(10)
     const file = comp.engine.mirror()?.pathFor(subject?.id ?? '')
     expect(file).toBeTruthy()

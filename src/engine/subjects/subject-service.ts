@@ -79,10 +79,29 @@ export function createSubjectService(deps: SubjectServiceDeps): SubjectService {
     relink.setEncounterConcept(e.id, copy.id)
   }
 
-  /** Moves an encounter (accepted) to another subject, taking its concept along. */
+  /** Moves an encounter (accepted) to another subject, taking its concept and notes along. */
   const assign = (encounterId: Id, subjectId: Id): void => {
     const moved = repos.encounters.setInboxState(encounterId, 'accepted', subjectId)
     moveConcept(moved, subjectId)
+    fileNotes(encounterId, subjectId)
+  }
+
+  /**
+   * Files an encounter's notes (loose ones included) under the subject, on the encounter's
+   * concept when it now lives there; otherwise unplaced in the subject, for consolidation.
+   */
+  const fileNotes = (encounterId: Id, subjectId: Id): void => {
+    const encounter = repos.encounters.list({ subjectId }).find((e) => e.id === encounterId)
+    const concept = encounter?.conceptId ? repos.concepts.get(encounter.conceptId) : null
+    const conceptId = concept?.subjectId === subjectId ? concept.id : null
+    for (const note of repos.notes.list({ encounterId })) {
+      const own = note.conceptId ? repos.concepts.get(note.conceptId) : null
+      if (note.subjectId === subjectId && own?.subjectId === subjectId) continue
+      repos.notes.update(note.id, {
+        subjectId,
+        conceptId: own?.subjectId === subjectId ? own.id : conceptId,
+      })
+    }
   }
 
   return {
@@ -158,7 +177,11 @@ export function createSubjectService(deps: SubjectServiceDeps): SubjectService {
 
     actInbox(encounterId, action, subjectId) {
       if (action === 'ignore') {
-        repos.encounters.setInboxState(encounterId, 'ignored')
+        repos.transaction(() => {
+          repos.encounters.setInboxState(encounterId, 'ignored')
+          // Ignored means "not mine to remember": its notes go too.
+          for (const note of repos.notes.list({ encounterId })) repos.notes.remove(note.id)
+        })
         emit('inbox', [encounterId])
         return
       }

@@ -119,7 +119,9 @@ export async function runStructured<I, L, O>(
       outputTokens: spec.maxOutputTokens,
       language: spec.language(input),
       onDeviceOk: device !== null,
-      onDeviceTokens: device ? estimate(device) + spec.maxOutputTokens : undefined,
+      onDeviceTokens: device
+        ? estimate(device) + (spec.onDeviceMaxOutputTokens ?? spec.maxOutputTokens)
+        : undefined,
     },
     (a) =>
       attemptStructured(
@@ -146,7 +148,11 @@ async function attemptStructured<I, L, O>(
   const schemaMode = a.backend.supportsJsonSchema(a.route.model)
   const system = systemFor(built, schema, schemaMode)
   const first: ChatTurn[] = [{ role: 'user', content: built.user }]
-  const request = (messages: ChatTurn[], maxOutputTokens = spec.maxOutputTokens) =>
+  const outputCap =
+    a.route.provider === 'apple'
+      ? (spec.onDeviceMaxOutputTokens ?? spec.maxOutputTokens)
+      : spec.maxOutputTokens
+  const request = (messages: ChatTurn[], maxOutputTokens = outputCap) =>
     a.call({
       system,
       messages,
@@ -170,7 +176,7 @@ async function attemptStructured<I, L, O>(
         { role: 'assistant', content: res.text.slice(0, 8000) || '(empty)' },
         { role: 'user', content: repairMessage(v.issues) },
       ],
-      truncated ? Math.round(spec.maxOutputTokens * 1.5) : spec.maxOutputTokens,
+      truncated ? Math.round(outputCap * 1.5) : outputCap,
     )
     v = validate(spec.schema, res.text)
     if (!v.ok) throw new InvalidOutputError(v.issues.join('; '))

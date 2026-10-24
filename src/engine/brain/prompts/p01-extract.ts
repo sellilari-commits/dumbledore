@@ -1,8 +1,10 @@
 /**
  * P1 Extractor (tier `extract`): screen-text episodes → "is the student learning?" plus the three
  * parts (seen / big picture / understanding), open questions, assignments, and — for AI chats —
- * the student's own prompts scored for coaching. Full variant with two few-shot examples for
- * cloud models; compact variant for Apple's 4K on-device context.
+ * the student's own prompts scored for coaching, and 1–5 atomic notes per item that the model
+ * places on the subject's concept tree itself (A-MEM style; docs/NOTES.md §4). Concepts are shown
+ * with short refs (c1, c2 …) to keep tokens down; finalize maps them back to ids. Full variant
+ * with two few-shot examples for cloud models; compact variant for Apple's 4K on-device context.
  */
 import type { ExtractInput, ExtractOutput } from '@engine/brain-contract'
 import { UnderstandingStatus } from '@shared/domain'
@@ -23,6 +25,16 @@ const LlmItem = z.object({
   assignment: z
     .object({ title: z.string(), course: z.string().nullable(), dueAt: z.string().nullable() })
     .nullable(),
+  notes: z
+    .array(
+      z.object({
+        text: z.string(),
+        keywords: z.array(z.string()),
+        conceptId: z.string().nullable(),
+        newConcept: z.object({ name: z.string(), parentId: z.string().nullable() }).nullable(),
+      }),
+    )
+    .default([]),
 })
 const LlmPrompt = z.object({
   text: z.string(),
@@ -71,6 +83,11 @@ const ITEM_RULES = `For each learning episode give one item per distinct topic (
 - subjectMatchId: id of the listed subject this belongs to, else null. subjectNewName: only when no listed subject fits and this is a genuine area of study (short course-like name, e.g. "Linear Algebra"), else null. Never fill both.
 - assignment: only when the text names an assignment, exam or deadline: {title, course or null, dueAt as YYYY-MM-DD or null}; resolve relative dates ("Friday") from <today>. Otherwise null.`
 
+const NOTE_RULES = `- notes: 1–5 facts worth remembering from this item: a definition, fact, formula, date or example, each ≤ 25 words and self-contained ("X is Y"), in the language of the page, about the content only (never the site, menus or interface), no two saying the same thing. For each note: keywords (1–5 short terms, for linking notes later) and its place in the subject's concept tree, listed under <subjects> as "c3 Name < c1" (c1 is its parent): conceptId = the ref of the existing concept it belongs to (prefer this), or, when none fits, conceptId null and newConcept {name: a specific topic of 2–5 words, never a sentence; parentId: the ref of its parent concept, or null for a new top-level topic}. With no matching subject, use newConcept with parentId null.`
+
+/** On-device (4K context): the same notes, said briefly. */
+const NOTE_RULES_COMPACT = `- notes: 1–5 short facts (≤ 25 words, page language, content only), each with 1–3 keywords and conceptId = the ref of the listed concept it belongs to, else newConcept {name, parentId ref or null}.`
+
 const HIGHLIGHT_RULES = `Highlights: <highlighted> lists text the student selected on screen to mark it as important — a note they chose to keep. An episode with highlights is always learning (isLearning=true): put each highlighted passage in \`seen\` (quote it, or paraphrase it closely) and its key words in keyTerms, even when the rest of the page is noise.`
 
 const CHAT_RULES = `AI-chat episodes (kind="ai_chat"): lines tagged [R] are usually the student's messages, [L] the AI's. A repeated or rephrased question is evidence of confusion. Put every student message in studentPrompts: text, hasContext (states their level, course, what they know or what confuses them), hasStructure (asks for a format, steps, length or numbered points), asksToBeQuizzed, asksForExamples. For other episodes studentPrompts is [].`
@@ -90,9 +107,12 @@ const EXAMPLES = `Example input:
 <text>[C] Liked by anna_k and 212 others · Suggested for you · Follow</text>
 </episode>
 Example output:
-{"results":[{"episodeId":"x1","reason":"Studying photosynthesis on Khan Academy","isLearning":true,"confidence":0.95,"items":[{"topicPath":["Biology","Photosynthesis","Light-dependent reactions"],"seen":"Light-dependent reactions happen in the thylakoid membranes; the ATP and NADPH they make power the Calvin cycle in the stroma.","bigPicture":"Understanding how the two stages of photosynthesis connect, likely for a biology course.","evidence":"Read at 90 wpm vs 200 usual and scrolled back 4 times.","understanding":"struggling","openQuestions":["How do ATP and NADPH actually drive the Calvin cycle?"],"keyTerms":["thylakoid","ATP","NADPH","Calvin cycle","stroma"],"subjectMatchId":null,"subjectNewName":"Biology","assignment":null}],"studentPrompts":[]},{"episodeId":"x2","reason":"Social media feed","isLearning":false,"confidence":0.97,"items":[],"studentPrompts":[]}]}
+{"results":[{"episodeId":"x1","reason":"Studying photosynthesis on Khan Academy","isLearning":true,"confidence":0.95,"items":[{"topicPath":["Biology","Photosynthesis","Light-dependent reactions"],"seen":"Light-dependent reactions happen in the thylakoid membranes; the ATP and NADPH they make power the Calvin cycle in the stroma.","bigPicture":"Understanding how the two stages of photosynthesis connect, likely for a biology course.","evidence":"Read at 90 wpm vs 200 usual and scrolled back 4 times.","understanding":"struggling","openQuestions":["How do ATP and NADPH actually drive the Calvin cycle?"],"keyTerms":["thylakoid","ATP","NADPH","Calvin cycle","stroma"],"subjectMatchId":null,"subjectNewName":"Biology","assignment":null,"notes":[{"text":"The light-dependent reactions take place in the thylakoid membranes.","keywords":["light-dependent reactions","thylakoid"],"conceptId":null,"newConcept":{"name":"Light-dependent reactions","parentId":null}},{"text":"ATP and NADPH from the light-dependent reactions power the Calvin cycle in the stroma.","keywords":["ATP","NADPH","Calvin cycle"],"conceptId":null,"newConcept":{"name":"Calvin cycle","parentId":null}}]}],"studentPrompts":[]},{"episodeId":"x2","reason":"Social media feed","isLearning":false,"confidence":0.97,"items":[],"studentPrompts":[]}]}
 
 Example input:
+<subjects>- id=sub_m · Calculus
+  c1 Limits
+  c2 Derivatives < c1</subjects>
 <episode id="x3" kind="ai_chat" app="Google Chrome" title="ChatGPT" dwell="3m5s">
 <signals>ai_questions=["what is a derivative","explain it simpler pls"]</signals>
 <text>
@@ -103,13 +123,14 @@ Example input:
 </text>
 </episode>
 Example output:
-{"results":[{"episodeId":"x3","reason":"Asking ChatGPT what a derivative is","isLearning":true,"confidence":0.95,"items":[{"topicPath":["Mathematics","Calculus","Derivatives"],"seen":"The AI explained a derivative as the instantaneous rate of change (slope of the tangent line), with position and speed as the analogy: f'(t) is the speed.","bigPicture":"Getting an intuitive grasp of what a derivative means, probably early in a calculus course.","evidence":"Asked 'explain it simpler pls' right after the first explanation.","understanding":"unclear","openQuestions":["How do I actually calculate a derivative?"],"keyTerms":["derivative","rate of change","tangent line","slope"],"subjectMatchId":null,"subjectNewName":"Calculus","assignment":null}],"studentPrompts":[{"text":"what is a derivative","hasContext":false,"hasStructure":false,"asksToBeQuizzed":false,"asksForExamples":false},{"text":"explain it simpler pls","hasContext":false,"hasStructure":false,"asksToBeQuizzed":false,"asksForExamples":false}]}]}`
+{"results":[{"episodeId":"x3","reason":"Asking ChatGPT what a derivative is","isLearning":true,"confidence":0.95,"items":[{"topicPath":["Mathematics","Calculus","Derivatives"],"seen":"The AI explained a derivative as the instantaneous rate of change (slope of the tangent line), with position and speed as the analogy: f'(t) is the speed.","bigPicture":"Getting an intuitive grasp of what a derivative means, probably early in a calculus course.","evidence":"Asked 'explain it simpler pls' right after the first explanation.","understanding":"unclear","openQuestions":["How do I actually calculate a derivative?"],"keyTerms":["derivative","rate of change","tangent line","slope"],"subjectMatchId":"sub_m","subjectNewName":null,"assignment":null,"notes":[{"text":"A derivative is the slope of the tangent line: how fast a function changes at a point.","keywords":["derivative","tangent line","slope"],"conceptId":"c2","newConcept":null},{"text":"If f(t) is position, f'(t) is the speed at that moment.","keywords":["speed","position"],"conceptId":null,"newConcept":{"name":"Derivative as rate of change","parentId":"c2"}}]}],"studentPrompts":[{"text":"what is a derivative","hasContext":false,"hasStructure":false,"asksToBeQuizzed":false,"asksForExamples":false},{"text":"explain it simpler pls","hasContext":false,"hasStructure":false,"asksToBeQuizzed":false,"asksForExamples":false}]}]}`
 
 const SYSTEM_FULL = `You are the perception module of a study coach running on a student's Mac. You receive text read from the student's screen during one or more episodes (a continuous stretch in one app or page) plus behaviour signals. For each episode, ask one question: does it contain learnable content? If yes, write down exactly what was there, precisely enough that a tutor could continue from that point.
 
 ${RULES}
 
 ${ITEM_RULES}
+${NOTE_RULES}
 
 ${HIGHLIGHT_RULES}
 
@@ -124,6 +145,7 @@ const SYSTEM_COMPACT = `You are the perception module of a study coach. From scr
 ${RULES_COMPACT}
 
 ${ITEM_RULES}
+${NOTE_RULES_COMPACT}
 
 Highlighted text is a note the student chose to keep: such an episode is always learning; quote it in seen and keyTerms.
 
@@ -156,14 +178,39 @@ export function formatSignals(sig: ExtractInput['episodes'][number]['signals']):
   return parts.length ? parts.join(' · ') : '(none)'
 }
 
+/** Short refs for the listed concepts (c1, c2 … in listing order), both ways. */
+export function conceptRefs(input: ExtractInput): {
+  toId: Map<string, string>
+  toRef: Map<string, string>
+} {
+  const toId = new Map<string, string>()
+  const toRef = new Map<string, string>()
+  for (const c of input.subjects.flatMap((s) => s.concepts ?? [])) {
+    if (toRef.has(c.id)) continue
+    const ref = `c${toRef.size + 1}`
+    toRef.set(c.id, ref)
+    toId.set(ref, c.id)
+  }
+  return { toId, toRef }
+}
+
+function subjectBlock(s: ExtractInput['subjects'][number], toRef: Map<string, string>): string {
+  const head = `- id=${s.id} · ${s.name}`
+  if (!s.concepts?.length)
+    return s.topConcepts.length
+      ? `${head} · concepts: ${s.topConcepts.slice(0, 8).join(', ')}`
+      : head
+  const lines = s.concepts.map((c) => {
+    const parent = c.parentId ? toRef.get(c.parentId) : undefined
+    return `  ${toRef.get(c.id)} ${c.name}${parent ? ` < ${parent}` : ''}`
+  })
+  return [head, ...lines].join('\n')
+}
+
 export function buildExtractUser(input: ExtractInput, today: string): string {
+  const { toRef } = conceptRefs(input)
   const subjects = input.subjects.length
-    ? input.subjects
-        .map(
-          (s) =>
-            `- id=${s.id} · ${s.name}${s.topConcepts.length ? ` · concepts: ${s.topConcepts.slice(0, 8).join(', ')}` : ''}`,
-        )
-        .join('\n')
+    ? input.subjects.map((s) => subjectBlock(s, toRef)).join('\n')
     : '(none yet)'
   const episodes = input.episodes.map((ep) =>
     tag(
@@ -241,6 +288,7 @@ export function keepHighlights(
           openQuestions: [],
           keyTerms: clean(short, 10),
           assignment: null,
+          notes: [],
         },
       ],
     }
@@ -260,9 +308,36 @@ export function keepHighlights(
 
 export function finalizeExtract(out: LlmExtract, input: ExtractInput): ExtractOutput {
   const subjectIds = new Set(input.subjects.map((s) => s.id))
+  const { toId } = conceptRefs(input)
   return {
-    results: input.episodes.map((ep, i) => keepHighlights(finalizeOne(out, ep, i, subjectIds), ep)),
+    results: input.episodes.map((ep, i) =>
+      keepHighlights(finalizeOne(out, ep, i, subjectIds, toId), ep),
+    ),
   }
+}
+
+/** A concept ref ("c3") back to its id; anything else passes through for apply.ts to check. */
+const refToId = (ref: string | null | undefined, toId: Map<string, string>): string | null => {
+  const t = ref?.trim()
+  return t ? (toId.get(t) ?? t) : null
+}
+
+function finalizeNotes(
+  notes: LlmExtract['results'][number]['items'][number]['notes'] | undefined,
+  toId: Map<string, string>,
+): NonNullable<ExtractOutput['results'][number]['items'][number]['notes']> {
+  return (notes ?? [])
+    .filter((n) => n.text.trim())
+    .slice(0, 5)
+    .map((n) => {
+      const name = n.newConcept?.name.trim()
+      return {
+        text: n.text.trim(),
+        keywords: clean(n.keywords, 5),
+        conceptId: refToId(n.conceptId, toId),
+        newConcept: name ? { name, parentId: refToId(n.newConcept?.parentId, toId) } : null,
+      }
+    })
 }
 
 function finalizeOne(
@@ -270,6 +345,7 @@ function finalizeOne(
   ep: ExtractInput['episodes'][number],
   i: number,
   subjectIds: Set<string>,
+  toId: Map<string, string>,
 ): ExtractOutput['results'][number] {
   const r = out.results.find((x) => x.episodeId === ep.id) ?? out.results[i]
   if (!r) {
@@ -312,6 +388,7 @@ function finalizeOne(
                     : null,
               }
             : null,
+          notes: finalizeNotes(it.notes, toId),
         }
       })
     : []
@@ -331,10 +408,11 @@ function finalizeOne(
 export const extractPrompt: PromptSpec<ExtractInput, LlmExtract, ExtractOutput> = {
   id: 'P1',
   task: 'extract',
-  version: 2,
+  version: 3,
   tier: 'extract',
   temperature: 0.1,
-  maxOutputTokens: 2400,
+  maxOutputTokens: 2800,
+  onDeviceMaxOutputTokens: 1600,
   reasoningEffort: 'low',
   schemaName: 'extraction',
   schema: LlmExtract,

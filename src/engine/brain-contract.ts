@@ -4,9 +4,9 @@
  * Lane L2 implements it (prompts P1–P12 in docs/PLAN.md, Appendix A). Every other lane depends
  * only on this interface and uses `FakeBrain` (engine/testing) in tests.
  */
-import { z } from 'zod'
+
 import {
-  CoachAction,
+  type CoachAction,
   EpisodeKind,
   EpisodeSignals,
   ExamSpec,
@@ -15,6 +15,7 @@ import {
   TeachingMove,
   UnderstandingStatus,
 } from '@shared/domain'
+import { z } from 'zod'
 
 const Lang = z.string() // BCP-47-ish: "en", "fi", … or "auto"
 
@@ -23,7 +24,16 @@ const Lang = z.string() // BCP-47-ish: "en", "fi", … or "auto"
 export const ExtractInput = z.object({
   student: z.object({ aboutMe: z.string(), language: Lang }),
   subjects: z.array(
-    z.object({ id: z.string(), name: z.string(), topConcepts: z.array(z.string()) }),
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      topConcepts: z.array(z.string()),
+      /** The subject's concept tree, compact (≤ 60, most recent and most used first), so the
+       * model can place notes on it (docs/NOTES.md §4). */
+      concepts: z
+        .array(z.object({ id: z.string(), name: z.string(), parentId: z.string().nullable() }))
+        .optional(),
+    }),
   ),
   episodes: z.array(
     z.object({
@@ -52,6 +62,21 @@ export const ExtractedItem = z.object({
   assignment: z
     .object({ title: z.string(), course: z.string().nullable(), dueAt: z.string().nullable() })
     .nullable(),
+  /**
+   * 1–5 atomic notes, placed by the model on the subject's tree: `conceptId` of an existing
+   * concept, or `newConcept` under a parent (null = top level). Ids are not validated here;
+   * apply.ts checks them and falls back to the topicPath name match.
+   */
+  notes: z
+    .array(
+      z.object({
+        text: z.string(),
+        keywords: z.array(z.string()),
+        conceptId: z.string().nullable(),
+        newConcept: z.object({ name: z.string(), parentId: z.string().nullable() }).nullable(),
+      }),
+    )
+    .optional(),
 })
 export type ExtractedItem = z.infer<typeof ExtractedItem>
 
@@ -233,7 +258,14 @@ export const PromptWithTip = z.object({ prompt: z.string(), coachTip: z.string()
 export type PromptWithTip = z.infer<typeof PromptWithTip>
 
 export const SuggestCandidate = z.object({
-  kind: z.enum(['session_step', 'open_question', 'struggling', 'due_review', 'deadline', 'starter']),
+  kind: z.enum([
+    'session_step',
+    'open_question',
+    'struggling',
+    'due_review',
+    'deadline',
+    'starter',
+  ]),
   text: z.string(),
 })
 export type SuggestCandidate = z.infer<typeof SuggestCandidate>

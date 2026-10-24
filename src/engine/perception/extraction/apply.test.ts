@@ -47,8 +47,8 @@ describe('applyExtraction', () => {
     prompts = new PromptMemory()
   })
 
-  it('suggests a new subject and builds the concept chain under it', () => {
-    const ep = makeEpisode()
+  it('suggests a new subject from an AI chat and builds the concept chain under it', () => {
+    const ep = makeEpisode({ kind: 'ai_chat' })
     repos.episodes.save(ep)
     const out = applyExtraction(output(ep.id, [item()]), [ep], repos, { prompts, nowIso })
     const subject = repos.subjects.findByName('organic chemistry')
@@ -69,8 +69,8 @@ describe('applyExtraction', () => {
       understanding: 'struggling',
       evidence: 'Scrolled back 3 times',
       inboxState: 'new',
-      dwellSeconds: 180,
-      source: { app: 'Google Chrome', url: ep.url, title: ep.title, bundleId: ep.bundleId },
+      dwellSeconds: ep.dwellSeconds,
+      source: { app: ep.app, url: ep.url, title: ep.title, bundleId: ep.bundleId },
     })
     expect(out.episodeSubjects).toEqual([{ episodeId: ep.id, subjectId: subject?.id }])
   })
@@ -161,7 +161,7 @@ describe('applyExtraction', () => {
         return repos.concepts.get(conceptId) as Concept
       },
     }
-    const ep = makeEpisode()
+    const ep = makeEpisode({ kind: 'ai_chat' })
     applyExtraction(output(ep.id, [item()]), [ep], repos, { prompts, nowIso, mastery })
     expect(calls).toHaveLength(1)
     expect(calls[0]?.[1]).toBe('struggling')
@@ -182,5 +182,188 @@ describe('applyExtraction', () => {
     expect(noSubject.encounterIds).toHaveLength(1)
     expect(repos.encounters.list({})[0]?.subjectId).toBeNull()
     expect(repos.subjects.list()).toHaveLength(0)
+  })
+
+  describe('loose notes: a subject only with study evidence', () => {
+    const casual = () =>
+      item({
+        subject: { matchId: null, newName: 'Finnish history' },
+        topicPath: ['Finnish history', 'Tampere'],
+        notes: [
+          {
+            text: 'Tampere was founded in 1779',
+            keywords: ['Tampere'],
+            conceptId: null,
+            newConcept: { name: 'Tampere', parentId: null },
+          },
+        ],
+      })
+
+    it('keeps one casual read loose: no subject, no concept, loose notes', () => {
+      const ep = makeEpisode()
+      const out = applyExtraction(output(ep.id, [casual()]), [ep], repos, { prompts, nowIso })
+      expect(repos.subjects.list()).toEqual([])
+      const [enc] = repos.encounters.list({})
+      expect(enc).toMatchObject({ subjectId: null, conceptId: null })
+      expect(repos.notes.list({ subjectId: null })).toEqual([
+        expect.objectContaining({
+          text: 'Tampere was founded in 1779',
+          conceptId: null,
+          encounterId: enc?.id,
+          keywords: ['Tampere'],
+        }),
+      ])
+      expect(out.noteIds).toHaveLength(1)
+      expect(out.episodeSubjects).toEqual([])
+    })
+
+    it('suggests the subject when the topic comes back, or with an assignment', () => {
+      const first = makeEpisode()
+      applyExtraction(output(first.id, [casual()]), [first], repos, { prompts, nowIso })
+      const again = makeEpisode()
+      applyExtraction(output(again.id, [casual()]), [again], repos, { prompts, nowIso })
+      expect(repos.subjects.list().map((x) => [x.name, x.status])).toEqual([
+        ['Finnish history', 'suggested'],
+      ])
+      const fresh = createMemoryRepos(new FakeClock())
+      const ep = makeEpisode()
+      const withTask = casual()
+      withTask.assignment = { title: 'Essay on Tampere', course: null, dueAt: null }
+      applyExtraction(output(ep.id, [withTask]), [ep], fresh, { prompts, nowIso })
+      expect(fresh.subjects.list()).toHaveLength(1)
+    })
+  })
+
+  describe('note placement by the model, validated', () => {
+    let chem: { id: Id }
+    let parent: Concept
+    let sn1: Concept
+    beforeEach(() => {
+      chem = repos.subjects.create({ name: 'Organic Chemistry' })
+      parent = repos.concepts.upsert({ subjectId: chem.id, name: 'Nucleophilic substitution' })
+      sn1 = repos.concepts.upsert({
+        subjectId: chem.id,
+        name: 'SN1',
+        parentName: 'Nucleophilic substitution',
+      })
+    })
+    const placed = (notes: NonNullable<ExtractedItem['notes']>) =>
+      item({ subject: { matchId: chem.id, newName: null }, notes })
+    const note = (over: Partial<NonNullable<ExtractedItem['notes']>[number]>) => ({
+      text: 'Tertiary substrates favour SN1',
+      keywords: ['SN1'],
+      conceptId: null,
+      newConcept: null,
+      ...over,
+    })
+
+    it('puts a note on the existing concept the model chose, and the encounter with it', () => {
+      const ep = makeEpisode()
+      applyExtraction(output(ep.id, [placed([note({ conceptId: sn1.id })])]), [ep], repos, {
+        prompts,
+        nowIso,
+      })
+      expect(repos.notes.list({ conceptId: sn1.id }).map((n) => n.text)).toEqual([
+        'Tertiary substrates favour SN1',
+      ])
+      expect(repos.encounters.list({})[0]?.conceptId).toBe(sn1.id)
+      expect(repos.concepts.listBySubject(chem.id)).toHaveLength(2)
+    })
+
+    it('falls back to the topicPath name match when the id is unknown or elsewhere', () => {
+      const bio = repos.subjects.create({ name: 'Biology' })
+      const cell = repos.concepts.upsert({ subjectId: bio.id, name: 'Cells' })
+      const ep = makeEpisode()
+      applyExtraction(
+        output(ep.id, [
+          placed([
+            note({ conceptId: 'c7' }),
+            note({ conceptId: cell.id, text: 'The rate depends only on [R–X]' }),
+          ]),
+        ]),
+        [ep],
+        repos,
+        { prompts, nowIso },
+      )
+      // topicPath ends in "SN1": the name match finds the existing concept.
+      expect(repos.notes.list({ conceptId: sn1.id })).toHaveLength(2)
+      expect(repos.notes.list({ conceptId: cell.id })).toEqual([])
+    })
+
+    it('creates a new concept under the parent the model chose', () => {
+      const ep = makeEpisode()
+      applyExtraction(
+        output(ep.id, [
+          placed([
+            note({
+              text: 'SN2 is one concerted step with backside attack',
+              newConcept: { name: 'SN2', parentId: parent.id },
+            }),
+          ]),
+        ]),
+        [ep],
+        repos,
+        { prompts, nowIso },
+      )
+      const sn2 = repos.concepts.findByName(chem.id, 'SN2')
+      expect(sn2?.parentId).toBe(parent.id)
+      expect(repos.notes.list({ conceptId: sn2?.id as Id })).toHaveLength(1)
+      // An unknown parent id puts the new concept at the top level.
+      applyExtraction(
+        output(ep.id, [
+          placed([
+            note({
+              text: 'E1 competes with SN1',
+              newConcept: { name: 'Elimination', parentId: 'c99' },
+            }),
+          ]),
+        ]),
+        [ep],
+        repos,
+        { prompts, nowIso },
+      )
+      expect(repos.concepts.findByName(chem.id, 'Elimination')?.parentId).toBeNull()
+    })
+
+    it('dedupes a proposed new concept against an existing one by conceptKey', () => {
+      const ep = makeEpisode()
+      applyExtraction(
+        output(ep.id, [placed([note({ newConcept: { name: 'sn1', parentId: null } })])]),
+        [ep],
+        repos,
+        { prompts, nowIso },
+      )
+      expect(repos.concepts.listBySubject(chem.id)).toHaveLength(2)
+      expect(repos.notes.list({ conceptId: sn1.id })).toHaveLength(1)
+      // The same fact again is not stored twice.
+      applyExtraction(
+        output(ep.id, [
+          placed([note({ conceptId: sn1.id, text: 'tertiary substrates favour SN1.' })]),
+        ]),
+        [ep],
+        repos,
+        { prompts, nowIso },
+      )
+      expect(repos.notes.list({ conceptId: sn1.id })).toHaveLength(1)
+    })
+
+    it('turns highlights into highlight notes word for word, once per episode', () => {
+      const ep = makeEpisode({
+        signals: {
+          ...makeEpisode().signals,
+          highlights: ['James Finlayson founded a cotton mill'],
+        },
+      })
+      applyExtraction(
+        output(ep.id, [placed([note({ conceptId: sn1.id })]), placed([])]),
+        [ep],
+        repos,
+        { prompts, nowIso },
+      )
+      const highlights = repos.notes.list({}).filter((n) => n.kind === 'highlight')
+      expect(highlights.map((n) => [n.text, n.conceptId])).toEqual([
+        ['James Finlayson founded a cotton mill', sn1.id],
+      ])
+    })
   })
 })

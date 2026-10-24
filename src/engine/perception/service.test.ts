@@ -281,7 +281,9 @@ describe('createPerceptionStack', () => {
     await runFor(clock, 12_000)
     await stack.worker.flushNow()
     expect(repos.encounters.list({})).toHaveLength(1)
-    expect(repos.subjects.list()[0]?.status).toBe('suggested')
+    // A single read with no matching subject stays loose (docs/NOTES.md §10.4).
+    expect(repos.encounters.list({})[0]?.subjectId).toBeNull()
+    expect(repos.subjects.list()).toEqual([])
     stack.stop()
   })
 })

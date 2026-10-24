@@ -9,7 +9,7 @@ import { FakeBrain } from '../../testing/fake-brain'
 import { createMemoryRepos } from '../../testing/memory-repos'
 import { makeEpisode, STUDY_TEXT } from '../testing/episodes'
 import { flushAsync } from '../testing/scripted-helper'
-import { ExtractionWorker, type WorkerOptions } from './worker'
+import { conceptTree, ExtractionWorker, type WorkerOptions } from './worker'
 
 const session = (phase: SessionState['phase']): SessionState => ({
   roadmapId: 'rdm_1',
@@ -84,7 +84,8 @@ describe('ExtractionWorker', () => {
     expect(repos.encounters.list({})).toHaveLength(5)
     expect(changes.map((c) => c.scope)).toContain('inbox')
     expect(changes.map((c) => c.scope)).toContain('subjects')
-    expect(linked).toHaveLength(5)
+    // The first read stays loose; the topic coming back makes the suggested subject.
+    expect(linked).toHaveLength(4)
   })
 
   it('respects the token cap per batch', async () => {
@@ -206,8 +207,14 @@ describe('ExtractionWorker', () => {
     await worker.flushNow()
     const input = extractCalls()[0] as ExtractInput
     expect(input.student).toEqual({ aboutMe: 'First-year chemistry student', language: 'fi' })
+    const sn2 = repos.concepts.findByName(chem.id, 'SN2')
     expect(input.subjects).toEqual([
-      { id: chem.id, name: 'Organic Chemistry', topConcepts: ['SN2'] },
+      {
+        id: chem.id,
+        name: 'Organic Chemistry',
+        topConcepts: ['SN2'],
+        concepts: [{ id: sn2?.id, name: 'SN2', parentId: null }],
+      },
     ])
     expect(input.episodes[0]?.text).toContain('[email]')
     expect(input.episodes[0]?.text).not.toContain('maija@aalto.fi')
@@ -228,5 +235,30 @@ describe('ExtractionWorker', () => {
     clock.advance(49 * 60 * 60 * 1000)
     expect(repos.episodes.get(pending.id)?.text).toBe('')
     worker.stop()
+  })
+})
+
+describe('conceptTree', () => {
+  it('lists recent concepts first within the cap, always with their ancestors', () => {
+    const repos = createMemoryRepos(new FakeClock())
+    const s = repos.subjects.create({ name: 'Chemistry' })
+    const root = repos.concepts.upsert({ subjectId: s.id, name: 'Reactions' })
+    const mid = repos.concepts.upsert({
+      subjectId: s.id,
+      name: 'Substitution',
+      parentName: 'Reactions',
+    })
+    const leaf = repos.concepts.upsert({ subjectId: s.id, name: 'SN1', parentName: 'Substitution' })
+    const old = repos.concepts.upsert({ subjectId: s.id, name: 'Atoms' })
+    repos.concepts.update(leaf.id, { lastSeenAt: '2026-10-24T10:00:00.000Z' })
+    repos.concepts.update(old.id, { lastSeenAt: '2026-10-01T10:00:00.000Z' })
+    const all = repos.concepts.listBySubject(s.id)
+    expect(conceptTree(repos, s.id, all, 3)).toEqual([
+      { id: root.id, name: 'Reactions', parentId: null },
+      { id: mid.id, name: 'Substitution', parentId: root.id },
+      { id: leaf.id, name: 'SN1', parentId: mid.id },
+    ])
+    expect(conceptTree(repos, s.id, all, 10)).toHaveLength(4)
+    expect(conceptTree(repos, s.id, all, 0)).toEqual([])
   })
 })

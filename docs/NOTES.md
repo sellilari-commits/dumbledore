@@ -10,8 +10,9 @@ Status: approved 2026-10-24 (decisions in §10), phase 1 built · builds on PLAN
 - **Shape.** subject ▸ topic tree (the concepts we already have) ▸ **atomic notes** (one fact each,
   linked to a concept and its source), plus **prerequisite edges** between concepts.
 - **Write path.** The extractor also returns 1–5 short notes per item, and highlights become notes
-  directly. Each note is placed by name (`conceptKey`); the LLM is used only when the match is
-  ambiguous.
+  directly. **The LLM places each note on the subject's concept tree itself** (an existing concept,
+  or a new one under a parent); code only validates and dedupes, with the old name match as the
+  fallback (§4, changed 2026-10-24).
 - **Consolidation.** One call per subject after about 10 new notes, or nightly. It rewrites concept
   summaries from their notes, merges duplicates, fixes the tree and adds prerequisite edges.
 - **Read path.** The roadmap gets the tree, edges, mastery, key notes and open questions. Steps
@@ -55,9 +56,10 @@ Note { id, subjectId, conceptId|null, encounterId|null, kind: 'fact'|'definition
        status: 'active'|'merged'|'deleted', mergedInto|null, pinned: boolean, createdAt, updatedAt }
 ```
 
-- **From extraction:** P1 items get a new field `notes: string[]` (1–5, each ≤ 25 words, stating
-  content not interface, "X is Y" style). The P1 rules add: "notes are the facts a student should
-  remember from this item; no duplicates of each other".
+- **From extraction:** P1 items get a new field `notes` (1–5, each ≤ 25 words, stating content not
+  interface, "X is Y" style, in the page's language), each `{text, keywords, conceptId |
+  newConcept}`: the model also places the note (§4). The P1 rules add: "notes are the facts a
+  student should remember from this item; no two saying the same thing".
 - **From highlights:** each highlighted passage becomes a `highlight` note on the episode's leaf
   concept, verbatim (cut at 200 characters). `keepHighlights` already guarantees the episode
   counts as learning.
@@ -69,16 +71,33 @@ Note { id, subjectId, conceptId|null, encounterId|null, kind: 'fact'|'definition
   consolidation.
 - **Pinned:** a student-edited note is `pinned`, and consolidation never rewrites or merges it.
 
-## 4. Placement
+## 4. Placement (by the LLM; changed 2026-10-24)
 
-1. Leaf concept from `topicPath`, as now (`upsertChain`). Name match by `conceptKey`, within the
-   subject.
-2. If the leaf is new **and** an existing concept in the subject has a similar name (token Jaccard
-   ≥ 0.5, or one name contains the other), the case is marked `ambiguous`: the note is placed on
-   the new leaf for now, and the pair goes into the next consolidation as a merge candidate.
-   There is no extra LLM call on the write path.
-3. Notes without a subject (the episode matched no subject) stay with `conceptId = null` and show
-   in the Inbox with their encounter.
+Ilari: structuring must be done by the LLM. So the extractor (P1) does the placement, A-MEM style:
+
+1. P1 gets each listed subject's concept tree, compact: `c3 Name < c1` per concept (short refs
+   instead of ids to save tokens), at most 60 per subject and 150 per call, the most recently seen
+   and most used first, always with their ancestors (`conceptTree` in extraction/worker.ts).
+2. For every note the model returns `keywords` (1–5, for linking notes later) and its place:
+   `conceptId` = the ref of an existing concept, or `newConcept {name, parentId}` (parent ref, or
+   null for a new top-level topic). `finalizeExtract` maps refs back to ids.
+3. `apply.ts` validates: the concept must belong to the item's subject; a new concept goes through
+   `concepts.upsert`, so a name that matches an existing concept by `conceptKey` reuses it; an
+   unknown parent puts it at the top level. Only when the answer is missing or invalid does the old
+   name match on `topicPath` place the note. The encounter sits on its first note's concept.
+4. Loose items (no subject, §10.4) keep `subjectId` and `conceptId` null; filing the encounter in the
+   Inbox moves its notes into the subject (unplaced, for consolidation), and ignoring it deletes them.
+
+Cost: the tree is about 6–10 tokens per listed concept (≤ 150 per call, so ≤ about 1.5k input
+tokens), and the notes about 150 output tokens per item. Apple's on-device model gets a one-line
+version of the note rules and its own output cap (1600 tokens) to fit its 4K context.
+
+**Approaches this follows (references):** TnT-LLM (LLM-generated taxonomies, here the concept
+tree), A-MEM (agentic memory: the model writes each note with keywords and links it into the
+existing structure), RAPTOR (recursive summaries: concept summaries written from their notes in
+phase 2), GraphRAG (LLM-extracted relations, here prerequisite edges), Generative Agents
+(periodic reflection: the consolidation pass). Phase 2's consolidation is the LLM restructuring
+pass over the whole tree; phase 1 placement is the cheap, incremental part.
 
 ## 5. Consolidation pass
 
@@ -223,7 +242,7 @@ Also decided the same day: active capture checks for screen changes every second
   `seq * 8 + kind`. Search shows a matching note as its concept (snippet = the note) or, when
   unplaced, as its encounter, because the app's search groups don't have a note kind yet (phase 3).
 - `ConceptRepo.remove` and `EncounterRepo.remove` (§8) come with the delete UI in phase 3.
-- Merge candidates for ambiguous placements (§4 step 2) are not stored; consolidation (phase 2)
-  finds them from concept names with the same rule.
+- Merge candidates are not stored: placement is the LLM's (§4), and consolidation (phase 2) looks
+  at the whole tree.
 - The memory file shows notes under their concept and unplaced notes under "Other notes";
   encounters keep the existing cap (100), not 20.

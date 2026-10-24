@@ -195,8 +195,6 @@
       "textIncludes": ["Osmosis is the net movement of solvent molecules", "Desalination plants use reverse osmosis"]
     },
     "encounters": 1,
-    "understanding": "struggling",
-    "subject": "Biology",
-    "concepts": ["Cell biology", "Osmosis"]
+    "understanding": "struggling"
   }
 }

@@ -10,7 +10,7 @@
  * is purged and episodes still unextracted in the DB (queue overflow, a provider outage that used
  * up their attempts, yesterday's budget) are queued again, so nothing waits for an app restart.
  */
-import type { Episode } from '@shared/domain'
+import type { Concept, Episode } from '@shared/domain'
 import type { MemoryChanged } from '@shared/state'
 import { type Brain, type ExtractInput, ExtractOutput } from '../../brain-contract'
 import type { Cancel, Clock } from '../../clock'
@@ -284,19 +284,25 @@ export class ExtractionWorker {
     const { repos } = this.deps
     const profile = repos.profile.get()
     const mask = repos.settings.get().privacy.redact
+    let treeBudget = MAX_TREE_CONCEPTS
     const subjects = repos.subjects
       .list({ status: ['active', 'suggested'] })
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .slice(0, 30)
-      .map((s) => ({
-        id: s.id,
-        name: s.name,
-        topConcepts: repos.concepts
-          .listBySubject(s.id)
-          .sort((a, b) => (b.lastSeenAt ?? '').localeCompare(a.lastSeenAt ?? ''))
-          .slice(0, 6)
-          .map((c) => c.name),
-      }))
+      .map((s) => {
+        const all = repos.concepts.listBySubject(s.id)
+        const tree = conceptTree(repos, s.id, all, Math.min(MAX_SUBJECT_CONCEPTS, treeBudget))
+        treeBudget -= tree.length
+        return {
+          id: s.id,
+          name: s.name,
+          topConcepts: [...all]
+            .sort((a, b) => (b.lastSeenAt ?? '').localeCompare(a.lastSeenAt ?? ''))
+            .slice(0, 6)
+            .map((c) => c.name),
+          ...(tree.length ? { concepts: tree } : {}),
+        }
+      })
     return {
       student: { aboutMe: profile.aboutMe, language: profile.promptLanguage },
       subjects,
@@ -341,4 +347,46 @@ export class ExtractionWorker {
     if (outcome.profileChanged) emit('profile', [])
     for (const p of outcome.episodeSubjects) this.deps.onEpisodeSubject?.(p.episodeId, p.subjectId)
   }
+}
+
+/** Concepts listed for note placement: per subject, and across all subjects of one call. */
+const MAX_SUBJECT_CONCEPTS = 60
+const MAX_TREE_CONCEPTS = 150
+
+/**
+ * A subject's concept tree for P1, compact: the most recently seen and most used concepts first
+ * (up to `max`), plus their ancestors so every listed parent is there, in creation order.
+ */
+export function conceptTree(
+  repos: Repos,
+  subjectId: string,
+  all: readonly Concept[],
+  max: number,
+): { id: string; name: string; parentId: string | null }[] {
+  if (max <= 0 || all.length === 0) return []
+  const uses = new Map<string, number>()
+  for (const e of repos.encounters.list({ subjectId, limit: 300 }))
+    if (e.conceptId) uses.set(e.conceptId, (uses.get(e.conceptId) ?? 0) + 1)
+  const ranked = [...all].sort(
+    (a, b) =>
+      (b.lastSeenAt ?? '').localeCompare(a.lastSeenAt ?? '') ||
+      (uses.get(b.id) ?? 0) - (uses.get(a.id) ?? 0),
+  )
+  const byId = new Map(all.map((c) => [c.id, c]))
+  const keep = new Set<string>()
+  for (const c of ranked) {
+    const chain: string[] = []
+    for (let x: Concept | undefined = c; x && !keep.has(x.id); x = byId.get(x.parentId ?? ''))
+      chain.push(x.id)
+    if (keep.size + chain.length > max) continue
+    for (const id of chain) keep.add(id)
+    if (keep.size >= max) break
+  }
+  return all
+    .filter((c) => keep.has(c.id))
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      parentId: c.parentId && keep.has(c.parentId) ? c.parentId : null,
+    }))
 }

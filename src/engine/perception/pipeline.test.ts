@@ -136,8 +136,11 @@ describe('perception pipeline on recorded fixtures', () => {
         expect(concepts.sort()).toEqual([...ex.concepts].sort())
         expect(r.memoryScopes).toEqual(expect.arrayContaining(['inbox', 'subjects', 'concepts']))
       } else {
+        // One casual read with no matching subject stays loose (docs/NOTES.md §10.4).
         expect(r.repos.subjects.list()).toEqual([])
-        expect(r.memoryScopes).toEqual([])
+        expect(encounters.every((e) => e.subjectId === null)).toBe(true)
+        if (encounters.length) expect(r.memoryScopes).toContain('inbox')
+        else expect(r.memoryScopes).toEqual([])
       }
       const assignments = r.repos.assignments.list({})
       if (ex.assignment) expect(assignments).toEqual([expect.objectContaining(ex.assignment)])
