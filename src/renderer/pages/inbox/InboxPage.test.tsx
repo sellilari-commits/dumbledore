@@ -5,6 +5,7 @@
  */
 import { useToasts } from '@renderer/design-system'
 import { renderWithApp } from '@renderer/lib/test-utils'
+import { AppSidebar } from '@renderer/surfaces/app/AppSidebar'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { InboxPage } from './InboxPage'
@@ -68,6 +69,25 @@ describe('Memory page · By topic', () => {
         'SN1: rate depends only on the substrate.',
       ),
     )
+  })
+
+  it("edits a topic's big picture in place", async () => {
+    const r = render()
+    const topic = await topicRow('Carbocation stability')
+    fireEvent.click(
+      within(topic).getByRole('button', { name: 'Edit the big picture of Carbocation stability' }),
+    )
+    const box = within(topic).getByRole('textbox', {
+      name: 'Big picture of Carbocation stability',
+    })
+    fireEvent.change(box, { target: { value: 'More alkyl groups, more stable cation.' } })
+    fireEvent.keyDown(box, { key: 'Enter' })
+    await waitFor(() =>
+      expect(r.api.db.concepts.find((c) => c.name === 'Carbocation stability')?.summary).toBe(
+        'More alkyl groups, more stable cation.',
+      ),
+    )
+    expect(await within(topic).findByText('More alkyl groups, more stable cation.')).toBeTruthy()
   })
 
   it('deletes a note with its ✕', async () => {
@@ -139,6 +159,15 @@ describe('Memory page · Recent', () => {
         .getByRole('link', { name: 'Tampere – Wikipedia' })
         .getAttribute('href'),
     ).toBe('https://en.wikipedia.org/wiki/Tampere')
+  })
+})
+
+describe('Memory in the sidebar', () => {
+  it('has no new-count badge', async () => {
+    const r = renderWithApp(<AppSidebar collapsed={false} />, { route: '/inbox' })
+    await screen.findByText('Memory')
+    expect(r.api.db.encounters.some((e) => e.inboxState === 'new')).toBe(true)
+    expect(screen.queryByLabelText(/\d+ new$/)).toBeNull()
   })
 })
 

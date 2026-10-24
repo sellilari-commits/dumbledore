@@ -197,6 +197,28 @@
   padding: 2px 0 16px calc(var(--depth, 0) * 20px + 46px);
 }
 
+.mem-topic__picture {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.mem-topic__picture-actions {
+  display: inline-flex;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.mem-topic__picture:hover .mem-topic__picture-actions,
+.mem-topic__picture:focus-within .mem-topic__picture-actions {
+  opacity: 1;
+}
+
+.mem-topic__summary-edit {
+  max-width: 64ch;
+  font-size: var(--text-body);
+}
+
 .mem-topic__summary {
   margin: 0;
   max-width: 64ch;
@@ -427,6 +449,7 @@ a.mem-entry__title {
   .mem-topic__row,
   .mem-entry__row,
   .mem-topic__actions,
+  .mem-topic__picture-actions,
   .mem-note__actions {
     transition: none;
   }

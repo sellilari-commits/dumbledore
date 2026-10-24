@@ -2,11 +2,14 @@
  * Memory · By topic: each subject as a section, its topics as rows that fold open (children
  * indented, a small understanding dot), and under a topic its notes grouped by the page they came
  * from. Hovering a topic offers rename (concepts.update) and delete with a confirm
- * (concepts.delete). There is no IPC to move a topic to another subject, so that is not offered.
+ * (concepts.delete); the big picture (the topic summary) edits in place too, which pins it so
+ * consolidation keeps the student's words. There is no IPC to move a topic to another subject,
+ * so that is not offered.
  */
-import { Button, Dialog, IconButton, Input, toast } from '@renderer/design-system'
+import { Button, Dialog, IconButton, Input, Textarea, toast } from '@renderer/design-system'
 import { errorToast } from '@renderer/lib/errors'
 import { useAction } from '@renderer/lib/queries'
+import type { Concept } from '@shared/domain'
 import { ChevronRight, Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { PageGroupView, SourceBlock } from './MemoryNotes'
@@ -20,6 +23,63 @@ const STATUS_LABEL = {
   struggling: 'Struggling',
   mastered: 'Mastered',
 } as const
+
+/** The topic's big picture, with a pen on hover that edits it in place (Enter saves, Esc cancels). */
+function BigPicture({ concept }: { concept: Concept }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(concept.summary)
+  const update = useAction('concepts.update', {
+    onSuccess: () => setEditing(false),
+    onError: report,
+  })
+  const save = () => {
+    const text = draft.trim()
+    if (!text || text === concept.summary.trim()) {
+      setDraft(concept.summary)
+      return setEditing(false)
+    }
+    update.mutate({ id: concept.id, summary: text })
+  }
+  if (editing)
+    return (
+      <Textarea
+        aria-label={`Big picture of ${concept.name}`}
+        className="mem-topic__summary-edit"
+        value={draft}
+        autoFocus
+        rows={Math.min(8, Math.max(2, Math.ceil(draft.length / 70)))}
+        onChange={(e) => setDraft(e.currentTarget.value)}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault()
+            save()
+          }
+          if (e.key === 'Escape') {
+            setDraft(concept.summary)
+            setEditing(false)
+          }
+        }}
+      />
+    )
+  return (
+    <div className="mem-topic__picture">
+      <p className="mem-topic__summary">{concept.summary.trim()}</p>
+      <span className="mem-topic__picture-actions">
+        <IconButton
+          label={`Edit the big picture of ${concept.name}`}
+          size="sm"
+          onClick={() => {
+            setDraft(concept.summary)
+            setEditing(true)
+          }}
+        >
+          <Pencil size={13} strokeWidth={1.75} />
+        </IconButton>
+      </span>
+    </div>
+  )
+}
 
 function TopicRow({ topic, forceOpen }: { topic: TopicNode; forceOpen: boolean }) {
   const { concept } = topic
@@ -106,7 +166,7 @@ function TopicRow({ topic, forceOpen }: { topic: TopicNode; forceOpen: boolean }
       </div>
       {expanded && hasBody && (
         <div className="mem-topic__body">
-          {summary && <p className="mem-topic__summary">{summary}</p>}
+          {summary && <BigPicture concept={concept} />}
           {topic.pages.length > 0 && (
             <section className="mem-topic__sources" aria-label={`Sources for ${concept.name}`}>
               {topic.pages.map((g) => (
