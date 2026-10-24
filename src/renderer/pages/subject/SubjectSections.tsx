@@ -1,7 +1,7 @@
 /**
  * The subject page's two judgement sections. Progress: where the roadmap stands (step, bar,
  * the step you're on), how many concepts are mastered and which are strong, and the latest exam
- * results with "Test me"; without a roadmap, a button that starts one. Gaps: the concepts that keep not clicking, weakest first, each with "Study this"
+ * results with "Test me"; without a roadmap (or once it is finished), a button that plans one. Gaps: the concepts that keep not clicking, weakest first, each with "Study this"
  * (coach.runAction start_roadmap on that concept).
  */
 import { Button, ProgressBar, Section, toast } from '@renderer/design-system'
@@ -18,7 +18,7 @@ import { roadmapProgress } from './subject-utils'
 
 const HEAD = { size: 14, strokeWidth: 1.75 } as const
 
-function StartRoadmap({ detail }: { detail: SubjectDetail }) {
+function StartRoadmap({ detail, finished }: { detail: SubjectDetail; finished?: boolean }) {
   const { subject } = detail
   const qc = useQueryClient()
   const start = useAction('coach.runAction')
@@ -36,11 +36,12 @@ function StartRoadmap({ detail }: { detail: SubjectDetail }) {
   return (
     <div className="sp-progress-empty">
       <p className="sp-quiet">
-        No roadmap yet. Dumbledore plans short steps from what you already know, with a quick check
-        after every few.
+        {finished
+          ? 'Roadmap done. The next one starts from what you know now, gaps first.'
+          : 'No roadmap yet. Dumbledore plans short steps from what you already know, with a quick check after every few.'}
       </p>
       <Button size="sm" icon={<MapIcon size={14} />} loading={start.isPending} onClick={run}>
-        Start a roadmap
+        {finished ? 'Plan the next roadmap' : 'Start a roadmap'}
       </Button>
     </div>
   )
@@ -74,6 +75,7 @@ export function ProgressSection({ detail }: { detail: SubjectDetail }) {
               Up next: <strong>{current.title}</strong>
             </div>
           ) : null}
+          {roadmap.status === 'done' ? <StartRoadmap detail={detail} finished /> : null}
         </div>
       ) : (
         <StartRoadmap detail={detail} />
@@ -173,7 +175,8 @@ function GapRow({ concept }: { concept: Concept }) {
     )
   const why =
     concept.struggleCount > 0
-      ? `Missed ${concept.struggleCount} ${concept.struggleCount === 1 ? 'time' : 'times'}`
+      ? // Wrong quiz answers and confused reading or chats both count.
+        `Stuck on it ${concept.struggleCount === 1 ? 'once' : `${concept.struggleCount} times`}`
       : `${Math.round(concept.mastery * 100)}% there`
   return (
     <li className="sp-gap">

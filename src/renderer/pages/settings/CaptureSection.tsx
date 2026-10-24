@@ -5,7 +5,7 @@
 import { Switch, Tag } from '@renderer/design-system'
 import type { Settings } from '@shared/domain'
 import { ExclusionList, hostFromInput } from './ExclusionList'
-import { PERMISSIONS, PermissionControl, usePermissionFlow } from './permissions'
+import { HelperDownNote, PERMISSIONS, PermissionControl, usePermissionFlow } from './permissions'
 import { SelectMenu, type SelectOption, SettingsRow, SettingsSection } from './ui'
 import { useCaptureSwitch, useSettingsPatch } from './useSettingsPatch'
 
@@ -26,6 +26,7 @@ function PermissionRows() {
   const flow = usePermissionFlow()
   return (
     <>
+      {flow.helperDown ? <HelperDownNote onRelaunch={flow.relaunch} /> : null}
       {PERMISSIONS.map((p) => (
         <SettingsRow
           key={p.kind}
@@ -48,6 +49,7 @@ function PermissionRows() {
             granted={flow.granted(p.kind)}
             waiting={flow.isWaiting(p.kind)}
             onOpen={() => flow.request(p.kind)}
+            onRelaunch={p.kind === 'screenRecording' ? flow.relaunch : undefined}
             actionLabel="Turn on"
           />
         </SettingsRow>
@@ -63,7 +65,7 @@ export function CaptureSection({ settings }: { settings: Settings }) {
     <>
       <SettingsSection
         title="Capture"
-        description="Dumbledore reads the text on your screen to notice what you’re learning. It stays on this Mac."
+        description="Dumbledore reads the text on your screen to notice what you’re learning. It is stored on this Mac; only the text a question needs goes to your AI provider, masked."
       >
         <SettingsRow
           label="Screen capture"

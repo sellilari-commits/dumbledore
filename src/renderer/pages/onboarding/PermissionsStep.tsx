@@ -5,7 +5,12 @@
  */
 import { Button, Tag } from '@renderer/design-system'
 import { MousePointerClick, ScanText } from 'lucide-react'
-import { PERMISSIONS, PermissionControl, usePermissionFlow } from '../settings/permissions'
+import {
+  HelperDownNote,
+  PERMISSIONS,
+  PermissionControl,
+  usePermissionFlow,
+} from '../settings/permissions'
 import { StepFrame } from './StepFrame'
 
 const ICONS = { accessibility: MousePointerClick, screenRecording: ScanText }
@@ -61,16 +66,18 @@ export function PermissionsStep({ onNext, onBack }: { onNext: () => void; onBack
                   granted={flow.granted(p.kind)}
                   waiting={flow.isWaiting(p.kind)}
                   onOpen={() => flow.request(p.kind)}
+                  onRelaunch={p.kind === 'screenRecording' ? flow.relaunch : undefined}
                 />
               </div>
             </div>
           )
         })}
       </div>
+      {flow.helperDown ? <HelperDownNote onRelaunch={flow.relaunch} /> : null}
       {!allOk ? (
         <p className="dd-onb__hint">
-          Dumbledore needs both. Screen Recording stays on so it can read PDFs, slides and video;
-          nothing leaves this Mac.
+          Dumbledore needs both. Screen Recording stays on so it can read PDFs, slides and video; it
+          keeps the text, never the screenshots.
         </p>
       ) : null}
     </StepFrame>

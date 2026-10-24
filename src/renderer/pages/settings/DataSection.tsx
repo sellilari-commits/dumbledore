@@ -25,7 +25,7 @@ export function DataSection() {
   return (
     <SettingsSection
       title="Your data"
-      description="Everything stays on this Mac. There is no account, no sync and no telemetry."
+      description="Everything is stored on this Mac. There is no account, no sync and no telemetry; your AI provider only gets the text each question needs."
     >
       <SettingsRow
         label="Data folder"

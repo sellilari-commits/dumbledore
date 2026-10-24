@@ -64,7 +64,7 @@ describe('data export', () => {
 })
 
 describe('delete everything (files)', () => {
-  it('removes the database, memory files, exports and keys, and nothing else', () => {
+  it('removes the database, memory files, exports, backups, chat spots and keys, and nothing else', () => {
     const root = tempDir()
     const paths = resolvePaths('/unused', { DUMBLEDORE_DATA_DIR: root })
     expect(paths.dataDir).toBe(root)
@@ -77,6 +77,9 @@ describe('delete everything (files)', () => {
     }
     writeFileSync(join(paths.memoryDir, 'organic-chemistry.md'), '# 🧪 Organic Chemistry')
     writeFileSync(join(paths.runDir, 'helper.sock'), '')
+    mkdirSync(join(root, 'backups'))
+    writeFileSync(join(root, 'backups', '2026-10-25T01-00-00.db'), 'x')
+    writeFileSync(join(root, 'chat-spots.json'), '{}')
 
     const removed = wipeDataFiles(paths)
     expect(removed.sort()).toEqual(
@@ -85,6 +88,8 @@ describe('delete everything (files)', () => {
         `${paths.dbFile}-wal`,
         paths.memoryDir,
         paths.exportsDir,
+        join(root, 'backups'),
+        join(root, 'chat-spots.json'),
         paths.secretsFile,
       ].sort(),
     )

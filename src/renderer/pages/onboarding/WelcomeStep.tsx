@@ -6,8 +6,8 @@ import { StepFrame } from './StepFrame'
 const PROMISES = [
   {
     icon: HardDrive,
-    title: 'It stays on your Mac',
-    text: 'Subjects, notes and exams live in a local folder. No account, no cloud.',
+    title: 'Your memory stays on your Mac',
+    text: 'Subjects, notes and exams live in a local folder, with no account. Only the text a question needs goes to your AI provider, with emails, numbers and passwords masked.',
   },
   {
     icon: ScanText,

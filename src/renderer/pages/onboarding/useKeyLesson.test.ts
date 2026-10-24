@@ -18,6 +18,13 @@ describe('key lesson', () => {
     expect(s.verdict.tone).toBe('good')
   })
 
+  it('counts the backup chord as a tap (it always works)', () => {
+    const s = react(start, { gesture: 'tap', key: 'fallbackChord' }, 'rightOption')
+    expect(s.tapped).toBe(true)
+    expect(s.verdict.tone).toBe('good')
+    expect(s.verdict.text).toContain('backup chord')
+  })
+
   it('corrects the wrong key without passing', () => {
     const s = react(start, { gesture: 'tap', key: 'leftOption' }, 'rightOption')
     expect(s.tapped).toBe(false)

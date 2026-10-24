@@ -3,10 +3,11 @@
  * promise → How it works → Permissions (live ✓) → AI (Gemini) → What are you studying → Learn the key → done.
  * Finishing (or "Skip setup") saves onboardingDone through 'settings.update' and opens Home.
  * `?step=how|permissions|ai|study|key|done` opens a step directly (previews and screenshots).
+ * The step is remembered, so "Quit & reopen" for Screen Recording comes back to Permissions.
  */
 import { Button, toast } from '@renderer/design-system'
 import { useAction, useSettings } from '@renderer/lib/queries'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useLocation } from 'wouter'
 import { TRIGGER_KEYS } from '../settings/keys'
 import { AiStep } from './AiStep'
@@ -21,14 +22,33 @@ import './onboarding.css'
 export const STEPS = ['welcome', 'how', 'permissions', 'ai', 'study', 'key', 'done'] as const
 export type StepId = (typeof STEPS)[number]
 
-function stepFromUrl(): number {
+const STEP_KEY = 'dd.onboarding.step'
+
+function savedStep(): string | null {
+  try {
+    return window.localStorage.getItem(STEP_KEY)
+  } catch {
+    return null
+  }
+}
+
+function saveStep(id: StepId | null): void {
+  try {
+    if (id) window.localStorage.setItem(STEP_KEY, id)
+    else window.localStorage.removeItem(STEP_KEY)
+  } catch {
+    // blocked storage: a relaunch starts from the welcome step
+  }
+}
+
+function initialStep(): number {
   if (typeof window === 'undefined') return 0
-  const wanted = new URLSearchParams(window.location.search).get('step')
+  const wanted = new URLSearchParams(window.location.search).get('step') ?? savedStep()
   return Math.max(0, STEPS.indexOf(wanted as StepId))
 }
 
 export function OnboardingPage() {
-  const [step, setStep] = useState(stepFromUrl)
+  const [step, setStep] = useState(initialStep)
   const [keyLearned, setKeyLearned] = useState(false)
   const settings = useSettings()
   const [, navigate] = useLocation()
@@ -36,11 +56,17 @@ export function OnboardingPage() {
     onSuccess: () => navigate('/home'),
     onError: (err) => toast(`Couldn’t finish setup: ${err.message}`, { tone: 'error' }),
   })
-  const finish = () => save.mutate({ onboardingDone: true })
+  const finish = () => {
+    saveStep(null)
+    save.mutate({ onboardingDone: true })
+  }
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1))
   const back = () => setStep((s) => Math.max(s - 1, 0))
   const learned = useCallback(() => setKeyLearned(true), [])
   const id = STEPS[step] ?? 'welcome'
+  useEffect(() => {
+    if (id !== 'done') saveStep(id)
+  }, [id])
   return (
     <div className="dd-onb" data-step={id}>
       <header className="dd-onb__chrome">

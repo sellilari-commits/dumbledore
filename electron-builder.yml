@@ -1,7 +1,7 @@
-# Packages Dumbledore.app (`npm run package`) with the Swift helper embedded at
-# Contents/Library/LoginItems/Dumbledore Helper.app, where src/engine/helper/launcher.ts looks for
-# it. The helper holds the macOS permissions (Accessibility, Screen Recording), so rebuilding the
-# Electron side never resets them. Build the helper first: `bash native/helper/build.sh`.
+# Packages Dumbledore.app (`npm run package`, which builds the Swift helper first) with the helper
+# embedded at Contents/Library/LoginItems/Dumbledore Helper.app (packagedHelperAppPath in
+# src/engine/helper/launcher.ts). Dumbledore starts it as a child process, so it runs under
+# Dumbledore.app's own Accessibility and Screen Recording grants (src/main/real/helper-launch.ts).
 appId: org.stuhi.dumbledore
 productName: Dumbledore
 directories:
@@ -17,6 +17,12 @@ asarUnpack:
 extraFiles:
   - from: native/helper/build/Dumbledore Helper.app
     to: Library/LoginItems/Dumbledore Helper.app
+# No other process may borrow Dumbledore's macOS grants by running it as plain Node or with a
+# debugger attached.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
 mac:
   target: dir
   category: public.app-category.education

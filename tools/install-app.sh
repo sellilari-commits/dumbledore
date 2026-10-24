@@ -5,15 +5,15 @@
 #   npm run install-app                 build, sign, install, start
 #   npm run install-app -- --no-open    same, without starting it
 #
-# Env: SIGN_IDENTITY (default "-" = ad hoc). The helper keeps the identifier
-# org.stuhi.dumbledore.helper, which holds the Accessibility / Screen Recording grants; with an
-# ad-hoc signature macOS may ask for them again after a rebuild.
+# Env: SIGN_IDENTITY (default "-" = ad hoc). The helper runs as Dumbledore's child process, so
+# the Accessibility / Screen Recording grants belong to Dumbledore.app. An ad-hoc signature changes
+# with every build, so macOS stops honouring them after a rebuild (remove and re-add the app in
+# System Settings); a stable identity keeps them (README → Run).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-bash native/helper/build.sh
-npm run package
+npm run package   # builds the Swift helper too
 
 ARCH_DIR="release/mac-$( [ "$(uname -m)" = arm64 ] && echo arm64 || echo x64 )"
 [ -d "$ARCH_DIR" ] || ARCH_DIR="release/mac"

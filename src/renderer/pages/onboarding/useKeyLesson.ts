@@ -59,6 +59,17 @@ const HOLD = 'tell Dumbledore what you want, it writes the prompt'
 /** The next lesson state after one gesture. Pure, so it is easy to test. */
 export function react(state: LessonState, g: KeyGesture, key: TriggerKey): LessonState {
   const want = keyName(key)
+  // The backup chord (⌃⌥D by default) always works as a tap: count it, then teach the key.
+  if (g.key === 'fallbackChord') {
+    if (g.gesture !== 'tap') return state
+    return {
+      ...state,
+      tapped: true,
+      down: false,
+      presses: state.presses + 1,
+      verdict: { tone: 'good', text: `That’s the backup chord: it works like a tap of ${want}.` },
+    }
+  }
   if (g.key !== key) {
     if (g.gesture === 'holdEnd') return state
     return {

@@ -33,6 +33,8 @@ export interface HandlerExtras {
   exportDir: string
   /** Shows a file in Finder. */
   revealFile: (path: string) => void
+  /** Quits and reopens the app (a Screen Recording grant needs a fresh process). */
+  relaunch: () => void
   /** "Delete everything": wipes the store, memory files and keys, then relaunches the app. */
   deleteAllData: () => Promise<void>
   /** File picker for study material; [] when cancelled. */
@@ -170,6 +172,7 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
         await extras.openSystemSettings(kind)
       }
     },
+    'app.relaunch': () => extras.relaunch(),
     'providers.test': (id) => services.providers.test(id),
     'providers.usage': () => queries.usage(),
 

@@ -118,10 +118,11 @@ release `holdEnd`. Each event says whether secure input is on.
 
 - **Accessibility** (required): AX text, focus tracking, `ax.*`, `input.*`. Without it those methods
   return -32001 and focus events carry `element: null`.
-- **Screen Recording** (optional): only for the OCR fallback and the OCR placeholder search. Without
-  it the helper runs on Accessibility text alone.
-- In development the helper is a child process and inherits the terminal's / IDE's grants. The
-  packaged `Dumbledore Helper.app` asks once for its own. `permissions.status` never prompts;
+- **Screen Recording** (required by the app for PDFs, slides and video): the OCR fallback and the
+  OCR placeholder search. Without it the helper runs on Accessibility text alone.
+- The helper is always a child process and inherits its parent's grants: the terminal's / IDE's in
+  development, Dumbledore.app's when installed (it is embedded as `Dumbledore Helper.app` but
+  started from Dumbledore, not opened as its own app). `permissions.status` never prompts;
   `permissions.request` triggers the prompt and opens the right System Settings pane. Accessibility
   can be granted while the helper runs: focus tracking attaches within 2 s.
 

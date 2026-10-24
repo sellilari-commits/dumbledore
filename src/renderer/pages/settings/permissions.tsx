@@ -3,9 +3,11 @@
  * polls their live status while one is missing, and the status control (✓ Granted, or
  * "Open System Settings" / "Turn on" → waiting until macOS reports the switch flipped). Both
  * permissions are required: Screen Recording stays on so PDFs, slides and video can be read.
+ * macOS applies a new Screen Recording grant only to a fresh process, so while waiting for it
+ * the control also offers "Quit & reopen".
  */
 import { Button, Spinner } from '@renderer/design-system'
-import { useAction, usePermissions } from '@renderer/lib/queries'
+import { useAction, useAppState, usePermissions } from '@renderer/lib/queries'
 import type { PermissionsStatus } from '@shared/state'
 import { useState } from 'react'
 import { OkLabel } from './ui'
@@ -41,25 +43,50 @@ export function usePermissionFlow(alwaysPoll = false) {
   const anyWaiting = Object.values(waiting).some(Boolean)
   const status = usePermissions(alwaysPoll || anyWaiting)
   const open = useAction('permissions.open')
+  const relaunch = useAction('app.relaunch')
+  // Without the helper nothing can check (or use) the permissions: they read "off" forever.
+  const helperDown = useAppState().data?.helper === 'down'
   const request = (kind: PermissionKind) => {
     setWaiting((w) => ({ ...w, [kind]: true }))
     open.mutate(kind)
   }
   const granted = (kind: PermissionKind) => status.data?.[kind] === true
   const isWaiting = (kind: PermissionKind) => Boolean(waiting[kind]) && !granted(kind)
-  return { status, request, granted, isWaiting }
+  return {
+    status,
+    request,
+    granted,
+    isWaiting,
+    helperDown,
+    relaunch: () => relaunch.mutate(undefined),
+  }
+}
+
+/** Shown instead of a silent "off" when the helper (which checks the permissions) isn't running. */
+export function HelperDownNote({ onRelaunch }: { onRelaunch: () => void }) {
+  return (
+    <p className="dd-set-bad" role="alert">
+      Dumbledore’s screen helper isn’t running, so it can’t check these.{' '}
+      <Button size="xs" variant="ghost" onClick={onRelaunch}>
+        Quit &amp; reopen
+      </Button>
+    </p>
+  )
 }
 
 export function PermissionControl({
   granted,
   waiting,
   onOpen,
+  onRelaunch,
   title,
   actionLabel = 'Open System Settings',
 }: {
   granted: boolean
   waiting: boolean
   onOpen: () => void
+  /** Shown while waiting: for a grant macOS applies only after a restart (Screen Recording). */
+  onRelaunch?: () => void
   title: string
   actionLabel?: string
 }) {
@@ -75,6 +102,11 @@ export function PermissionControl({
         <Button size="xs" variant="ghost" onClick={onOpen}>
           Open again
         </Button>
+        {onRelaunch ? (
+          <Button size="xs" variant="ghost" onClick={onRelaunch}>
+            Turned it on? Quit &amp; reopen
+          </Button>
+        ) : null}
       </span>
     )
   return (

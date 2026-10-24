@@ -491,7 +491,7 @@ export const Settings = z.object({
     useOnDevice: z.boolean(),
     modelOverrides: z.record(z.string(), z.string()), // "tier" → "provider:model"
   }),
-  autoSend: z.boolean(),
+  autoSend: z.boolean(), // unused: Dumbledore never sends for the student; kept for old data
   theme: z.enum(['system', 'light', 'dark']),
   focusSubjectId: Id.nullable(),
   /** Topic locked in the mini panel (a top-level concept); null = follow the latest. */

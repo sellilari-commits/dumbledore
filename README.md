@@ -2,7 +2,8 @@
 
 A study coach that lives on your Mac. It notices what you're learning on screen, writes the
 prompts for your AI chat (ChatGPT, Claude, Gemini, …), outlines what to read on a page, and
-quizzes you so it sticks. Everything stays on your Mac.
+quizzes you so it sticks. Your data stays on your Mac; only the text a question needs goes to
+the AI provider, with emails, numbers and passwords masked.
 
 Electron + React + TypeScript, with a small Swift helper (`native/helper`) for Accessibility,
 screen text (OCR, PDFs) and the right-⌥ key. Product plan: `docs/PLAN.md`. Working rules for
@@ -32,11 +33,16 @@ an existing env file). The installed app reads `.env.local` from its data folder
 |---|---|
 | Develop (helper from this terminal, app with hot reload) | `bash native/helper/build.sh` once, then `npm run dev` |
 | Build, sign and install `Dumbledore.app` in /Applications | `npm run install-app` |
-| Just package (`release/mac-arm64/Dumbledore.app`) | `npm run package` |
+| Just package, unsigned (`release/mac-arm64/Dumbledore.app`) | `npm run package` |
 | Use a separate data folder (testing) | `DUMBLEDORE_DATA_DIR=/tmp/dd-test npm run dev` |
 
 On first launch, onboarding asks for **Accessibility** (required) and **Screen Recording** (for
-PDFs, slides and video). The right ⌥ key is Dumbledore's key: tap in an AI chat for the next
+PDFs, slides and video). With the default ad-hoc signature macOS ties these grants to one build: after a
+rebuild the switches in System Settings still look on but no longer work, so remove Dumbledore
+there and add it again. To keep them across rebuilds, sign with a stable identity: in Keychain
+Access → Certificate Assistant → Create a Certificate…, make a self-signed **Code Signing**
+certificate named `Dumbledore Dev`, then install with
+`SIGN_IDENTITY="Dumbledore Dev" npm run install-app`. The right ⌥ key is Dumbledore's key: tap in an AI chat for the next
 study prompt, tap on an article or PDF to outline what to read, hold to write a prompt,
 double-tap to chat.
 

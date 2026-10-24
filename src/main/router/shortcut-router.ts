@@ -18,6 +18,7 @@ import type {
   Repos,
   StudyService,
 } from '@engine/contracts'
+import { blockReason } from '@engine/privacy'
 import type { FocusedElement } from '@shared/helper-protocol'
 import { type ChatWriter, snapshotOf } from '../chat/chat-writer'
 import type { AskFlow } from '../flows/ask-flow'
@@ -107,10 +108,14 @@ export class ShortcutRouter {
       reading: this.deps.outline?.reading() ?? false,
       outlineShown: this.deps.outline?.shown() ?? false,
     }
+    // Text in an app the student excluded (or a password manager, a bank) is never read.
+    const privateApp =
+      focused !== null && blockReason(focused, null, null, this.deps.repos.settings.get()) !== null
     let decision = decide(input, ctx)
     while (decision.kind === 'need') {
-      if (decision.what === 'fieldText') ctx.fieldText = await this.readText('ax.readFocusedValue')
-      else ctx.selection = await this.readText('ax.selectedText')
+      if (decision.what === 'fieldText')
+        ctx.fieldText = privateApp ? null : await this.readText('ax.readFocusedValue')
+      else ctx.selection = privateApp ? null : await this.readText('ax.selectedText')
       decision = decide(input, ctx)
     }
     if (settled && !(await settled)) decision = { kind: 'ignore' }
@@ -281,7 +286,14 @@ export class ShortcutRouter {
         kind: 'info',
         purpose: 'outline-result',
         title: 'Can’t read this page yet',
-        body: 'Scroll to the text you’re studying, or allow Screen Recording for PDFs, and try again.',
+        body: 'Scroll to the text you’re studying and try again. For PDFs, allow Screen Recording; apps you skip in Settings → Capture are never read.',
+      })
+    else if (r.kind === 'private')
+      overlay.showToast({
+        kind: 'info',
+        purpose: 'outline-result',
+        title: 'Private page',
+        body: 'Dumbledore doesn’t read this app or site, so there is nothing to mark.',
       })
     else if (r.kind === 'noSubject')
       overlay.showToast({

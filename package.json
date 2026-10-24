@@ -5,8 +5,11 @@
   "description": "Dumbledore — a study coach that lives on your Mac",
   "main": "out/main/index.js",
   "author": "Ilari",
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
-    "prepare": "git config core.hooksPath .githooks || true",
+    "prepare": "git config core.hooksPath .githooks || true; npm run -s electron:fetch || true",
     "dev": "node tools/dev.mjs",
     "dev:app-helper": "electron-vite dev",
     "build": "electron-vite build",
@@ -16,14 +19,14 @@
     "format": "biome format --write .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "pretest:e2e": "npm run build",
     "test:e2e": "playwright test",
     "helper:build": "bash native/helper/build.sh",
     "seed": "tsx tools/seed-demo.ts",
     "eval": "tsx tools/eval-prompts.ts",
-    "bench": "tsx tools/bench.ts",
     "icons": "tsx --tsconfig tsconfig.node.json tools/brand/build-icons.ts",
     "electron:fetch": "node node_modules/electron/install.js",
-    "package": "npm run build && npm run electron:fetch && electron-builder --mac --dir",
+    "package": "npm run helper:build && npm run build && npm run electron:fetch && electron-builder --mac --dir",
     "install-app": "bash tools/install-app.sh"
   },
   "devDependencies": {

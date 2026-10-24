@@ -7,6 +7,7 @@
  * The services come from `composeReal()` (src/main/real, the real engine). Test mode and
  * DUMBLEDORE_FAKES=1 use `compose()` instead: fakes with demo data.
  */
+import { rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { APP_NAME } from '@shared/constants'
 import { app, clipboard, dialog, ipcMain, Notification, shell } from 'electron'
@@ -90,7 +91,9 @@ export function bootstrap(): void {
 async function start(paths: AppPaths): Promise<void> {
   if (process.platform === 'darwin') app.setActivationPolicy('accessory')
   // The installed app is always on: it starts at login (capture keeps its own on/off switch).
-  if (app.isPackaged && !isTest) app.setLoginItemSettings({ openAtLogin: true })
+  // Only the copy in /Applications registers, so a test run from release/ never takes its place.
+  if (app.isPackaged && !isTest && process.execPath.startsWith('/Applications/'))
+    app.setLoginItemSettings({ openAtLogin: true })
   configureSession(devUrl, join(__dirname, '../renderer'))
 
   const secrets = isTest ? undefined : new SafeStorageSecretStore(paths.secretsFile)
@@ -178,6 +181,11 @@ async function start(paths: AppPaths): Promise<void> {
     exportDir: paths.exportsDir,
     revealFile: (path) => shell.showItemInFolder(path),
     deleteAllData: () => deleteEverything({ paths, stopServices: shutdown, relaunch: !isTest }),
+    relaunch: () => {
+      if (isTest) return
+      app.relaunch()
+      app.quit()
+    },
     pickMaterialFiles: async () => {
       const r = await dialog.showOpenDialog({
         title: 'Add study material',
@@ -227,12 +235,17 @@ async function start(paths: AppPaths): Promise<void> {
   })
   services.bus.on('session:changed', () => tray?.refresh())
   shortcuts.start(settings.shortcut.fallbackChord)
+  // First run (or onboarding left unfinished): show it, whatever launched the app.
+  if (!settings.onboardingDone && !isTest) void windows.open('app')
   console.log(
     `[dumbledore] ready: ${windows.overlays.all().length} overlay window(s), tray icon, ` +
       `helper ${services.helper.status}, data in ${paths.dataDir}`,
   )
 
   let testControl: TestControlServer | null = null
+  const controlFile = join(paths.runDir, 'test-control.json')
+  // A crash skips before-quit: never leave an old port and token lying around.
+  rmSync(controlFile, { force: true })
   // DUMBLEDORE_CONTROL=1 also opens it on the real engine, to drive dev runs from scripts.
   if (isTest || process.env.DUMBLEDORE_CONTROL === '1') {
     testControl = new TestControlServer(
@@ -243,7 +256,7 @@ async function start(paths: AppPaths): Promise<void> {
         windows: () => ({ ...windows.summary(), tray: tray !== null }),
         forwardKey: (key) => windows.forwardKey(key),
       }),
-      join(paths.runDir, 'test-control.json'),
+      controlFile,
     )
     const info = await testControl.start()
     console.log(`[test-control] listening on 127.0.0.1:${info.port}`)

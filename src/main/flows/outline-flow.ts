@@ -23,6 +23,8 @@ export const MIN_LINES = 6
 export type OutlineResult =
   | { kind: 'shown'; read: number; marks: number; subjectId: Id }
   | { kind: 'unreadable' }
+  /** A private page: an excluded app or site, a private window, a password manager. */
+  | { kind: 'private' }
   | { kind: 'noSubject' }
   | { kind: 'nothing'; subjectId: Id }
   /** Esc while the AI was answering: nothing to say, the router already said "Cancelled". */
@@ -30,8 +32,8 @@ export type OutlineResult =
 
 export interface OutlineFlowDeps {
   repos: Repos
-  /** The front window with line boxes in global screen points, or null. */
-  frontWindow: () => Promise<PerceivedWindow | null>
+  /** The front window with line boxes in global screen points; 'private' when it must not be read. */
+  frontWindow: () => Promise<PerceivedWindow | 'private' | null>
   /** The subject this page belongs to (perception's link, else the last one studied). */
   subjectFor: (window: PerceivedWindow) => Id | null
   /** P15 (Brain.outline once wired). */
@@ -53,7 +55,7 @@ function gaps(concepts: readonly Concept[]): OutlineInput['gaps'] {
   return [...struggling, ...weak].slice(0, 12).map((c) => ({
     name: c.name,
     why:
-      c.struggleCount > 0 ? `missed ${c.struggleCount}×` : `${Math.round(c.mastery * 100)}% there`,
+      c.struggleCount > 0 ? `stuck ${c.struggleCount}×` : `${Math.round(c.mastery * 100)}% there`,
   }))
 }
 
@@ -108,7 +110,9 @@ export class OutlineFlow {
   async run(signal?: AbortSignal): Promise<OutlineResult> {
     const { repos } = this.deps
     if (this.follow) this.clear()
-    const win = await this.deps.frontWindow()
+    const front = await this.deps.frontWindow()
+    if (front === 'private') return { kind: 'private' }
+    const win = front
     const lines = win ? pageLines(win) : []
     if (!win || lines.length < MIN_LINES) return { kind: 'unreadable' }
     const subjectId = this.deps.subjectFor(win)
@@ -199,7 +203,7 @@ export class OutlineFlow {
       try {
         const win = await this.deps.frontWindow()
         if (this.follow !== handle) return
-        if (!win || win.windowId !== shown.windowId) return this.clear()
+        if (!win || win === 'private' || win.windowId !== shown.windowId) return this.clear()
         const candidates = win.lines.filter((l) => l.box && l.text === anchorText)
         const next = candidates
           .map((l) => l.box?.y ?? y)

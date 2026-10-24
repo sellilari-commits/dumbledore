@@ -80,6 +80,8 @@ export const ipcInvoke = {
   'capture.setEnabled': { req: z.boolean(), res: Void },
   'permissions.status': { req: Void, res: PermissionsStatus },
   'permissions.open': { req: z.enum(['accessibility', 'screenRecording']), res: Void },
+  /** Quit and reopen Dumbledore: macOS applies a new Screen Recording grant only after a restart. */
+  'app.relaunch': { req: Void, res: Void },
   'providers.test': {
     req: z.enum(['gemini', 'apple', 'groq', 'ovh', 'mistral']),
     res: z.object({

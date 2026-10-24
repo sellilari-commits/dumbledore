@@ -214,6 +214,17 @@ describe('ShortcutRouter', () => {
     expect(h.platform.clipboard).toMatch(/Tertiary carbocations are the most stable/)
   })
 
+  it('never reads a selection in an app the student excluded', async () => {
+    const h = await harness()
+    h.services.repos.settings.update({ excludedBundleIds: [NOTES.bundleId] })
+    h.helper.activateApp(NOTES)
+    await flush()
+    h.helper.state.focused = makeFocused(NOTES, { role: 'AXWebArea', editable: false })
+    h.helper.state.selection = 'My bank PIN is in this note'
+    expect((await h.core.router.gesture('tap')).kind).not.toBe('selection')
+    expect(h.helper.callsTo('ax.selectedText')).toHaveLength(0)
+  })
+
   it('(d) "Quiz me" reviews the concepts the selection mentions', async () => {
     const h = await harness()
     h.helper.state.selection = 'Why is carbocation stability so important for SN1 mechanism?'
@@ -359,12 +370,15 @@ describe('ShortcutRouter', () => {
     expect(titles(h)).not.toContain('Password field')
   })
 
-  it('ignores helper key events until onboarding is done', async () => {
+  it('runs no key action until onboarding is done; the key reopens onboarding instead', async () => {
     const h = await harness()
     h.services.repos.settings.update({ onboardingDone: false })
     h.helper.emit('key.trigger', { gesture: 'doubleTap', key: 'rightOption', secureInput: false })
     await flush()
-    expect(h.surfaces.log).toEqual([])
+    expect(h.surfaces.log).toEqual(['open:app'])
+    h.helper.emit('key.trigger', { gesture: 'tap', key: 'rightOption', secureInput: false })
+    await flush()
+    expect(h.surfaces.log).toEqual(['open:app']) // already open: the page teaches the key
   })
 })
 

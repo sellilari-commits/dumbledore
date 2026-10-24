@@ -190,9 +190,11 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
         scope: 'frontmost',
         fresh: true,
         excludeBundleIds: excludedBundleIds(settings),
+        allowOcr: settings.ocrEnabled,
       })
       const win = res.windows[0] ?? null
-      return win && !blockReason(win, win.url, win.title, settings) ? win : null
+      if (!win) return null
+      return blockReason(win, win.url, win.title, settings) ? 'private' : win
     },
     subjectFor: () => perception.now()?.subjectId ?? tapTarget(repos)?.subjectId ?? null,
     outline: (input, opts) => services.brain.outline(input, opts),
@@ -284,7 +286,11 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
       offs.push(
         bus.on('helper:key', ({ gesture, secureInput }) => {
           // Onboarding teaches the key from 'key.gesture' itself; don't also run the action.
-          if (!repos.settings.get().onboardingDone) return
+          // With its window closed, the key brings onboarding back instead of doing nothing.
+          if (!repos.settings.get().onboardingDone) {
+            if (!surfaces.isOpen('app')) void surfaces.open('app')
+            return
+          }
           router.gesture(gesture, { secureInput }).catch((error) => {
             console.error('[router] gesture failed', error)
             overlay.showToast({

@@ -1,5 +1,7 @@
-/** Settings → General: appearance, focus subject, auto-send. */
-import { Switch } from '@renderer/design-system'
+/**
+ * Settings → General: appearance and focus subject. (No auto-send: Dumbledore pastes the prompt
+ * and the student presses Enter; Settings.autoSend stays only for old data.)
+ */
 import { useSubjects } from '@renderer/lib/queries'
 import { applyTheme } from '@renderer/lib/theme'
 import type { Settings } from '@shared/domain'
@@ -48,16 +50,6 @@ export function GeneralSection({ settings }: { settings: Settings }) {
           value={settings.focusSubjectId ?? 'none'}
           options={focusOptions}
           onChange={(id) => patch({ focusSubjectId: id === 'none' ? null : id })}
-        />
-      </SettingsRow>
-      <SettingsRow
-        label="Auto-send prompts"
-        description="Off: Dumbledore pastes the prompt into the chat box and you press Enter."
-      >
-        <Switch
-          label="Auto-send prompts"
-          checked={settings.autoSend}
-          onCheckedChange={(autoSend) => patch({ autoSend })}
         />
       </SettingsRow>
     </SettingsSection>

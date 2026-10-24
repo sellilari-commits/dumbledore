@@ -94,7 +94,7 @@ describe('OutlineFlow', () => {
   it('sends the page with the subject’s gaps and mastered concepts, then draws the marks', async () => {
     const result = await flow().run()
     expect(result).toEqual({ kind: 'shown', read: 1, marks: 2, subjectId })
-    expect(inputs[0]?.gaps[0]).toEqual({ name: 'Carbocation stability', why: 'missed 2×' })
+    expect(inputs[0]?.gaps[0]).toEqual({ name: 'Carbocation stability', why: 'stuck 2×' })
     expect(inputs[0]?.known).toEqual(['SN2 mechanism'])
     expect(inputs[0]?.subject).toEqual({ name: 'Organic Chemistry', goal: 'Pass the midterm' })
     const marks = shown[0]?.marks ?? []
@@ -122,6 +122,7 @@ describe('OutlineFlow', () => {
 
   it('says when the page can’t be read or has no subject', async () => {
     expect(await flow({ frontWindow: async () => null }).run()).toEqual({ kind: 'unreadable' })
+    expect(await flow({ frontWindow: async () => 'private' }).run()).toEqual({ kind: 'private' })
     expect(await flow({ subjectFor: () => null }).run()).toEqual({ kind: 'noSubject' })
     expect(shown).toEqual([])
   })

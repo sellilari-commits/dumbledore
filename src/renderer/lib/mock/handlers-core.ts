@@ -108,6 +108,7 @@ export const coreHandlers: HandlerMap<CoreChannel> = {
     ctx.db.grantAt[kind] = Date.now() + 2500
     ctx.later(2600, () => ctx.emit('state.changed', appState(ctx)))
   },
+  'app.relaunch': () => undefined, // a browser preview has nothing to restart
   'providers.test': (ctx, id) => {
     if (id === 'gemini' || id === 'groq' || id === 'mistral') {
       const saved = ctx.db.settings.ai[KEY_FIELD[id]]

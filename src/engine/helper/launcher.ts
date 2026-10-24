@@ -1,10 +1,11 @@
 /**
  * How the helper process gets started, and where its files live.
  *
- * - `spawnLauncher` (development): runs the raw executable as a child process. The child inherits
- *   this process's macOS permissions (the terminal / IDE grants Accessibility + Screen Recording).
- * - `appLauncher` (packaged): `open -n -g -a "Dumbledore Helper.app" --args …`, so macOS ties the
- *   permissions to the helper's own bundle id.
+ * - `spawnLauncher` (development, and the packaged app on the embedded binary): runs the
+ *   executable as a child process, which inherits this process's macOS permissions (the terminal's
+ *   in development, Dumbledore.app's when installed). See src/main/real/helper-launch.ts.
+ * - `appLauncher` (unused): `open -n -g -a "Dumbledore Helper.app" --args …`, which would tie the
+ *   permissions to the helper's own bundle id; macOS didn't keep a nested helper's grants.
  * - `externalLauncher`: something else starts the helper; the client only connects (tests, debugging).
  *
  * Every launcher passes `--socket <path> --parent-pid <our pid>`: the helper exits when we do.
