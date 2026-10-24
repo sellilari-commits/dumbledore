@@ -1,7 +1,8 @@
 /**
  * RoadmapItem: a learn step as a Notion to-do that expands to show its objective, teaching
  * move and prompt (Copy / Send to chat); a checkpoint as a callout with its question count,
- * carried ideas and score.
+ * carried ideas and score. A step whose prompt was sent shows "Waiting for the answer" until the
+ * AI has answered it (only then is it done).
  */
 
 import { MOVE_LABEL } from '@renderer/lib/status'
@@ -95,7 +96,12 @@ export function RoadmapItem({
           {item.title}
         </button>
         <span className="dd-rm__aside">
-          {item.status === 'current' ? <Tag color="blue">Current step</Tag> : null}
+          {item.status === 'current' && item.promptSent !== null ? (
+            // Sent but not answered yet: it turns done once the AI's answer is on screen.
+            <Tag color="yellow">Waiting for the answer</Tag>
+          ) : item.status === 'current' ? (
+            <Tag color="blue">Current step</Tag>
+          ) : null}
           {item.status === 'skipped' ? <Tag color="gray">Skipped</Tag> : null}
           {item.status === 'current' && onSendToChat ? (
             <span className="dd-rm__hover">
