@@ -9,6 +9,7 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
 | 2026-10-24 21:05 | Olle / Claude | Ink & paper look: ink accents instead of blue, warm paper backgrounds, light & dark | `src/renderer/design-system/tokens.css`, `src/renderer/design-system/base.css` (links), `docs/DESIGN.md` (tokens), `tests/e2e-sim/__screenshots__/` | main | Colours only; no layout or component changes |
+| 2026-10-24 21:00 | Ilari / Claude | Region trimming: keep a page's main content, drop nav/sidebars/header/footer (AX landmarks) | native/helper/Sources/DumbledoreHelper/AXText.swift (+ helper self-test), src/shared/helper-protocol.ts, src/engine/perception/ (episode text, tests) | main | deploys live after |
 
 ## Done recently
 
