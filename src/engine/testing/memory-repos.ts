@@ -53,6 +53,7 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
   const concepts = new Map<Id, Concept>()
   const encounters = new Map<Id, Encounter>()
   const notes = new Map<Id, Note>()
+  const consolidated = new Map<Id, string>()
   let edges: ConceptEdge[] = []
   const episodes = new Map<Id, Episode>()
   const roadmaps = new Map<Id, Roadmap>()
@@ -214,6 +215,12 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
         for (const n of [...nudges.values()])
           if (JSON.stringify(n.action ?? null).includes(`"${id}"`)) nudges.delete(n.id)
         subjects.delete(id)
+        consolidated.delete(id)
+      },
+      consolidatedAt: (id) => consolidated.get(id) ?? null,
+      markConsolidated(id, at) {
+        must(subjects.get(id), `subject ${id}`)
+        consolidated.set(id, at)
       },
     },
 

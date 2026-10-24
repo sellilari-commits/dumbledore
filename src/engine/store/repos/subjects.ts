@@ -104,6 +104,16 @@ export function createSubjectRepo(ctx: StoreCtx): SubjectRepo {
       must(row(id), `subject ${id}`)
       ctx.db.transaction(() => removeSubject(ctx, id))()
     },
+
+    consolidatedAt(id) {
+      const at = stmt('SELECT consolidated_at FROM subjects WHERE id = ?').pluck().get(id)
+      return typeof at === 'string' ? at : null
+    },
+
+    markConsolidated(id, at) {
+      must(row(id), `subject ${id}`)
+      stmt('UPDATE subjects SET consolidated_at = ? WHERE id = ?').run(at, id)
+    },
   }
   return repo
 }

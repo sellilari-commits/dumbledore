@@ -103,6 +103,9 @@ export interface SubjectRepo {
    * that cover only it.
    */
   remove(id: Id): void
+  /** When notes consolidation last ran for the subject (docs/NOTES.md §5); null = never. */
+  consolidatedAt(id: Id): IsoDate | null
+  markConsolidated(id: Id, at: IsoDate): void
 }
 
 export interface ConceptRepo {
