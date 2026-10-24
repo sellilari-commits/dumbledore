@@ -140,12 +140,13 @@ enum SelfTestIO {
     expect(abs(Windows.visibleFraction(win, above: [half]) - 0.5) < 0.01, "visible: half covered")
     expect(Windows.visibleFraction(win, above: [full]) == 0, "visible: covered")
     // Inline runs on one visual line join; the next line stays separate.
-    let merged = AXTextReader.merge([("Hello", CGRect(x: 0, y: 0, width: 40, height: 16)),
-                                     ("world", CGRect(x: 45, y: 0, width: 40, height: 16)),
-                                     ("Next line", CGRect(x: 0, y: 20, width: 70, height: 16))])
+    let merged = AXTextReader.merge([AXFragment(text: "Hello", frame: CGRect(x: 0, y: 0, width: 40, height: 16)),
+                                     AXFragment(text: "world", frame: CGRect(x: 45, y: 0, width: 40, height: 16)),
+                                     AXFragment(text: "Next line", frame: CGRect(x: 0, y: 20, width: 70, height: 16))])
     expect(merged.map(\.text) == ["Hello world", "Next line"], "AX fragments merge: \(merged.map(\.text))")
     expect(merged.first?.box?.width == 85 && merged.first?.align == .left, "merged box and alignment")
     expect(AXTextReader.clean("a\u{00A0} b\u{200B}c  d") == "a bc d", "AX text clean")
+    regionTrim()
     let cli = CLIOptions(["serve", "--socket", "/x.sock", "--verbose", "--parent-pid", "42"])
     expect(cli.command == "serve" && cli.string("socket") == "/x.sock" && cli.bool("verbose") && cli.int("parent-pid") == 42,
            "cli options")
@@ -405,5 +406,25 @@ enum SelfTestIO {
     }
     let st = OnDevice.status()
     expect(st.available ? st.contextSize != nil : st.reason != nil, "on-device status has a reason when unavailable")
+  }
+
+  /// Region trimming: keep the main region, else drop chrome, else keep everything.
+  private static func regionTrim() {
+    func frag(_ text: String, _ region: PageRegion) -> AXFragment { AXFragment(text: text, frame: nil, region: region) }
+    let article = String(repeating: "Tampere was founded in 1779 by King Gustav III. ", count: 3)
+    let page = [frag("Home · History · Search", .chrome), frag("Tampere", .none), frag(article, .main),
+                frag("Related: Helsinki · Turku", .chrome), frag("© 2026 · Privacy", .chrome)]
+    let kept = AXTextReader.trimToContent(page)
+    expect(kept.trim == .main && kept.frags.map(\.text) == [article], "region trim keeps main only")
+    let noMain = [frag("Chats · New chat · Settings", .chrome), frag(article, .none)]
+    let noChrome = AXTextReader.trimToContent(noMain)
+    expect(noChrome.trim == .noChrome && noChrome.frags.map(\.text) == [article], "region trim drops chrome without main")
+    let tinyMain = [frag("Skip", .main), frag(article, .none), frag("Menu", .chrome)]
+    let fallback = AXTextReader.trimToContent(tinyMain)
+    expect(fallback.trim == .noChrome && fallback.frags.map(\.text) == ["Skip", article], "tiny main: drop chrome only")
+    let sidebarOnly = [frag("Chats · New chat", .chrome), frag("Hi", .none)]
+    expect(AXTextReader.trimToContent(sidebarOnly).trim == .all, "too little left: keep everything")
+    let plain = [frag(article, .none)]
+    expect(AXTextReader.trimToContent(plain).trim == .all, "no landmarks: keep everything")
   }
 }

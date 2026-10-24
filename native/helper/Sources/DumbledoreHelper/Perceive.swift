@@ -93,7 +93,8 @@ enum Perceiver {
       let walkStart = monoMs()
       let text = AXTextReader.read(window: axWin, windowFrame: frame, focused: focused, maxChars: p.maxChars)
       Log.debug("ax walk \(t.app.bundleId): \(text.visited) nodes, \(text.chars) chars, "
-        + "\(Int(monoMs() - walkStart)) ms\(text.timedOut ? " (budget hit)" : "")")
+        + "\(Int(monoMs() - walkStart)) ms\(text.timedOut ? " (budget hit)" : ""), "
+        + "kept \(text.trim.rawValue), dropped \(text.droppedChars) chars")
       // The walk records the page's AXURL; search separately only when it stopped early.
       url = text.url ?? (text.sawWebArea || !(text.timedOut || text.chars >= p.maxChars) ? nil : AXTextReader.url(of: axWin))
       ax = text
