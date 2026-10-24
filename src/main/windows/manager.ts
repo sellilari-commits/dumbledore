@@ -369,8 +369,9 @@ export class WindowManager implements SurfaceControl, EventSink {
       if (this.appWin === win) this.appWin = null
       this.onAppClosed()
     })
+    // '/' sends a student who hasn't finished onboarding there, everyone else to Home.
     void win
-      .loadURL(pageUrl('app', { route: route ?? '/home' }, this.opts.devUrl))
+      .loadURL(pageUrl('app', { route: route ?? '/' }, this.opts.devUrl))
       .catch((error: unknown) => console.error('[app] load failed', error))
   }
 
