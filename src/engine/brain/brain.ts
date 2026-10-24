@@ -234,7 +234,12 @@ export function createBrain(deps: BrainDeps = {}): BrainHandle {
       ),
 
     writeStep: (raw: StepInput, opts?: CallOptions): Promise<StepOutput> =>
-      runStructured(runner, withFeedback(stepPrompt, feedback('prompts')), StepInput.parse(raw), opts),
+      runStructured(
+        runner,
+        withFeedback(stepPrompt, feedback('prompts')),
+        StepInput.parse(raw),
+        opts,
+      ),
 
     makeCheckpoint: (raw: CheckpointInput, opts?: CallOptions): Promise<QuestionDraft[]> =>
       runStructured(

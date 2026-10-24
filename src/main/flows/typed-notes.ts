@@ -61,7 +61,11 @@ export class TypedNotes {
   }
 
   /** Where the note goes: concept and subject ids plus a name for the reply. */
-  private place(input: TypedNoteInput): { subjectId: Id | null; conceptId: Id | null; where: string } {
+  private place(input: TypedNoteInput): {
+    subjectId: Id | null
+    conceptId: Id | null
+    where: string
+  } {
     const { repos } = this.deps
     const concept = input.conceptId ? repos.concepts.get(input.conceptId) : null
     if (concept) return { subjectId: concept.subjectId, conceptId: concept.id, where: concept.name }
@@ -98,7 +102,7 @@ export class TypedNotes {
   undo(noteId: Id): void {
     const { repos } = this.deps
     const note = repos.notes.get(noteId)
-    if (!note || note.status !== 'active') return
+    if (note?.status !== 'active') return
     repos.notes.remove(noteId)
     this.announce(note.subjectId, note.conceptId)
   }

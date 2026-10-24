@@ -68,7 +68,10 @@ export function withFeedback<I, L, O>(
   spec: PromptSpec<I, L, O>,
   lines: readonly string[],
 ): PromptSpec<I, L, O> {
-  const kept = lines.map((l) => l.trim()).filter(Boolean).slice(0, FEEDBACK_LINES)
+  const kept = lines
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .slice(0, FEEDBACK_LINES)
   if (kept.length === 0) return spec
   const block = tag(
     'student_feedback',

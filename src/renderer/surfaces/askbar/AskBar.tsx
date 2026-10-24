@@ -22,12 +22,12 @@ import { useTopics } from './useTopics'
 import { useWindowAutoSize } from './useWindowAutoSize'
 import './askbar.css'
 
-export const PLACEHOLDER = 'Tell Dumbledore how to do its work'
+export const PLACEHOLDER = 'Type here… (note: … saves a note)'
 export const FOLLOW_UP = 'Reply to Dumbledore…'
 export const PROMPT_PLACEHOLDER = 'Open a topic'
 export const EMPTY_CHAT =
-  'Ask anything, tell Dumbledore how to do its work, or start with “note:” to save a note.'
-export const CHAT_TITLE = 'Chat with Dumbledore'
+  'Ask anything, give feedback on your study plan, or start with “note:” to save a note.'
+export const CHAT_TITLE = 'Tell Dumbledore how to do its work'
 
 /** The input's placeholder while a topic is selected. */
 export const topicPlaceholder = (name: string, open: boolean) =>

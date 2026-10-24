@@ -17,11 +17,10 @@
  * and reaches the prompts of its scope (brain `feedback`).
  */
 import type { Brain } from '@engine/brain-contract'
-import type { PerceptionService, Repos } from '@engine/contracts'
+import type { FeedbackRepo, PerceptionService, Repos } from '@engine/contracts'
 import type { ChatMessage, CoachAction } from '@shared/domain'
 import type { EventPayload } from '@shared/ipc'
 import type { AskResult } from '@shared/state'
-import type { FeedbackRepo } from '@engine/contracts'
 import type { ChatWriter, FieldSnapshot } from '../chat/chat-writer'
 import { coachActionLabel } from '../overlay/labels'
 import type { ToastSpec } from '../overlay/toasts'

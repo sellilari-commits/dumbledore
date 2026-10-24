@@ -33,7 +33,11 @@ describe('notePrefixText', () => {
 describe('TypedNotes', () => {
   it('saves on the current topic (the newest), pinned, as a typed note', () => {
     const h = setup()
-    const saved = h.notes.save({ text: 'A mole is 6.022e23 particles', subjectId: null, conceptId: null })
+    const saved = h.notes.save({
+      text: 'A mole is 6.022e23 particles',
+      subjectId: null,
+      conceptId: null,
+    })
     expect(saved.where).toBe('Moles')
     const note = h.repos.notes.get(saved.noteId)
     expect(note).toMatchObject({
@@ -48,16 +52,20 @@ describe('TypedNotes', () => {
   it('follows the locked topic', () => {
     const h = setup()
     h.repos.settings.update({ focusTopicId: h.cells.id })
-    expect(h.notes.save({ text: 'Cells have membranes', subjectId: null, conceptId: null }).where).toBe(
-      'Cells',
-    )
+    expect(
+      h.notes.save({ text: 'Cells have membranes', subjectId: null, conceptId: null }).where,
+    ).toBe('Cells')
   })
 
   it('uses a topic the coach named, and a named subject without its own current topic', () => {
     const h = setup()
     const onCells = h.notes.save({ text: 'Mitochondria', subjectId: null, conceptId: h.cells.id })
     expect(h.repos.notes.get(onCells.noteId)?.conceptId).toBe(h.cells.id)
-    const onBio = h.notes.save({ text: 'Biology exam on Friday', subjectId: h.bio.id, conceptId: null })
+    const onBio = h.notes.save({
+      text: 'Biology exam on Friday',
+      subjectId: h.bio.id,
+      conceptId: null,
+    })
     expect(onBio.where).toBe('Biology')
     expect(h.repos.notes.get(onBio.noteId)).toMatchObject({ subjectId: h.bio.id, conceptId: null })
   })
@@ -84,7 +92,9 @@ describe('TypedNotes', () => {
     expect(h.repos.notes.get(saved.noteId)?.status).toBe('deleted')
     expect(h.repos.notes.list({ conceptId: h.moles.id })).toEqual([])
     h.notes.undo(saved.noteId)
-    expect(() => h.notes.save({ text: '  ', subjectId: null, conceptId: null })).toThrow(/needs text/)
+    expect(() => h.notes.save({ text: '  ', subjectId: null, conceptId: null })).toThrow(
+      /needs text/,
+    )
   })
 
   it('lists the current topic first, with ids, for the coach', () => {

@@ -25,8 +25,7 @@ function promptApi(extra: InvokeHandlers = {}, aiChat: string | null = 'ChatGPT'
   )
 }
 
-const box = () =>
-  screen.getByRole('textbox', { name: 'Open a topic' }) as HTMLTextAreaElement
+const box = () => screen.getByRole('textbox', { name: 'Open a topic' }) as HTMLTextAreaElement
 const flush = () => act(async () => {})
 const callsTo = (local: ReturnType<typeof promptApi>, channel: InvokeChannel) =>
   local.calls.filter((c) => c.channel === channel).map((c) => c.payload)
