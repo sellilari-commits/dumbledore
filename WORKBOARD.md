@@ -17,7 +17,7 @@ Newest first; keep about the last 20 entries.
 
 | Finished (UTC) | Who / agent | Work | Commit |
 |---|---|---|---|
-| 2026-10-25 | Ilari / Claude | Double-tap chat takes no notes: Note toggle, "note:" saving and note Undo removed; hint "Ask anything or give feedback on your study plan." (stored notes, Memory page, highlight notes untouched) | e416457 |
+| 2026-10-25 | Ilari / Claude | Double-tap chat takes no notes: Note toggle, "note:" saving and note Undo removed; hint "Ask anything or give feedback on your study plan." (stored notes, Memory page, highlight notes untouched) | 95d67ed |
 | 2026-10-25 | Ilari / Claude | Memory cleanup, cut down to ingestion (no second cleaning pass, episode text kept): highlight fragments trimmed/dropped at capture, P1 leaves out glued page controls; topics unite their sources (P13 v2 unite + big picture, ~30 s after a new page, moves a concept to another subject), sources in subjects.tree and the roadmap input | f59f222, c20d040 |
 | 2026-10-25 | Olle / Claude | Outline: right ⌥ on a page being read marks what to read for the subject's gaps (highlighter + reading order + spotlight), follows the scroll, saves passages to the subject | see log (eb4f458…) |
 | 2026-10-25 | Olle / Claude | Usual AI (named the same everywhere, opened to explore) + gap prompts (reopened results ask P7 again; better template) | see log |
