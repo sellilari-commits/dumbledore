@@ -81,10 +81,10 @@ describe('tray icon', () => {
     const at = (px: Float32Array, x: number, y: number) =>
       px[Math.round(y * 10) * size + Math.round(x * 10)] ?? 0
     const plain = rasterizeMark(size)
-    expect(at(plain, 12, 19)).toBe(1) // beard
-    expect(at(plain, 7.3, 7)).toBe(0) // inside a lens
-    expect(at(plain, 12, 16.4)).toBe(1) // where the smile would be
-    expect(at(rasterizeMark(size, { smile: true }), 12, 16.4)).toBe(0)
+    expect(at(plain, 12, 18)).toBe(1) // beard
+    expect(at(plain, 7, 7.5)).toBe(0) // inside a lens
+    expect(at(plain, 12, 17.1)).toBe(1) // where the smile would be
+    expect(at(rasterizeMark(size, { smile: true }), 12, 17.1)).toBe(0)
   })
 })
 

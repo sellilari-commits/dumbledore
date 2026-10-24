@@ -40,20 +40,17 @@
   --c-icoPri: #383836;
   --c-icoSec: #8e8b86;
 
-  /* ── Accent: Dumbledore's own (DESIGN.md → Brand accents) ──────────────── */
-  /* accent = midnight: rings, switches, checks, carets, selected outlines, links. */
-  --c-accent: #1e2a47;
-  --c-accentHover: #2a3a60;
-  --c-accentPressed: #15203a;
-  --c-accentText: #ffffff; /* text on accent and on accentFill */
-  /* accentFill = ink: primary buttons, like the app icon's tile. */
-  --c-accentFill: #2c2c2b;
-  --c-accentFillHover: #1f1f1e;
-  --c-accentFillPressed: #141413;
-  --c-link: #34508f;
-  --c-accentTint: rgba(30, 42, 71, 0.09); /* selected rows */
-  --c-selection: rgba(52, 80, 143, 0.22);
-  --c-panelBac: #faf9f6; /* mini panel card: warm paper */
+  /* ── Accent (buttons, links, focus) — same in both themes ─────────────── */
+  --c-accent: #2383e2; /* Notion --c-palUiBlu600 */
+  --c-accentHover: #0077d4;
+  --c-accentPressed: #006bc7;
+  --c-accentText: #ffffff;
+  --c-accentFill: #0077d4; /* primary button fill: white text at 4.6:1 (Notion's hover blue) */
+  --c-accentFillHover: #006bc7;
+  --c-accentFillPressed: #005fb3;
+  --c-link: #0077d4;
+  --c-accentTint: rgba(35, 131, 226, 0.14); /* selected rows */
+  --c-selection: rgba(35, 131, 226, 0.28);
 
   /* ── Colour pairs (tags, callouts, status) ────────────────────────────── */
   /* text = Notion's coloured text · bg = tinted background · ink = text on bg at ≥ 4.5:1 */
@@ -92,7 +89,7 @@
   --c-dangerBg: var(--c-red-bg);
   --c-warning: var(--c-orange-text);
   --c-warningBg: var(--c-orange-bg);
-  --c-progress: #1e2a47; /* thin progress bars fill midnight */
+  --c-progress: #50946e; /* thin progress bars fill green */
   --c-progressTrack: #ebeae8;
 
   /* ── Shadows ──────────────────────────────────────────────────────────── */
@@ -101,8 +98,7 @@
   --shadow-md: 0 8px 12px #19191907, 0 2px 6px #19191907, 0 0 0 1px var(--c-shaOutline);
   --shadow-lg: 0 20px 24px #1919190d, 0 5px 8px #19191907, 0 0 0 1px var(--c-shaOutline);
   --shadow-button: inset 0 0 0 1px #0f0f0f1a, 0 1px 2px #0f0f0f1a;
-  --shadow-focus:
-    #5a73b5a6 0 0 0 1px inset, #5a73b566 0 0 0 2px; /* midnight, visible in both themes */
+  --shadow-focus: #2383e291 0 0 0 1px inset, #2383e259 0 0 0 2px;
 
   /* ── Typography ───────────────────────────────────────────────────────── */
   --font-sans:
@@ -194,17 +190,9 @@
     --c-borStr: #5f5e59;
     --c-icoPri: #e6e5e3;
     --c-icoSec: #ada9a3;
-    /* lighter midnight: white checks and text stay ≥ 4.5:1, rings ≥ 3:1 on the dark page */
-    --c-accent: #5a73b5;
-    --c-accentHover: #6a83c4;
-    --c-accentPressed: #4d65a3;
-    --c-accentFill: #4d65a3;
-    --c-accentFillHover: #5a73b5;
-    --c-accentFillPressed: #435a93;
-    --c-accentTint: rgba(122, 146, 210, 0.18);
-    --c-link: #a3b5e0;
-    --c-selection: rgba(163, 181, 224, 0.32);
-    --c-panelBac: #252525;
+    --c-accentTint: rgba(35, 131, 226, 0.22);
+    --c-link: #4c9be8;
+    --c-selection: rgba(35, 131, 226, 0.4);
     --c-gray-text: #ada9a3;
     --c-gray-bg: #383836;
     --c-gray-ink: #d4d2ce;
@@ -232,7 +220,7 @@
     --c-red-text: #e6766d;
     --c-red-bg: #502c29;
     --c-red-ink: #f6b8b2;
-    --c-progress: #a3b5e0;
+    --c-progress: #5aa77c;
     --c-progressTrack: #333331;
     --c-shaOutline: #383836;
     --shadow-sm: 0 2px 4px #00000029, 0 0 0 1px var(--c-shaOutline);
@@ -266,17 +254,9 @@
   --c-borStr: #5f5e59;
   --c-icoPri: #e6e5e3;
   --c-icoSec: #ada9a3;
-  /* lighter midnight: white checks and text stay ≥ 4.5:1, rings ≥ 3:1 on the dark page */
-  --c-accent: #5a73b5;
-  --c-accentHover: #6a83c4;
-  --c-accentPressed: #4d65a3;
-  --c-accentFill: #4d65a3;
-  --c-accentFillHover: #5a73b5;
-  --c-accentFillPressed: #435a93;
-  --c-accentTint: rgba(122, 146, 210, 0.18);
-  --c-link: #a3b5e0;
-  --c-selection: rgba(163, 181, 224, 0.32);
-  --c-panelBac: #252525;
+  --c-accentTint: rgba(35, 131, 226, 0.22);
+  --c-link: #4c9be8;
+  --c-selection: rgba(35, 131, 226, 0.4);
   --c-gray-text: #ada9a3;
   --c-gray-bg: #383836;
   --c-gray-ink: #d4d2ce;
@@ -304,7 +284,7 @@
   --c-red-text: #e6766d;
   --c-red-bg: #502c29;
   --c-red-ink: #f6b8b2;
-  --c-progress: #a3b5e0;
+  --c-progress: #5aa77c;
   --c-progressTrack: #333331;
   --c-shaOutline: #383836;
   --shadow-sm: 0 2px 4px #00000029, 0 0 0 1px var(--c-shaOutline);

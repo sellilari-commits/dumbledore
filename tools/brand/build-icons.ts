@@ -20,7 +20,7 @@ const ROOT = resolve(import.meta.dirname, '../..')
 const INK: readonly [number, number, number] = [0x2c, 0x2c, 0x2b]
 const WHITE: readonly [number, number, number] = [0xff, 0xff, 0xff]
 /** Visual centre of the mark in box units (spectacles top to beard tip). */
-const MARK_CENTRE: readonly [number, number] = [12, 12.2]
+const MARK_CENTRE: readonly [number, number] = [12, 13.7]
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
 
@@ -34,8 +34,8 @@ interface Layout {
   shadow: boolean
 }
 
-const APP: Layout = { tile: 824 / 1024, radius: 0.225, mark: 660 / 1024, shadow: true }
-const FAVICON: Layout = { tile: 1, radius: 0.25, mark: 29 / 32, shadow: false }
+const APP: Layout = { tile: 824 / 1024, radius: 0.225, mark: 600 / 1024, shadow: true }
+const FAVICON: Layout = { tile: 1, radius: 0.25, mark: 26 / 32, shadow: false }
 
 /** Signed distance (px) to a rounded square of half-size `h`, corner radius `r`, at the origin. */
 function roundedSquareDist(x: number, y: number, h: number, r: number): number {
@@ -53,7 +53,7 @@ function renderIcon(size: number, layout: Layout): Uint8Array {
   const markSize = Math.round(layout.mark * size)
   const mark = rasterizeMark(markSize, {
     smile: size >= 64,
-    strokeWidth: size <= 32 ? 2.1 : size <= 64 ? 1.8 : 1.3,
+    strokeWidth: size <= 32 ? 2.3 : size <= 64 ? 1.9 : 1.5,
   })
   const scale = markSize / MARK_BOX
   const mx = Math.round(centre - MARK_CENTRE[0] * scale)
@@ -119,10 +119,9 @@ function faviconSvg(): string {
   const ty = 16 - MARK_CENTRE[1] * s
   return [
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">',
-    '<title>Dumbledore</title>',
     '<rect width="32" height="32" rx="8" fill="#2c2c2b"/>',
     `<g transform="translate(${tx.toFixed(3)} ${ty.toFixed(3)}) scale(${s.toFixed(4)})">`,
-    `<path d="${spectaclesPath()}" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>`,
+    `<path d="${spectaclesPath()}" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>`,
     `<path d="${fillPath([BEARD])}" fill="#fff"/>`,
     '</g></svg>',
   ].join('')

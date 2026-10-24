@@ -1,5 +1,5 @@
 /**
- * Dumbledore's mark ("D2"): half-moon spectacles over a beard. One geometry for every surface — the
+ * Dumbledore's mark: half-moon spectacles over a beard. One geometry for every surface — the
  * React glyphs build SVG paths from it, the tray and the app-icon script rasterize it.
  * Coordinates are in a 24×24 box, y down. Angles run clockwise on screen: 0..π is the lower
  * half of a circle, π..2π the upper half.
@@ -19,79 +19,71 @@ export interface Contour {
 
 export const MARK_BOX = 24
 /** Spectacles stroke width in box units. */
-export const MARK_STROKE = 1.5
+export const MARK_STROKE = 1.8
 /** Below this rendered size the smile is too thin to read and is left out. */
 export const SMILE_MIN_SIZE = 32
 
-/** Half-moon lenses (flat rim on top) joined by an arched bridge; no temple arms. */
+/** Half-moon lenses (flat rim on top), an arched bridge and short temple arms. */
 export const SPECTACLES: readonly StrokeShape[] = [
-  { kind: 'line', x1: 4.2, y1: 5.4, x2: 10.4, y2: 5.4 },
-  { kind: 'arc', cx: 7.3, cy: 5.4, r: 3.1, a0: 0, a1: Math.PI },
-  { kind: 'line', x1: 13.6, y1: 5.4, x2: 19.8, y2: 5.4 },
-  { kind: 'arc', cx: 16.7, cy: 5.4, r: 3.1, a0: 0, a1: Math.PI },
-  { kind: 'arc', cx: 12, cy: 5.4, r: 1.6, a0: Math.PI, a1: 2 * Math.PI },
+  { kind: 'line', x1: 3.5, y1: 6, x2: 10.5, y2: 6 },
+  { kind: 'arc', cx: 7, cy: 6, r: 3.5, a0: 0, a1: Math.PI },
+  { kind: 'line', x1: 13.5, y1: 6, x2: 20.5, y2: 6 },
+  { kind: 'arc', cx: 17, cy: 6, r: 3.5, a0: 0, a1: Math.PI },
+  { kind: 'arc', cx: 12, cy: 6, r: 1.5, a0: Math.PI, a1: 2 * Math.PI },
+  { kind: 'line', x1: 3.5, y1: 6, x2: 2.1, y2: 4.4 },
+  { kind: 'line', x1: 20.5, y1: 6, x2: 21.9, y2: 4.4 },
 ]
 
-/** The beard: a moustache dip along the top and a soft, wavy end instead of a point. */
+/** The beard: pointed at the bottom, with a moustache dip along the top edge. */
 export const BEARD: Contour = {
-  start: [4.4, 11],
+  start: [3.6, 11.2],
   curves: [
     [
-      [5.9, 12.6],
-      [8.2, 13.1],
-      [10.1, 12.6],
+      [3.6, 17.4],
+      [7.4, 21.3],
+      [12, 23],
     ],
     [
-      [10.9, 12.4],
-      [11.5, 12],
-      [12, 11.5],
+      [16.6, 21.3],
+      [20.4, 17.4],
+      [20.4, 11.2],
     ],
     [
-      [12.5, 12],
-      [13.1, 12.4],
-      [13.9, 12.6],
+      [18.9, 12.9],
+      [16.4, 13.7],
+      [14.3, 13.3],
     ],
     [
-      [15.8, 13.1],
-      [18.1, 12.6],
-      [19.6, 11],
+      [13.4, 13.1],
+      [12.6, 12.7],
+      [12, 12.2],
     ],
     [
-      [19.9, 15.8],
-      [17.9, 19],
-      [15.3, 20.3],
+      [11.4, 12.7],
+      [10.6, 13.1],
+      [9.7, 13.3],
     ],
     [
-      [14.3, 20.8],
-      [13.2, 21.4],
-      [12, 21.4],
-    ],
-    [
-      [10.8, 21.4],
-      [9.7, 20.8],
-      [8.7, 20.3],
-    ],
-    [
-      [6.1, 19],
-      [4.1, 15.8],
-      [4.4, 11],
+      [7.6, 13.7],
+      [5.1, 12.9],
+      [3.6, 11.2],
     ],
   ],
 }
 
-/** A small crescent smile cut out of the beard (even-odd), only drawn at larger sizes. */
+/** A thin crescent cut out of the beard (even-odd), only drawn at larger sizes. */
 export const SMILE: Contour = {
-  start: [10.3, 15.4],
+  start: [9.9, 16.1],
   curves: [
     [
-      [11.4, 16.3],
-      [12.6, 16.3],
-      [13.7, 15.4],
+      [11.3, 17.17],
+      [12.7, 17.17],
+      [14.1, 16.1],
     ],
     [
-      [12.7, 17.2],
-      [11.3, 17.2],
-      [10.3, 15.4],
+      [12.7, 18.17],
+      [11.3, 18.17],
+      [9.9, 16.1],
     ],
   ],
 }
@@ -154,7 +146,6 @@ export function markSvg(options: { smile?: boolean; color?: string } = {}): stri
   const color = options.color ?? 'currentColor'
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${MARK_BOX} ${MARK_BOX}">`,
-    '<title>Dumbledore</title>',
     `<path d="${spectaclesPath()}" fill="none" stroke="${color}" stroke-width="${MARK_STROKE}" stroke-linecap="round" stroke-linejoin="round"/>`,
     `<path d="${fillPath(fills)}" fill="${color}" fill-rule="evenodd"/>`,
     '</svg>',
