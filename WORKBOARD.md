@@ -8,6 +8,7 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
+| 2026-10-24 22:20 | Olle / Claude | Empty home: first-steps checklist; onboarding: "How Dumbledore works" intro step | `src/renderer/pages/home/`, `src/renderer/pages/onboarding/`, `tests/e2e-sim/` (home/onboarding specs + screenshots) | main | Renderer only; no data or engine changes |
 | 2026-10-24 21:50 | Ilari / Claude | Notes phase 1 (docs/NOTES.md): notes + concept_edges storage, extractor notes, highlight/loose notes, dedupe | docs/NOTES.md, src/shared/domain.ts, src/engine/contracts.ts, src/engine/store/ (schema-v2, migrations, repos/notes.ts, repos/edges.ts, repos/subjects.ts, sqlite-repos, search-index, conformance/), src/engine/testing/memory-repos.ts, src/engine/brain-contract.ts, src/engine/brain/prompts/p01-extract.ts (+ brain parse/fixtures), src/engine/perception/extraction/apply.ts, src/engine/subjects/memory-format.ts, src/engine/subjects/subject-service.ts, src/engine/store/repos/concepts.ts + concept-rows.ts, src/main/data/ (export, wipe); also capture cadence default (src/engine/perception/cadence.ts, scheduler.test.ts) | main | storage 0b11e71 pushed; saving side (LLM placement) next; no deploy (coordinator deploys) |
 
 ## Done recently
