@@ -228,6 +228,15 @@ test('forwards quiz-card keys into the non-focusable overlay', async () => {
   await invoke('session.start', { subjectId: orgo.id, goal: null, question: null })
   await invoke('session.next')
   await invoke('session.next')
+  // A checkpoint first asks "quiz or continue?" beside the orb; Quiz opens the card.
+  type Toasts = { toasts: { id: string; title: string }[] }
+  const checkpoint = async () =>
+    ((await control('GET', '/state/overlay')) as Toasts).toasts.find(
+      (t) => t.title === 'Checkpoint',
+    )
+  await expect.poll(checkpoint).toBeTruthy()
+  const box = await checkpoint()
+  await invoke('overlay.action', { type: 'toastAction', toastId: box?.id ?? '', actionId: 'quiz' })
   const quizOpen = async () =>
     ((await control('GET', '/state/overlay')) as { quiz: { quizId: string } | null }).quiz
   await expect.poll(quizOpen).not.toBeNull()
