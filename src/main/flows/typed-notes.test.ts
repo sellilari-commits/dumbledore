@@ -3,7 +3,7 @@ import { createEngineBus } from '@engine/events'
 import { ManualClock } from '@engine/store/seed/manual-clock'
 import { createMemoryRepos } from '@engine/testing/memory-repos'
 import { describe, expect, it } from 'vitest'
-import { notePrefixText, TYPED_SOURCE, TypedNotes } from './typed-notes'
+import { TYPED_SOURCE, TypedNotes } from './typed-notes'
 
 function setup() {
   const clock = new ManualClock('2026-10-25T09:00:00.000Z')
@@ -19,16 +19,6 @@ function setup() {
   repos.concepts.update(cells.id, { lastSeenAt: '2026-10-25T07:00:00.000Z' })
   return { repos, bus, changes, chem, bio, moles, cells, notes: new TypedNotes({ repos, bus }) }
 }
-
-describe('notePrefixText', () => {
-  it('takes the text after "note:" or "n:", any case; nothing else', () => {
-    expect(notePrefixText('note: Avogadro is 6.022e23')).toBe('Avogadro is 6.022e23')
-    expect(notePrefixText('  N:  short')).toBe('short')
-    expect(notePrefixText('note:')).toBeNull()
-    expect(notePrefixText('notes are useful')).toBeNull()
-    expect(notePrefixText('what is a note?')).toBeNull()
-  })
-})
 
 describe('TypedNotes', () => {
   it('saves on the current topic (the newest), pinned, as a typed note', () => {
@@ -82,7 +72,6 @@ describe('TypedNotes', () => {
     const saved = notes.save({ text: 'Read chapter 3', subjectId: null, conceptId: null })
     expect(saved.where).toBe('Loose notes')
     expect(repos.notes.get(saved.noteId)).toMatchObject({ subjectId: null, conceptId: null })
-    expect(notes.notesContext()).toMatch(/no topics yet/)
   })
 
   it('undo deletes the note; a second undo does nothing', () => {
@@ -95,14 +84,5 @@ describe('TypedNotes', () => {
     expect(() => h.notes.save({ text: '  ', subjectId: null, conceptId: null })).toThrow(
       /needs text/,
     )
-  })
-
-  it('lists the current topic first, with ids, for the coach', () => {
-    const h = setup()
-    const text = h.notes.notesContext()
-    expect(text.split('\n')[0]).toBe(
-      `Current topic for notes: conceptId=${h.moles.id} subjectId=${h.chem.id} · Moles (Chemistry)`,
-    )
-    expect(text).toContain(`conceptId=${h.cells.id} subjectId=${h.bio.id} · Cells (Biology)`)
   })
 })

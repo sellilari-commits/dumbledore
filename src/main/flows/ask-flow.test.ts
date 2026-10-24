@@ -18,7 +18,7 @@ interface Setup {
   aiChat?: boolean
   stream?: boolean
   fail?: boolean
-  notes?: boolean
+  feedback?: boolean
 }
 
 function setup(opts: Setup = {}) {
@@ -49,10 +49,6 @@ function setup(opts: Setup = {}) {
   const deltas: EventPayload<'chat.delta'>[] = []
   const writer = { write: vi.fn(async () => ({ ok: true, reason: null })) }
   const toasts = { showToast: vi.fn(() => 'toast_1') }
-  const notes = {
-    save: vi.fn(() => ({ noteId: 'not_1', where: 'Molar mass' })),
-    notesContext: () => 'Current topic for notes: conceptId=con_1 subjectId=sub_chem · Molar mass',
-  }
   const feedback = { add: vi.fn() }
   const deps = {
     brain: brain as unknown as Brain,
@@ -70,7 +66,7 @@ function setup(opts: Setup = {}) {
     runAction: vi.fn(async () => undefined),
     emitDelta:
       opts.stream === false ? undefined : (d: EventPayload<'chat.delta'>) => deltas.push(d),
-    ...(opts.notes ? { notes, feedback } : {}),
+    ...(opts.feedback ? { feedback } : {}),
   } as unknown as AskFlowDeps
   const seed = (n: number) => {
     for (let i = 0; i < n; i++) {
@@ -92,7 +88,6 @@ function setup(opts: Setup = {}) {
     toasts,
     sessions,
     seed,
-    notes,
     feedback,
     at: () => now,
   }
@@ -239,62 +234,29 @@ describe('AskFlow.submit', () => {
   })
 })
 
-describe('AskFlow.submit: notes and feedback', () => {
-  it('"note: …" saves at once without the coach and answers with an Undo chip', async () => {
-    const h = setup({ notes: true })
-    const out = await h.flow.submit('note: a mole is 6.022 × 10²³ particles')
-    expect(h.inputs).toHaveLength(0)
-    expect(h.notes.save).toHaveBeenCalledWith({
-      text: 'a mole is 6.022 × 10²³ particles',
-      subjectId: null,
-      conceptId: null,
-    })
-    expect(out).toEqual({
-      reply: 'Saved to Molar mass.',
-      actions: [{ type: 'undo_note', noteId: 'not_1' }],
-      pasted: false,
-    })
-    expect(h.messages.map((m) => [m.role, m.content])).toEqual([
-      ['user', 'note: a mole is 6.022 × 10²³ particles'],
-      ['assistant', 'Saved to Molar mass.'],
-    ])
-  })
-
-  it('"n:" works too; a bare prefix is a normal coach turn', async () => {
-    const h = setup({ notes: true })
-    await h.flow.submit('N: Avogadro')
-    expect(h.notes.save).toHaveBeenCalledTimes(1)
-    await h.flow.submit('note:')
-    expect(h.inputs).toHaveLength(1)
-  })
-
-  it('applies a note the coach recognised, placed where it said, as an Undo chip', async () => {
+describe('AskFlow.submit: feedback, no notes', () => {
+  it('"note: …" is a normal coach turn; a note the coach proposes is dropped', async () => {
     const h = setup({
-      notes: true,
-      reply: ['Nice one.'],
+      feedback: true,
+      reply: ['A mole is a count.'],
       actions: [
-        { type: 'add_note', text: 'Molar mass is g/mol', subjectId: null, conceptId: 'con_9' },
+        { type: 'add_note', text: 'A mole is 6.022e23', subjectId: null, conceptId: null },
         { type: 'set_focus', subjectId: 'sub_chem' },
       ],
     })
-    const out = await h.flow.submit('remember that molar mass is in g/mol')
-    expect(h.notes.save).toHaveBeenCalledWith({
-      type: 'add_note',
-      text: 'Molar mass is g/mol',
-      subjectId: null,
-      conceptId: 'con_9',
+    const out = await h.flow.submit('note: a mole is 6.022 × 10²³ particles')
+    expect(h.inputs).toHaveLength(1)
+    expect(h.inputs[0]?.context).toMatch(/^Mode: chat\b.*never call add_note/)
+    expect(out).toEqual({
+      reply: 'A mole is a count.',
+      actions: [{ type: 'set_focus', subjectId: 'sub_chem' }],
+      pasted: false,
     })
-    expect(out.reply).toBe('Nice one.\n\nSaved to Molar mass.')
-    expect(out.actions).toEqual([
-      { type: 'undo_note', noteId: 'not_1' },
-      { type: 'set_focus', subjectId: 'sub_chem' },
-    ])
-    expect(h.inputs[0]?.context).toContain('Current topic for notes: conceptId=con_1')
   })
 
   it('stores feedback, never as a chip, and confirms it when the coach said nothing', async () => {
     const h = setup({
-      notes: true,
+      feedback: true,
       reply: [],
       actions: [
         { type: 'give_feedback', text: 'Quizzes are too easy', scope: 'quizzes', subjectId: null },

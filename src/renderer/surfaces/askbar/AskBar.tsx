@@ -11,7 +11,7 @@
  * while the input is empty.
  */
 import type { DumbledoreApi } from '@shared/ipc'
-import { SquarePen, StickyNote } from 'lucide-react'
+import { SquarePen } from 'lucide-react'
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { SpectaclesGlyph } from '../overlay/glyph/SpectaclesGlyph'
 import { AskLog } from './AskLog'
@@ -22,31 +22,11 @@ import { useTopics } from './useTopics'
 import { useWindowAutoSize } from './useWindowAutoSize'
 import './askbar.css'
 
-export const PLACEHOLDER = 'Type here… (note: … saves a note)'
+export const PLACEHOLDER = 'Type here…'
 export const FOLLOW_UP = 'Reply to Dumbledore…'
 export const PROMPT_PLACEHOLDER = 'Open a topic'
-export const EMPTY_CHAT =
-  'Ask anything, give feedback on your study plan, or start with “note:” to save a note.'
+export const EMPTY_CHAT = 'Ask anything or give feedback on your study plan.'
 export const CHAT_TITLE = 'Tell Dumbledore how to do its work'
-export const NOTE_PLACEHOLDER = 'Write a note…'
-const NOTE_MODE_KEY = 'dumbledore.askbar.noteMode'
-
-/** Note mode is remembered for the session (sessionStorage may be unavailable). */
-function readNoteMode(): boolean {
-  try {
-    return window.sessionStorage.getItem(NOTE_MODE_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
-function saveNoteMode(on: boolean): void {
-  try {
-    window.sessionStorage.setItem(NOTE_MODE_KEY, on ? '1' : '0')
-  } catch {
-    // Not remembered; the toggle still works for this window.
-  }
-}
 
 /** The input's placeholder while a topic is selected. */
 export const topicPlaceholder = (name: string, open: boolean) =>
@@ -57,7 +37,6 @@ export function AskBar({ api }: { api: DumbledoreApi }) {
   const promptBox = usePromptBox(api)
   const topics = useTopics(api, chat.close, !promptBox.active)
   const [text, setText] = useState('')
-  const [noteMode, setNoteMode] = useState(readNoteMode)
   const card = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
   const prompting = promptBox.active
@@ -82,19 +61,9 @@ export function AskBar({ api }: { api: DumbledoreApi }) {
       return
     }
     setText('')
-    // In note mode the text is saved as a typed note, straight away and with no LLM call.
-    const message = noteMode ? `note: ${question}` : question
-    void chat.submit(message, topic?.id).then((sent) => {
+    void chat.submit(question, topic?.id).then((sent) => {
       if (!sent) setText((now) => (now.trim() ? now : question))
     })
-  }
-
-  const toggleNoteMode = () => {
-    setNoteMode((on) => {
-      saveNoteMode(!on)
-      return !on
-    })
-    input.current?.focus()
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -148,13 +117,11 @@ export function AskBar({ api }: { api: DumbledoreApi }) {
 
   const placeholder = prompting
     ? PROMPT_PLACEHOLDER
-    : noteMode
-      ? NOTE_PLACEHOLDER
-      : topic
-        ? topicPlaceholder(topic.name, open)
-        : open
-          ? FOLLOW_UP
-          : PLACEHOLDER
+    : topic
+      ? topicPlaceholder(topic.name, open)
+      : open
+        ? FOLLOW_UP
+        : PLACEHOLDER
   const showTopics = !prompting && topics.topics.length > 0
   return (
     <div
@@ -203,28 +170,15 @@ export function AskBar({ api }: { api: DumbledoreApi }) {
           }}
         />
       )}
-      <div className="ask__composer" data-note={(!prompting && noteMode) || undefined}>
+      <div className="ask__composer">
         {prompting && <SpectaclesGlyph className="ask__glyph" size={22} />}
-        {!prompting && (
-          <button
-            type="button"
-            className="ask__note-toggle"
-            aria-pressed={noteMode}
-            aria-label="Note"
-            title={noteMode ? 'Writing notes · click for chat' : 'Write a note'}
-            onClick={toggleNoteMode}
-          >
-            <StickyNote size={14} strokeWidth={1.75} aria-hidden />
-            <span>Note</span>
-          </button>
-        )}
         <textarea
           ref={input}
           className="ask__input"
           rows={1}
           value={text}
           placeholder={placeholder}
-          aria-label={prompting ? PROMPT_PLACEHOLDER : noteMode ? 'Write a note' : 'Ask Dumbledore'}
+          aria-label={prompting ? PROMPT_PLACEHOLDER : 'Ask Dumbledore'}
           aria-description={
             topic ? `Topic: ${topic.name}. Enter with no text studies it.` : undefined
           }

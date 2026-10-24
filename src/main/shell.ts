@@ -159,7 +159,6 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     contextText,
     runAction,
     emitDelta: hooks.onChatDelta,
-    notes: typedNotes,
     feedback: repos.feedback,
   })
   const promptWriter = new PromptWriter({ sessions, study, perception, surfaces, thinking })

@@ -53,8 +53,12 @@ interface Props {
   onRun: (action: CoachAction) => Promise<void>
 }
 
-export function ActionChips({ actions, onRun }: Props) {
+/** The chat takes no notes: note chips kept in older replies (Save note, Undo) are not shown. */
+const inChat = (action: CoachAction) => action.type !== 'add_note' && action.type !== 'undo_note'
+
+export function ActionChips({ actions: all, onRun }: Props) {
   const [busy, setBusy] = useState<number | null>(null)
+  const actions = all.filter(inChat)
   if (actions.length === 0) return null
   return (
     <div className="ask__actions">

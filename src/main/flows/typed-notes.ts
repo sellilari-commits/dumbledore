@@ -1,20 +1,17 @@
 /**
- * Notes the student types in the double-tap chat ("note: …", or a fact the coach recognises as
- * one). A typed note is the student's own words: pinned, so consolidation never rewrites it.
+ * Typed notes: a note the coach proposes (add_note, run as a chip or toast button outside the
+ * double-tap chat, which takes no notes) and its undo. A typed note is the student's own words:
+ * pinned, so consolidation never rewrites it.
  *
  * Placement: a concept the coach named (it must exist), else a subject it named (on the current
  * topic when that topic belongs to it, else on the subject itself), else the current topic (the
  * locked one, else the newest; the panel and right-⌥ agree via shared/topics.ts), else a loose
- * note. `notesContext` lists those topics with ids so the coach can place a note elsewhere.
+ * note.
  */
 import type { Repos } from '@engine/contracts'
 import type { EngineBus } from '@engine/events'
 import type { Id, Note } from '@shared/domain'
 import { currentTopic, listTopics, type Topic } from '@shared/topics'
-
-/** "note: …" or "n: …" saves at once, without an LLM call. */
-const NOTE_PREFIX = /^\s*(?:note|n)\s*:\s*/i
-const CONTEXT_TOPICS = 15
 
 export const TYPED_SOURCE: Note['source'] = {
   app: 'Dumbledore',
@@ -38,13 +35,6 @@ export interface SavedNote {
 export interface TypedNotesDeps {
   repos: Pick<Repos, 'notes' | 'subjects' | 'concepts' | 'settings'>
   bus: EngineBus
-}
-
-/** The note text after a "note:" / "n:" prefix, or null when the message has none. */
-export function notePrefixText(message: string): string | null {
-  if (!NOTE_PREFIX.test(message)) return null
-  const text = message.replace(NOTE_PREFIX, '').trim()
-  return text || null
 }
 
 export class TypedNotes {
@@ -105,21 +95,6 @@ export class TypedNotes {
     if (note?.status !== 'active') return
     repos.notes.remove(noteId)
     this.announce(note.subjectId, note.conceptId)
-  }
-
-  /** The topics the coach may place a note on, with ids; the current one first. */
-  notesContext(): string {
-    const topics = this.topics()
-    const current = this.current()
-    if (!current) return 'Notes: no topics yet; a typed note becomes a loose note.'
-    const others = topics
-      .filter((t) => t.id !== current.id)
-      .slice(0, CONTEXT_TOPICS - 1)
-      .map((t) => `- conceptId=${t.id} subjectId=${t.subjectId} · ${t.name} (${t.subjectName})`)
-    return [
-      `Current topic for notes: conceptId=${current.id} subjectId=${current.subjectId} · ${current.name} (${current.subjectName})`,
-      ...(others.length ? ['Other topics:', ...others] : []),
-    ].join('\n')
   }
 
   private announce(subjectId: Id | null, conceptId: Id | null): void {
