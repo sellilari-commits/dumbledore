@@ -1,0 +1,13 @@
+node_modules/
+out/
+dist/
+release/
+coverage/
+test-results/
+playwright-report/
+native/helper/.build/
+native/helper/build/
+.env.local
+*.log
+.install.log
+.DS_Store

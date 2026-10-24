@@ -1,0 +1,323 @@
+/**
+ * The Brain: every LLM-backed capability the engine uses, as typed inputs and outputs.
+ *
+ * Lane L2 implements it (prompts P1–P12 in docs/PLAN.md, Appendix A). Every other lane depends
+ * only on this interface and uses `FakeBrain` (engine/testing) in tests.
+ */
+import { z } from 'zod'
+import {
+  CoachAction,
+  EpisodeKind,
+  EpisodeSignals,
+  ExamSpec,
+  MasteryStatus,
+  Probe,
+  TeachingMove,
+  UnderstandingStatus,
+} from '@shared/domain'
+
+const Lang = z.string() // BCP-47-ish: "en", "fi", … or "auto"
+
+// ─── P1 Extractor ───────────────────────────────────────────────────────────────────────────
+
+export const ExtractInput = z.object({
+  student: z.object({ aboutMe: z.string(), language: Lang }),
+  subjects: z.array(
+    z.object({ id: z.string(), name: z.string(), topConcepts: z.array(z.string()) }),
+  ),
+  episodes: z.array(
+    z.object({
+      id: z.string(),
+      app: z.string(),
+      url: z.string().nullable(),
+      title: z.string().nullable(),
+      kind: EpisodeKind,
+      aiProvider: z.string().nullable(),
+      dwellSeconds: z.number(),
+      signals: EpisodeSignals,
+      text: z.string(), // cleaned + redacted; lines may carry [L]/[C]/[R] alignment tags
+    }),
+  ),
+})
+export type ExtractInput = z.infer<typeof ExtractInput>
+
+export const ExtractedItem = z.object({
+  subject: z.object({ matchId: z.string().nullable(), newName: z.string().nullable() }),
+  topicPath: z.array(z.string()).min(1).max(4),
+  seen: z.string(),
+  bigPicture: z.string(),
+  understanding: z.object({ status: UnderstandingStatus, evidence: z.string() }),
+  openQuestions: z.array(z.string()).max(3),
+  keyTerms: z.array(z.string()),
+  assignment: z
+    .object({ title: z.string(), course: z.string().nullable(), dueAt: z.string().nullable() })
+    .nullable(),
+})
+export type ExtractedItem = z.infer<typeof ExtractedItem>
+
+export const ExtractOutput = z.object({
+  results: z.array(
+    z.object({
+      episodeId: z.string(),
+      isLearning: z.boolean(),
+      confidence: z.number().min(0).max(1),
+      reason: z.string(),
+      items: z.array(ExtractedItem),
+      /** The student's own prompts seen in an AI chat, scored for coaching (P1 for ai_chat). */
+      studentPrompts: z.array(
+        z.object({
+          text: z.string(),
+          hasContext: z.boolean(),
+          hasStructure: z.boolean(),
+          asksToBeQuizzed: z.boolean(),
+          asksForExamples: z.boolean(),
+        }),
+      ),
+    }),
+  ),
+})
+export type ExtractOutput = z.infer<typeof ExtractOutput>
+
+// ─── P3 Roadmapper ──────────────────────────────────────────────────────────────────────────
+
+export const RoadmapInput = z.object({
+  goal: z.string(),
+  subject: z.object({ id: z.string(), name: z.string() }).nullable(),
+  deadline: z.string().nullable(),
+  minutesAvailable: z.number().nullable(),
+  assistant: z.string(), // "ChatGPT"
+  language: Lang,
+  profile: z.string(),
+  mastery: z.array(z.object({ concept: z.string(), status: MasteryStatus, evidence: z.string() })),
+  encounters: z.array(
+    z.object({ seen: z.string(), bigPicture: z.string(), understanding: UnderstandingStatus }),
+  ),
+  openQuestions: z.array(z.string()),
+  doneSteps: z.array(z.string()),
+  carry: z.array(z.string()),
+})
+export type RoadmapInput = z.infer<typeof RoadmapInput>
+
+export const PlannedLearn = z.object({
+  kind: z.literal('learn'),
+  title: z.string(),
+  objective: z.string(),
+  concepts: z.array(z.string()).min(1),
+  move: TeachingMove,
+  promptDraft: z.string(),
+})
+export const PlannedCheckpoint = z.object({
+  kind: z.literal('checkpoint'),
+  covers: z.array(z.string()).min(1),
+  probes: z.array(Probe),
+  nQuestions: z.number().int().min(1).max(5),
+})
+export const RoadmapPlan = z.object({
+  title: z.string(),
+  goal: z.string(),
+  startReason: z.string(),
+  offerPlacement: z.boolean(),
+  estimatedMinutes: z.number(),
+  items: z.array(z.discriminatedUnion('kind', [PlannedLearn, PlannedCheckpoint])).min(2),
+  nextMilestone: z.string().nullable(),
+})
+export type RoadmapPlan = z.infer<typeof RoadmapPlan>
+
+// ─── P4 Step writer ─────────────────────────────────────────────────────────────────────────
+
+export const MemoryUpdate = z.object({
+  type: z.enum(['understanding', 'note', 'question']),
+  concept: z.string(),
+  value: z.string(), // for 'understanding': one of UnderstandingStatus
+  evidence: z.string(),
+})
+export type MemoryUpdate = z.infer<typeof MemoryUpdate>
+
+export const StepInput = z.object({
+  assistant: z.string(),
+  language: Lang,
+  profile: z.string(),
+  step: z.object({
+    title: z.string(),
+    objective: z.string(),
+    move: TeachingMove,
+    promptDraft: z.string(),
+  }),
+  chatExcerpt: z.string(), // what is visible in the AI chat now (OCR/AX), roles inferred
+  recentMisses: z.array(Probe),
+})
+export type StepInput = z.infer<typeof StepInput>
+
+export const StepOutput = z.object({
+  prompt: z.string(),
+  coachTip: z.string(),
+  memoryUpdates: z.array(MemoryUpdate),
+})
+export type StepOutput = z.infer<typeof StepOutput>
+
+// ─── P5 Checkpoint quizmaster + verifier, P6 exam builder ──────────────────────────────────
+
+export const QuestionDraft = z.object({
+  concept: z.string(),
+  stem: z.string(),
+  options: z.array(z.string()).length(4),
+  correctIndex: z.number().int().min(0).max(3),
+  rationales: z.array(z.string()).length(4),
+  difficulty: z.number().int().min(1).max(3),
+})
+export type QuestionDraft = z.infer<typeof QuestionDraft>
+
+export const CheckpointInput = z.object({
+  concepts: z.array(z.string()).min(1),
+  probes: z.array(Probe),
+  carry: z.array(z.string()),
+  n: z.number().int().min(1).max(5),
+  studied: z.string(), // excerpts of what the AI explained
+  language: Lang,
+})
+export type CheckpointInput = z.infer<typeof CheckpointInput>
+
+export const VerifyResult = z.object({
+  index: z.number().int(),
+  chosen: z.number().int().min(0).max(3),
+  confidence: z.number().min(0).max(1),
+})
+export type VerifyResult = z.infer<typeof VerifyResult>
+
+export const ExamInput = z.object({
+  subjects: z.array(z.object({ id: z.string(), name: z.string() })),
+  spec: ExamSpec,
+  concepts: z.array(z.object({ name: z.string(), status: MasteryStatus, mastery: z.number() })),
+  encounters: z.array(z.object({ seen: z.string(), bigPicture: z.string() })),
+  language: Lang,
+})
+export type ExamInput = z.infer<typeof ExamInput>
+
+// ─── P7 Gap fixer ───────────────────────────────────────────────────────────────────────────
+
+export const GapInput = z.object({
+  assistant: z.string(),
+  language: Lang,
+  profile: z.string(),
+  misses: z.array(
+    z.object({
+      concept: z.string(),
+      stem: z.string(),
+      chosen: z.string(),
+      correct: z.string(),
+      rationale: z.string(),
+    }),
+  ),
+})
+export type GapInput = z.infer<typeof GapInput>
+
+export const GapOutput = z.object({
+  diagnoses: z.array(Probe),
+  prompt: z.string(),
+  nextTopic: z.string(),
+})
+export type GapOutput = z.infer<typeof GapOutput>
+
+// ─── P8 Prompt improver, P9 Suggester ──────────────────────────────────────────────────────
+
+export const ImproveInput = z.object({
+  assistant: z.string(),
+  language: Lang,
+  profile: z.string(),
+  draft: z.string(),
+  context: z.string(), // current page / session, short
+})
+export type ImproveInput = z.infer<typeof ImproveInput>
+
+export const PromptWithTip = z.object({ prompt: z.string(), coachTip: z.string() })
+export type PromptWithTip = z.infer<typeof PromptWithTip>
+
+export const SuggestCandidate = z.object({
+  kind: z.enum(['session_step', 'open_question', 'struggling', 'due_review', 'deadline', 'starter']),
+  text: z.string(),
+})
+export type SuggestCandidate = z.infer<typeof SuggestCandidate>
+
+export const SuggestInput = z.object({
+  assistant: z.string(),
+  language: Lang,
+  profile: z.string(),
+  candidates: z.array(SuggestCandidate).min(1),
+  context: z.string(),
+})
+export type SuggestInput = z.infer<typeof SuggestInput>
+
+export const SuggestOutput = PromptWithTip.extend({ basedOn: SuggestCandidate.shape.kind })
+export type SuggestOutput = z.infer<typeof SuggestOutput>
+
+// ─── P10 Coach, P11 Nudge writer, P12 Profiler ─────────────────────────────────────────────
+
+export const CoachInput = z.object({
+  profile: z.string(),
+  context: z.string(), // subjects, mastery, due, session, recent activity — compact text
+  history: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string() })),
+  message: z.string(),
+})
+export type CoachInput = z.infer<typeof CoachInput>
+
+export type CoachEvent =
+  | { type: 'text'; delta: string }
+  | { type: 'action'; action: CoachAction }
+  | { type: 'done' }
+
+export const NudgeInput = z.object({ kind: z.string(), facts: z.string(), language: Lang })
+export type NudgeInput = z.infer<typeof NudgeInput>
+export const NudgeOutput = z.object({ title: z.string(), body: z.string() })
+export type NudgeOutput = z.infer<typeof NudgeOutput>
+
+export const ProfileInput = z.object({
+  aboutMe: z.string(),
+  subjects: z.string(),
+  struggles: z.string(),
+  habits: z.string(),
+})
+export type ProfileInput = z.infer<typeof ProfileInput>
+export const ProfileOutput = z.object({
+  summary: z.string(),
+  level: z.string().nullable(),
+  habitsToCoach: z.array(z.string()),
+})
+export type ProfileOutput = z.infer<typeof ProfileOutput>
+
+// ─── The interface ──────────────────────────────────────────────────────────────────────────
+
+export interface CallOptions {
+  signal?: AbortSignal
+  /** Hard deadline; on timeout the call rejects with BrainTimeoutError. */
+  timeoutMs?: number
+}
+
+export class BrainTimeoutError extends Error {
+  constructor(task: string) {
+    super(`brain task "${task}" timed out`)
+    this.name = 'BrainTimeoutError'
+  }
+}
+
+export class BrainUnavailableError extends Error {
+  constructor(task: string, reason: string) {
+    super(`brain task "${task}" unavailable: ${reason}`)
+    this.name = 'BrainUnavailableError'
+  }
+}
+
+export interface Brain {
+  extract(input: ExtractInput, opts?: CallOptions): Promise<ExtractOutput>
+  buildRoadmap(input: RoadmapInput, opts?: CallOptions): Promise<RoadmapPlan>
+  writeStep(input: StepInput, opts?: CallOptions): Promise<StepOutput>
+  makeCheckpoint(input: CheckpointInput, opts?: CallOptions): Promise<QuestionDraft[]>
+  /** Blind-answers each question; callers compare `chosen` with the key. */
+  verifyQuestions(questions: QuestionDraft[], opts?: CallOptions): Promise<VerifyResult[]>
+  makeExam(input: ExamInput, opts?: CallOptions): Promise<QuestionDraft[]>
+  fixGaps(input: GapInput, opts?: CallOptions): Promise<GapOutput>
+  improvePrompt(input: ImproveInput, opts?: CallOptions): Promise<PromptWithTip>
+  suggestPrompt(input: SuggestInput, opts?: CallOptions): Promise<SuggestOutput>
+  coach(input: CoachInput, opts?: CallOptions): AsyncIterable<CoachEvent>
+  writeNudge(input: NudgeInput, opts?: CallOptions): Promise<NudgeOutput>
+  buildProfile(input: ProfileInput, opts?: CallOptions): Promise<ProfileOutput>
+}

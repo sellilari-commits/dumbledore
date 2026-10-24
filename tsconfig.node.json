@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "target": "es2023",
+    "lib": ["es2023"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "paths": {
+      "@shared/*": ["./src/shared/*"],
+      "@engine/*": ["./src/engine/*"],
+      "@main/*": ["./src/main/*"]
+    }
+  },
+  "include": [
+    "src/shared",
+    "src/engine",
+    "src/main",
+    "src/preload",
+    "tools",
+    "tests/unit",
+    "tests/integration",
+    "tests/e2e-sim",
+    "tests/e2e-real",
+    "electron.vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts"
+  ]
+}

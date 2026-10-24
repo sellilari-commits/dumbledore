@@ -1,0 +1,174 @@
+/**
+ * IPC contract between the main process and the windows (overlay, panel, ask bar, app).
+ *
+ * Every channel is declared once here with zod schemas. The preload exposes a typed
+ * `window.dumbledore` built from this contract; main validates every request payload before
+ * handling it. Add a channel here first, then implement it in main and use it in the renderer.
+ */
+import { z } from 'zod'
+import {
+  AnswerResult,
+  ChatMessage,
+  CoachAction,
+  Encounter,
+  ExamSpec,
+  Id,
+  InboxState,
+  Quiz,
+  QuizResult,
+  Settings,
+  SettingsPatch,
+  Subject,
+  SubjectSummary,
+  Assignment,
+} from './domain'
+import {
+  AppState,
+  AskResult,
+  HomeData,
+  MemoryChanged,
+  NewAssignmentInput,
+  NewSubjectInput,
+  OverlayAction,
+  OverlayState,
+  PermissionsStatus,
+  PickerData,
+  QuizSummary,
+  SearchHit,
+  SessionState,
+  StartSessionInput,
+  SubjectDetail,
+  SubjectPatch,
+  UsageSummary,
+} from './state'
+
+const Void = z.void()
+const WindowSurface = z.enum(['app', 'panel', 'askbar'])
+
+export const ipcInvoke = {
+  // App status & settings
+  'app.getState': { req: Void, res: AppState },
+  'settings.get': { req: Void, res: Settings },
+  'settings.update': { req: SettingsPatch, res: Settings },
+  /** Stores an API key in the macOS Keychain (Electron safeStorage). Never echoed back. */
+  'secrets.set': {
+    req: z.object({ key: z.enum(['groq', 'mistral']), value: z.string() }),
+    res: Void,
+  },
+  'capture.setEnabled': { req: z.boolean(), res: Void },
+  'permissions.status': { req: Void, res: PermissionsStatus },
+  'permissions.open': { req: z.enum(['accessibility', 'screenRecording']), res: Void },
+  'providers.test': {
+    req: z.enum(['apple', 'groq', 'ovh', 'mistral']),
+    res: z.object({ ok: z.boolean(), latencyMs: z.number().nullable(), error: z.string().nullable() }),
+  },
+  'providers.usage': { req: Void, res: UsageSummary },
+
+  // Read models
+  'home.get': { req: Void, res: HomeData },
+  'subjects.list': { req: Void, res: z.array(SubjectSummary) },
+  'subjects.get': { req: Id, res: SubjectDetail },
+  'inbox.list': {
+    req: z.object({ state: InboxState.nullable(), subjectId: Id.nullable() }),
+    res: z.array(Encounter),
+  },
+  'exams.list': { req: Void, res: z.array(QuizSummary) },
+  'search.query': { req: z.string(), res: z.array(SearchHit) },
+
+  // Subjects, inbox, assignments
+  'subjects.create': { req: NewSubjectInput, res: Subject },
+  'subjects.update': { req: z.object({ id: Id, patch: SubjectPatch }), res: Subject },
+  'suggested.act': {
+    req: z.object({
+      subjectId: Id,
+      action: z.enum(['accept', 'dismiss', 'merge']),
+      intoId: Id.nullable(),
+    }),
+    res: Void,
+  },
+  'inbox.act': {
+    req: z.object({
+      encounterId: Id,
+      action: z.enum(['accept', 'ignore', 'assign']),
+      subjectId: Id.nullable(),
+    }),
+    res: Void,
+  },
+  'assignments.add': { req: NewAssignmentInput, res: Assignment },
+
+  // Study session (the shell performs pastes; see StepInstruction)
+  'session.get': { req: Void, res: SessionState.nullable() },
+  'session.picker': { req: Void, res: PickerData },
+  'session.start': { req: StartSessionInput, res: SessionState },
+  'session.next': { req: Void, res: SessionState.nullable() },
+  'session.end': { req: Void, res: Void },
+
+  // Quizzes & exams
+  'quiz.get': { req: Id, res: Quiz },
+  'quiz.answer': {
+    req: z.object({ quizId: Id, questionId: Id, chosenIndex: z.number().int().min(0).max(3) }),
+    res: AnswerResult,
+  },
+  'quiz.finish': { req: Id, res: QuizResult },
+  'exams.create': { req: ExamSpec, res: Quiz },
+
+  // Coach chat, Ask bar, actions
+  'chat.history': { req: z.string(), res: z.array(ChatMessage) },
+  'chat.send': { req: z.object({ thread: z.string(), text: z.string() }), res: ChatMessage },
+  'coach.runAction': { req: CoachAction, res: Void },
+  'ask.submit': { req: z.object({ text: z.string() }), res: AskResult },
+  'nudge.act': {
+    req: z.object({ nudgeId: Id, action: z.enum(['accept', 'dismiss', 'snooze']) }),
+    res: Void,
+  },
+
+  // Prompts
+  'prompt.copy': { req: z.string(), res: Void },
+  'prompt.sendToChat': {
+    req: z.string(),
+    res: z.object({ ok: z.boolean(), reason: z.string().nullable() }),
+  },
+
+  // Overlay & windows
+  'overlay.getState': { req: Void, res: OverlayState },
+  'overlay.action': { req: OverlayAction, res: Void },
+  'window.open': { req: z.object({ surface: WindowSurface, route: z.string().nullable() }), res: Void },
+  'window.close': { req: WindowSurface, res: Void },
+  'window.setSize': {
+    req: z.object({ surface: z.enum(['panel', 'askbar']), width: z.number(), height: z.number() }),
+    res: Void,
+  },
+} as const
+
+export const ipcEvents = {
+  'state.changed': AppState,
+  'overlay.changed': OverlayState,
+  'memory.changed': MemoryChanged,
+  'session.changed': SessionState.nullable(),
+  'chat.delta': z.object({
+    thread: z.string(),
+    messageId: Id,
+    delta: z.string(),
+    done: z.boolean(),
+  }),
+  /** Main asks a window to show a route (e.g. open the app on an exam). */
+  navigate: z.object({ route: z.string() }),
+} as const
+
+export type InvokeChannel = keyof typeof ipcInvoke
+export type InvokeReq<C extends InvokeChannel> = z.input<(typeof ipcInvoke)[C]['req']>
+export type InvokeRes<C extends InvokeChannel> = z.output<(typeof ipcInvoke)[C]['res']>
+export type EventChannel = keyof typeof ipcEvents
+export type EventPayload<E extends EventChannel> = z.output<(typeof ipcEvents)[E]>
+
+/** Arguments tuple: channels whose request is void take no argument. */
+export type InvokeArgs<C extends InvokeChannel> = [InvokeReq<C>] extends [void] ? [] : [InvokeReq<C>]
+
+/** The API the preload exposes as `window.dumbledore`. */
+export interface DumbledoreApi {
+  surface: 'overlay' | 'panel' | 'askbar' | 'app'
+  invoke<C extends InvokeChannel>(channel: C, ...args: InvokeArgs<C>): Promise<InvokeRes<C>>
+  on<E extends EventChannel>(event: E, listener: (payload: EventPayload<E>) => void): () => void
+}
+
+export { IPC_EVENT_PREFIX, IPC_INVOKE_PREFIX } from './ipc-names'
