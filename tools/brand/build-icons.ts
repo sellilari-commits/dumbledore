@@ -119,6 +119,7 @@ function faviconSvg(): string {
   const ty = 16 - MARK_CENTRE[1] * s
   return [
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">',
+    '<title>Dumbledore</title>',
     '<rect width="32" height="32" rx="8" fill="#2c2c2b"/>',
     `<g transform="translate(${tx.toFixed(3)} ${ty.toFixed(3)}) scale(${s.toFixed(4)})">`,
     `<path d="${spectaclesPath()}" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>`,

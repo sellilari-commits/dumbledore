@@ -146,6 +146,7 @@ export function markSvg(options: { smile?: boolean; color?: string } = {}): stri
   const color = options.color ?? 'currentColor'
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${MARK_BOX} ${MARK_BOX}">`,
+    '<title>Dumbledore</title>',
     `<path d="${spectaclesPath()}" fill="none" stroke="${color}" stroke-width="${MARK_STROKE}" stroke-linecap="round" stroke-linejoin="round"/>`,
     `<path d="${fillPath(fills)}" fill="${color}" fill-rule="evenodd"/>`,
     '</svg>',

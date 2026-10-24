@@ -160,6 +160,7 @@ enum SelfTest {
       "required":["answer","score","tags","note","kind"],
       "$defs":{"Kind":{"type":"object","properties":{"x":{"type":"number"}},"required":["x"]}}}
       """#
+    #if canImport(FoundationModels)
     guard let s = try? OJSON.parse(Data(text.utf8)) else { return expect(false, "schema parses") }
     do {
       _ = try JSONSchemaConverter.generationSchema(s)
@@ -174,6 +175,7 @@ enum SelfTest {
     expect(nested["kind"]?["x"] == .null, "fillNulls follows $ref")
     let bad = try? OJSON.parse(Data(#"{"type":"object","properties":{"f":{"type":"function"}}}"#.utf8))
     expect(bad.map { (try? JSONSchemaConverter.generationSchema($0)) == nil } ?? false, "unsupported type rejected")
+    #endif
   }
 
   private static func json() {

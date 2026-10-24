@@ -18,7 +18,7 @@ export function outlineLanguage(input: OutlineInput): string {
   return looksFinnish(input.lines.map((l) => l.text).join('\n')) ? 'fi' : 'en'
 }
 
-function system(input: OutlineInput, lang: string): string {
+function system(lang: string): string {
   return `A student is reading the page below and asked you to outline what they need to read.
 Mark passages as line ranges ("from" and "to" are the numbers in <page>, inclusive):
 - read: teaches one of their gaps, answers one of their open questions, or is core to their goal. Be selective: usually 10–30% of the page.
@@ -89,7 +89,7 @@ export const outlinePrompt: PromptSpec<OutlineInput, OutlineOutput, OutlineOutpu
   onDeviceOk: false,
   cacheable: true,
   language: outlineLanguage,
-  build: (input) => ({ system: system(input, outlineLanguage(input)), user: user(input) }),
+  build: (input) => ({ system: system(outlineLanguage(input)), user: user(input) }),
   check: (out) =>
     out.ranges.some((r) => r.verdict === 'read') ? [] : ['mark at least one passage to read'],
   finalize: (out, input) => ({ summary: out.summary.trim(), ranges: cleanRanges(out, input) }),

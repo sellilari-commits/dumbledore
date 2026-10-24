@@ -5,6 +5,7 @@
 // $defs/definitions. Unsupported keywords are ignored. Nullable properties are generated as
 // optional and filled with explicit nulls afterwards (zod's `.nullable()` needs the key present).
 import Foundation
+#if canImport(FoundationModels)
 import FoundationModels
 
 @available(macOS 26.0, *)
@@ -125,3 +126,4 @@ enum JSONSchemaConverter {
     }
   }
 }
+#endif

@@ -131,7 +131,10 @@ describe('OutlineFlow', () => {
     let current: PerceivedWindow | null = page()
     const f = flow({
       frontWindow: async () => current,
-      every: (_ms, fn) => ((tick = fn), () => {}),
+      every: (_ms, fn) => {
+        tick = fn
+        return () => {}
+      },
     })
     await f.run()
     expect(shown.at(-1)?.marks[0]?.rect.y).toBe(160)

@@ -29,7 +29,7 @@ BIN="$OUT/dumbledore-helper"
 swiftc "${OPT[@]}" -swift-version 6 -target "$TARGET" -sdk "$SDK" -module-cache-path "$CACHE" \
   -module-name DumbledoreHelper -o "$BIN" "$HERE"/Sources/DumbledoreHelper/*.swift \
   -framework AppKit -framework Vision -framework ScreenCaptureKit -framework ApplicationServices \
-  -framework CoreGraphics -framework Carbon -framework PDFKit -Xlinker -weak_framework -Xlinker FoundationModels
+  -framework CoreGraphics -framework Carbon -framework PDFKit $( [ -d "$SDK/System/Library/Frameworks/FoundationModels.framework" ] && echo "-Xlinker -weak_framework -Xlinker FoundationModels" )
 
 APP="$OUT/Dumbledore Helper.app"
 rm -rf "$APP"

@@ -22,7 +22,9 @@
     "eval": "tsx tools/eval-prompts.ts",
     "bench": "tsx tools/bench.ts",
     "icons": "tsx --tsconfig tsconfig.node.json tools/brand/build-icons.ts",
-    "package": "npm run build && electron-builder --mac --dir"
+    "electron:fetch": "node node_modules/electron/install.js",
+    "package": "npm run build && npm run electron:fetch && electron-builder --mac --dir",
+    "install-app": "bash tools/install-app.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.3",

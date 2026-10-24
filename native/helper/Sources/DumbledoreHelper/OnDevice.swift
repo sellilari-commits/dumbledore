@@ -4,6 +4,7 @@
 // SystemLanguageModel.availability; generation builds a DynamicGenerationSchema from the request's
 // JSON Schema (key order preserved) and returns the generated JSON.
 import Foundation
+#if canImport(FoundationModels)
 import FoundationModels
 
 enum OnDevice {
@@ -78,3 +79,13 @@ enum OnDevice {
     }
   }
 }
+#else
+enum OnDevice {
+  static func status() -> OnDeviceStatus {
+    OnDeviceStatus(available: false, reason: "osTooOld", contextSize: nil)
+  }
+  static func generate(_ p: GenerateParams, line: Data, timeoutSeconds: Double = 120) throws -> GenerateResult {
+    throw RPCError.internalError("the on-device model needs macOS 26")
+  }
+}
+#endif
