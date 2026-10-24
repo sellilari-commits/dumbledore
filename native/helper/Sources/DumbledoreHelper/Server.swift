@@ -57,25 +57,16 @@ final class Connection: @unchecked Sendable {
   /// Reads lines until EOF on a dedicated thread.
   func startReading(onLine: @escaping @Sendable (Connection, Data) -> Void, onClose: @escaping @Sendable (Connection) -> Void) {
     let thread = Thread { [self] in
-      var buffer = Data()
+      var splitter = LineSplitter()
       let chunk = UnsafeMutablePointer<UInt8>.allocate(capacity: 65536)
       defer { chunk.deallocate() }
-      let maxLine = 16 * 1024 * 1024
       while true {
         let n = Darwin.read(fd, chunk, 65536)
         if n < 0 && errno == EINTR { continue }
         if n <= 0 { break }
-        buffer.append(chunk, count: n)
-        while let nl = buffer.firstIndex(of: 0x0A) {
-          var line = buffer.subdata(in: buffer.startIndex..<nl)
-          buffer.removeSubrange(buffer.startIndex...nl)
-          if line.last == 0x0D { line.removeLast() }
-          if !line.isEmpty { onLine(self, line) }
-        }
-        if buffer.count > maxLine {
-          buffer.removeAll()
-          send(RPC.errorLine(id: .null, RPCError(code: RPCCode.parse, message: "line too long")))
-        }
+        let (lines, tooLong) = splitter.feed(UnsafeBufferPointer(start: chunk, count: n))
+        for line in lines { onLine(self, line) }
+        if tooLong { send(RPC.errorLine(id: .null, RPCError(code: RPCCode.parse, message: "line too long"))) }
       }
       close()
       onClose(self)
@@ -93,6 +84,56 @@ final class Connection: @unchecked Sendable {
       shutdown(fd, SHUT_RDWR)
       Darwin.close(fd)
     }
+  }
+}
+
+/// Splits a byte stream into lines (LF or CRLF; empty lines dropped) in linear time: only bytes
+/// not searched before are scanned (memchr), and the consumed prefix is dropped once per chunk.
+/// A line longer than `maxLine` is reported once and skipped up to its newline.
+struct LineSplitter {
+  let maxLine: Int
+  private var buffer: [UInt8] = []
+  private var scanned = 0
+  private var discarding = false
+
+  init(maxLine: Int = 16 * 1024 * 1024) { self.maxLine = maxLine }
+
+  /// Bytes held for an unfinished line.
+  var pending: Int { buffer.count }
+
+  mutating func feed(_ bytes: UnsafeBufferPointer<UInt8>) -> (lines: [Data], tooLong: Bool) {
+    buffer.append(contentsOf: bytes)
+    var lines: [Data] = []
+    var lineStart = 0
+    var dropping = discarding
+    buffer.withUnsafeBufferPointer { buf in
+      guard let base = buf.baseAddress else { return }
+      var from = scanned
+      while from < buf.count, let hit = memchr(base + from, 0x0A, buf.count - from) {
+        let nl = UnsafeRawPointer(base).distance(to: UnsafeRawPointer(hit))
+        if dropping {
+          dropping = false  // the over-long line ends here
+        } else {
+          var end = nl
+          if end > lineStart, buf[end - 1] == 0x0D { end -= 1 }
+          if end > lineStart { lines.append(Data(buf[lineStart..<end])) }
+        }
+        lineStart = nl + 1
+        from = nl + 1
+      }
+    }
+    discarding = dropping
+    if lineStart > 0 { buffer.removeFirst(lineStart) }
+    var tooLong = false
+    if discarding {
+      buffer.removeAll()
+    } else if buffer.count > maxLine {
+      buffer.removeAll()
+      discarding = true
+      tooLong = true
+    }
+    scanned = buffer.count
+    return (lines, tooLong)
   }
 }
 
@@ -156,7 +197,9 @@ final class SocketServer: @unchecked Sendable {
       Darwin.close(fd)
       throw ServerError.system("listen", err)
     }
+    lock.lock()
     listenFd = fd
+    lock.unlock()
     let thread = Thread { [weak self] in self?.acceptLoop() }
     thread.name = "helper.accept"
     thread.start()
@@ -170,25 +213,34 @@ final class SocketServer: @unchecked Sendable {
   }
 
   func stop() {
-    if listenFd >= 0 {
-      Darwin.close(listenFd)
-      listenFd = -1
-    }
-    unlink(path)
     lock.lock()
+    let fd = listenFd
+    listenFd = -1
     let all = Array(connections.values)
     connections.removeAll()
     lock.unlock()
+    if fd >= 0 { Darwin.close(fd) }
+    unlink(path)
     for c in all { c.close() }
   }
 
+  /// The listening socket, or -1 once `stop()` ran.
+  private var currentListenFd: Int32 {
+    lock.lock()
+    defer { lock.unlock() }
+    return listenFd
+  }
+
   private func acceptLoop() {
-    while listenFd >= 0 {
-      let fd = accept(listenFd, nil, nil)
+    while true {
+      let listening = currentListenFd
+      guard listening >= 0 else { return }
+      let fd = accept(listening, nil, nil)
       if fd < 0 {
-        if errno == EINTR { continue }
-        if listenFd < 0 { return }
-        Log.warn("accept failed: \(String(cString: strerror(errno)))")
+        let err = errno
+        if currentListenFd < 0 { return }  // stopped while blocked in accept
+        if err == EINTR || err == ECONNABORTED { continue }
+        Log.warn("accept failed: \(String(cString: strerror(err)))")
         usleep(50_000)
         continue
       }

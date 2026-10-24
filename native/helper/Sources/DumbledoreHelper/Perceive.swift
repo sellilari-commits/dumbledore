@@ -57,9 +57,11 @@ enum Perceiver {
       guard let app = Apps.frontmost(), allowed(app) else { return PerceiveResult(windows: []) }
       let axWin = Permissions.accessibility ? Windows.focusedAXWindow(pid: app.pid) : nil
       let win = axWin.flatMap(AX.windowId).flatMap(Windows.info(id:)) ?? Windows.frontWindow(pid: app.pid)
+      guard axWin != nil || win != nil else { return PerceiveResult(windows: []) }  // e.g. Finder on the desktop
       targets.append(Target(app: app, window: win, axWindow: axWin))
     case .visible:
-      let all = Windows.onScreen()
+      // Dumbledore's own windows (orb, panels) neither count as content nor as occluders.
+      let all = Windows.onScreen().filter { w in Apps.info(pid: w.pid).map { !Apps.isOwn($0.bundleId) } ?? true }
       var seenFront = false
       for (i, w) in all.enumerated() {
         guard targets.count < 6, let app = Apps.info(pid: w.pid), allowed(app) else { continue }
@@ -82,13 +84,19 @@ enum Perceiver {
     var frame = t.window?.bounds
     var ax: AXTextResult?
     if let axWin = t.axWindow {
-      if isFront { Apps.enableManualAccessibility(t.app) }
+      // First time for this Electron app: give it a moment to build the tree it was asked for.
+      if isFront, Apps.enableManualAccessibility(t.app) { usleep(150_000) }
       let v = AX.multiple(axWin, [kAXTitleAttribute, kAXPositionAttribute, kAXSizeAttribute])
       title = AX.str(v[kAXTitleAttribute])
       frame = frame ?? AX.frame(position: v[kAXPositionAttribute], size: v[kAXSizeAttribute])
-      url = AXTextReader.url(of: axWin)
       let focused = isFront ? FocusReader.focused(pid: t.app.pid)?.element : nil
-      ax = AXTextReader.read(window: axWin, windowFrame: frame, focused: focused, maxChars: p.maxChars)
+      let walkStart = monoMs()
+      let text = AXTextReader.read(window: axWin, windowFrame: frame, focused: focused, maxChars: p.maxChars)
+      Log.debug("ax walk \(t.app.bundleId): \(text.visited) nodes, \(text.chars) chars, "
+        + "\(Int(monoMs() - walkStart)) ms\(text.timedOut ? " (budget hit)" : "")")
+      // The walk records the page's AXURL; search separately only when it stopped early.
+      url = text.url ?? (text.sawWebArea || !(text.timedOut || text.chars >= p.maxChars) ? nil : AXTextReader.url(of: axWin))
+      ax = text
     }
     let windowId = t.window.map { Int($0.id) } ?? t.axWindow.flatMap(AX.windowId).map(Int.init)
     func make(_ source: TextSource, changed: Bool, hash: String, lines: [TextLine]) -> PerceivedWindow {

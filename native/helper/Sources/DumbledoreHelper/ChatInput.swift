@@ -21,7 +21,12 @@ enum ChatInputFinder {
         return FindChatInputResult(found: true, frame: Rect(frame), ref: RefRegistry.shared.register(el, pid: pid),
                                    method: .focused)
       }
-      if let root = webScope ?? window, let (el, frame) = searchEditable(root) {
+      // The first page element may be a small one (Electron title bars are web views too): then
+      // search the whole window, still only inside page content so an address bar never counts.
+      let windowFrame = window.flatMap(AX.frame)
+      let hit = webScope.flatMap { searchEditable($0, within: windowFrame, requireWebArea: false) }
+        ?? window.flatMap { searchEditable($0, within: windowFrame, requireWebArea: webScope != nil) }
+      if let (el, frame) = hit {
         return FindChatInputResult(found: true, frame: Rect(frame), ref: RefRegistry.shared.register(el, pid: pid),
                                    method: .ax_search)
       }
@@ -45,18 +50,24 @@ enum ChatInputFinder {
     return f
   }
 
-  /// Bottom-most (then largest) editable text element under `root`, 200 ms budget.
-  private static func searchEditable(_ root: AXUIElement) -> (AXUIElement, CGRect)? {
+  /// Bottom-most (then largest) editable text element under `root`, 200 ms budget. Walks the tree
+  /// last child first (chat boxes sit at the end of the page, after a long conversation) and
+  /// skips subtrees outside the window (scrolled-away messages).
+  private static func searchEditable(_ root: AXUIElement, within window: CGRect?,
+                                     requireWebArea: Bool) -> (AXUIElement, CGRect)? {
     let deadline = monoMs() + 200
     var best: (AXUIElement, CGRect)?
     var stack: [(AXUIElement, Int)] = [(root, 0)]
     var visited = 0
     while let (el, depth) = stack.popLast(), monoMs() < deadline, visited < 4000 {
       visited += 1
-      let v = AX.multiple(el, [kAXRoleAttribute, kAXChildrenAttribute])
+      let v = AX.multiple(el, [kAXRoleAttribute, kAXChildrenAttribute, kAXPositionAttribute, kAXSizeAttribute])
       let role = AX.str(v[kAXRoleAttribute]) ?? ""
+      if let w = window, let f = AX.frame(position: v[kAXPositionAttribute], size: v[kAXSizeAttribute]),
+         f.width > 0, f.height > 0, !f.intersects(w) { continue }
       if textInputRoles.contains(role) || role == "AXSecureTextField" {
-        if let f = candidateFrame(el), f.width >= 160 {
+        if let f = candidateFrame(el), f.width >= 160,
+           !requireWebArea || AX.ancestor(el, where: { _, role in role == "AXWebArea" }) != nil {
           if let b = best {
             if f.maxY > b.1.maxY + 4 || (abs(f.maxY - b.1.maxY) <= 4 && f.width * f.height > b.1.width * b.1.height) {
               best = (el, f)
@@ -68,7 +79,7 @@ enum ChatInputFinder {
         continue
       }
       if ["AXMenuBar", "AXToolbar", "AXStaticText", "AXImage"].contains(role) || depth > 64 { continue }
-      for c in AX.uiElements(v[kAXChildrenAttribute]).reversed() { stack.append((c, depth + 1)) }
+      for c in AX.uiElements(v[kAXChildrenAttribute]) { stack.append((c, depth + 1)) }  // last child pops first
     }
     return best
   }

@@ -4,7 +4,7 @@
 // "reasoning" before "answer"), and Foundation's parsers lose it.
 import Foundation
 
-indirect enum OJSON {
+indirect enum OJSON: Sendable {
   case null
   case bool(Bool)
   case number(Double)

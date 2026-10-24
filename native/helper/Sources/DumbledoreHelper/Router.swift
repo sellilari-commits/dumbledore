@@ -25,7 +25,7 @@ final class Router: @unchecked Sendable {
   private var handlers: [String: (queue: DispatchQueue, run: Handler)] = [:]
 
   /// Registers `method` with typed params and result.
-  func register<P: Decodable, R: Encodable>(
+  func register<P: Decodable & Sendable, R: Encodable & Sendable>(
     _ method: String, on queue: DispatchQueue = Queues.general, _ fn: @escaping @Sendable (P, RequestContext) throws -> R
   ) {
     handlers[method] = (queue, { line, ctx in

@@ -64,6 +64,9 @@ enum HelperMain {
     let server = SocketServer(path: path)
     let router = Handlers.makeRouter()
     server.onLine = { conn, line in router.handle(line: line, connection: conn) }
+    server.onConnect = { _ in
+      DispatchQueue.main.async { MainActor.assumeIsolated { FocusTracker.shared.refresh() } }
+    }
     Events.sink = { [weak server] line in server?.broadcast(line) }
     do {
       try server.start()

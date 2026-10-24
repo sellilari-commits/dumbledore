@@ -13,6 +13,10 @@ struct AXTextResult {
   var chars = 0
   var visited = 0
   var timedOut = false
+  /// AXURL of the first page element (AXWebArea) met during the walk: the browser tab's address.
+  var url: String?
+  /// The walk saw a page element, so a missing `url` is not worth a second search.
+  var sawWebArea = false
 }
 
 enum AXTextReader {
@@ -55,6 +59,10 @@ enum AXTextReader {
       let frame = AX.frame(position: v[kAXPositionAttribute], size: v[kAXSizeAttribute])
       if let f = frame, let wf = windowFrame, f.width > 0, f.height > 0, !f.intersects(wf) { return true }
       let subrole = AX.str(v[kAXSubroleAttribute])
+      if role == "AXWebArea", !result.sawWebArea {
+        result.sawWebArea = true
+        result.url = AX.url(AX.attr(el, "AXURL"))
+      }
       switch role {
       case "AXStaticText":
         if let s = AX.str(v[kAXValueAttribute]) { add(s, frame) }
@@ -83,7 +91,7 @@ enum AXTextReader {
   }
 
   /// Joins inline fragments (links, bold runs) that sit on the same visual line.
-  private static func merge(_ frags: [(text: String, frame: CGRect?)]) -> [TextLine] {
+  static func merge(_ frags: [(text: String, frame: CGRect?)]) -> [TextLine] {
     var out: [(text: String, frame: CGRect?)] = []
     for f in frags {
       if let last = out.last, let lf = last.frame, let ff = f.frame, ff.height > 0,
@@ -104,7 +112,7 @@ enum AXTextReader {
     }
   }
 
-  private static func clean(_ s: String) -> String {
+  static func clean(_ s: String) -> String {
     let replaced = s.replacingOccurrences(of: "\u{00A0}", with: " ").replacingOccurrences(of: "\u{200B}", with: "")
     return replaced.split(separator: " ", omittingEmptySubsequences: true).joined(separator: " ")
   }

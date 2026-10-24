@@ -26,7 +26,7 @@ fi
 
 if [ "$MODE" = release ]; then OPT=(-O); else OPT=(-Onone -g); fi
 BIN="$OUT/dumbledore-helper"
-swiftc "${OPT[@]}" -swift-version 5 -target "$TARGET" -sdk "$SDK" -module-cache-path "$CACHE" \
+swiftc "${OPT[@]}" -swift-version 6 -target "$TARGET" -sdk "$SDK" -module-cache-path "$CACHE" \
   -module-name DumbledoreHelper -o "$BIN" "$HERE"/Sources/DumbledoreHelper/*.swift \
   -framework AppKit -framework Vision -framework ScreenCaptureKit -framework ApplicationServices \
   -framework CoreGraphics -framework Carbon -Xlinker -weak_framework -Xlinker FoundationModels

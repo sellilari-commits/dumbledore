@@ -238,20 +238,15 @@ describe.skipIf(!existsSync(HELPER))('helper JSON-RPC over the socket', () => {
     expect(Date.now() - started).toBeLessThan(5000)
   })
 
-  // The reader rescans its whole buffer for a newline after every read, so one line costs O(n²):
-  // 4 MB ≈ 3.4 s, 8 MB ≈ 14 s, 17 MB > 1 min on this Mac (reported in L1b-helper-tests.md).
-  it.skipIf(process.env.DUMBLEDORE_SLOW !== '1')(
-    'drops an over-long line (> 16 MB) and keeps serving',
-    async () => {
-      const c = await connect()
-      c.write('x'.repeat(17 * 1024 * 1024))
-      c.write(`\n${JSON.stringify({ jsonrpc: '2.0', id: 77, method: 'ping' })}\n`)
-      const seen: Msg[] = []
-      while (!seen.some((m) => m.id === 77)) seen.push(await c.next(170_000))
-      expect(seen.some((m) => m.error?.message === 'line too long')).toBe(true)
-    },
-    180_000,
-  )
+  // The reader remembers how far it has scanned, so a 17 MB line takes well under a second.
+  it('drops an over-long line (> 16 MB) and keeps serving', async () => {
+    const c = await connect()
+    c.write('x'.repeat(17 * 1024 * 1024))
+    c.write(`\n${JSON.stringify({ jsonrpc: '2.0', id: 77, method: 'ping' })}\n`)
+    const seen: Msg[] = []
+    while (!seen.some((m) => m.id === 77)) seen.push(await c.next(20_000))
+    expect(seen.some((m) => m.error?.message === 'line too long')).toBe(true)
+  }, 30_000)
 
   it('serves several clients independently', async () => {
     const [a, b] = await Promise.all([connect(), connect()])

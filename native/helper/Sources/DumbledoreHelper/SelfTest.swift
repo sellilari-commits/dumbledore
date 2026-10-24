@@ -1,4 +1,5 @@
-// SelfTest.swift — `selftest` command: checks of the pure logic (no screen, no permissions).
+// SelfTest.swift — `selftest` command: pure-logic checks here, OS-level ones in SelfTestIO.swift.
+// Needs no screen and no permissions; never types, clicks or touches the user's clipboard.
 // Run by tests/integration/helper-selftest.test.ts; prints one line per failure, exit 1 if any.
 import CoreGraphics
 import Foundation
@@ -7,7 +8,7 @@ enum SelfTest {
   nonisolated(unsafe) private static var failures: [String] = []
   nonisolated(unsafe) private static var checks = 0
 
-  private static func expect(_ ok: Bool, _ what: String) {
+  static func expect(_ ok: Bool, _ what: String) {
     checks += 1
     if !ok { failures.append(what) }
   }
@@ -19,6 +20,7 @@ enum SelfTest {
     text()
     json()
     schema()
+    SelfTestIO.runAll()
     for f in failures { print("FAIL \(f)") }
     print("selftest: \(checks - failures.count)/\(checks) passed")
     return failures.isEmpty ? 0 : 1
@@ -50,6 +52,9 @@ enum SelfTest {
     expect(simulate([(100, 200)], until: 1000, othersFrom: 0) == [], "other modifier held cancels")
     expect(simulate([(100, 900)], until: 1000, interruptAt: 700) == [.holdStart, .holdEnd], "keys during a hold keep it")
     expect(simulate([(100, 200), (350, 420), (500, 560)], until: 1200) == [.tap, .doubleTap, .tap], "third tap is a tap")
+    expect(simulate([(100, 200), (520, 600)], until: 1200) == [.tap, .tap], "second press after doubleTapMs is a tap")
+    expect(simulate([(100, 200), (350, 420)], until: 1000, interruptAt: 360) == [.tap], "interrupted second tap")
+    expect(simulate([(100, 200), (350, 900)], until: 1200) == [.tap, .holdStart, .holdEnd], "tap then hold")
   }
 
   private static func order(_ boxes: [CGRect]) -> [Int] { Layout.analyze(boxes).order }
@@ -76,8 +81,39 @@ enum SelfTest {
     let slide = [CGRect(x: 200, y: 0, width: 400, height: 40), CGRect(x: 50, y: 100, width: 600, height: 20),
                  CGRect(x: 50, y: 140, width: 500, height: 20)]
     expect(Layout.analyze(slide).align[0] == .center, "centered title")
+    chatWithSidebar()
     expect(Layout.analyze([CGRect(x: 0, y: 0, width: 10, height: 10)]).order == [0], "single box")
     expect(Layout.analyze([]).order.isEmpty, "no boxes")
+  }
+
+  /// ChatGPT-like window: sidebar, model name, bubbles, composer and a centred footer.
+  private static func chatWithSidebar() {
+    var b: [CGRect] = []
+    for i in 0..<8 { b.append(CGRect(x: 16, y: 22 + Double(i) * 30, width: 120 + Double(i % 3) * 30, height: 12)) }  // 0–7
+    b.append(CGRect(x: 262, y: 21, width: 85, height: 14))     // 8  model name, left of the conversation
+    b.append(CGRect(x: 630, y: 72, width: 372, height: 17))    // 9  user, right-aligned text
+    b.append(CGRect(x: 873, y: 97, width: 129, height: 16))    // 10 user
+    for i in 0..<3 { b.append(CGRect(x: 339, y: 147 + Double(i) * 24, width: 650 - Double(i) * 200, height: 19)) }  // 11–13
+    b.append(CGRect(x: 600, y: 300, width: 402, height: 17))   // 14 user bubble, text left-aligned inside
+    b.append(CGRect(x: 600, y: 324, width: 90, height: 17))    // 15 user, short last line
+    b.append(CGRect(x: 339, y: 380, width: 640, height: 19))   // 16 assistant, nearly full width
+    b.append(CGRect(x: 339, y: 404, width: 681, height: 19))   // 17 assistant, the widest line
+    b.append(CGRect(x: 353, y: 685, width: 94, height: 18))    // 18 composer placeholder
+    b.append(CGRect(x: 532, y: 733, width: 294, height: 13))   // 19 footer, centred on the conversation
+    let r = Layout.analyze(b)
+    expect(Array(r.order.prefix(8)) == Array(0..<8), "sidebar read first: \(r.order)")
+    let roles: [(Int, LineAlign)] = [(9, .right), (10, .right), (11, .left), (12, .left), (13, .left), (14, .right),
+                                     (15, .right), (16, .left), (17, .left), (19, .center)]
+    let wrong = roles.filter { r.align[$0.0] != $0.1 }.map { "\($0.0)=\(r.align[$0.0])" }
+    expect(wrong.isEmpty, "chat roles by alignment, sidebar excluded: \(wrong)")
+    // A window title above the sidebar stays centred on the whole window.
+    var settings = [CGRect(x: 313, y: 11, width: 134, height: 16)]
+    for i in 0..<7 { settings.append(CGRect(x: 18, y: 56 + Double(i) * 28, width: 60 + Double(i % 4) * 15, height: 16)) }
+    for i in 0..<5 { settings.append(CGRect(x: 222, y: 104 + Double(i) * 34, width: 110, height: 15)) }
+    for i in 0..<5 { settings.append(CGRect(x: 680, y: 105 + Double(i) * 34, width: 48, height: 14)) }
+    settings.append(CGRect(x: 214, y: 296, width: 513, height: 14))
+    let t = Layout.analyze(settings)
+    expect(t.order.first == 0 && t.align[0] == .center, "window title first and centred")
   }
 
   private static func combos() {

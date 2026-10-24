@@ -147,11 +147,9 @@ describe.skipIf(!built)('helper OCR on fixture screenshots', () => {
     }
   })
 
-  // Known issue in native/helper Layout.swift (reported in docs/progress/L1b-helper-tests.md):
-  // rows below the sidebar are measured against the whole window (assistant text and the centred
-  // footer read as `right`), and a multi-line user bubble split off as its own column reads its
-  // widest line as `left`. Flip to it() once the helper gets these right.
-  it.fails('known issue: every chat line has its role alignment', () => {
+  // Layout.swift splits columns before rows, so the sidebar never skews the chat column, and a
+  // right-aligned bubble counts as one block.
+  it('gives every chat line its role alignment', () => {
     expect(alignment(['chat-light', 'chat-dark']).misses).toEqual([])
   })
 

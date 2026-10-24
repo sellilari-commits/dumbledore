@@ -2,7 +2,8 @@
 //
 // NSWorkspace activation notifications re-attach an AXObserver to the new frontmost app; focused
 // element / window changes (and value changes of the focused field, debounced) produce
-// `focus.changed`. Describing elements runs on a background queue, never on the main thread.
+// `focus.changed`. Describing elements runs on a background queue, never on the main thread;
+// closures handed to that queue are marked @Sendable so they are not MainActor-isolated.
 import AppKit
 @preconcurrency import ApplicationServices
 
@@ -62,13 +63,26 @@ enum FocusReader {
       return CGRect(x: r.maxX, y: r.minY, width: 1, height: r.height)
     }
     if let r = bounds(loc, 0) { return CGRect(x: r.minX, y: r.minY, width: 1, height: r.height) }
-    return nil
+    return markerCaret(el, atStart: loc == 0)
+  }
+
+  /// Chromium / WebKit content-editables often lack AXBoundsForRange; their text markers work.
+  /// A collapsed selection should give a zero-width rect; a wider one is the line box, which
+  /// only tells the caret position when the caret sits at the very start (left-to-right text).
+  private static func markerCaret(_ el: AXUIElement, atStart: Bool) -> CGRect? {
+    guard let range = AX.attr(el, "AXSelectedTextMarkerRange"),
+          let r = AX.rect(AX.param(el, "AXBoundsForTextMarkerRange", range)),
+          r.height > 0, r.origin.x.isFinite, r.origin.y.isFinite, r.width <= 2 || atStart else { return nil }
+    return CGRect(x: r.minX, y: r.minY, width: 1, height: r.height)
   }
 }
 
 private let focusCallback: AXObserverCallback = { _, _, notification, _ in
-  let isValue = (notification as String) == kAXValueChangedNotification
-  MainActor.assumeIsolated { FocusTracker.shared.scheduleEmit(delay: isValue ? 0.25 : 0.04) }
+  // Typing and window drags fire in bursts: debounce those longer than a focus move.
+  let name = notification as String
+  let delay = name == kAXValueChangedNotification ? 0.25
+    : (name == kAXWindowMovedNotification || name == kAXWindowResizedNotification) ? 0.12 : 0.04
+  MainActor.assumeIsolated { FocusTracker.shared.scheduleEmit(delay: delay) }
 }
 
 @MainActor
@@ -101,6 +115,12 @@ final class FocusTracker {
     }
   }
 
+  /// Re-sends the current focus (a client just connected and has no state yet).
+  func refresh() {
+    work.async { @Sendable [weak self] in self?.last = nil }
+    scheduleEmit(delay: 0.05)
+  }
+
   private func activated(_ app: NSRunningApplication?) {
     guard let app else { return }
     Events.emit("app.activated", Apps.info(app).ref)
@@ -118,11 +138,13 @@ final class FocusTracker {
     observedPid = pid
     if Permissions.accessibility {
       let info = Apps.info(app)
-      work.async { Apps.enableManualAccessibility(info) }
+      work.async { @Sendable in Apps.enableManualAccessibility(info) }
       var created: AXObserver?
       if AXObserverCreate(pid, focusCallback, &created) == .success, let obs = created {
         let appEl = AX.app(pid)
-        for n in [kAXFocusedUIElementChangedNotification, kAXFocusedWindowChangedNotification] {
+        // Moves/resizes keep the reported field frame in step with the window.
+        for n in [kAXFocusedUIElementChangedNotification, kAXFocusedWindowChangedNotification,
+                  kAXWindowMovedNotification, kAXWindowResizedNotification] {
           AXObserverAddNotification(obs, appEl, n as CFString, nil)
         }
         CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(obs), .defaultMode)
@@ -143,7 +165,9 @@ final class FocusTracker {
 
   func scheduleEmit(delay: Double) {
     pending?.cancel()
-    let item = DispatchWorkItem { [weak self] in self?.emitFocus() }
+    // Explicitly @Sendable: a closure formed here would otherwise be MainActor-isolated, and
+    // Swift 6 traps when it runs on the focus queue.
+    let item = DispatchWorkItem(block: { @Sendable [weak self] in self?.emitFocus() })
     pending = item
     work.asyncAfter(deadline: .now() + delay, execute: item)
   }

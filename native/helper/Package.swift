@@ -10,7 +10,7 @@ let package = Package(
     .executableTarget(
       name: "DumbledoreHelper",
       path: "Sources/DumbledoreHelper",
-      swiftSettings: [.swiftLanguageMode(.v5)],
+      swiftSettings: [.swiftLanguageMode(.v6)],
       linkerSettings: [
         .linkedFramework("AppKit"), .linkedFramework("Vision"), .linkedFramework("ScreenCaptureKit"),
         .linkedFramework("ApplicationServices"), .linkedFramework("CoreGraphics"), .linkedFramework("Carbon"),

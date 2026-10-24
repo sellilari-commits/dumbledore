@@ -29,6 +29,9 @@ final class InputService: @unchecked Sendable {
     if element == nil, let point = p.target?.point {
       guard click(point.cg) else { return .fail("clickFailed") }
       usleep(150_000)
+    } else if element == nil, p.target?.ref != nil {
+      // A stale handle must not silently redirect the text into whatever has focus now.
+      return .fail("targetGone")
     }
     if element == nil { element = FocusReader.focused()?.element }
     guard let el = element, let pid = AX.pid(el), let app = Apps.info(pid: pid) else { return .fail("noTarget") }
@@ -104,7 +107,7 @@ final class InputService: @unchecked Sendable {
   private func scheduleRestore(_ saved: Clipboard.Saved, changeCount: Int, restore: Bool) {
     guard restore else { return }
     let work = DispatchWorkItem { [weak self] in
-      if Clipboard.changeCount == changeCount { Clipboard.restore(saved) }
+      if Clipboard.changeCount() == changeCount { Clipboard.restore(saved) }
       self?.pending = nil
     }
     pending = (saved, changeCount, work)

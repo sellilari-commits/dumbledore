@@ -6,7 +6,8 @@ import Foundation
 
 enum Events {
   /// Set once at startup (before any thread starts) to the server's broadcast function.
-  nonisolated(unsafe) static var sink: ((Data) -> Void)?
+  /// `@Sendable`: events are emitted from the poll thread, the focus queue and the main thread.
+  nonisolated(unsafe) static var sink: (@Sendable (Data) -> Void)?
 
   static func emit<P: Encodable>(_ method: String, _ params: P) {
     guard let sink else { return }

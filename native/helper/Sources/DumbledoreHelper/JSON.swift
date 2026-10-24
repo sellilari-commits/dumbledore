@@ -6,7 +6,7 @@
 import Foundation
 
 /// Any JSON value. Used for request ids, `llm.onDevice.generate` schemas and results.
-enum JSONValue: Codable, Equatable {
+enum JSONValue: Codable, Equatable, Sendable {
   case null
   case bool(Bool)
   case number(Double)

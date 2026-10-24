@@ -73,17 +73,21 @@ enum Apps {
   }
 
   /// Asks a Chromium/Electron app to build its full accessibility tree. Done once per process,
-  /// and only for the frontmost app (it costs the target app memory).
-  static func enableManualAccessibility(_ app: AppInfo) {
-    guard isChromiumLike(app), Permissions.accessibility else { return }
+  /// and only for the frontmost app (it costs the target app memory). Returns true only on the
+  /// call that switched it on, so the caller can give the app a moment to build the tree.
+  /// Chrome itself answers "unsupported" (-25205) and builds its tree lazily on first query.
+  @discardableResult
+  static func enableManualAccessibility(_ app: AppInfo) -> Bool {
+    guard !isOwn(app.bundleId), isChromiumLike(app), Permissions.accessibility else { return false }
     lock.lock()
     let done = manualAXPids.contains(app.pid)
     if !done { manualAXPids.insert(app.pid) }
     lock.unlock()
-    guard !done else { return }
+    guard !done else { return false }
     // Not AXEnhancedUserInterface: that VoiceOver switch slows window animations in Chromium.
     let err = AX.set(AX.app(app.pid), "AXManualAccessibility", kCFBooleanTrue)
     Log.debug("AXManualAccessibility on \(app.bundleId): \(err.rawValue)")
+    return err == .success
   }
 
   /// Forget per-process caches for exited apps.
