@@ -2,13 +2,6 @@
 
 /* ── Taking an exam ─────────────────────────────────────────────────────── */
 
-.ex-meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
 .ex-tip {
   display: flex;
   align-items: center;
@@ -17,6 +10,12 @@
   padding: 0 2px;
   font-size: var(--text-meta);
   color: var(--c-texSec);
+}
+
+.ex-tip__keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .ex-strip {
@@ -146,8 +145,33 @@
   color: var(--c-texTer);
 }
 
-.ex-gaps__picked {
+.ex-gaps__detail {
   color: var(--c-texSec);
+}
+
+/* "Q3" links next to a gap: open "Review your answers" at that question. */
+.ex-gaps__ref {
+  margin-left: 6px;
+  padding: 0 4px;
+  border-radius: var(--radius-control);
+  color: var(--c-texSec);
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline;
+  text-decoration-color: var(--c-borStr);
+  text-underline-offset: 2px;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.ex-gaps__ref:hover {
+  background: var(--c-hover);
+  color: var(--c-texPri);
+}
+
+.ex-gaps__ref + .ex-gaps__ref {
+  margin-left: 2px;
 }
 
 .ex-actions {
@@ -197,10 +221,11 @@
   flex-direction: column;
 }
 
-.ex-review__list > .dd-quiz-q {
+.ex-review__item {
   padding: 22px 0;
+  scroll-margin-top: 16px;
 }
 
-.ex-review__list > .dd-quiz-q + .dd-quiz-q {
+.ex-review__item + .ex-review__item {
   border-top: 1px solid var(--c-borPri);
 }

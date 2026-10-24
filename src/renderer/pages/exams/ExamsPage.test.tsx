@@ -2,12 +2,12 @@
 import { useToasts } from '@renderer/design-system'
 import { useShell } from '@renderer/lib/shell'
 import { renderWithApp } from '@renderer/lib/test-utils'
-import { fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ExamsPage } from './ExamsPage'
 
 beforeEach(() => {
-  useShell.setState({ newExam: { open: false, subjectIds: [] } })
+  useShell.setState({ newExam: { open: false, subjectIds: [] }, newSubjectOpen: false })
   useToasts.setState({ toasts: [] })
 })
 
@@ -31,10 +31,23 @@ describe('ExamsPage', () => {
     expect(useShell.getState().newExam.open).toBe(true)
   })
 
-  it('shows an empty state on the first day', async () => {
+  it('asks for a subject first on the first day', async () => {
     renderWithApp(<ExamsPage />, { route: '/exams', scenario: 'empty' })
     expect(await screen.findByText('No exams yet')).toBeTruthy()
-    fireEvent.click(screen.getAllByRole('button', { name: /new exam/i }).at(-1) as HTMLElement)
+    fireEvent.click(await screen.findByRole('button', { name: /new subject/i }))
+    expect(useShell.getState().newSubjectOpen).toBe(true)
+    expect(screen.queryByRole('button', { name: /new exam/i })).toBeNull()
+  })
+
+  it('offers one New exam button when there are subjects but no exams', async () => {
+    const r = renderWithApp(<ExamsPage />, { route: '/exams' })
+    await screen.findByText('Weak-spots exam')
+    r.api.db.quizzes.splice(0)
+    act(() => r.api.emit('memory.changed', { scope: 'quizzes', ids: [] }))
+    expect(await screen.findByText('No exams yet')).toBeTruthy()
+    const buttons = screen.getAllByRole('button', { name: /new exam/i })
+    expect(buttons).toHaveLength(1)
+    fireEvent.click(buttons[0] as HTMLElement)
     expect(useShell.getState().newExam.open).toBe(true)
   })
 

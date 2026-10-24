@@ -40,7 +40,7 @@
 
 .ex-skeleton-row {
   display: grid;
-  grid-template-columns: 1fr 88px 140px 72px 110px 96px;
+  grid-template-columns: 1fr 100px 164px 112px 96px;
   gap: 16px;
   align-items: center;
   height: 36px;

@@ -95,6 +95,19 @@ describe('ExamPage — results and states', () => {
     expect(screen.getByText('Which carbocation is the most stable?')).toBeTruthy()
   })
 
+  it('groups gaps per concept and opens the review at a gap’s question', async () => {
+    renderExam('quiz_orgo_weak')
+    const carbo = await screen.findByText(/you picked “The cationic carbon becomes sp³” and/)
+    expect(carbo.closest('li')?.textContent).toMatch(/^Carbocation stability/)
+    const refs = screen.getAllByRole('button', { name: /^Show question \d+$/ })
+    expect(refs.length).toBe(3)
+    expect(screen.queryByText('Which carbocation is the most stable?')).toBeNull()
+    fireEvent.click(refs[0] as HTMLElement)
+    const toggle = screen.getByRole('button', { name: /review your answers/i })
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByText('Which carbocation is the most stable?')).toBeTruthy()
+  })
+
   it('offers to copy when no AI chat is open', async () => {
     const r = renderExam('quiz_orgo_weak')
     r.api.db.appState.aiChat = null

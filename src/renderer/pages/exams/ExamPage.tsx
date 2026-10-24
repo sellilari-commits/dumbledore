@@ -1,7 +1,7 @@
 /**
  * Exam page (/exams/:id): loads the quiz and shows the state it is in — being written
- * (specific skeleton copy), failed, ready to take / in progress (ExamTaking) or done
- * (ExamResults).
+ * (specific skeleton copy; polls as a fallback to the push event), failed, ready to take /
+ * in progress (ExamTaking) or done (ExamResults).
  */
 import {
   Button,
@@ -13,14 +13,24 @@ import {
 } from '@renderer/design-system'
 import { useQuiz, useSubjects } from '@renderer/lib/queries'
 import { useShell } from '@renderer/lib/shell'
-import type { Quiz } from '@shared/domain'
-import type { ReactNode } from 'react'
+import type { Quiz, SubjectSummary } from '@shared/domain'
+import { type ReactNode, useEffect } from 'react'
 import { useLocation, useParams } from 'wouter'
 import { PageFrame } from '../PageFrame'
 import { ExamResults } from './ExamResults'
 import { ExamTaking } from './ExamTaking'
-import { KIND_ICON, subjectLine, subjectNames, subjectsFor } from './exam-utils'
+import {
+  KIND_ICON,
+  metaLine,
+  minutesFor,
+  subjectLine,
+  subjectNames,
+  subjectsFor,
+} from './exam-utils'
 import './exam-page.css'
+
+/** While an exam is being written: re-read it this often in case the push event is missed. */
+const GENERATING_POLL_MS = 3000
 
 function QuestionSkeleton() {
   return (
@@ -34,11 +44,20 @@ function QuestionSkeleton() {
   )
 }
 
-function Generating({ quiz, names }: { quiz: Quiz; names: string }) {
+function Generating({ quiz, list }: { quiz: Quiz; list: SubjectSummary[] }) {
   const n = quiz.questions.length
+  const names = subjectNames(list)
   return (
     <>
-      <PageHeader icon={KIND_ICON[quiz.kind]} title={quiz.title} />
+      <PageHeader
+        icon={KIND_ICON[quiz.kind]}
+        title={quiz.title}
+        subtitle={metaLine([
+          n > 0 ? `${n} questions` : null,
+          subjectLine(list),
+          n > 0 ? `about ${minutesFor(n)} min` : null,
+        ])}
+      />
       <LoadingState
         className="ex-generating"
         caption={n > 0 ? `Writing ${n} questions on ${names}…` : `Writing your exam on ${names}…`}
@@ -58,6 +77,14 @@ export function ExamPage() {
   const [, navigate] = useLocation()
 
   const data = quiz.data
+  const generating = data?.status === 'generating'
+  const refetch = quiz.refetch
+  useEffect(() => {
+    if (!generating) return
+    const timer = setInterval(() => void refetch(), GENERATING_POLL_MS)
+    return () => clearInterval(timer)
+  }, [generating, refetch])
+
   const list = data ? subjectsFor(data.subjectIds, subjects.data) : []
   const crumbs = [{ label: 'Exams', href: '/exams' }, { label: data?.title ?? 'Exam' }]
   const again = data ? (
@@ -76,8 +103,7 @@ export function ExamPage() {
         onRetry={() => void quiz.refetch()}
       />
     )
-  else if (data.status === 'generating')
-    body = <Generating quiz={data} names={subjectNames(list)} />
+  else if (data.status === 'generating') body = <Generating quiz={data} list={list} />
   else if (data.status === 'failed')
     body = (
       <EmptyState

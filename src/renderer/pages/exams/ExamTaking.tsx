@@ -9,7 +9,7 @@ import { keys, useAction } from '@renderer/lib/queries'
 import type { Question, Quiz } from '@shared/domain'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { KIND_ICON, minutesFor } from './exam-utils'
+import { KIND_ICON, metaLine, minutesFor } from './exam-utils'
 import './exam-page.css'
 
 export interface ExamTakingProps {
@@ -119,18 +119,13 @@ export function ExamTaking({ quiz, subjectLine }: ExamTakingProps) {
       <PageHeader
         icon={KIND_ICON[quiz.kind]}
         title={quiz.title}
-        subtitle={
-          <span className="ex-meta">
-            <span>{total} questions</span>
-            <span aria-hidden>·</span>
-            <span>{subjectLine}</span>
-            <span aria-hidden>·</span>
-            <span>about {minutesFor(total)} min</span>
-          </span>
-        }
+        subtitle={metaLine([`${total} questions`, subjectLine, `about ${minutesFor(total)} min`])}
       >
         <div className="ex-tip">
-          Pick an answer to see why it’s right or wrong. Keys <Kbd boxed>1</Kbd>–<Kbd boxed>4</Kbd>
+          Pick an answer to see why it’s right or wrong. Keys
+          <span className="ex-tip__keys">
+            <Kbd boxed>1</Kbd>–<Kbd boxed>4</Kbd>
+          </span>
           work too.
         </div>
       </PageHeader>

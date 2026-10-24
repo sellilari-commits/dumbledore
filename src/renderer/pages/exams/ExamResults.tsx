@@ -1,10 +1,9 @@
 /**
- * Exam results: the score, a by-concept table, "Your gaps" with a repair prompt for the
- * student's AI (Explore with ChatGPT / Copy prompt), what comes next, and a toggle to review
- * every answer. Results come from 'quiz.finish' (called again for finished quizzes).
+ * Exam results: the score, a by-concept table, "Your gaps" (ExamGaps: repair prompt for the
+ * student's AI), what comes next, and a toggle to review every answer — the gap rows' Q links
+ * open it at that question. Results come from 'quiz.finish' (idempotent for finished quizzes).
  */
 import {
-  Button,
   Callout,
   type Column,
   DatabaseTable,
@@ -16,16 +15,17 @@ import {
   Section,
   Tag,
   ToggleBlock,
-  toast,
 } from '@renderer/design-system'
 import { invoke } from '@renderer/lib/api'
 import { formatRelative } from '@renderer/lib/format'
-import { useAction, useAppState } from '@renderer/lib/queries'
+import { useAppState } from '@renderer/lib/queries'
 import { MASTERY, scoreColor } from '@renderer/lib/status'
 import type { Quiz, QuizResult } from '@shared/domain'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, CalendarClock, Copy, Send } from 'lucide-react'
-import { barColor, KIND_ICON } from './exam-utils'
+import { ArrowRight, CalendarClock } from 'lucide-react'
+import { useState } from 'react'
+import { ExamGaps } from './ExamGaps'
+import { barColor, gapRows, KIND_ICON, metaLine } from './exam-utils'
 import './exam-page.css'
 
 type ConceptRow = QuizResult['byConcept'][number]
@@ -62,68 +62,12 @@ const CONCEPT_COLUMNS: Column<ConceptRow>[] = [
   },
 ]
 
-function GapsCallout({ result, assistant }: { result: QuizResult; assistant: string }) {
-  const send = useAction('prompt.sendToChat')
-  const copy = useAction('prompt.copy')
-  const prompt = result.fixPrompt
-  const copyPrompt = () => {
-    if (!prompt) return
-    copy.mutate(prompt, {
-      onSuccess: () => toast(`Prompt copied — paste it into ${assistant}`, { tone: 'success' }),
-      onError: (err) => toast(err.message, { tone: 'error' }),
-    })
-  }
-  const explore = () => {
-    if (!prompt) return
-    send.mutate(prompt, {
-      onSuccess: (res) =>
-        res.ok
-          ? toast(`Pasted into ${assistant} — read it, then press Enter there.`, {
-              tone: 'success',
-            })
-          : toast(res.reason ?? `Couldn’t reach ${assistant}.`, {
-              tone: 'error',
-              action: { label: 'Copy instead', onClick: copyPrompt },
-              ttlMs: 8000,
-            }),
-      onError: (err) => toast(err.message, { tone: 'error' }),
-    })
-  }
-  return (
-    <Callout icon="💡" title="Your gaps">
-      <ul className="ex-gaps">
-        {result.gaps.map((g, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: the same concept can appear twice
-          <li key={i}>
-            <strong>{g.concept}</strong>
-            <span className="ex-gaps__picked"> — you picked “{g.misconception}”</span>
-          </li>
-        ))}
-      </ul>
-      {prompt ? (
-        <>
-          <div className="dd-prompt">
-            <span className="dd-prompt__label">Prompt for {assistant}</span>
-            {prompt}
-          </div>
-          <div className="ex-actions">
-            <Button
-              variant="primary"
-              size="sm"
-              icon={<Send size={14} />}
-              loading={send.isPending}
-              onClick={explore}
-            >
-              Explore with {assistant}
-            </Button>
-            <Button size="sm" icon={<Copy size={14} />} onClick={copyPrompt}>
-              Copy prompt
-            </Button>
-          </div>
-        </>
-      ) : null}
-    </Callout>
-  )
+function scoreLine(r: QuizResult): string {
+  const left = r.total - r.correct
+  if (left <= 0) return 'Every answer right.'
+  return r.fixPrompt
+    ? `${left} to work on — Dumbledore turned them into one prompt below.`
+    : `${left} to work on — they come back in your next review.`
 }
 
 export interface ExamResultsProps {
@@ -138,6 +82,7 @@ export function ExamResults({ quiz, subjectLine }: ExamResultsProps) {
     staleTime: Number.POSITIVE_INFINITY,
   })
   const app = useAppState()
+  const [reviewOpen, setReviewOpen] = useState(false)
   const assistant = app.data?.aiChat?.provider ?? 'ChatGPT'
   const when = formatRelative(quiz.completedAt)
   const finished = quiz.completedAt
@@ -147,9 +92,20 @@ export function ExamResults({ quiz, subjectLine }: ExamResultsProps) {
     <PageHeader
       icon={KIND_ICON[quiz.kind]}
       title={quiz.title}
-      subtitle={`${finished} · ${subjectLine}`}
+      subtitle={metaLine([finished, subjectLine])}
     />
   )
+
+  const showQuestion = (n: number) => {
+    setReviewOpen(true)
+    const q = quiz.questions[n - 1]
+    if (q)
+      requestAnimationFrame(() =>
+        document
+          .getElementById(`exam-review-q-${q.id}`)
+          ?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }),
+      )
+  }
 
   if (results.isLoading)
     return (
@@ -180,11 +136,7 @@ export function ExamResults({ quiz, subjectLine }: ExamResultsProps) {
         <Tag color={scoreColor(r.score)} className="ex-score__tag">
           {`${Math.round(r.score * 100)}%`}
         </Tag>
-        <span className="ex-score__sub">
-          {perfect
-            ? 'Every answer right.'
-            : `${r.total - r.correct} to work on — Dumbledore turned them into one prompt below.`}
-        </span>
+        <span className="ex-score__sub">{scoreLine(r)}</span>
       </div>
 
       <Section title="By concept">
@@ -203,7 +155,12 @@ export function ExamResults({ quiz, subjectLine }: ExamResultsProps) {
             Dumbledore will space out the next review of these concepts.
           </Callout>
         ) : (
-          <GapsCallout result={r} assistant={assistant} />
+          <ExamGaps
+            rows={gapRows(r.gaps, quiz)}
+            prompt={r.fixPrompt}
+            assistant={assistant}
+            onShowQuestion={showQuestion}
+          />
         )}
         <div className="ex-next">
           {r.nextTopic ? (
@@ -224,20 +181,21 @@ export function ExamResults({ quiz, subjectLine }: ExamResultsProps) {
       </div>
 
       <div className="ex-review">
-        <ToggleBlock title="Review your answers">
+        <ToggleBlock title="Review your answers" open={reviewOpen} onOpenChange={setReviewOpen}>
           <div className="ex-review__list">
             {quiz.questions.map((q, i) => {
               const a = quiz.answers.find((x) => x.questionId === q.id)
               return (
-                <QuizQuestion
-                  key={q.id}
-                  index={i}
-                  total={quiz.questions.length}
-                  question={q}
-                  chosenIndex={a?.chosenIndex ?? null}
-                  result={{ correct: a?.correct ?? false, correctIndex: q.correctIndex }}
-                  disabled
-                />
+                <div key={q.id} id={`exam-review-q-${q.id}`} className="ex-review__item">
+                  <QuizQuestion
+                    index={i}
+                    total={quiz.questions.length}
+                    question={q}
+                    chosenIndex={a?.chosenIndex ?? null}
+                    result={{ correct: a?.correct ?? false, correctIndex: q.correctIndex }}
+                    disabled
+                  />
+                </div>
               )
             })}
           </div>

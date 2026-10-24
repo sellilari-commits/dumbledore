@@ -1,6 +1,7 @@
 /**
- * Exams list (/exams): every exam and review as a Notion table — name, type, subjects,
- * questions, score and date — with "New exam" (⌘E) and loading / empty / error states.
+ * Exams list (/exams): every exam and review as a Notion table — name, type, subjects, score
+ * and date — with "New exam" (⌘E) and loading / empty / error states. The empty state carries
+ * the only "New exam" button (one primary action per surface).
  */
 import {
   Button,
@@ -19,7 +20,7 @@ import { useShell } from '@renderer/lib/shell'
 import { QUIZ_KIND, scoreColor } from '@renderer/lib/status'
 import type { SubjectSummary } from '@shared/domain'
 import type { QuizSummary } from '@shared/state'
-import { ALargeSmall, Calendar, CircleChevronDown, Hash, Layers, Plus, Target } from 'lucide-react'
+import { ALargeSmall, Calendar, CircleChevronDown, Layers, Plus, Target } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useLocation } from 'wouter'
 import { PageFrame } from '../PageFrame'
@@ -67,7 +68,7 @@ function columns(subjects: SubjectSummary[] | undefined): Column<QuizSummary>[] 
       key: 'type',
       header: 'Type',
       icon: <CircleChevronDown {...HEAD} />,
-      width: 88,
+      width: 100,
       render: (q) => <Tag color={QUIZ_KIND[q.kind].color}>{QUIZ_KIND[q.kind].label}</Tag>,
     },
     {
@@ -78,18 +79,10 @@ function columns(subjects: SubjectSummary[] | undefined): Column<QuizSummary>[] 
       render: (q) => <SubjectsCell ids={q.subjectIds} subjects={subjects} />,
     },
     {
-      key: 'questions',
-      header: 'Questions',
-      icon: <Hash {...HEAD} />,
-      width: 108,
-      align: 'right',
-      render: (q) => <span className="dd-table__num">{q.questionCount}</span>,
-    },
-    {
       key: 'score',
       header: 'Score',
       icon: <Target {...HEAD} />,
-      width: 104,
+      width: 112,
       render: (q) =>
         q.score === null ? (
           <Tag color="gray">Not taken</Tag>
@@ -101,7 +94,7 @@ function columns(subjects: SubjectSummary[] | undefined): Column<QuizSummary>[] 
       key: 'date',
       header: 'Date',
       icon: <Calendar {...HEAD} />,
-      width: 100,
+      width: 96,
       render: (q) => (
         <span className="dd-table__muted">{formatRelative(q.completedAt ?? q.createdAt)}</span>
       ),
@@ -118,13 +111,55 @@ function ListSkeleton() {
             <Skeleton width={`${w * 100}%`} />
             <Skeleton width={56} height={18} />
             <Skeleton width="70%" />
-            <Skeleton width={20} />
             <Skeleton width={72} height={18} />
             <Skeleton width={64} />
           </div>
         ))}
       </div>
     </LoadingState>
+  )
+}
+
+/** No exams yet: "New exam", or "New subject" first when there is nothing to write one from. */
+function EmptyExams({ hasSubjects }: { hasSubjects: boolean }) {
+  const openNewExam = useShell((s) => s.openNewExam)
+  const setNewSubject = useShell((s) => s.setNewSubject)
+  if (!hasSubjects)
+    return (
+      <EmptyState
+        title="No exams yet"
+        actions={
+          <Button
+            variant="primary"
+            icon={<Plus size={16} />}
+            shortcut="⌘N"
+            onClick={() => setNewSubject(true)}
+          >
+            New subject
+          </Button>
+        }
+      >
+        Exams are written from your subjects. Add one — or keep studying and Dumbledore will suggest
+        some.
+      </EmptyState>
+    )
+  return (
+    <EmptyState
+      title="No exams yet"
+      actions={
+        <Button
+          variant="primary"
+          icon={<Plus size={16} />}
+          shortcut="⌘E"
+          onClick={() => openNewExam()}
+        >
+          New exam
+        </Button>
+      }
+    >
+      Pick a subject and Dumbledore writes questions from what you studied — then shows exactly
+      where your gaps are.
+    </EmptyState>
   )
 }
 
@@ -140,6 +175,7 @@ export function ExamsPage() {
     </Button>
   )
 
+  const empty = exams.isSuccess && exams.data.length === 0
   let body: ReactNode
   if (exams.isLoading) body = <ListSkeleton />
   else if (exams.isError)
@@ -150,21 +186,8 @@ export function ExamsPage() {
         onRetry={() => void exams.refetch()}
       />
     )
-  else if ((exams.data ?? []).length === 0)
-    body = (
-      <EmptyState
-        icon="📝"
-        title="No exams yet"
-        actions={
-          <Button variant="primary" icon={<Plus size={16} />} onClick={() => openNewExam()}>
-            New exam
-          </Button>
-        }
-      >
-        Pick a subject and Dumbledore writes questions from what you studied — then shows exactly
-        where your gaps are.
-      </EmptyState>
-    )
+  else if (empty)
+    body = <EmptyExams hasSubjects={subjects.data?.some((x) => x.status === 'active') ?? true} />
   else
     body = (
       <DatabaseTable
@@ -177,7 +200,7 @@ export function ExamsPage() {
     )
 
   return (
-    <PageFrame crumbs={[{ label: 'Exams' }]} actions={newExam} width="wide">
+    <PageFrame crumbs={[{ label: 'Exams' }]} actions={empty ? null : newExam} width="wide">
       <PageHeader
         icon="📝"
         title="Exams"
