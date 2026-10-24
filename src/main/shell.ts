@@ -198,6 +198,8 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     start() {
       offs.push(
         bus.on('helper:key', ({ gesture, secureInput }) => {
+          // Onboarding teaches the key from 'key.gesture' itself; don't also run the action.
+          if (!repos.settings.get().onboardingDone) return
           router.gesture(gesture, { secureInput }).catch((error) => {
             console.error('[router] gesture failed', error)
             overlay.showToast({

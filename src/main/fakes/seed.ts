@@ -94,4 +94,6 @@ export function seedDemo(repos: Repos, clock: Clock): void {
     aboutMe: "I'm a second-year chemistry student.",
     summary: 'Second-year chemistry student; prepares for the organic chemistry midterm.',
   })
+  // The demo user is set up, as in the engine's demo seed.
+  repos.settings.update({ onboardingDone: true })
 }

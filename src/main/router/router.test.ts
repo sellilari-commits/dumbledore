@@ -186,6 +186,14 @@ describe('ShortcutRouter', () => {
     await flush()
     expect(h.core.overlay.state.toasts.at(-1)?.title).toBe('Password field')
   })
+
+  it('ignores helper key events until onboarding is done', async () => {
+    const h = await createHarness()
+    h.services.repos.settings.update({ onboardingDone: false })
+    h.helper.emit('key.trigger', { gesture: 'doubleTap', key: 'rightOption', secureInput: false })
+    await flush()
+    expect(h.surfaces.log).toEqual([])
+  })
 })
 
 describe('Ask flow', () => {

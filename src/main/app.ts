@@ -4,10 +4,10 @@
  * test-control channel. Dumbledore is an agent app: no Dock icon unless the full app is open,
  * and closing every window never quits it.
  *
- * The services come from `compose()` (compose.ts, fakes today); swapping in the real engine
- * means replacing that one call in `start()`.
+ * The services come from `composeReal()` (src/main/real, the real engine). Test mode and
+ * DUMBLEDORE_FAKES=1 use `compose()` instead: fakes with demo data.
  */
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { APP_NAME } from '@shared/constants'
 import { app, clipboard, ipcMain, shell } from 'electron'
 import { compose } from './compose'
@@ -19,6 +19,7 @@ import { createHandlers } from './ipc/handlers'
 import { registerIpc } from './ipc/register'
 import { type AppPaths, ensureDirs, resolvePaths } from './paths'
 import type { ShellPlatform } from './platform'
+import { composeReal } from './real/compose-real'
 import { SafeStorageSecretStore } from './secrets'
 import { configureSession, harden } from './security'
 import { createShellCore, type ShellCore } from './shell'
@@ -30,6 +31,7 @@ import { WindowManager } from './windows/manager'
 import { registerSchemePrivileges } from './windows/protocol'
 
 const isTest = process.env.DUMBLEDORE_TEST === '1'
+const useFakes = isTest || process.env.DUMBLEDORE_FAKES === '1'
 const devUrl = app.isPackaged ? null : process.env.ELECTRON_RENDERER_URL || null
 
 const SYSTEM_SETTINGS = {
@@ -73,11 +75,20 @@ async function start(paths: AppPaths): Promise<void> {
   if (process.platform === 'darwin') app.setActivationPolicy('accessory')
   configureSession(devUrl, join(__dirname, '../renderer'))
 
-  const composition = compose({
-    ownPid: process.pid,
-    secrets: isTest ? undefined : new SafeStorageSecretStore(paths.secretsFile),
-  })
+  const secrets = isTest ? undefined : new SafeStorageSecretStore(paths.secretsFile)
+  const real = useFakes
+    ? null
+    : composeReal({
+        dataDir: paths.dataDir,
+        secrets,
+        launch: app.isPackaged
+          ? { mode: 'packaged', mainAppBundle: resolve(process.execPath, '../../..') }
+          : undefined,
+      })
+  const composition = real ?? compose({ ownPid: process.pid, secrets })
   const { services } = composition
+  /** Stops the services; the real engine also closes its database. */
+  const shutdown = () => (real ? real.close() : services.stop())
   const windows = new WindowManager({
     preloadPath: join(__dirname, '../preload/index.js'),
     devUrl,
@@ -91,7 +102,7 @@ async function start(paths: AppPaths): Promise<void> {
   const shortcuts = new GlobalShortcuts({
     tap: () => {
       broadcaster.emit('key.gesture', { gesture: 'tap', key: 'fallbackChord' })
-      void ref.core?.router.gesture('tap')
+      if (services.repos.settings.get().onboardingDone) void ref.core?.router.gesture('tap')
     },
     toggleCapture: () => toggleCapture(),
     openApp: () => void windows.open('app'),
@@ -134,8 +145,7 @@ async function start(paths: AppPaths): Promise<void> {
     setWindowSize: (surface, width, height) => windows.setSize(surface, width, height),
     exportDir: paths.exportsDir,
     revealFile: (path) => shell.showItemInFolder(path),
-    deleteAllData: () =>
-      deleteEverything({ paths, stopServices: () => services.stop(), relaunch: !isTest }),
+    deleteAllData: () => deleteEverything({ paths, stopServices: shutdown, relaunch: !isTest }),
   })
   const unregister = registerIpc(ipcMain, handlers, {
     identify: windows.identify,
@@ -201,6 +211,6 @@ async function start(paths: AppPaths): Promise<void> {
     tray?.destroy()
     tray = null
     windows.destroyAll()
-    void services.stop()
+    void shutdown()
   })
 }
