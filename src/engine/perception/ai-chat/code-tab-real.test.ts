@@ -117,12 +117,15 @@ describe('episodes of a coding session', () => {
     let t = 0
     for (const s of SAMPLES)
       for (let k = 0; k < 5; k++, t += 2) builder.ingest(batch(T0 + t * 1000, claudeWin(s)))
+    // A selection in the coding session (the student's own build talk) does not make it a note.
+    builder.addHighlight("let's make it so that")
     for (let k = 0; k < 10; k++, t += 2) builder.ingest(batch(T0 + t * 1000, claudeWin(chat)))
     builder.closeAll()
     const code = closed.filter((e) => e.aiProvider === null)
     const study = closed.filter((e) => e.aiProvider === 'claude')
     expect(code.length).toBeGreaterThan(0)
     expect(code.every((e) => e.extracted && e.kind === 'other')).toBe(true)
+    expect(code.some((e) => e.signals.highlights.length > 0)).toBe(true)
     expect(study).toHaveLength(1)
     expect(study[0]?.extracted).toBe(false)
     expect(study[0]?.text).toContain('tertiary carbocation')

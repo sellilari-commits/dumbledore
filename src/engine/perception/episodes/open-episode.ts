@@ -237,7 +237,8 @@ export class OpenEpisode {
         aiQuestions: kind === 'ai_chat' ? studentMessages(lines, this.userAlign) : [],
         highlights,
       },
-      extracted: (this.agentSession && highlights.length === 0) || nothingNew,
+      // A coding agent's session is work, not study: done, even with a selection in it.
+      extracted: this.agentSession || nothingNew,
     }
   }
 

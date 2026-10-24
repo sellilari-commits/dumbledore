@@ -26,6 +26,7 @@ import type { Cancel, Clock } from '../../clock'
 import type { MasteryModel, Repos } from '../../contracts'
 import type { EngineBus } from '../../events'
 import { redact } from '../../privacy/redact'
+import { isCodingApp, isCodingSite } from '../ai-chat/coding'
 import { HOUR, MINUTE } from '../types'
 import { type ApplyOutcome, applyExtraction, PromptMemory } from './apply'
 import { DailyBudget, estimateTokens } from './budget'
@@ -184,11 +185,14 @@ export class ExtractionWorker {
       return result
     const highlighted = (episode.signals.highlights?.length ?? 0) > 0
     const urgent = (episode.kind === 'ai_chat' && this.sessionActive) || highlighted
+    // A highlight always counts — except in a chat app that also runs coding agents, where the
+    // selection may be the student's own build work: triage judges those.
+    const surelyNote = highlighted && !agentCapableChat(episode)
     this.queue.push({
       episode,
       score: result.score,
       pass: result.pass,
-      ...(highlighted ? { decision: true } : {}),
+      ...(surelyNote ? { decision: true } : {}),
       urgent,
       attempts: 0,
       seq: this.seq++,
@@ -250,13 +254,14 @@ export class ExtractionWorker {
   private async drain(): Promise<void> {
     // 1. Triage: one cheap call judges the window's undecided episodes together.
     if (!(await this.triage())) return
-    // 2. "No": done without a P1 call.
+    // The window as judged: "no" episodes still tell P1 what else was open.
+    const window = this.queue.filter((i) => i.decision !== undefined).map((i) => i.episode)
+    // 2. "No": done without a P1 call. (Episodes that arrived meanwhile stay for their turn.)
     for (const item of this.queue.filter((i) => i.decision === false))
       this.markExtracted(item.episode.id)
-    const window = this.queue.map((i) => i.episode)
-    this.queue = this.queue.filter((i) => i.decision === true)
+    this.queue = this.queue.filter((i) => i.decision !== false)
     // 3. "Yes": full extraction, the window's other episodes as context.
-    while (this.queue.length > 0) {
+    while (this.queue.some((i) => i.decision === true)) {
       const batch = this.takeBatch()
       if (!batch) return
       const ids = new Set(batch.map((i) => i.episode.id))
@@ -330,6 +335,7 @@ export class ExtractionWorker {
     const items: QueueItem[] = []
     let tokens = PROMPT_OVERHEAD_TOKENS
     for (const item of this.queue) {
+      if (item.decision !== true) continue
       if (items.length >= this.opts.maxBatch) break
       const t = estimateTokens(this.clip(item.episode))
       if (items.length > 0 && tokens + t > this.opts.maxBatchTokens) continue
@@ -465,6 +471,20 @@ export class ExtractionWorker {
     if (outcome.profileChanged) emit('profile', [])
     for (const p of outcome.episodeSubjects) this.deps.onEpisodeSubject?.(p.episodeId, p.subjectId)
   }
+}
+
+/** Chat apps and sites that also run coding agents (Claude's Code tab, ChatGPT's Codex). */
+const AGENT_CHAT_BUNDLES = new Set([
+  'com.anthropic.claudefordesktop',
+  'com.openai.codex',
+  'com.openai.chat',
+])
+
+function agentCapableChat(e: Episode): boolean {
+  return (
+    e.kind === 'ai_chat' &&
+    (AGENT_CHAT_BUNDLES.has(e.bundleId) || isCodingApp(e.bundleId) || isCodingSite(e.url))
+  )
 }
 
 /** "Tampere – Wikipedia (reading)", newest last, deduped, for P1's <context>. */

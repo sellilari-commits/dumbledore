@@ -25,7 +25,9 @@ const SYSTEM = `You triage a student's screen activity for a study coach. You ge
 
 ${LEARNING}
 
-Judge the episodes together: they come from one stretch of the student's time. A search, a page and an AI chat on the same topic support each other, so a short or terse episode next to clear study on the same topic is a yes. Highlighted text always means yes. Menus, feeds, sign-in pages and navigation alone are a no. Dumbledore's own screens (this study coach) are a no.
+Judge the episodes together: they come from one stretch of the student's time. A search, a page and an AI chat on the same topic support each other, so a short or terse episode next to clear study on the same topic is a yes. Menus, feeds, sign-in pages and navigation alone are a no. Dumbledore's own screens (this study coach) are a no.
+Building or fixing one's own software with a coding agent or AI assistant (edits, builds, deploys, commits, test runs, "Ran a command", task lists, plans for an app) is work, not learning: a no, even when the AI explains steps, unless the student explicitly asks to understand a concept.
+Highlighted text means yes when it is content (an explanation, a fact, a page); a highlight inside coding-agent work or in the student's own messages about building software is a no.
 
 Answer for every episode, by its id, in input order: hasLearnableContent (true/false) and reason (≤ 10 words).`
 
@@ -97,7 +99,7 @@ export function finalizeTriage(out: LlmTriage, input: TriageInput): TriageOutput
 export const triagePrompt: PromptSpec<TriageInput, LlmTriage, TriageOutput> = {
   id: 'P0',
   task: 'triage',
-  version: 1,
+  version: 2,
   tier: 'triage',
   temperature: 0,
   maxOutputTokens: 1200,

@@ -244,6 +244,48 @@ describe('ExtractionWorker', () => {
       worker.stop()
     })
 
+    it('a highlight in an explanation always counts; in a coding-agent chat app triage judges', async () => {
+      brain = new FakeBrain({
+        triage: async (input) => ({
+          results: input.episodes.map((e) => ({
+            id: e.id,
+            hasLearnableContent: false,
+            reason: 'build work',
+          })),
+        }),
+      })
+      const worker = make()
+      const highlights = ['Alkyl groups stabilise the positive charge']
+      const chatgpt = saved({
+        kind: 'ai_chat',
+        aiProvider: 'chatgpt',
+        bundleId: 'com.google.Chrome',
+        url: 'https://chatgpt.com/c/42',
+        title: 'ChatGPT',
+        text: `[R] why is tertiary faster\n[L] ${STUDY_TEXT}`,
+        signals: { ...makeEpisode().signals, highlights },
+      })
+      const claudeApp = saved({
+        kind: 'ai_chat',
+        aiProvider: 'claude',
+        app: 'Claude',
+        bundleId: 'com.anthropic.claudefordesktop',
+        url: null,
+        title: 'Claude',
+        text: `[R] let's make it so that the button deploys\n[L] ${STUDY_TEXT}`,
+        signals: { ...makeEpisode().signals, highlights: ["let's make it so that"] },
+      })
+      worker.enqueue(chatgpt)
+      worker.enqueue(claudeApp)
+      await worker.flushNow()
+      expect(triageCalls().map((c) => c.episodes.map((e) => e.id))).toEqual([[claudeApp.id]])
+      expect(extractCalls().flatMap((c) => c.episodes.map((e) => e.id))).toEqual([chatgpt.id])
+      expect(repos.episodes.get(claudeApp.id)?.extracted).toBe(true)
+      expect(repos.notes.list({ status: null }).map((n) => n.text)).not.toContain(
+        "let's make it so that",
+      )
+    })
+
     it('keeps obvious noise and hard-rule failures out of triage', async () => {
       const worker = make()
       const feed = saved({
