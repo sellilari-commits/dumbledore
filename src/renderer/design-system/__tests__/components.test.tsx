@@ -1,12 +1,18 @@
 /** Design-system component tests: behaviour and accessibility of the building blocks. */
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { Question } from '@shared/domain'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useRef, useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import '../../lib/test-utils'
 import { Button } from '../components/Button'
 import { Checkbox } from '../components/Checkbox'
 import { Choices } from '../components/Choices'
 import { EmptyState, ErrorState, LoadingState } from '../components/Feedback'
+import { PageHeader } from '../components/Page'
+import { Popover } from '../components/Popover'
 import { ProgressBar } from '../components/ProgressBar'
+import { QuizQuestion } from '../components/QuizQuestion'
 import { RadioGroup, RadioRow } from '../components/RadioRow'
 import { Tag } from '../components/Tag'
 import { ToggleBlock } from '../components/ToggleBlock'
@@ -117,5 +123,112 @@ describe('States', () => {
     expect(screen.getByText('Engine offline')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /try again/i }))
     expect(retry).toHaveBeenCalled()
+  })
+})
+
+describe('QuizQuestion', () => {
+  const question: Question = {
+    id: 'q1',
+    conceptId: null,
+    conceptName: 'Carbocation stability',
+    stem: 'Which carbocation is the most stable?',
+    options: ['Methyl', 'Primary (1°)', 'Secondary (2°)', 'Tertiary (3°).'],
+    correctIndex: 3,
+    rationales: ['No donors.', 'One donor.', 'Two donors.', 'Three donors.'],
+    difficulty: 1,
+    carriedFrom: null,
+  }
+
+  it('quotes the right option when the answer is wrong (rows have no letters)', () => {
+    render(
+      <QuizQuestion
+        index={0}
+        question={question}
+        chosenIndex={1}
+        result={{ correct: false, correctIndex: 3 }}
+      />,
+    )
+    const note = screen.getByRole('status').textContent ?? ''
+    expect(note).toContain('Not quite. The answer is “Tertiary (3°)”. This one comes back')
+    expect(note).not.toMatch(/answer is [A-D]\b/)
+    expect(screen.getByRole('radio', { name: /Tertiary/ }).getAttribute('data-tone')).toBe(
+      'correct',
+    )
+  })
+
+  it('praises a right answer', () => {
+    render(
+      <QuizQuestion
+        index={0}
+        question={question}
+        chosenIndex={3}
+        result={{ correct: true, correctIndex: 3 }}
+      />,
+    )
+    expect(screen.getByRole('status').textContent).toContain('Correct.')
+  })
+})
+
+describe('PageHeader icon', () => {
+  it('is decorative by default', () => {
+    const { container } = render(<PageHeader icon="🧪" title="Organic Chemistry" />)
+    expect(screen.queryByRole('button')).toBeNull()
+    expect(container.querySelector('.dd-page-header__icon')?.getAttribute('aria-hidden')).toBe(
+      'true',
+    )
+  })
+
+  it('becomes a labelled button with onIconClick', () => {
+    const onIconClick = vi.fn()
+    render(
+      <PageHeader
+        icon="🧪"
+        iconLabel="Change icon"
+        iconExpanded={false}
+        onIconClick={onIconClick}
+        title="Organic Chemistry"
+      />,
+    )
+    const button = screen.getByRole('button', { name: 'Change icon' })
+    expect(button.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(button)
+    expect(onIconClick).toHaveBeenCalledOnce()
+  })
+})
+
+/** PageHeader icon button + an anchored Popover, wired like the subject page. */
+function Anchored() {
+  const ref = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <PageHeader
+        icon="🧪"
+        iconRef={ref}
+        iconExpanded={open}
+        onIconClick={() => setOpen((o) => !o)}
+        title="Organic Chemistry"
+      />
+      <Popover anchor={ref} open={open} onOpenChange={setOpen} label="Choose an icon">
+        <button type="button">Use 🧬</button>
+      </Popover>
+    </>
+  )
+}
+
+describe('Popover anchor', () => {
+  it('opens on the anchor, toggles closed from it and gives focus back on Escape', async () => {
+    const user = userEvent.setup()
+    render(<Anchored />)
+    const icon = screen.getByRole('button', { name: 'Change icon' })
+    await user.click(icon)
+    expect(screen.getByRole('dialog', { name: 'Choose an icon' })).toBeTruthy()
+    await user.click(icon)
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(icon.getAttribute('aria-expanded')).toBe('false')
+    await user.click(icon)
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(icon))
   })
 })

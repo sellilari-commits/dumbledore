@@ -227,17 +227,17 @@
   animation: dd-pop-in var(--dur-base) var(--ease-out);
 }
 
+.dd-toast__icon {
+  display: inline-flex;
+  flex: none;
+}
+
 .dd-toast--error .dd-toast__icon {
   color: #ff8c84;
 }
 
 .dd-toast--success .dd-toast__icon {
   color: #7fd3a3;
-}
-
-.dd-toast__icon {
-  display: inline-flex;
-  flex: none;
 }
 
 .dd-toast__text {
@@ -335,7 +335,7 @@
   color: var(--c-texPri);
 }
 
-.dd-cmdk__item[data-selected='true'] {
+.dd-cmdk__item[data-selected="true"] {
   background: var(--c-hover);
 }
 

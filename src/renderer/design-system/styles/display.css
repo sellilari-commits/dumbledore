@@ -222,7 +222,7 @@
   background: var(--c-hover);
 }
 
-.dd-toggle[data-open='true'] > .dd-toggle__head .dd-toggle__chevron {
+.dd-toggle[data-open="true"] > .dd-toggle__head .dd-toggle__chevron {
   transform: rotate(90deg);
 }
 

@@ -62,6 +62,7 @@ function ToastView({ item }: { item: ToastItem }) {
     return stop
   }, [])
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: hovering only pauses the auto-hide timer
     <div
       className={cx('dd-toast', `dd-toast--${item.tone}`)}
       role={item.tone === 'error' ? 'alert' : 'status'}

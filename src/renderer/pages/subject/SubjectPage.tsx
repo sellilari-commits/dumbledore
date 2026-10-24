@@ -61,13 +61,11 @@ function SubjectSkeleton({
 }) {
   return (
     <>
-      <div className="sp-header" aria-hidden>
-        {emoji ? (
-          <div className="dd-page-header__icon">{emoji}</div>
-        ) : (
-          <Skeleton width={64} height={64} radius={8} className="sp-skel-icon" />
-        )}
-        <PageHeader title={name ?? <Skeleton width="48%" height={34} />}>
+      <div aria-hidden>
+        <PageHeader
+          icon={emoji ?? <Skeleton width={64} height={64} radius={8} />}
+          title={name ?? <Skeleton width="48%" height={34} />}
+        >
           <div className="sp-skel-props">
             {[132, 180, 112, 220, 96].map((w) => (
               <div key={w} className="sp-skel-prop">

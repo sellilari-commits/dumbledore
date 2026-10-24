@@ -27,7 +27,12 @@ export function Tooltip({ content, shortcut, sub, side = 'bottom', children }: T
     <RadixTooltip.Root>
       <RadixTooltip.Trigger asChild>{children}</RadixTooltip.Trigger>
       <RadixTooltip.Portal>
-        <RadixTooltip.Content className="dd-tooltip" side={side} sideOffset={6} collisionPadding={8}>
+        <RadixTooltip.Content
+          className="dd-tooltip"
+          side={side}
+          sideOffset={6}
+          collisionPadding={8}
+        >
           {content}
           {shortcut ? <span className="dd-tooltip__kbd">{shortcut}</span> : null}
           {sub ? <span className="dd-tooltip__sub">{sub}</span> : null}

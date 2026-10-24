@@ -27,6 +27,8 @@ Code: `src/renderer/design-system/` (tokens, base, components, styles). Screens:
 | `--c-bacSec`                | sidebar, callouts, prompt boxes                                       |
 | `--c-bacTer`                | chips, pressed, segmented-control track                               |
 | `--c-hover` / `--c-pressed` | translucent hover/pressed over any background                         |
+| `--c-choiceSelected`        | selected `Choices` chip: white / #4a4a48, raised above its track      |
+| `--c-buttonBg`              | secondary + danger buttons, keycaps: white / transparent (never sunk) |
 | `--c-popBac`                | menus, popovers, dialogs                                              |
 | `--c-borPri` / `--c-borStr` | dividers and table grid / input borders                               |
 | `--c-icoPri` / `--c-icoSec` | icons; UI icons are Lucide at 1.5–1.75 stroke in `--c-icoSec`         |
@@ -73,12 +75,12 @@ quiz card, ask bar (`--radius-panel`). **Shadows** — `--shadow-sm` cards · `-
 | `Checkbox`, `Switch`                                                    | to-dos and multi-select / on-off settings that apply at once               |                                                             |
 | `Input`, `Textarea`, `Field`                                            | text entry with label + hint/error                                         |                                                             |
 | `Dialog`                                                                | short focused tasks (New exam, New subject)                                | 520 px (`wide` 680), footer = note + ghost Cancel + primary |
-| `Menu`, `Popover`, `Tooltip`                                            | row/page menus · small floating forms · names + shortcuts of icons         |                                                             |
+| `Menu`, `Popover`, `Tooltip`                                            | row/page menus · small floating forms · names + shortcuts of icons         | Popover `anchor` = opener inside another component          |
 | `toast()` + `<Toaster/>`                                                | confirmations after an action ("Prompt copied")                            | `tone`, one `action`, auto-hides                            |
 | `DatabaseTable`                                                         | lists of things with properties (exams, concepts)                          | header icons, 36 px rows, row click, `Count n`              |
 | `ViewTabs`                                                              | switching views of one object (subject: Roadmap / Concepts / Seen / Exams) |                                                             |
-| `Page`, `PageHeader`, `PropertyList`/`Property`, `Section`              | every page's skeleton                                                      | see layout                                                  |
-| `QuizQuestion`                                                          | one MCQ with instant feedback + rationale                                  | exams, reviews, onboarding                                  |
+| `Page`, `PageHeader`, `PropertyList`/`Property`, `Section`              | every page's skeleton                                                      | see layout; clickable icon = `onIconClick` + `iconLabel`    |
+| `QuizQuestion`                                                          | one MCQ with instant feedback + rationale                                  | no A–D letters (keys 1–4); a miss quotes the right option   |
 | `RoadmapItem`                                                           | roadmap steps (to-do) and checkpoints (callout)                            |                                                             |
 | `Kbd`                                                                   | shortcut hints inline (`boxed` for keycaps)                                |                                                             |
 | `LoadingState`, `Skeleton`, `EmptyState`, `ErrorState`, `Spinner`       | states (below)                                                             |                                                             |
@@ -97,7 +99,9 @@ quiz card, ask bar (`--radius-panel`). **Shadows** — `--shadow-sm` cards · `-
 - `PageHeader`: 64 px top padding, 78 px emoji icon, 40 px title, one secondary subtitle line built
   with " · " separators (e.g. "10 questions · 🧪 Organic Chemistry · about 8 min"), then
   properties or a tip. First content block ~28 px below; `Section`s 36 px apart with a small grey
-  title and a hairline.
+  title and a hairline. The icon is decorative; to make it a control (Notion's "Change icon") pass
+  `onIconClick` + `iconLabel`, plus `iconRef` / `iconExpanded` when it opens a `<Popover anchor>`
+  (subject page). Don't render a second icon above the header or override its padding.
 - Spacing inside blocks 8–16 px; between blocks 24–36 px; question blocks 32 px with a hairline
   between. Sticky strips (exam progress) sit on `--c-bacPri` with a bottom hairline.
 - Emoji for subjects and page icons; Lucide line icons for UI. Never mix both in one row.
@@ -139,3 +143,5 @@ ellipsis (…). Prompts are pasted, never sent — say so ("read it, then press 
 - Don't put more than one sentence in an empty state, a toast or a tooltip.
 - Don't hide information only in a tooltip; tooltips name things and show shortcuts.
 - Don't restyle `dd-*` classes from pages; ask for a design-system change instead.
+- Don't fill a control with `--c-bacPri` to make it look raised: in dark mode that is the darkest
+  surface, so it reads as pressed in. Use `--c-buttonBg` or `--c-choiceSelected`.

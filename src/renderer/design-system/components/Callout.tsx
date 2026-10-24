@@ -13,7 +13,14 @@ export interface CalloutProps {
   role?: 'note' | 'alert' | 'status'
 }
 
-export function Callout({ icon = '💡', title, color = 'default', children, className, role }: CalloutProps) {
+export function Callout({
+  icon = '💡',
+  title,
+  color = 'default',
+  children,
+  className,
+  role,
+}: CalloutProps) {
   return (
     <div
       className={cx(

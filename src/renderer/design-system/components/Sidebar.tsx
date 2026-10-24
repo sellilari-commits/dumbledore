@@ -67,6 +67,7 @@ export function SidebarItem({
       {icon !== undefined ? <span className="dd-sidebar__icon">{icon}</span> : null}
       <span className="dd-sidebar__label">{label}</span>
       {badge ? (
+        // biome-ignore lint/a11y/useAriaPropsSupportedByRole: unread count read as "6 new"; pages query these row names
         <span className="dd-sidebar__badge" aria-label={`${badge} new`}>
           {badge > 99 ? '99+' : badge}
         </span>

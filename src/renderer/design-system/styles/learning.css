@@ -86,7 +86,7 @@
 
 .dd-rm:hover .dd-rm__chevron,
 .dd-rm__chevron:focus-visible,
-.dd-rm[data-open='true'] .dd-rm__chevron {
+.dd-rm[data-open="true"] .dd-rm__chevron {
   opacity: 1;
 }
 
@@ -94,7 +94,7 @@
   background: var(--c-hover);
 }
 
-.dd-rm[data-open='true'] .dd-rm__chevron {
+.dd-rm[data-open="true"] .dd-rm__chevron {
   transform: rotate(90deg);
 }
 
@@ -112,13 +112,13 @@
   cursor: pointer;
 }
 
-.dd-rm[data-status='done'] .dd-rm__title {
+.dd-rm[data-status="done"] .dd-rm__title {
   color: var(--c-texSec);
   text-decoration: line-through;
   text-decoration-color: color-mix(in srgb, var(--c-texSec) 60%, transparent);
 }
 
-.dd-rm[data-status='current'] .dd-rm__title {
+.dd-rm[data-status="current"] .dd-rm__title {
   font-weight: var(--weight-medium);
 }
 
@@ -136,7 +136,7 @@
 
 .dd-rm:hover .dd-rm__hover,
 .dd-rm:focus-within .dd-rm__hover,
-.dd-rm[data-status='current'] .dd-rm__hover {
+.dd-rm[data-status="current"] .dd-rm__hover {
   opacity: 1;
 }
 

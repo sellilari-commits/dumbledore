@@ -34,9 +34,7 @@ export function Dialog({
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="dd-dialog__overlay" />
-        <RadixDialog.Content
-          className={cx('dd-dialog', wide && 'dd-dialog--wide', className)}
-        >
+        <RadixDialog.Content className={cx('dd-dialog', wide && 'dd-dialog--wide', className)}>
           <div className="dd-dialog__header">
             <div className="dd-dialog__titles">
               <RadixDialog.Title className="dd-dialog__title">{title}</RadixDialog.Title>

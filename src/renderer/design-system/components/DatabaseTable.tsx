@@ -54,7 +54,11 @@ export function DatabaseTable<Row>({
         <thead>
           <tr>
             {columns.map((c) => (
-              <th key={c.key} scope="col" style={c.align === 'right' ? { textAlign: 'right' } : undefined}>
+              <th
+                key={c.key}
+                scope="col"
+                style={c.align === 'right' ? { textAlign: 'right' } : undefined}
+              >
                 <span className="dd-table__th">
                   {c.icon}
                   {c.header}

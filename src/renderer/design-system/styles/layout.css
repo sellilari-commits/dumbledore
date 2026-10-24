@@ -20,7 +20,7 @@
     opacity var(--dur-base) var(--ease-out);
 }
 
-.dd-sidebar[data-collapsed='true'] {
+.dd-sidebar[data-collapsed="true"] {
   width: 0;
   opacity: 0;
 }
@@ -64,7 +64,7 @@
   background: var(--c-pressed);
 }
 
-.dd-sidebar__item[aria-current='page'] {
+.dd-sidebar__item[aria-current="page"] {
   background: var(--c-hover);
   color: var(--c-texPri);
 }
@@ -256,6 +256,21 @@ button.dd-crumb:hover {
   color: var(--c-icoPri);
 }
 
+/* PageHeader onIconClick: the icon becomes a button (Notion's "Change icon"). */
+.dd-page-header__icon--button {
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.dd-page-header__icon--button:hover,
+.dd-page-header__icon--button[aria-expanded="true"] {
+  background: var(--c-hover);
+}
+
+.dd-page-header__icon--button:active {
+  background: var(--c-pressed);
+}
+
 .dd-page-header__title {
   margin: 0;
   padding: 3px 2px;
@@ -412,12 +427,12 @@ button.dd-crumb:hover {
   background: var(--c-hover);
 }
 
-.dd-tab[aria-selected='true'] {
+.dd-tab[aria-selected="true"] {
   color: var(--c-texPri);
 }
 
-.dd-tab[aria-selected='true']::after {
-  content: '';
+.dd-tab[aria-selected="true"]::after {
+  content: "";
   position: absolute;
   left: 8px;
   right: 8px;
@@ -468,11 +483,6 @@ button.dd-crumb:hover {
   text-overflow: ellipsis;
 }
 
-.dd-table th + th,
-.dd-table td + td {
-  border-left: 1px solid var(--c-borPri);
-}
-
 .dd-table__th {
   display: inline-flex;
   align-items: center;
@@ -493,15 +503,20 @@ button.dd-crumb:hover {
   white-space: nowrap;
 }
 
+.dd-table th + th,
+.dd-table td + td {
+  border-left: 1px solid var(--c-borPri);
+}
+
 .dd-table tbody tr {
   transition: background var(--dur-fast) var(--ease-out);
 }
 
-.dd-table tbody tr[data-clickable='true'] {
+.dd-table tbody tr[data-clickable="true"] {
   cursor: pointer;
 }
 
-.dd-table tbody tr[data-clickable='true']:hover {
+.dd-table tbody tr[data-clickable="true"]:hover {
   background: var(--c-hover);
 }
 

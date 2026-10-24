@@ -42,7 +42,13 @@ export function ViewTabs<T extends string>({
   }
   return (
     <div className={cx('dd-tabs', className)}>
-      <div ref={ref} role="tablist" aria-label={label} style={{ display: 'flex' }} onKeyDown={onKeyDown}>
+      <div
+        ref={ref}
+        role="tablist"
+        aria-label={label}
+        style={{ display: 'flex' }}
+        onKeyDown={onKeyDown}
+      >
         {tabs.map((t) => (
           <button
             key={t.value}
@@ -62,7 +68,9 @@ export function ViewTabs<T extends string>({
           </button>
         ))}
       </div>
-      {right ? <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>{right}</div> : null}
+      {right ? (
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>{right}</div>
+      ) : null}
     </div>
   )
 }

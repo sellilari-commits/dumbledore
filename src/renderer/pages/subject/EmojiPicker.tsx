@@ -1,9 +1,10 @@
 /**
- * EmojiPicker: the 78 px page icon as a button that opens a small grid of subject emoji
- * (Notion's "Change icon"). Picking one calls onChange and closes the popover.
+ * EmojiPicker: a small grid of subject emoji (Notion's "Change icon"), anchored to the page
+ * icon — PageHeader renders that icon as a button (onIconClick + iconRef). Picking one calls
+ * onChange and closes the popover; focus goes back to the icon.
  */
 import { Popover } from '@renderer/design-system'
-import { useState } from 'react'
+import type { RefObject } from 'react'
 
 /** Study-flavoured emoji, eight to a row in the grid. */
 const EMOJI = [
@@ -15,28 +16,22 @@ const EMOJI = [
   .split(' ')
 
 export interface EmojiPickerProps {
+  /** The page icon button the grid opens under. */
+  anchor: RefObject<HTMLElement | null>
+  open: boolean
+  onOpenChange: (open: boolean) => void
   value: string
   onChange: (emoji: string) => void
 }
 
-export function EmojiPicker({ value, onChange }: EmojiPickerProps) {
-  const [open, setOpen] = useState(false)
+export function EmojiPicker({ anchor, open, onOpenChange, value, onChange }: EmojiPickerProps) {
   return (
     <Popover
+      anchor={anchor}
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={onOpenChange}
       label="Choose an icon"
       className="sp-emoji-pop"
-      trigger={
-        <button
-          type="button"
-          className="dd-page-header__icon sp-icon"
-          aria-label="Change icon"
-          title="Change icon"
-        >
-          {value}
-        </button>
-      }
     >
       <div className="sp-emoji-pop__head">Icon</div>
       <div className="sp-emoji-grid">
@@ -48,7 +43,7 @@ export function EmojiPicker({ value, onChange }: EmojiPickerProps) {
             aria-label={`Use ${e}`}
             aria-pressed={e === value}
             onClick={() => {
-              setOpen(false)
+              onOpenChange(false)
               if (e !== value) onChange(e)
             }}
           >

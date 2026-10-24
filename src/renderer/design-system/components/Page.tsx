@@ -1,9 +1,10 @@
 /**
- * Page layout: Page (the ~708 px reading column), PageHeader (78 px emoji icon, 40 px title,
- * subtitle, actions), PropertyList/Property (Notion's property rows) and Section (a small grey
- * heading with optional actions, or a large H3 heading).
+ * Page layout: Page (the ~708 px reading column), PageHeader (78 px emoji icon — decorative, or a
+ * labelled button with onIconClick — 40 px title, subtitle, actions), PropertyList/Property
+ * (Notion's property rows) and Section (a small grey heading with optional actions, or a large
+ * H3 heading).
  */
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { cx } from '../cx'
 import '../styles/layout.css'
 
@@ -28,6 +29,14 @@ export interface PageHeaderProps {
   /** Glyph icons (SVG) get icon colour instead of emoji rendering. */
   iconKind?: 'emoji' | 'glyph'
   iconSize?: 'large' | 'small'
+  /** Makes the icon a button (Notion's "Change icon"). Without it the icon is decorative. */
+  onIconClick?: () => void
+  /** Accessible name and tooltip of the icon button. Default "Change icon". */
+  iconLabel?: string
+  /** The icon button element, e.g. for `<Popover anchor={iconRef}>`. */
+  iconRef?: Ref<HTMLButtonElement>
+  /** Set while the icon's popover or menu is open (aria-expanded + pressed look). */
+  iconExpanded?: boolean
   title: ReactNode
   subtitle?: ReactNode
   actions?: ReactNode
@@ -39,23 +48,38 @@ export function PageHeader({
   icon,
   iconKind = 'emoji',
   iconSize = 'large',
+  onIconClick,
+  iconLabel = 'Change icon',
+  iconRef,
+  iconExpanded,
   title,
   subtitle,
   actions,
   children,
   compact,
 }: PageHeaderProps) {
+  const iconClass = cx(
+    'dd-page-header__icon',
+    iconSize === 'small' && 'dd-page-header__icon--small',
+    iconKind === 'glyph' && 'dd-page-header__icon--glyph',
+  )
   return (
     <div className={cx('dd-page-header', compact && 'dd-page-header--compact')}>
-      {icon ? (
-        <div
-          className={cx(
-            'dd-page-header__icon',
-            iconSize === 'small' && 'dd-page-header__icon--small',
-            iconKind === 'glyph' && 'dd-page-header__icon--glyph',
-          )}
-          aria-hidden
+      {icon && onIconClick ? (
+        <button
+          ref={iconRef}
+          type="button"
+          className={cx(iconClass, 'dd-page-header__icon--button')}
+          aria-label={iconLabel}
+          title={iconLabel}
+          aria-haspopup={iconExpanded === undefined ? undefined : 'dialog'}
+          aria-expanded={iconExpanded}
+          onClick={onIconClick}
         >
+          {icon}
+        </button>
+      ) : icon ? (
+        <div className={iconClass} aria-hidden>
           {icon}
         </div>
       ) : null}
@@ -67,8 +91,15 @@ export function PageHeader({
   )
 }
 
-export function PropertyList({ children, label = 'Properties' }: { children: ReactNode; label?: string }) {
+export function PropertyList({
+  children,
+  label = 'Properties',
+}: {
+  children: ReactNode
+  label?: string
+}) {
   return (
+    // biome-ignore lint/a11y/useSemanticElements: Notion property rows are flex divs, announced as a list
     <div className="dd-props" role="list" aria-label={label}>
       {children}
     </div>
@@ -89,6 +120,7 @@ export function Property({
 }) {
   const hasValue = children !== undefined && children !== null && children !== false
   return (
+    // biome-ignore lint/a11y/useSemanticElements: one property row of the list above
     <div className="dd-prop" role="listitem">
       <div className="dd-prop__label">
         {icon}
@@ -112,9 +144,22 @@ export interface SectionProps {
   id?: string
 }
 
-export function Section({ title, icon, actions, children, large, plain, className, id }: SectionProps) {
+export function Section({
+  title,
+  icon,
+  actions,
+  children,
+  large,
+  plain,
+  className,
+  id,
+}: SectionProps) {
   return (
-    <section className={cx('dd-section', className)} aria-labelledby={id} id={id ? `${id}-section` : undefined}>
+    <section
+      className={cx('dd-section', className)}
+      aria-labelledby={id}
+      id={id ? `${id}-section` : undefined}
+    >
       <div className={cx('dd-section__head', (plain || large) && 'dd-section__head--plain')}>
         <h2 className={cx('dd-section__title', large && 'dd-section__title--large')} id={id}>
           {icon}

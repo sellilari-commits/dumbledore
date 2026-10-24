@@ -31,6 +31,8 @@
   --c-tooltipBg: #0f0f0f;
   --c-tooltipText: #ffffff;
   --c-tooltipSub: rgba(255, 255, 255, 0.62);
+  --c-choiceSelected: #ffffff; /* selected Choices chip, raised on its --c-bacTer track */
+  --c-buttonBg: #ffffff; /* secondary/danger buttons and keycaps */
 
   /* ── Borders & icons ──────────────────────────────────────────────────── */
   --c-borPri: #e6e5e3; /* dividers, tables */
@@ -99,8 +101,9 @@
   --shadow-focus: #2383e291 0 0 0 1px inset, #2383e259 0 0 0 2px;
 
   /* ── Typography ───────────────────────────────────────────────────────── */
-  --font-sans: ui-sans-serif, -apple-system, system-ui, 'Segoe UI Variable Display', 'Segoe UI',
-    Helvetica, 'Apple Color Emoji', Arial, sans-serif;
+  --font-sans:
+    ui-sans-serif, -apple-system, system-ui, "Segoe UI Variable Display", "Segoe UI", Helvetica,
+    "Apple Color Emoji", Arial, sans-serif;
   --font-mono: SFMono-Regular, Menlo, Consolas, monospace;
 
   --text-title: 40px; /* page title, bold */
@@ -163,7 +166,7 @@
 
 /* Dark values, written once and applied by both selectors below. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
     --c-texPri: #f0efed;
     --c-texSec: #ada9a3;
@@ -181,6 +184,8 @@
     --c-tooltipBg: #3b3b39;
     --c-tooltipText: #f0efed;
     --c-tooltipSub: rgba(240, 239, 237, 0.62);
+    --c-choiceSelected: #4a4a48;
+    --c-buttonBg: transparent;
     --c-borPri: #383836;
     --c-borStr: #5f5e59;
     --c-icoPri: #e6e5e3;
@@ -225,7 +230,7 @@
   }
 }
 
-:root[data-theme='dark'] {
+:root[data-theme="dark"] {
   color-scheme: dark;
   --c-texPri: #f0efed;
   --c-texSec: #ada9a3;
@@ -243,6 +248,8 @@
   --c-tooltipBg: #3b3b39;
   --c-tooltipText: #f0efed;
   --c-tooltipSub: rgba(240, 239, 237, 0.62);
+  --c-choiceSelected: #4a4a48;
+  --c-buttonBg: transparent;
   --c-borPri: #383836;
   --c-borStr: #5f5e59;
   --c-icoPri: #e6e5e3;

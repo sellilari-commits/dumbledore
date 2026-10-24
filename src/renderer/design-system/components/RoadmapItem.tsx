@@ -3,10 +3,11 @@
  * move and prompt (Copy / Send to chat); a checkpoint as a callout with its question count,
  * carried ideas and score.
  */
+
+import { MOVE_LABEL } from '@renderer/lib/status'
 import type { RoadmapItem as Item } from '@shared/domain'
 import { ChevronRight, Copy, Send } from 'lucide-react'
 import { useState } from 'react'
-import { MOVE_LABEL } from '@renderer/lib/status'
 import '../styles/learning.css'
 import { Button } from './Button'
 import { Callout } from './Callout'
@@ -38,7 +39,10 @@ export function RoadmapItem({
       item.score === null ? null : `${Math.round(item.score * item.nQuestions)}/${item.nQuestions}`
     return (
       <div className="dd-rm-checkpoint" data-status={item.status}>
-        <Callout icon={item.status === 'done' ? '✅' : '💡'} color={item.status === 'current' ? 'blue' : 'default'}>
+        <Callout
+          icon={item.status === 'done' ? '✅' : '💡'}
+          color={item.status === 'current' ? 'blue' : 'default'}
+        >
           <div className="dd-rm-checkpoint__line">
             <strong>{item.title}</strong>
             <span className="dd-rm-checkpoint__sub">
@@ -48,16 +52,25 @@ export function RoadmapItem({
                 : ''}
             </span>
             {scoreText ? (
-              <Tag color={item.score !== null && item.score >= 0.8 ? 'green' : 'yellow'}>{scoreText}</Tag>
+              <Tag color={item.score !== null && item.score >= 0.8 ? 'green' : 'yellow'}>
+                {scoreText}
+              </Tag>
             ) : null}
             {item.status === 'current' && onTakeQuiz ? (
-              <Button size="sm" variant="primary" onClick={onTakeQuiz} style={{ marginLeft: 'auto' }}>
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={onTakeQuiz}
+                style={{ marginLeft: 'auto' }}
+              >
                 Take the quiz
               </Button>
             ) : null}
           </div>
           {carried.length > 0 && item.status !== 'done' ? (
-            <div className="dd-rm-checkpoint__sub">Re-tests {carried.join(', ')} with a new question.</div>
+            <div className="dd-rm-checkpoint__sub">
+              Re-tests {carried.join(', ')} with a new question.
+            </div>
           ) : null}
         </Callout>
       </div>
@@ -86,7 +99,12 @@ export function RoadmapItem({
           {item.status === 'skipped' ? <Tag color="gray">Skipped</Tag> : null}
           {item.status === 'current' && onSendToChat ? (
             <span className="dd-rm__hover">
-              <Button size="sm" variant="ghost" icon={<Send size={14} />} onClick={() => onSendToChat(prompt)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={<Send size={14} />}
+                onClick={() => onSendToChat(prompt)}
+              >
                 Continue in chat
               </Button>
             </span>

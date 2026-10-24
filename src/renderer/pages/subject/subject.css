@@ -3,24 +3,6 @@
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
 
-.sp-header {
-  padding-top: 64px;
-}
-
-.sp-header .dd-page-header {
-  padding-top: 0;
-}
-
-.sp-icon {
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-out);
-}
-
-.sp-icon:hover,
-.sp-icon[data-state="open"] {
-  background: var(--c-hover);
-}
-
 /* Click-to-edit text: looks like plain text until hovered or edited. */
 .sp-edit {
   display: inline-block;
@@ -369,11 +351,6 @@ button.sp-edit:hover {
 }
 
 /* ── Skeleton ───────────────────────────────────────────────────────────── */
-
-.sp-skel-icon {
-  display: block;
-  margin-bottom: 14px;
-}
 
 .sp-skel-props {
   display: flex;

@@ -13,6 +13,7 @@ export interface CheckboxProps {
 
 export function Checkbox({ checked, onCheckedChange, label, disabled, className }: CheckboxProps) {
   return (
+    // biome-ignore lint/a11y/useSemanticElements: Notion's to-do box; a styled button, no native input chrome
     <button
       type="button"
       role="checkbox"

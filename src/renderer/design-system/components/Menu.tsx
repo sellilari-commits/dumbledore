@@ -18,7 +18,15 @@ export interface MenuProps {
   className?: string
 }
 
-export function Menu({ trigger, children, align = 'start', side = 'bottom', open, onOpenChange, className }: MenuProps) {
+export function Menu({
+  trigger,
+  children,
+  align = 'start',
+  side = 'bottom',
+  open,
+  onOpenChange,
+  className,
+}: MenuProps) {
   return (
     <Dropdown.Root open={open} onOpenChange={onOpenChange} modal={false}>
       <Dropdown.Trigger asChild>{trigger}</Dropdown.Trigger>
@@ -47,7 +55,15 @@ export interface MenuItemProps {
   disabled?: boolean
 }
 
-export function MenuItem({ children, onSelect, icon, shortcut, checked, danger, disabled }: MenuItemProps) {
+export function MenuItem({
+  children,
+  onSelect,
+  icon,
+  shortcut,
+  checked,
+  danger,
+  disabled,
+}: MenuItemProps) {
   return (
     <Dropdown.Item
       className={cx('dd-menu__item', danger && 'dd-menu__item--danger')}
@@ -58,6 +74,7 @@ export function MenuItem({ children, onSelect, icon, shortcut, checked, danger, 
       <span className="dd-menu__label-text">{children}</span>
       {shortcut ? <span className="dd-menu__shortcut">{shortcut}</span> : null}
       {checked ? (
+        // biome-ignore lint/a11y/useAriaPropsSupportedByRole: kept until checked items become menuitemradio (pages query these names)
         <span className="dd-menu__check" aria-label="selected">
           <Check size={14} />
         </span>

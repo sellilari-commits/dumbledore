@@ -1,11 +1,13 @@
 /**
- * Subject page header: the editable emoji icon, the inline-editable title, the property rows and,
- * for a subject Dumbledore suggested, a callout to keep or dismiss it. All edits go through
- * subjects.update; failures show a toast and the read model snaps back.
+ * Subject page header: the editable emoji icon (PageHeader's icon button + the emoji picker),
+ * the inline-editable title, the property rows and, for a subject Dumbledore suggested, a
+ * callout to keep or dismiss it. All edits go through subjects.update; failures show a toast
+ * and the read model snaps back.
  */
 import { Button, Callout, PageHeader, toast } from '@renderer/design-system'
 import { useAction } from '@renderer/lib/queries'
 import type { SubjectDetail, SubjectPatch } from '@shared/state'
+import { useRef, useState } from 'react'
 import { useLocation } from 'wouter'
 import { EditableText } from './EditableText'
 import { EmojiPicker } from './EmojiPicker'
@@ -48,6 +50,8 @@ function SuggestedCallout({ subjectId }: { subjectId: string }) {
 export function SubjectHeader({ detail }: { detail: SubjectDetail }) {
   const { subject } = detail
   const update = useAction('subjects.update')
+  const iconRef = useRef<HTMLButtonElement>(null)
+  const [picking, setPicking] = useState(false)
   const patch = (p: SubjectPatch) =>
     update.mutate(
       { id: subject.id, patch: p },
@@ -55,9 +59,13 @@ export function SubjectHeader({ detail }: { detail: SubjectDetail }) {
     )
 
   return (
-    <div className="sp-header">
-      <EmojiPicker value={subject.emoji} onChange={(emoji) => patch({ emoji })} />
+    <>
       <PageHeader
+        icon={subject.emoji}
+        iconLabel="Change icon"
+        iconRef={iconRef}
+        iconExpanded={picking}
+        onIconClick={() => setPicking((open) => !open)}
         title={
           <EditableText
             value={subject.name}
@@ -72,6 +80,13 @@ export function SubjectHeader({ detail }: { detail: SubjectDetail }) {
         <SubjectProperties detail={detail} onPatch={patch} />
         {subject.status === 'suggested' ? <SuggestedCallout subjectId={subject.id} /> : null}
       </PageHeader>
-    </div>
+      <EmojiPicker
+        anchor={iconRef}
+        open={picking}
+        onOpenChange={setPicking}
+        value={subject.emoji}
+        onChange={(emoji) => patch({ emoji })}
+      />
+    </>
   )
 }

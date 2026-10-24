@@ -38,6 +38,7 @@ export function RadioRow({
       <CircleX size={16} aria-hidden />
     ) : null
   return (
+    // biome-ignore lint/a11y/useSemanticElements: full-width option rows, styled buttons with radio semantics
     <button
       type="button"
       role="radio"
@@ -73,7 +74,7 @@ export function RadioGroup({ label, children, className }: RadioGroupProps) {
       ref.current?.querySelectorAll<HTMLButtonElement>('[role="radio"]:not(:disabled)') ?? [],
     )
     if (rows.length === 0) return
-    const current = rows.findIndex((r) => r === document.activeElement)
+    const current = rows.indexOf(document.activeElement as HTMLButtonElement)
     const step = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : -1
     const next = rows[(current + step + rows.length) % rows.length]
     e.preventDefault()

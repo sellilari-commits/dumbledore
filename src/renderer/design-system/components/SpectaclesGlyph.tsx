@@ -13,7 +13,12 @@ export interface SpectaclesGlyphProps {
   title?: string
 }
 
-export function SpectaclesGlyph({ size = 20, strokeWidth = 1.6, className, title }: SpectaclesGlyphProps) {
+export function SpectaclesGlyph({
+  size = 20,
+  strokeWidth = 1.6,
+  className,
+  title,
+}: SpectaclesGlyphProps) {
   return (
     <svg
       className={cx('dd-glyph', className)}

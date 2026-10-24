@@ -78,7 +78,9 @@ export function CommandPalette({
               />
             </div>
             <Command.List className="dd-cmdk__list">
-              <Command.Empty className="dd-cmdk__empty">{loading ? 'Searching…' : emptyText}</Command.Empty>
+              <Command.Empty className="dd-cmdk__empty">
+                {loading ? 'Searching…' : emptyText}
+              </Command.Empty>
               {groups.map(([name, list]) => (
                 <Command.Group key={name} heading={name}>
                   {list.map((item) => (
@@ -93,9 +95,13 @@ export function CommandPalette({
                       </span>
                       <span className="dd-cmdk__item-text">
                         <span className="dd-cmdk__item-title">{item.title}</span>
-                        {item.subtitle ? <span className="dd-cmdk__item-sub">{item.subtitle}</span> : null}
+                        {item.subtitle ? (
+                          <span className="dd-cmdk__item-sub">{item.subtitle}</span>
+                        ) : null}
                       </span>
-                      {item.shortcut ? <span className="dd-menu__shortcut">{item.shortcut}</span> : null}
+                      {item.shortcut ? (
+                        <span className="dd-menu__shortcut">{item.shortcut}</span>
+                      ) : null}
                     </Command.Item>
                   ))}
                 </Command.Group>

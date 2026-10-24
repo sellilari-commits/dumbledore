@@ -20,6 +20,7 @@ export function Choices<T extends string | number>({
   return (
     <div role="radiogroup" aria-label={label} className={cx('dd-choices', className)}>
       {options.map((o) => (
+        // biome-ignore lint/a11y/useSemanticElements: segmented-control chips, styled buttons with radio semantics
         <button
           key={String(o.value)}
           type="button"

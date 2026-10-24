@@ -1,7 +1,8 @@
 /**
  * QuizQuestion: one multiple-choice question as radio rows. Before answering the rows are
  * selectable (1–4 keys hinted); once a result is known the chosen row turns green or red,
- * the right answer turns green, and both show their rationale.
+ * the right answer turns green, and both show their rationale. Rows carry no A–D letters
+ * (answer keys are 1–4), so a wrong-answer note quotes the right option's text instead.
  */
 import type { Question } from '@shared/domain'
 import { CircleCheck, CircleX } from 'lucide-react'
@@ -27,7 +28,12 @@ export interface QuizQuestionProps {
   className?: string
 }
 
-const LETTERS = ['A', 'B', 'C', 'D']
+/** "The answer is “Tertiary (3°)”. This one comes back…" — quoted without its own full stop. */
+function wrongNote(option: string | undefined): string {
+  const text = option?.trim().replace(/\.+$/, '')
+  const back = 'This one comes back in your next review.'
+  return text ? `The answer is “${text}”. ${back}` : back
+}
 
 export function QuizQuestion({
   index,
@@ -49,7 +55,6 @@ export function QuizQuestion({
   }
   const hintFor = (i: number) =>
     result && (i === result.correctIndex || i === chosenIndex) ? question.rationales[i] : undefined
-  const correctLetter = result ? LETTERS[result.correctIndex] : ''
   return (
     <div className={cx('dd-quiz-q', className)}>
       <div className="dd-quiz-q__meta">
@@ -67,7 +72,7 @@ export function QuizQuestion({
       <RadioGroup label={question.stem}>
         {question.options.map((option, i) => (
           <RadioRow
-            // biome-ignore lint/suspicious/noArrayIndexKey: options are positional (A–D)
+            // biome-ignore lint/suspicious/noArrayIndexKey: options are positional (keys 1–4)
             key={i}
             checked={chosenIndex === i}
             tone={toneFor(i)}
@@ -88,12 +93,16 @@ export function QuizQuestion({
           )}
           role="status"
         >
-          {result.correct ? <CircleCheck size={16} aria-hidden /> : <CircleX size={16} aria-hidden />}
+          {result.correct ? (
+            <CircleCheck size={16} aria-hidden />
+          ) : (
+            <CircleX size={16} aria-hidden />
+          )}
           <span>
             <strong>{result.correct ? 'Correct.' : 'Not quite.'}</strong>{' '}
             {result.correct
               ? 'Nice — that idea is sticking.'
-              : `The answer is ${correctLetter}. This one comes back in your next review.`}
+              : wrongNote(question.options[result.correctIndex])}
           </span>
         </div>
       ) : null}
