@@ -70,6 +70,7 @@ function system(input: RoadmapInput, lang: string): string {
    - Start at the earliest prerequisite that is not mastered or shows struggle ("struggling" status, "struggling"/"unclear" encounters, open questions).
    - Steps in <done_steps> are finished: never repeat them; continue after them.
    - When <suggested_order> is given, it is the order to teach in: prerequisites first, mastered concepts already left out, the first item is where the student is ready to start. Keep that order (you may group, split or leave out concepts the goal does not need), and use the concept names from it. <prerequisites> says which concept needs which; <key_notes> is what the student has already read or highlighted — build on it in the prompt drafts ("You read that…").
+   - <preferences> is what the student asked this roadmap to cover. Never teach a concept listed under skip (not even as a side topic); start with the focus concepts (after any prerequisite they need, as <suggested_order> already shows), and let the goal follow the student's words.
    - startReason: one sentence to the student ("you"), citing the evidence, e.g. "You already handle X; you stumbled on Y twice, so we start there."
    - offerPlacement: true only when there is no evidence at all (no mastery, encounters or done steps).
 3. Time: if the deadline is within 2 days or little time is available, keep only the highest-yield steps (estimatedMinutes must fit the time available) and say so in startReason.
@@ -105,6 +106,7 @@ function user(input: RoadmapInput, today: string): string {
     tag('done_steps', bullets(input.doneSteps)),
     tag('carry', bullets(input.carry)),
     ...structureTags(input),
+    ...preferencesTag(input),
   ].join('\n')
 }
 
@@ -138,6 +140,32 @@ function structureTags(input: RoadmapInput): string[] {
     tag('key_notes', bullets(notes)),
     tag('suggested_order', order.join('\n') || '(none)'),
   ]
+}
+
+/** What the student asked the roadmap to cover (adjust_roadmap), when they said anything. */
+function preferencesTag(input: RoadmapInput): string[] {
+  const p = input.preferences
+  if (!p) return []
+  const list = (xs: string[]) => xs.join(', ') || '(none)'
+  return [
+    tag(
+      'preferences',
+      `student said: ${p.instruction}\nfocus: ${list(p.focus)}\nskip: ${list(p.skip)}`,
+    ),
+  ]
+}
+
+/** Learn steps that teach a concept the student asked to skip. */
+export function skipIssues(plan: LlmRoadmap, input: RoadmapInput): string[] {
+  const skip = (input.preferences?.skip ?? []).map(norm)
+  if (skip.length === 0) return []
+  const issues: string[] = []
+  plan.items.forEach((item, i) => {
+    if (item.kind !== 'learn') return
+    const hit = item.concepts.find((c) => skip.includes(norm(c)))
+    if (hit) issues.push(`items.${i}: teaches "${hit}", which the student asked to skip`)
+  })
+  return issues
 }
 
 /**
@@ -243,7 +271,7 @@ export function finalizeRoadmap(plan: LlmRoadmap, input: RoadmapInput, lang: str
 export const roadmapPrompt: PromptSpec<RoadmapInput, LlmRoadmap, RoadmapPlan> = {
   id: 'P3',
   task: 'buildRoadmap',
-  version: 3,
+  version: 4,
   tier: 'reason',
   temperature: 0.3,
   maxOutputTokens: 6000,
@@ -258,7 +286,7 @@ export const roadmapPrompt: PromptSpec<RoadmapInput, LlmRoadmap, RoadmapPlan> = 
     return { system: system(input, lang), user: user(input, ctx.today) }
   },
   check(plan, input) {
-    const issues: string[] = [...orderIssues(plan, input)]
+    const issues: string[] = [...orderIssues(plan, input), ...skipIssues(plan, input)]
     plan.items.forEach((item, i) => {
       if (item.kind !== 'learn') return
       const words = checkStudentPrompt(item.promptDraft, {

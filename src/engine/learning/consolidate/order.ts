@@ -42,6 +42,11 @@ export interface StudyOrderInput {
   noteCounts?: ReadonlyMap<string, number>
   /** Concept ids to leave out entirely (e.g. the student said "not this"). */
   exclude?: ReadonlySet<string>
+  /**
+   * Concept ids the student wants first ("I want this"). They and their unmet prerequisites move
+   * ahead of everything else; prerequisites still come before the concepts that need them.
+   */
+  emphasise?: ReadonlySet<string>
 }
 
 /** Not-yet-mastered concepts in the order to teach them; the first is the place to start. */
@@ -67,8 +72,10 @@ export function studyOrder(input: StudyOrderInput): Concept[] {
   const ready = tree.filter((c) => (waiting.get(c.id) ?? 0) === 0)
   const sorted: Concept[] = []
   const done = new Set<string>()
+  const first = wantedFirst(input.emphasise, prereqs)
+  const key = (c: Concept) => (first.has(c.id) ? 0 : 1)
   while (ready.length > 0) {
-    ready.sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0))
+    ready.sort((a, b) => key(a) - key(b) || (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0))
     const c = ready.shift() as Concept
     if (done.has(c.id)) continue
     done.add(c.id)
@@ -82,4 +89,20 @@ export function studyOrder(input: StudyOrderInput): Concept[] {
   }
   for (const c of tree) if (!done.has(c.id)) sorted.push(c) // a cycle: never drop a concept
   return sorted.filter(teachable)
+}
+
+/** Emphasised concepts plus everything they need (transitively), so prerequisites lead the way. */
+function wantedFirst(
+  emphasise: ReadonlySet<string> | undefined,
+  prereqs: ReadonlyMap<string, ReadonlySet<string>>,
+): Set<string> {
+  const out = new Set<string>()
+  const stack = [...(emphasise ?? [])]
+  while (stack.length > 0) {
+    const id = stack.pop() as string
+    if (out.has(id)) continue
+    out.add(id)
+    stack.push(...(prereqs.get(id) ?? []))
+  }
+  return out
 }

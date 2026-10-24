@@ -60,6 +60,65 @@ describe('roadmap structure from the notes', () => {
     expect(carboNotes?.[0]).toBe('Tertiary carbocations are the most stable')
   })
 
+  it('follows the study preferences: skipped topics leave the order, focus leads it', () => {
+    const { repos, subject, topic, sn1 } = seed()
+    const kinetics = repos.concepts.upsert({ subjectId: subject.id, name: 'Kinetics' })
+    repos.notes.add({
+      subjectId: subject.id,
+      conceptId: kinetics.id,
+      encounterId: null,
+      kind: 'fact',
+      text: 'Rate = k[A]',
+      source: SOURCE,
+    })
+    const concepts = () => repos.concepts.listBySubject(subject.id)
+    expect(roadmapStructure(repos, subject.id, concepts()).suggestedOrder).toEqual([
+      'Carbocations',
+      'SN1',
+      'Kinetics',
+    ])
+    repos.subjects.setStudyPreferences(subject.id, {
+      instruction: 'kinetics first, skip substitution',
+      focus: [kinetics.id],
+      skip: [topic.id],
+      focusNames: ['Arrhenius'],
+      skipNames: [],
+      updatedAt: '2026-10-25T09:00:00.000Z',
+    })
+    const s = roadmapStructure(repos, subject.id, concepts())
+    expect(s.suggestedOrder).toEqual(['Kinetics'])
+    expect(s.preferences).toEqual({
+      instruction: 'kinetics first, skip substitution',
+      focus: ['Kinetics', 'Arrhenius'],
+      skip: ['Substitution'],
+    })
+    repos.subjects.setStudyPreferences(subject.id, {
+      instruction: 'SN1 first',
+      focus: [sn1.id],
+      skip: [],
+      focusNames: [],
+      skipNames: [],
+      updatedAt: '2026-10-25T09:00:00.000Z',
+    })
+    expect(roadmapStructure(repos, subject.id, concepts()).suggestedOrder).toEqual([
+      'Carbocations',
+      'SN1',
+      'Kinetics',
+    ])
+    const bare = repos.subjects.create({ name: 'Biology' })
+    repos.subjects.setStudyPreferences(bare.id, {
+      instruction: 'cells only',
+      focus: [],
+      skip: [],
+      focusNames: ['Cells'],
+      skipNames: [],
+      updatedAt: '2026-10-25T09:00:00.000Z',
+    })
+    expect(roadmapStructure(repos, bare.id, [])).toEqual({
+      preferences: { instruction: 'cells only', focus: ['Cells'], skip: [] },
+    })
+  })
+
   it('travels in the roadmap context, and stays empty for a subject without concepts', () => {
     const { repos, subject } = seed()
     const ctx = assembleRoadmapContext(repos, {

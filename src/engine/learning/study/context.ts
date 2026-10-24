@@ -7,8 +7,9 @@
  */
 import type { Concept, Note, Quiz, Subject } from '@shared/domain'
 import type { RoadmapInput } from '../../brain-contract'
-import type { Repos } from '../../contracts'
+import type { Repos, StudyPreferences } from '../../contracts'
 import { studyOrder } from '../consolidate/order'
+import { withDescendants } from './preferences'
 import { isLearn } from './roadmap-ops'
 import { head, languageOf, norm, profileText, uniqueNames } from './text'
 
@@ -104,25 +105,38 @@ export function assembleRoadmapContext(repos: Repos, req: ContextRequest): Roadm
   }
 }
 
-type Structure = Pick<RoadmapInput, 'tree' | 'edges' | 'keyNotes' | 'suggestedOrder'>
+type Structure = Pick<
+  RoadmapInput,
+  'tree' | 'edges' | 'keyNotes' | 'suggestedOrder' | 'preferences'
+>
 
 /**
  * The subject's structure for P3: the study order (prerequisites first, mastered skipped), the
  * tree around it (≤ 40 concepts, the ordered ones and their ancestors first), the edges between
  * them, and up to 3 key notes per concept (highlights and the student's own edits first).
+ * The student's study preferences (adjust_roadmap) shape the order: skipped concepts and what
+ * sits under them leave it, focus concepts and their prerequisites lead it.
  */
 export function roadmapStructure(
   repos: Repos,
   subjectId: string,
   concepts: readonly Concept[],
 ): Structure {
-  if (concepts.length === 0) return {}
+  const prefs = repos.subjects.studyPreferences(subjectId)
+  const preferences = prefs ? preferenceNames(prefs, concepts) : undefined
+  if (concepts.length === 0) return preferences ? { preferences } : {}
   const notes = repos.notes.list({ subjectId })
   const noteCounts = new Map<string, number>()
   for (const n of notes)
     if (n.conceptId) noteCounts.set(n.conceptId, (noteCounts.get(n.conceptId) ?? 0) + 1)
   const edges = repos.edges.list(subjectId)
-  const order = studyOrder({ concepts, edges, noteCounts }).slice(0, ORDER_LIMIT)
+  const order = studyOrder({
+    concepts,
+    edges,
+    noteCounts,
+    exclude: prefs ? withDescendants(prefs.skip, concepts) : undefined,
+    emphasise: prefs ? withDescendants(prefs.focus, concepts) : undefined,
+  }).slice(0, ORDER_LIMIT)
 
   const byId = new Map(concepts.map((c) => [c.id, c]))
   const keep = new Set<string>()
@@ -161,6 +175,22 @@ export function roadmapStructure(
       .map((e) => ({ fromId: e.fromId, toId: e.toId })),
     keyNotes,
     suggestedOrder: order.map((c) => c.name),
+    ...(preferences ? { preferences } : {}),
+  }
+}
+
+/** The stored wishes as names for P3: matched concepts plus the wishes that matched none. */
+function preferenceNames(
+  prefs: StudyPreferences,
+  concepts: readonly Concept[],
+): NonNullable<RoadmapInput['preferences']> {
+  const name = new Map(concepts.map((c) => [c.id, c.name]))
+  const names = (ids: string[], extra: string[]) =>
+    uniqueNames([...ids.flatMap((id) => name.get(id) ?? []), ...extra])
+  return {
+    instruction: prefs.instruction,
+    focus: names(prefs.focus, prefs.focusNames),
+    skip: names(prefs.skip, prefs.skipNames),
   }
 }
 

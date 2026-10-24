@@ -24,7 +24,7 @@ import {
 } from '@shared/domain'
 import type { SearchHit, UsageSummary } from '@shared/state'
 import { type Clock, systemClock } from '../clock'
-import type { LlmCallRecord, Repos } from '../contracts'
+import type { LlmCallRecord, Repos, StudyPreferences } from '../contracts'
 import { newId } from '../ids'
 import { foldConcepts, relinkAction, survivorParent } from '../store/concept-fold'
 import { conceptKey, isNicerName } from '../store/concept-key'
@@ -54,6 +54,7 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
   const encounters = new Map<Id, Encounter>()
   const notes = new Map<Id, Note>()
   const consolidated = new Map<Id, string>()
+  const preferences = new Map<Id, StudyPreferences>()
   let edges: ConceptEdge[] = []
   const episodes = new Map<Id, Episode>()
   const roadmaps = new Map<Id, Roadmap>()
@@ -216,11 +217,18 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
           if (JSON.stringify(n.action ?? null).includes(`"${id}"`)) nudges.delete(n.id)
         subjects.delete(id)
         consolidated.delete(id)
+        preferences.delete(id)
       },
       consolidatedAt: (id) => consolidated.get(id) ?? null,
       markConsolidated(id, at) {
         must(subjects.get(id), `subject ${id}`)
         consolidated.set(id, at)
+      },
+      studyPreferences: (id) => clone(preferences.get(id) ?? null),
+      setStudyPreferences(id, prefs) {
+        must(subjects.get(id), `subject ${id}`)
+        if (prefs) preferences.set(id, clone(prefs))
+        else preferences.delete(id)
       },
     },
 

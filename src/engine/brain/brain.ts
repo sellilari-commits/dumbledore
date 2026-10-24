@@ -20,6 +20,8 @@ import {
   ImproveInput,
   NudgeInput,
   type NudgeOutput,
+  PreferencesInput,
+  type PreferencesOutput,
   ProfileInput,
   type ProfileOutput,
   type PromptWithTip,
@@ -63,6 +65,7 @@ import { suggestPrompt } from './prompts/p09-suggest'
 import { nudgePrompt } from './prompts/p11-nudge'
 import { profilePrompt } from './prompts/p12-profile'
 import { consolidatePrompt } from './prompts/p13-consolidate'
+import { preferencesPrompt } from './prompts/p14-preferences'
 
 export interface BrainDeps {
   clock?: Clock
@@ -197,6 +200,9 @@ export function createBrain(deps: BrainDeps = {}): BrainHandle {
 
     consolidate: (raw: ConsolidateInput, opts?: CallOptions): Promise<ConsolidateOutput> =>
       runStructured(runner, consolidatePrompt, ConsolidateInput.parse(raw), opts),
+
+    mapPreferences: (raw: PreferencesInput, opts?: CallOptions): Promise<PreferencesOutput> =>
+      runStructured(runner, preferencesPrompt, PreferencesInput.parse(raw), opts),
 
     buildRoadmap: (raw: RoadmapInput, opts?: CallOptions): Promise<RoadmapPlan> =>
       runStructured(runner, roadmapPrompt, RoadmapInput.parse(raw), opts),

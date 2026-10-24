@@ -190,6 +190,30 @@ export const ConsolidateOutput = z.object({
 })
 export type ConsolidateOutput = z.infer<typeof ConsolidateOutput>
 
+// ─── P14 Study preferences ──────────────────────────────────────────────────────────────────
+
+/** The student's words about a subject's roadmap, to map onto its concept tree. */
+export const PreferencesInput = z.object({
+  subject: z.object({ name: z.string(), goal: z.string().nullable() }),
+  language: Lang,
+  concepts: z.array(
+    z.object({ id: z.string(), name: z.string(), parentId: z.string().nullable() }),
+  ),
+  current: z.object({ focus: z.array(z.string()), skip: z.array(z.string()) }),
+  instruction: z.string(),
+})
+export type PreferencesInput = z.infer<typeof PreferencesInput>
+
+/** Concept ids (unvalidated) plus wishes that match no concept; `replace` = start over. */
+export const PreferencesOutput = z.object({
+  replace: z.boolean(),
+  focus: z.array(z.string()),
+  skip: z.array(z.string()),
+  focusNames: z.array(z.string()),
+  skipNames: z.array(z.string()),
+})
+export type PreferencesOutput = z.infer<typeof PreferencesOutput>
+
 // ─── P3 Roadmapper ──────────────────────────────────────────────────────────────────────────
 
 export const RoadmapInput = z.object({
@@ -226,6 +250,10 @@ export const RoadmapInput = z.object({
   keyNotes: z.array(z.object({ conceptId: z.string(), text: z.string() })).optional(),
   /** Concept names in the order to teach, computed in code: prerequisites first, mastered skipped. */
   suggestedOrder: z.array(z.string()).optional(),
+  /** What the student said this roadmap should and should not cover (adjust_roadmap). */
+  preferences: z
+    .object({ instruction: z.string(), focus: z.array(z.string()), skip: z.array(z.string()) })
+    .optional(),
 })
 export type RoadmapInput = z.infer<typeof RoadmapInput>
 
@@ -450,6 +478,8 @@ export interface Brain {
   extract(input: ExtractInput, opts?: CallOptions): Promise<ExtractOutput>
   /** P13: restructure one subject's notes and concept tree (summaries, merges, topics, edges). */
   consolidate(input: ConsolidateInput, opts?: CallOptions): Promise<ConsolidateOutput>
+  /** P14: maps "on this subject I want X, not Y" onto the subject's concept tree. */
+  mapPreferences(input: PreferencesInput, opts?: CallOptions): Promise<PreferencesOutput>
   buildRoadmap(input: RoadmapInput, opts?: CallOptions): Promise<RoadmapPlan>
   writeStep(input: StepInput, opts?: CallOptions): Promise<StepOutput>
   makeCheckpoint(input: CheckpointInput, opts?: CallOptions): Promise<QuestionDraft[]>

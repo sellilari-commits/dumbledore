@@ -3,7 +3,7 @@
  * concept that the target already has (same conceptKey) into the target's concept.
  */
 import type { Subject } from '@shared/domain'
-import type { SubjectRepo } from '../../contracts'
+import type { StudyPreferences, SubjectRepo } from '../../contracts'
 import { newId } from '../../ids'
 import { codec, insertSql, normalizeName, type Row, updateSql } from '../codec'
 import { conceptKey } from '../concept-key'
@@ -113,6 +113,19 @@ export function createSubjectRepo(ctx: StoreCtx): SubjectRepo {
     markConsolidated(id, at) {
       must(row(id), `subject ${id}`)
       stmt('UPDATE subjects SET consolidated_at = ? WHERE id = ?').run(at, id)
+    },
+
+    studyPreferences(id) {
+      const json = stmt('SELECT study_prefs FROM subjects WHERE id = ?').pluck().get(id)
+      return typeof json === 'string' ? (JSON.parse(json) as StudyPreferences) : null
+    },
+
+    setStudyPreferences(id, prefs) {
+      must(row(id), `subject ${id}`)
+      stmt('UPDATE subjects SET study_prefs = ? WHERE id = ?').run(
+        prefs ? JSON.stringify(prefs) : null,
+        id,
+      )
     },
   }
   return repo

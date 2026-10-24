@@ -106,6 +106,23 @@ export interface SubjectRepo {
   /** When notes consolidation last ran for the subject (docs/NOTES.md §5); null = never. */
   consolidatedAt(id: Id): IsoDate | null
   markConsolidated(id: Id, at: IsoDate): void
+  /** What the student wants the subject's roadmap to cover; null = no wishes yet. */
+  studyPreferences(id: Id): StudyPreferences | null
+  setStudyPreferences(id: Id, prefs: StudyPreferences | null): void
+}
+
+/**
+ * A subject's study preferences (adjust_roadmap): the student's words, mapped onto the concept
+ * tree by the LLM. Focus concepts come first in the roadmap (after their prerequisites), skipped
+ * ones are left out; the *Names lists hold wishes that match no concept yet.
+ */
+export interface StudyPreferences {
+  instruction: string
+  focus: Id[]
+  skip: Id[]
+  focusNames: string[]
+  skipNames: string[]
+  updatedAt: IsoDate
 }
 
 export interface ConceptRepo {

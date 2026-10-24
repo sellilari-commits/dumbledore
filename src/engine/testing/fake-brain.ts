@@ -22,6 +22,8 @@ import type {
   ImproveInput,
   NudgeInput,
   NudgeOutput,
+  PreferencesInput,
+  PreferencesOutput,
   ProfileInput,
   ProfileOutput,
   PromptWithTip,
@@ -127,6 +129,22 @@ export class FakeBrain implements Brain {
         }
       }),
     }
+  }
+
+  /** Concepts named in the instruction: after "not"/"skip"/"without" → skip, else → focus. */
+  async mapPreferences(input: PreferencesInput, opts?: CallOptions): Promise<PreferencesOutput> {
+    this.record('mapPreferences', input)
+    if (this.overrides.mapPreferences) return this.overrides.mapPreferences(input, opts)
+    const text = input.instruction.toLowerCase()
+    const focus: string[] = []
+    const skip: string[] = []
+    for (const c of input.concepts) {
+      const at = text.indexOf(c.name.toLowerCase())
+      if (at < 0) continue
+      if (/\b(not|skip|without|except)\b[^,.;]*$/.test(text.slice(0, at))) skip.push(c.id)
+      else focus.push(c.id)
+    }
+    return { replace: false, focus, skip, focusNames: [], skipNames: [] }
   }
 
   /** Summaries from each concept's first note; no structural changes. */

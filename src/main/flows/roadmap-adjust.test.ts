@@ -1,20 +1,26 @@
+import type { PreferencesInput, PreferencesOutput } from '@engine/brain-contract'
 import type { Repos } from '@engine/contracts'
 import { createEngineBus } from '@engine/events'
-import type { Roadmap, Subject } from '@shared/domain'
+import { createMemoryRepos } from '@engine/testing/memory-repos'
 import type { StartSessionInput, StepInstruction } from '@shared/state'
 import { describe, expect, it, vi } from 'vitest'
-import { adjustedGoal, RoadmapAdjust, type RoadmapAdjustDeps } from './roadmap-adjust'
+import { RoadmapAdjust } from './roadmap-adjust'
 import { Thinking } from './thinking'
 
-const CHEM = { id: 'sub_chem', name: 'Chemistry', goal: 'Pass the midterm' } as Subject
+const NOW = '2026-10-25T09:00:00.000Z'
 
-function setup(opts: { roadmapGoal?: string | null; step?: StepInstruction } = {}) {
-  const subjects = new Map([[CHEM.id, { ...CHEM }]])
-  const update = vi.fn((id: string, patch: Partial<Subject>) => {
-    const next = { ...(subjects.get(id) as Subject), ...patch }
-    subjects.set(id, next)
-    return next
-  })
+function setup(
+  opts: {
+    roadmapGoal?: string | null
+    step?: StepInstruction
+    mapped?: (input: PreferencesInput) => PreferencesOutput
+    failMapping?: boolean
+  } = {},
+) {
+  const repos = createMemoryRepos()
+  const chem = repos.subjects.create({ name: 'Chemistry', goal: 'Pass the midterm' })
+  const sn1 = repos.concepts.upsert({ subjectId: chem.id, name: 'SN1' })
+  const sn2 = repos.concepts.upsert({ subjectId: chem.id, name: 'SN2' })
   const starts: StartSessionInput[] = []
   const step =
     opts.step ??
@@ -23,7 +29,17 @@ function setup(opts: { roadmapGoal?: string | null; step?: StepInstruction } = {
   const bus = createEngineBus()
   const changes: unknown[] = []
   bus.on('memory:changed', (c) => changes.push(c))
-  const deps: RoadmapAdjustDeps = {
+  const mapInputs: PreferencesInput[] = []
+  const roadmaps = {
+    ...repos.roadmaps,
+    getActive: () =>
+      opts.roadmapGoal === null
+        ? null
+        : ({ goal: opts.roadmapGoal ?? 'SN1 and SN2' } as ReturnType<
+            Repos['roadmaps']['getActive']
+          >),
+  }
+  const adjust = new RoadmapAdjust({
     study: {
       start: vi.fn(async (input: StartSessionInput) => {
         starts.push(input)
@@ -31,58 +47,92 @@ function setup(opts: { roadmapGoal?: string | null; step?: StepInstruction } = {
       }),
       pasteFailed,
     },
-    repos: {
-      subjects: { get: (id: string) => subjects.get(id) ?? null, update },
-      roadmaps: {
-        getActive: () =>
-          opts.roadmapGoal === null
-            ? null
-            : ({ goal: opts.roadmapGoal ?? 'SN1 and SN2' } as Roadmap),
+    repos: { ...repos, roadmaps } as Repos,
+    brain: {
+      mapPreferences: async (input) => {
+        mapInputs.push(input)
+        if (opts.failMapping) throw new Error('offline')
+        return (
+          opts.mapped?.(input) ?? {
+            replace: false,
+            focus: [sn1.id],
+            skip: [sn2.id],
+            focusNames: [],
+            skipNames: [],
+          }
+        )
       },
-    } as unknown as Pick<Repos, 'subjects' | 'roadmaps'>,
+    },
     perception: { aiChat: () => null, chatExcerpt: () => '', pageContext: () => '' },
     thinking: new Thinking(bus),
     bus,
-  }
-  return { adjust: new RoadmapAdjust(deps), starts, update, pasteFailed, changes }
+    now: () => NOW,
+  })
+  return { adjust, repos, chem, sn1, sn2, starts, pasteFailed, changes, mapInputs }
 }
 
 describe('RoadmapAdjust (adjust_roadmap from the double-tap chat)', () => {
-  it('records the wish as the subject goal and replans without pasting', async () => {
+  it('stores the mapped wishes as study preferences and replans without pasting', async () => {
     const t = setup()
     await t.adjust.run({
       type: 'adjust_roadmap',
-      subjectId: CHEM.id,
+      subjectId: t.chem.id,
       instruction: ' SN1, not SN2 ',
     })
-    expect(t.update).toHaveBeenCalledWith(CHEM.id, { goal: 'SN1, not SN2' })
-    expect(t.starts).toEqual([
-      { subjectId: CHEM.id, goal: "SN1 and SN2. Student's wish: SN1, not SN2", question: null },
-    ])
+    expect(t.repos.subjects.studyPreferences(t.chem.id)).toEqual({
+      instruction: 'SN1, not SN2',
+      focus: [t.sn1.id],
+      skip: [t.sn2.id],
+      focusNames: [],
+      skipNames: [],
+      updatedAt: NOW,
+    })
+    // The subject's own goal is kept; the roadmap keeps its goal and gets the wishes structurally.
+    expect(t.repos.subjects.get(t.chem.id)?.goal).toBe('Pass the midterm')
+    expect(t.starts).toEqual([{ subjectId: t.chem.id, goal: 'SN1 and SN2', question: null }])
     expect(t.pasteFailed).toHaveBeenCalledWith('itm_1')
-    expect(t.changes).toContainEqual({ scope: 'subjects', ids: [CHEM.id] })
+    expect(t.changes).toContainEqual({ scope: 'subjects', ids: [t.chem.id] })
   })
 
-  it('falls back to the subject goal, then its name, when there is no roadmap', async () => {
-    const t = setup({ roadmapGoal: null })
-    await t.adjust.run({ type: 'adjust_roadmap', subjectId: CHEM.id, instruction: 'only kinetics' })
-    expect(t.starts[0]?.goal).toBe("Pass the midterm. Student's wish: only kinetics")
+  it('gives P14 the concept tree, the stored wishes and the new words', async () => {
+    const t = setup()
+    await t.adjust.run({ type: 'adjust_roadmap', subjectId: t.chem.id, instruction: 'SN1 only' })
+    await t.adjust.run({
+      type: 'adjust_roadmap',
+      subjectId: t.chem.id,
+      instruction: 'also kinetics',
+    })
+    expect(t.mapInputs[0]?.concepts.map((c) => c.name)).toEqual(['SN1', 'SN2'])
+    expect(t.mapInputs[1]?.current).toEqual({ focus: [t.sn1.id], skip: [t.sn2.id] })
+    expect(t.repos.subjects.studyPreferences(t.chem.id)?.instruction).toBe(
+      'SN1 only · also kinetics',
+    )
+  })
+
+  it('still stores the words and replans when the mapping call fails', async () => {
+    const t = setup({ failMapping: true, roadmapGoal: null })
+    await t.adjust.run({
+      type: 'adjust_roadmap',
+      subjectId: t.chem.id,
+      instruction: 'only kinetics',
+    })
+    expect(t.repos.subjects.studyPreferences(t.chem.id)).toMatchObject({
+      instruction: 'only kinetics',
+      focus: [],
+      skip: [],
+    })
+    expect(t.starts[0]?.goal).toBe('Pass the midterm')
   })
 
   it('leaves a quiz or wait instruction alone and refuses unknown subjects or empty wishes', async () => {
     const t = setup({ step: { kind: 'wait', reason: 'Busy' } as StepInstruction })
-    await t.adjust.run({ type: 'adjust_roadmap', subjectId: CHEM.id, instruction: 'x' })
+    await t.adjust.run({ type: 'adjust_roadmap', subjectId: t.chem.id, instruction: 'x' })
     expect(t.pasteFailed).not.toHaveBeenCalled()
     await expect(
       t.adjust.run({ type: 'adjust_roadmap', subjectId: 'sub_gone', instruction: 'x' }),
     ).rejects.toThrow(/no longer exists/)
     await expect(
-      t.adjust.run({ type: 'adjust_roadmap', subjectId: CHEM.id, instruction: '  ' }),
+      t.adjust.run({ type: 'adjust_roadmap', subjectId: t.chem.id, instruction: '  ' }),
     ).rejects.toThrow(/roadmap should cover/)
-  })
-
-  it('adjustedGoal does not repeat a wish that is the goal itself', () => {
-    expect(adjustedGoal('SN1', 'sn1')).toBe('sn1')
-    expect(adjustedGoal('', 'SN1')).toBe('SN1')
   })
 })

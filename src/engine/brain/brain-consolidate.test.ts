@@ -1,6 +1,6 @@
 import type { ConsolidateInput, RoadmapInput } from '@engine/brain-contract'
 import { describe, expect, it } from 'vitest'
-import { type LlmRoadmap, orderIssues, roadmapPrompt } from './prompts/p03-roadmap'
+import { type LlmRoadmap, orderIssues, roadmapPrompt, skipIssues } from './prompts/p03-roadmap'
 import { buildConsolidateUser, finalizeConsolidate } from './prompts/p13-consolidate'
 import { brainHarness } from './testing/harness'
 
@@ -164,5 +164,38 @@ describe('P3 with the subject structure', () => {
       'items.1: teaches "Carbocations" after "SN1"; follow <suggested_order>',
     ])
     expect(orderIssues(plan([step('x', ['Something else'])]), roadmap)).toEqual([])
+  })
+
+  it("shows the student's wishes and asks for a repair when a step teaches a skipped concept", () => {
+    const withPrefs = {
+      ...roadmap,
+      preferences: { instruction: 'SN1, not SN2', focus: ['SN1'], skip: ['SN2'] },
+    }
+    const built = roadmapPrompt.build(withPrefs, { onDevice: false, today: '2026-10-25 (Sunday)' })
+    expect(built.user).toContain(
+      '<preferences>\nstudent said: SN1, not SN2\nfocus: SN1\nskip: SN2\n</preferences>',
+    )
+    expect(built.system).toContain('Never teach a concept listed under skip')
+    const learn = (concepts: string[]) => ({
+      kind: 'learn' as const,
+      title: 't',
+      objective: 'x',
+      concepts,
+      move: 'intuition' as const,
+      promptDraft: 'Explain it.',
+    })
+    const plan = (items: LlmRoadmap['items']): LlmRoadmap => ({
+      title: 'T',
+      goal: 'G',
+      startReason: 'R',
+      offerPlacement: false,
+      estimatedMinutes: 10,
+      items,
+      nextMilestone: null,
+    })
+    expect(skipIssues(plan([learn(['SN1']), learn(['sn2'])]), withPrefs)).toEqual([
+      'items.1: teaches "sn2", which the student asked to skip',
+    ])
+    expect(skipIssues(plan([learn(['SN2'])]), roadmap)).toEqual([])
   })
 })

@@ -122,7 +122,14 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     writer,
     surfaces,
     overlay,
-    roadmapAdjust: new RoadmapAdjust({ study, repos, perception, thinking, bus }),
+    roadmapAdjust: new RoadmapAdjust({
+      study,
+      repos,
+      brain: services.brain,
+      perception,
+      thinking,
+      bus,
+    }),
   })
   const runAction = (action: Parameters<CoachActions['run']>[0]) => actions.run(action)
   sessions.bindActions(runAction)

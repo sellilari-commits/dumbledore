@@ -4,6 +4,30 @@ import { type ConformanceTarget, encounterInput, episode, quiz, roadmap } from '
 
 export function subjectSuite(t: () => ConformanceTarget): void {
   describe('subjects', () => {
+    it('stores, replaces and clears study preferences; a removed subject takes them along', () => {
+      const { repos } = t()
+      const s = repos.subjects.create({ name: 'Chemistry' })
+      expect(repos.subjects.studyPreferences(s.id)).toBeNull()
+      const prefs = {
+        instruction: 'SN1, not SN2',
+        focus: ['con_1'],
+        skip: ['con_2'],
+        focusNames: [],
+        skipNames: [],
+        updatedAt: '2026-10-25T09:00:00.000Z',
+      }
+      repos.subjects.setStudyPreferences(s.id, prefs)
+      expect(repos.subjects.studyPreferences(s.id)).toEqual(prefs)
+      repos.subjects.setStudyPreferences(s.id, { ...prefs, focus: [] })
+      expect(repos.subjects.studyPreferences(s.id)?.focus).toEqual([])
+      repos.subjects.setStudyPreferences(s.id, null)
+      expect(repos.subjects.studyPreferences(s.id)).toBeNull()
+      repos.subjects.setStudyPreferences(s.id, prefs)
+      repos.subjects.remove(s.id)
+      expect(repos.subjects.studyPreferences(s.id)).toBeNull()
+      expect(() => repos.subjects.setStudyPreferences('sub_missing', prefs)).toThrow(/not found/)
+    })
+
     it('creates with defaults, trimmed name and clock timestamps', () => {
       const { repos, clock } = t()
       const s = repos.subjects.create({ name: '  Organic Chemistry ' })

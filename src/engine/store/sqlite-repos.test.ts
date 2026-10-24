@@ -119,6 +119,37 @@ describe('createSqliteRepos', () => {
     expect(cols).toContain('summary_pinned')
   })
 
+  it('upgrades a v2 database to v3: subject kept, study preferences start empty and persist', () => {
+    const path = tempDb()
+    mkdirSync(dirname(path), { recursive: true })
+    const raw = new Database(path)
+    migrate(raw, '2026-10-01T00:00:00.000Z', MIGRATIONS.slice(0, 2))
+    const at = '2026-10-01T00:00:00.000Z'
+    raw
+      .prepare(
+        `INSERT INTO subjects (id, name, name_key, emoji, color, description, goal, deadline, status, focus, created_at, updated_at)
+         VALUES ('sub_v2', 'Chemistry', 'chemistry', '📘', 'default', '', NULL, NULL, 'active', 'normal', ?, ?)`,
+      )
+      .run(at, at)
+    raw.close()
+
+    const repos = make(path)
+    expect(currentSchemaVersion(repos.db)).toBe(LATEST_SCHEMA_VERSION)
+    expect(repos.subjects.get('sub_v2')?.name).toBe('Chemistry')
+    expect(repos.subjects.studyPreferences('sub_v2')).toBeNull()
+    const prefs = {
+      instruction: 'SN1, not SN2',
+      focus: ['con_a'],
+      skip: [],
+      focusNames: [],
+      skipNames: ['Kinetics'],
+      updatedAt: at,
+    }
+    repos.subjects.setStudyPreferences('sub_v2', prefs)
+    repos.db.close()
+    expect(make(path).subjects.studyPreferences('sub_v2')).toEqual(prefs)
+  })
+
   it('rolls back a transaction that throws', () => {
     const repos = make()
     expect(() =>

@@ -19,6 +19,37 @@ const concept = (id: string, over: Partial<Concept> = {}): Concept => ({
 const names = (cs: Concept[]) => cs.map((c) => c.id)
 
 describe('studyOrder', () => {
+  it('puts emphasised concepts first, after their own prerequisites, and leaves out excluded ones', () => {
+    const concepts = [
+      concept('atoms'),
+      concept('bonds'),
+      concept('carbocation'),
+      concept('sn1'),
+      concept('sn2'),
+    ]
+    const edges = [
+      { fromId: 'carbocation', toId: 'sn1' },
+      { fromId: 'atoms', toId: 'bonds' },
+    ]
+    expect(names(studyOrder({ concepts, edges }))).toEqual([
+      'atoms',
+      'bonds',
+      'carbocation',
+      'sn1',
+      'sn2',
+    ])
+    expect(
+      names(
+        studyOrder({
+          concepts,
+          edges,
+          emphasise: new Set(['sn1']),
+          exclude: new Set(['sn2']),
+        }),
+      ),
+    ).toEqual(['carbocation', 'sn1', 'atoms', 'bonds'])
+  })
+
   it('puts prerequisites first, the tree order breaking ties', () => {
     const concepts = [
       concept('topic'),
