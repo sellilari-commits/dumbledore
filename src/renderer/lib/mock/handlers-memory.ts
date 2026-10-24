@@ -16,6 +16,7 @@ export type MemoryChannel =
   | 'notes.file'
   | 'concepts.update'
   | 'concepts.delete'
+  | 'concepts.openText'
   | 'encounters.delete'
 
 /** Each parent before its children, siblings by name (as memory-control.treeOrder). */
@@ -135,6 +136,12 @@ export const memoryHandlers: HandlerMap<MemoryChannel> = {
     db.edges = db.edges.filter((e) => e.fromId !== id && e.toId !== id)
     db.concepts = db.concepts.filter((c) => c.id !== id)
     ctx.changed('subjects', [concept.subjectId])
+  },
+
+  /** The browser preview has no files: it only says where the app would write the text. */
+  'concepts.openText': (ctx, id) => {
+    const concept = mustConcept(ctx, id)
+    return { path: `~/Library/Application Support/Dumbledore/exports/topics/${concept.id}.txt` }
   },
 
   'encounters.delete': (ctx, id) => {

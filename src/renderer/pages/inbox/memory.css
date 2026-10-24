@@ -319,6 +319,35 @@
   text-decoration-color: currentColor;
 }
 
+/* "All extracted text" at the end of a topic: a quiet link that opens a text file. */
+.mem-alltext {
+  all: unset;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+  color: var(--c-texSec);
+  cursor: pointer;
+  border-radius: var(--radius-control);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.mem-alltext:hover {
+  color: var(--c-texPri);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.mem-alltext:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+.mem-alltext:disabled {
+  cursor: progress;
+}
+
 .mem-unplaced {
   display: flex;
   flex-direction: column;

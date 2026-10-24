@@ -10,7 +10,7 @@ import { Button, Dialog, IconButton, Input, Textarea, toast } from '@renderer/de
 import { errorToast } from '@renderer/lib/errors'
 import { useAction } from '@renderer/lib/queries'
 import type { Concept } from '@shared/domain'
-import { ChevronRight, Pencil, Trash2 } from 'lucide-react'
+import { ChevronRight, FileText, Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { PageGroupView, SourceBlock } from './MemoryNotes'
 import { notesCount, type SubjectSection, sourcesCount, type TopicNode } from './memory-model'
@@ -81,6 +81,26 @@ function BigPicture({ concept }: { concept: Concept }) {
   )
 }
 
+/**
+ * "All extracted text": main writes everything captured about the topic (screen text by source,
+ * what was extracted, notes) to a text file and opens it (concepts.openText).
+ */
+function AllTextLink({ concept }: { concept: Concept }) {
+  const open = useAction('concepts.openText', { onError: report })
+  return (
+    <button
+      type="button"
+      className="mem-alltext"
+      disabled={open.isPending}
+      onClick={() => open.mutate(concept.id)}
+      aria-label={`All extracted text about ${concept.name}`}
+    >
+      <FileText size={12} strokeWidth={1.75} aria-hidden />
+      All extracted text
+    </button>
+  )
+}
+
 function TopicRow({ topic, forceOpen }: { topic: TopicNode; forceOpen: boolean }) {
   const { concept } = topic
   const [open, setOpen] = useState(true)
@@ -101,7 +121,6 @@ function TopicRow({ topic, forceOpen }: { topic: TopicNode; forceOpen: boolean }
   const expanded = open || forceOpen
   const count = topic.pages.reduce((n, p) => n + p.notes.length, 0)
   const summary = concept.summary.trim()
-  const hasBody = summary !== '' || topic.pages.length > 0
   const saveName = () => {
     const next = name.trim()
     if (!next || next === concept.name) {
@@ -118,7 +137,6 @@ function TopicRow({ topic, forceOpen }: { topic: TopicNode; forceOpen: boolean }
           className="mem-topic__toggle"
           aria-expanded={expanded}
           aria-label={`${expanded ? 'Fold' : 'Open'} ${concept.name}`}
-          disabled={!hasBody}
           onClick={() => setOpen((o) => !o)}
         >
           <ChevronRight size={14} strokeWidth={1.75} className="mem-topic__chev" />
@@ -164,7 +182,7 @@ function TopicRow({ topic, forceOpen }: { topic: TopicNode; forceOpen: boolean }
           </IconButton>
         </span>
       </div>
-      {expanded && hasBody && (
+      {expanded && (
         <div className="mem-topic__body">
           {summary && <BigPicture concept={concept} />}
           {topic.pages.length > 0 && (
@@ -174,6 +192,7 @@ function TopicRow({ topic, forceOpen }: { topic: TopicNode; forceOpen: boolean }
               ))}
             </section>
           )}
+          <AllTextLink concept={concept} />
         </div>
       )}
       <Dialog

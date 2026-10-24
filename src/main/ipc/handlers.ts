@@ -4,10 +4,12 @@
  * wiring turns those into window events. Overlay actions that start work (clicks) return at once
  * and run in the background, so the overlay never waits on the LLM.
  */
+import { pathToFileURL } from 'node:url'
 import { assistantLink, usualAssistantFrom } from '@engine/perception/ai-chat/usual'
 import type { Settings } from '@shared/domain'
 import type { MemoryScope, OverlayAction } from '@shared/state'
 import { buildExport, writeExport } from '../data/export'
+import { buildTopicText, writeTopicText } from '../data/topic-text'
 import { MaterialsFlow } from '../flows/materials'
 import type { SecretKey } from '../services'
 import type { ShellCore } from '../shell'
@@ -35,7 +37,10 @@ export interface HandlerExtras {
   deleteAllData: () => Promise<void>
   /** File picker for study material; [] when cancelled. */
   pickMaterialFiles: () => Promise<string[]>
-  /** Opens a web address in the default browser (the student's AI, to explore a prompt). */
+  /**
+   * Opens a web address in the default browser (the student's AI, to explore a prompt), or a
+   * file:// address in its default app (a topic's extracted text).
+   */
   openExternal: (url: string) => Promise<void>
 }
 
@@ -234,6 +239,13 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
     'materials.add': async ({ subjectId }) => {
       const paths = await extras.pickMaterialFiles()
       return paths.length ? materials.add(subjectId, paths) : []
+    },
+    'concepts.openText': async (id) => {
+      const topic = buildTopicText(repos, id, services.clock.nowIso())
+      const path = writeTopicText(extras.exportDir, id, topic)
+      // A file:// address opens the file in the student's default text app.
+      await extras.openExternal(pathToFileURL(path).href)
+      return { path }
     },
     'encounters.delete': (id) => {
       const encounter = subjects.deleteEncounter(id)

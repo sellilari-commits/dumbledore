@@ -234,6 +234,10 @@ describe('IPC handlers', () => {
       summary: 'Two-step substitution',
     })
     expect(renamed.summary).toBe('Two-step substitution')
+    const topicText = await call('concepts.openText', concept.id)
+    expect(topicText.path).toMatch(/[/\\]topics[/\\].+\.txt$/)
+    expect(readFileSync(topicText.path, 'utf8')).toContain('all extracted text')
+    expect(calls.some((c) => c.startsWith('open:file://') && c.endsWith('.txt'))).toBe(true)
     await call('concepts.delete', concept.id)
     expect(repos.concepts.get(concept.id)).toBeNull()
     await call('encounters.delete', orgoEncounter.id)

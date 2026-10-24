@@ -145,6 +145,11 @@ export const ipcInvoke = {
   },
   'concepts.delete': { req: Id, res: Void },
   'encounters.delete': { req: Id, res: Void },
+  /**
+   * "All extracted text" of a topic (Memory page): main writes a text file with everything
+   * captured about it (screen text by source, extracted records, notes) and opens it.
+   */
+  'concepts.openText': { req: Id, res: z.object({ path: z.string() }) },
 
   // Study session (the shell performs pastes; see StepInstruction)
   'session.get': { req: Void, res: SessionState.nullable() },

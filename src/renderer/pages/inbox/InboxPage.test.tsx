@@ -7,7 +7,7 @@ import { useToasts } from '@renderer/design-system'
 import { renderWithApp } from '@renderer/lib/test-utils'
 import { AppSidebar } from '@renderer/surfaces/app/AppSidebar'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { InboxPage } from './InboxPage'
 
 const render = (scenario?: 'empty' | 'error') =>
@@ -46,6 +46,23 @@ describe('Memory page · By topic', () => {
     // The ChatGPT note has no url: its source is plain text, not a link.
     expect(within(topic).getByText('ChatGPT')).toBeTruthy()
     expect(within(topic).queryByRole('link', { name: 'ChatGPT' })).toBeNull()
+  })
+
+  it('ends each topic with a link that opens all the text extracted about it', async () => {
+    const r = render()
+    const topic = await topicRow('Carbocation stability')
+    const invoke = vi.spyOn(r.api, 'invoke')
+    const link = within(topic).getByRole('button', {
+      name: 'All extracted text about Carbocation stability',
+    })
+    expect(link.textContent).toBe('All extracted text')
+    fireEvent.click(link)
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith('concepts.openText', 'con_carbocation'))
+    // A topic with only a big picture gets the link too.
+    const plain = await topicRow('Electrophiles')
+    expect(
+      within(plain).getByRole('button', { name: 'All extracted text about Electrophiles' }),
+    ).toBeTruthy()
   })
 
   it('has no Keep / Ignore, no suggested subjects and no capture line', async () => {
