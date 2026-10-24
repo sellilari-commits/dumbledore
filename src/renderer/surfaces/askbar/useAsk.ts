@@ -1,6 +1,7 @@
 /**
  * Ask bar chat logic for thread 'ask': the stored conversation since the last "New chat"
- * (`chat.history`, reloaded whenever the bar comes back), `ask.submit` with the reply streamed
+ * (`chat.history`, reloaded whenever the bar comes back), `ask.submit` (with the selected topic's
+ * `subjectId`) with the reply streamed
  * from 'chat.delta' while it is written, action chips per reply (`coach.runAction`, then the bar
  * closes) and "New chat". One question at a time; a reply that lands after "New chat" is dropped.
  */
@@ -32,8 +33,11 @@ export interface AskController {
   messages: AskMessage[]
   pending: AskPending | null
   error: AskError | null
-  /** Sends a question; resolves false when it wasn't answered (the bar puts the text back). */
-  submit: (text: string) => Promise<boolean>
+  /**
+   * Sends a question (with the selected topic, if any); resolves false when it wasn't answered
+   * (the bar puts the text back).
+   */
+  submit: (text: string, subjectId?: string | null) => Promise<boolean>
   /** Starts over: hides the conversation and leaves it out of the context from now on. */
   newChat: () => void
   /** Reloads the stored conversation (a `/d` line or another window may have added to it). */
@@ -108,7 +112,7 @@ export function useAsk(api: DumbledoreApi): AskController {
   )
 
   const submit = useCallback(
-    async (text: string): Promise<boolean> => {
+    async (text: string, subjectId?: string | null): Promise<boolean> => {
       const question = text.trim()
       if (!question || inFlight.current) return false
       inFlight.current = true
@@ -119,10 +123,11 @@ export function useAsk(api: DumbledoreApi): AskController {
       setPending({ text: '', streamId: null })
       const after = since.current
       try {
-        const result = await api.invoke(
-          'ask.submit',
-          after ? { text: question, since: after } : { text: question },
-        )
+        const result = await api.invoke('ask.submit', {
+          text: question,
+          ...(after ? { since: after } : {}),
+          ...(subjectId ? { subjectId } : {}),
+        })
         if (id === version.current) {
           const { reply, actions, pasted } = result
           setMessages((m) => [...m, localMessage('assistant', reply, { actions, pasted })])

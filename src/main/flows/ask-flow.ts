@@ -4,6 +4,8 @@
  * prompt is pasted); other actions are returned as chips (ask bar) or toast buttons (`/d`).
  * Turns live in thread 'ask'; the context is its last 10 messages after the latest "New chat"
  * (`since`), and the reply streams as 'chat.delta' on that thread when `emitDelta` is wired.
+ * A topic selected in the Ask bar (`subjectId`) leads the coach context: "Topic: <name>" plus that
+ * subject's goal, deadline, roadmap step and struggling concepts.
  */
 import type { Brain } from '@engine/brain-contract'
 import type { PerceptionService, Repos } from '@engine/contracts'
@@ -41,6 +43,37 @@ export interface AskOptions {
   signal?: AbortSignal
   /** ISO time of the Ask bar's last "New chat": older messages are left out of the context. */
   since?: string
+  /** The topic selected in the Ask bar: its context leads what the coach sees. */
+  subjectId?: string
+}
+
+const STRUGGLE_LIMIT = 5
+
+/** "Topic: <name>" and that subject's own context, or null for an unknown subject. */
+export function topicContext(
+  repos: Pick<Repos, 'subjects' | 'roadmaps' | 'concepts'>,
+  subjectId: string,
+): string | null {
+  const subject = repos.subjects.get(subjectId)
+  if (!subject) return null
+  const lines = [`Topic: ${subject.name} (the student picked this topic for the question)`]
+  if (subject.description.trim()) lines.push(`About: ${subject.description.trim()}`)
+  if (subject.goal?.trim()) lines.push(`Goal: ${subject.goal.trim()}`)
+  if (subject.deadline) lines.push(`Deadline: ${subject.deadline.slice(0, 10)}`)
+  const roadmap = repos.roadmaps.getActive(subject.id)
+  if (roadmap) {
+    const done = roadmap.items.filter((i) => i.status === 'done').length
+    const current = roadmap.items.find((i) => i.status === 'current')
+    const step = current ? `; now: ${current.title}` : ''
+    lines.push(`Roadmap: ${roadmap.title} (${done}/${roadmap.items.length} done${step})`)
+  }
+  const struggling = repos.concepts
+    .listBySubject(subject.id)
+    .filter((c) => c.status === 'struggling')
+    .slice(0, STRUGGLE_LIMIT)
+    .map((c) => c.name)
+  if (struggling.length) lines.push(`Struggling with: ${struggling.join(', ')}`)
+  return lines.join('\n')
 }
 
 /** Messages created after `since` (epoch ms); all of them when there was no "New chat". */
@@ -59,7 +92,7 @@ export class AskFlow {
   /** Ask bar: reply + remaining actions as chips; `pasted` when a prompt went into the chat. */
   async submit(text: string, opts: AskOptions = {}): Promise<AskResult> {
     this.noteReset(opts.since)
-    const { reply, actions } = await this.converse(text, opts.signal)
+    const { reply, actions } = await this.converse(text, opts.signal, opts.subjectId)
     const remaining: CoachAction[] = []
     let pasted = false
     for (const action of actions) {
@@ -111,12 +144,15 @@ export class AskFlow {
   private async converse(
     text: string,
     signal?: AbortSignal,
+    subjectId?: string,
   ): Promise<{ reply: string; actions: CoachAction[] }> {
     const { repos, brain, thinking, emitDelta } = this.deps
     const history = afterReset(repos.chat.history(ASK_THREAD, HISTORY_LIMIT), this.since).map(
       (m) => ({ role: m.role, content: m.content }),
     )
     repos.chat.append({ thread: ASK_THREAD, role: 'user', content: text, actions: [] })
+    const topic = subjectId ? topicContext(repos, subjectId) : null
+    const context = topic ? `${topic}\n\n${this.deps.contextText()}` : this.deps.contextText()
     const messageId = `ask_pending_${++this.seq}`
     let reply = ''
     const actions: CoachAction[] = []
@@ -125,7 +161,7 @@ export class AskFlow {
         const events = brain.coach(
           {
             profile: repos.profile.get().summary,
-            context: this.deps.contextText(),
+            context,
             history,
             message: text,
           },

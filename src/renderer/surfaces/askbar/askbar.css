@@ -93,6 +93,149 @@ body {
   pointer-events: none;
 }
 
+/* "Study ↵": an empty ↵ studies the selected topic. */
+.ask__study {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  font-size: var(--text-meta);
+  color: var(--c-texTer);
+  white-space: nowrap;
+  animation: ask-fade-in var(--dur-base) var(--ease-out);
+}
+
+/* ── Topic row (chat mode): recent subjects on top of the input ───────── */
+
+.ask__topics {
+  position: relative;
+  flex: none;
+  padding-top: 10px;
+}
+
+.ask > .ask__topics + .ask__composer {
+  padding-top: 10px;
+}
+
+/* With a conversation above, the row and the input read as one block under a single rule. */
+.ask[data-mode="chat"] .ask__topics {
+  border-top: 1px solid var(--c-borPri);
+}
+
+.ask[data-mode="chat"] .ask__topics + .ask__composer {
+  border-top: none;
+}
+
+.ask__topics-track {
+  display: flex;
+  gap: 6px;
+  padding: 2px 16px; /* room for the focus ring; lines up with the glyph */
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 64px; /* a chip scrolled into view clears the arrow and the fade */
+  scrollbar-width: none;
+}
+
+.ask__topics-track::-webkit-scrollbar {
+  display: none;
+}
+
+/* The cut-off edge fades out, so a half-shown chip reads as "more this way"; the strip under
+   the arrow is fully clear so the arrow never sits on chip text. */
+.ask__topics[data-fade-left] .ask__topics-track {
+  mask-image: linear-gradient(to right, transparent 0, transparent 28px, #000 64px);
+}
+
+.ask__topics[data-fade-right] .ask__topics-track {
+  mask-image: linear-gradient(to left, transparent 0, transparent 28px, #000 64px);
+}
+
+.ask__topics[data-fade-left][data-fade-right] .ask__topics-track {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    transparent 28px,
+    #000 64px,
+    #000 calc(100% - 64px),
+    transparent calc(100% - 28px),
+    transparent 100%
+  );
+}
+
+.ask__topic {
+  all: unset;
+  box-sizing: border-box;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  max-width: 180px;
+  padding: 0 9px;
+  border-radius: var(--radius-round);
+  font-size: var(--text-meta);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  color: var(--c-texSec);
+  box-shadow: inset 0 0 0 1px var(--c-borPri);
+  cursor: default;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.ask__topic:hover {
+  color: var(--c-texPri);
+  background: var(--c-bacInt);
+}
+
+.ask__topic:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+.ask__topic[aria-pressed="true"] {
+  color: var(--c-blue-text);
+  background: var(--c-accentTint);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-accent) 45%, transparent);
+}
+
+.ask__topic-emoji {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.ask__topic-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ask__topics-arrow {
+  all: unset;
+  position: absolute;
+  top: 10px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 30px;
+  color: var(--c-icoSec);
+  cursor: default;
+  animation: ask-fade-in var(--dur-fast) var(--ease-out);
+}
+
+.ask__topics-arrow:hover {
+  color: var(--c-texPri);
+}
+
+.ask__topics-arrow--prev {
+  left: 4px;
+}
+
+.ask__topics-arrow--next {
+  right: 4px;
+}
+
 /* ── Prompt box (route 'prompt', right ⌥ hold) ───────────────────── */
 
 /* One quiet line under the input: where the prompt goes, "Writing your prompt…", or the error. */

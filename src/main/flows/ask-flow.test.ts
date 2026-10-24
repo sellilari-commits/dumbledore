@@ -7,7 +7,7 @@ import type { Repos } from '@engine/contracts'
 import type { ChatMessage, CoachAction } from '@shared/domain'
 import type { EventPayload } from '@shared/ipc'
 import { describe, expect, it, vi } from 'vitest'
-import { AskFlow, type AskFlowDeps, afterReset } from './ask-flow'
+import { AskFlow, type AskFlowDeps, afterReset, topicContext } from './ask-flow'
 
 const T0 = Date.parse('2026-10-24T10:00:00.000Z')
 const at = (seconds: number) => new Date(T0 + seconds * 1000).toISOString()
@@ -50,7 +50,11 @@ function setup(opts: Setup = {}) {
   const toasts = { showToast: vi.fn(() => 'toast_1') }
   const deps = {
     brain: brain as unknown as Brain,
-    repos: { chat, profile: { get: () => ({ summary: 'A student' }) } } as unknown as Repos,
+    repos: {
+      chat,
+      profile: { get: () => ({ summary: 'A student' }) },
+      ...TOPIC_REPOS,
+    } as unknown as Repos,
     perception: { aiChat: () => (opts.aiChat ? { assistant: 'ChatGPT' } : null) },
     sessions: { start: vi.fn(async () => ({ write: { ok: true } })) },
     writer,
@@ -72,6 +76,39 @@ function setup(opts: Setup = {}) {
     }
   }
   return { flow: new AskFlow(deps), messages, inputs, deltas, writer, toasts, seed, at: () => now }
+}
+
+const CHEM = {
+  id: 'sub_chem',
+  name: 'Chemistry',
+  description: 'Intro chemistry course',
+  goal: 'Pass the midterm',
+  deadline: '2026-11-03T00:00:00.000Z',
+}
+const TOPIC_REPOS = {
+  subjects: { get: (id: string) => (id === CHEM.id ? CHEM : null) },
+  roadmaps: {
+    getActive: (id: string) =>
+      id === CHEM.id
+        ? {
+            title: 'Moles from scratch',
+            items: [
+              { title: 'What a mole is', status: 'done' },
+              { title: 'Molar mass', status: 'current' },
+              { title: 'Checkpoint', status: 'todo' },
+            ],
+          }
+        : null,
+  },
+  concepts: {
+    listBySubject: (id: string) =>
+      id === CHEM.id
+        ? [
+            { name: 'Avogadro constant', status: 'mastered' },
+            { name: 'Molar mass', status: 'struggling' },
+          ]
+        : [],
+  },
 }
 
 const history = (input: CoachInput | undefined) => input?.history.map((m) => m.content)
@@ -176,6 +213,41 @@ describe('AskFlow.submit', () => {
     const result = await s.flow.submit('moles?')
     expect(s.writer.write).not.toHaveBeenCalled()
     expect(result).toEqual({ reply: 'Hello there.', actions: [prompt], pasted: false })
+  })
+})
+
+describe('AskFlow.submit with a topic (subjectId)', () => {
+  it('leads the coach context with the topic and its own context', async () => {
+    const s = setup()
+    await s.flow.submit('Why grams?', { subjectId: CHEM.id })
+    const context = s.inputs[0]?.context ?? ''
+    expect(context.split('\n')[0]).toMatch(/^Topic: Chemistry\b/)
+    expect(context).toContain('Goal: Pass the midterm')
+    expect(context).toContain('Deadline: 2026-11-03')
+    expect(context).toContain('Roadmap: Moles from scratch (1/3 done; now: Molar mass)')
+    expect(context).toContain('Struggling with: Molar mass')
+    expect(context).not.toContain('Avogadro')
+    expect(context.endsWith('Studying chemistry')).toBe(true)
+    expect(s.inputs[0]?.message).toBe('Why grams?')
+    expect(s.messages[0]?.content).toBe('Why grams?')
+  })
+
+  it('without a topic, or with an unknown one, the context is unchanged', async () => {
+    const s = setup()
+    await s.flow.submit('one')
+    await s.flow.submit('two', { subjectId: 'sub_gone' })
+    expect(s.inputs.map((i) => i.context)).toEqual(['Studying chemistry', 'Studying chemistry'])
+  })
+
+  it('topicContext skips empty fields and a subject without a roadmap', () => {
+    const repos = {
+      subjects: { get: () => ({ ...CHEM, description: ' ', goal: null, deadline: null }) },
+      roadmaps: { getActive: () => null },
+      concepts: { listBySubject: () => [] },
+    } as unknown as Parameters<typeof topicContext>[0]
+    expect(topicContext(repos, CHEM.id)).toBe(
+      'Topic: Chemistry (the student picked this topic for the question)',
+    )
   })
 })
 

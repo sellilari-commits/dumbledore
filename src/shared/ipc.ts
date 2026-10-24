@@ -129,9 +129,12 @@ export const ipcInvoke = {
   'chat.history': { req: z.string(), res: z.array(ChatMessage) },
   'chat.send': { req: z.object({ thread: z.string(), text: z.string() }), res: ChatMessage },
   'coach.runAction': { req: CoachAction, res: Void },
-  /** `since`: ISO time of the Ask bar's last "New chat"; older messages are not used as context. */
+  /**
+   * `since`: ISO time of the Ask bar's last "New chat"; older messages are not used as context.
+   * `subjectId`: the topic selected in the Ask bar; its name and context go to the coach.
+   */
   'ask.submit': {
-    req: z.object({ text: z.string(), since: z.string().optional() }),
+    req: z.object({ text: z.string(), since: z.string().optional(), subjectId: Id.optional() }),
     res: AskResult,
   },
   'nudge.act': {

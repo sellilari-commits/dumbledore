@@ -206,7 +206,7 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
     'chat.history': (thread) => core.chat.history(thread),
     'chat.send': ({ thread, text }) => core.chat.send(thread, text),
     'coach.runAction': (action) => core.actions.run(action),
-    'ask.submit': ({ text, since }) => core.ask.submit(text, { since }),
+    'ask.submit': ({ text, since, subjectId }) => core.ask.submit(text, { since, subjectId }),
     'nudge.act': ({ nudgeId, action }) => core.nudges.act(nudgeId, action),
 
     // Prompts

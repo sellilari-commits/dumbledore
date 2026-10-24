@@ -124,7 +124,7 @@ test.describe('ask bar chat interactions', () => {
   })
 
   test('New chat starts over, survives a reload, and is sent as since', async ({ page }) => {
-    await page.goto(`${base}/askbar.html?seed=2`)
+    await page.goto(`${base}/askbar.html?seed=2&topics=0`)
     await expect(page.locator('.ask__msg--user')).toHaveCount(2)
     await page.getByRole('button', { name: 'New chat' }).click()
     await expect(page.locator('.ask__log')).toHaveCount(0)
