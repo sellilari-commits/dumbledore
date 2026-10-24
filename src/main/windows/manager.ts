@@ -74,8 +74,6 @@ export class WindowManager implements SurfaceControl, EventSink {
   private bindings: WindowBindings | null = null
   private readonly chatStore: ChatSpotStore
   private readonly chatSpots: ChatSpots
-  /** The Ask bar's current route ('prompt' = the study box, anything else = the chat). */
-  private askbarRoute: string | null = null
   /** The Ask bar's last position set by us, so our own moves are not taken for a drag. */
   private askbarPlaced: { x: number; y: number } | null = null
 
@@ -127,10 +125,7 @@ export class WindowManager implements SurfaceControl, EventSink {
     if (surface === 'askbar') this.askbarRouteOpened = opts.route ?? null
     const win = this.ensureTyping(surface, opts.route ?? null)
     const bounds = await this.placement(surface, opts)
-    if (surface === 'askbar') {
-      this.askbarRoute = opts.route ?? null
-      this.askbarPlaced = { x: bounds.x, y: bounds.y }
-    }
+    if (surface === 'askbar') this.askbarPlaced = { x: bounds.x, y: bounds.y }
     win.setBounds(bounds)
     await this.showTyping(win)
   }
@@ -272,7 +267,7 @@ export class WindowManager implements SurfaceControl, EventSink {
 
   /** The student dragged the chat: remember where, for the display it now stands on. */
   private rememberChatSpot(win: BrowserWindow): void {
-    if (win.isDestroyed() || isPromptRoute(this.askbarRoute)) return
+    if (win.isDestroyed() || isPromptRoute(this.askbarRouteOpened)) return
     const { x, y, width, height } = win.getBounds()
     const placed = this.askbarPlaced
     if (placed && Math.abs(placed.x - x) < 2 && Math.abs(placed.y - y) < 2) return
