@@ -9,7 +9,6 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
 | 2026-10-24 20:37 | Ilari / Claude | Design doc: structured notes (topic tree, atomic notes, prerequisites, consolidation) for the roadmap | docs/NOTES.md | main | |
-| 2026-10-24 21:20 | Ilari / Claude | Remove the Quiz square under the orb (▸ Next stays) | src/main/overlay/controller.ts (+ test), src/renderer/surfaces/overlay/satellites/SideStack.tsx, src/renderer/surfaces/overlay/OverlayApp.tsx (+ tests) | main | |
 | 2026-10-24 21:05 | Olle / Claude | Ink & paper look: ink accents instead of blue, warm paper backgrounds, light & dark | `src/renderer/design-system/tokens.css`, `src/renderer/design-system/base.css` (links), `docs/DESIGN.md` (tokens), `tests/e2e-sim/__screenshots__/` | main | Colours only; no layout or component changes |
 
 ## Done recently
@@ -18,6 +17,7 @@ Newest first; keep about the last 20 entries.
 
 | Finished (UTC) | Who / agent | Work | Commit |
 |---|---|---|---|
+| 2026-10-24 | Ilari / Claude | Removed the Quiz square under the orb (▸ Next stays) | 0bb8c08 |
 | 2026-10-24 | Ilari / Claude | Region trimming: keep a page's main content, drop nav/sidebars/header/footer (AX landmarks) | b59a293 |
 | 2026-10-24 | Olle / Claude | Back to logo D as built: reverted the D2 mark and the light-touch accents (Olle's call) | 738de89 |
 | 2026-10-24 | Ilari / Claude | Extractor judges learnable content, not intent; news neutral in prefilter | 2dc50a7 |
