@@ -32,7 +32,7 @@ import {
   toLocalRect,
 } from './geometry'
 import { chipPreview, coachActionLabel } from './labels'
-import { FocusTimer, type TimerNotice } from './timer'
+import { clampTimerMinutes, FocusTimer, type TimerNotice } from './timer'
 import { ToastCenter, type ToastSpec } from './toasts'
 
 export const RETURN_HOME_MS = 1500
@@ -78,6 +78,7 @@ export class OverlayController {
   private hovered = false
   private hidden = false
   private hideTimer: Cancel | null = null
+  private timerMinutes: number
   private session: SessionState | null
   private aiChat: { provider: string } | null = null
   private pillCount = 0
@@ -101,6 +102,7 @@ export class OverlayController {
     const settings = deps.settings.get()
     this.orb = settings.orb
     this.captureEnabled = settings.captureEnabled
+    this.timerMinutes = settings.timerMinutes
     this.session = deps.study.current()
     const chat = deps.perception.aiChat()
     this.aiChat = chat ? { provider: chat.assistant } : null
@@ -255,9 +257,26 @@ export class OverlayController {
     this.update()
   }
 
+  /** The timer chooser picked a length: start it and remember it as the next default. */
+  startTimer(minutes: number): void {
+    const m = clampTimerMinutes(minutes)
+    if (m !== this.timerMinutes) {
+      this.timerMinutes = m
+      const settings = this.deps.settings.update({ timerMinutes: m })
+      this.deps.bus.emit('settings:changed', { settings })
+    }
+    this.timer.start(m)
+  }
+
+  /** A click on the running timer square stops it. */
+  stopTimer(): void {
+    this.timer.stop()
+  }
+
   private onSettings(settings: Settings): void {
     this.orb = settings.orb
     this.captureEnabled = settings.captureEnabled
+    this.timerMinutes = settings.timerMinutes
     if (!settings.orb.followChatBoxes && this.dock) this.undock()
     if (!settings.orb.hideIntoEdge) this.hidden = false
     this.update()
@@ -487,6 +506,7 @@ export class OverlayController {
       quiz: this.quiz,
       aiChat: this.aiChat,
       timer: this.timer.state,
+      timerMinutes: this.timerMinutes,
     }
   }
 }

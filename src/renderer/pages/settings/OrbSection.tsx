@@ -1,8 +1,18 @@
-/** Settings → Orb: show/hide, follow chat boxes, hide into the edge, reset its position. */
+/**
+ * Settings → Orb: show/hide, follow chat boxes, hide into the edge, reset its position, and the
+ * length of the timer under the orb (also picked from the timer itself).
+ */
 import { Button, Switch, toast } from '@renderer/design-system'
 import type { Settings } from '@shared/domain'
-import { SettingsRow, SettingsSection } from './ui'
+import { SelectMenu, type SelectOption, SettingsRow, SettingsSection } from './ui'
 import { useSettingsPatch } from './useSettingsPatch'
+
+const TIMER_LENGTHS = [5, 15, 25, 45, 60]
+
+function timerOptions(current: number): SelectOption<number>[] {
+  const lengths = TIMER_LENGTHS.includes(current) ? TIMER_LENGTHS : [...TIMER_LENGTHS, current]
+  return [...lengths].sort((a, b) => a - b).map((m) => ({ value: m, label: `${m} minutes` }))
+}
 
 export function OrbSection({ settings }: { settings: Settings }) {
   const { patch } = useSettingsPatch()
@@ -59,6 +69,17 @@ export function OrbSection({ settings }: { settings: Settings }) {
         >
           Reset position
         </Button>
+      </SettingsRow>
+      <SettingsRow
+        label="Timer length"
+        description="The timer under the orb. Click it to pick another length; right click starts this one."
+      >
+        <SelectMenu
+          label="Timer length"
+          value={settings.timerMinutes}
+          options={timerOptions(settings.timerMinutes)}
+          onChange={(timerMinutes) => patch({ timerMinutes })}
+        />
       </SettingsRow>
     </SettingsSection>
   )

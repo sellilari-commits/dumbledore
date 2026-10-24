@@ -65,7 +65,10 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
         background('orb long press', () => router.orbLongPress())
         break
       case 'timerClick':
-        core.overlay.timer.toggle()
+        core.overlay.stopTimer()
+        break
+      case 'timerStart':
+        core.overlay.startTimer(action.minutes)
         break
       case 'orbContextMenu':
         extras.showOrbMenu()

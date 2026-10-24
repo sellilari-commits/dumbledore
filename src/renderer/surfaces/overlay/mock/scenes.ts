@@ -112,6 +112,7 @@ function base(vp: Size): OverlayState {
     quiz: null,
     aiChat: null,
     timer: null,
+    timerMinutes: 25,
   }
 }
 

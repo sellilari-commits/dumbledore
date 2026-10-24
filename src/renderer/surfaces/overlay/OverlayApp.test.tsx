@@ -148,16 +148,52 @@ describe('satellites', () => {
     expect(screen.queryByTestId('side-quiz')).toBeNull()
   })
 
-  it('timer square: idle glyph, click sends timerClick, running shows minutes left', async () => {
+  it('timer square: a click opens the length chooser, a preset starts that length', async () => {
     const { local } = await mount('idle')
     const timer = screen.getByTestId('timer')
-    expect(timer.getAttribute('aria-label')).toBe('Start 25-min timer')
+    expect(timer.getAttribute('aria-label')).toBe('Set a timer')
+    expect(screen.queryByTestId('timer-chooser')).toBeNull()
     fireEvent.click(timer, { detail: 0 })
-    expect(sentTypes(local)).toEqual(['timerClick'])
+    const chooser = screen.getByTestId('timer-chooser')
+    expect(chooser.textContent).toContain('5 min15 min25 min45 min60 min')
+    expect(screen.getByRole('button', { name: '25 min' }).getAttribute('data-current')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: '45 min' }))
+    expect(sent(local).filter((a) => a.type === 'timerStart')).toEqual([
+      { type: 'timerStart', minutes: 45 },
+    ])
+    expect(screen.queryByTestId('timer-chooser')).toBeNull()
+  })
+
+  it('timer chooser: custom length steps within 1–180 and starts it', async () => {
+    const { local } = await mount('idle')
+    fireEvent.click(screen.getByTestId('timer'), { detail: 0 })
+    const custom = screen.getByTestId('timer-custom')
+    expect(custom.textContent).toBe('25 min')
+    fireEvent.click(screen.getByRole('button', { name: 'Longer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Longer' }))
+    expect(custom.textContent).toBe('35 min')
+    for (let i = 0; i < 60; i++) fireEvent.click(screen.getByRole('button', { name: 'Shorter' }))
+    expect(custom.textContent).toBe('1 min')
+    expect(screen.getByRole('button', { name: 'Shorter' })).toHaveProperty('disabled', true)
+    fireEvent.click(custom)
+    expect(sent(local).filter((a) => a.type === 'timerStart')).toEqual([
+      { type: 'timerStart', minutes: 1 },
+    ])
+  })
+
+  it('timer square: right click starts the last length; running shows minutes left and a click stops it', async () => {
+    const { local } = await mount('idle')
+    fireEvent.contextMenu(screen.getByTestId('timer'))
+    expect(sent(local).filter((a) => a.type === 'timerStart')).toEqual([
+      { type: 'timerStart', minutes: 25 },
+    ])
     act(() => local.emit('overlay.changed', state('timer')))
     const running = screen.getByTestId('timer')
     expect(running.textContent).toContain('18')
     expect(running.getAttribute('aria-label')).toBe('18 min left · click to stop')
+    fireEvent.click(running, { detail: 0 })
+    expect(sentTypes(local)).toContain('timerClick')
+    expect(screen.queryByTestId('timer-chooser')).toBeNull()
   })
 
   it('hides the timer square while docked beside a chat box', async () => {

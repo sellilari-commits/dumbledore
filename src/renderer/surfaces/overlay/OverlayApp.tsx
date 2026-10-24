@@ -6,7 +6,7 @@
  */
 import type { DumbledoreApi } from '@shared/ipc'
 import type { OverlayAction, OverlayState } from '@shared/state'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { report } from './lib/bridge'
 import {
   cardAnchor,
@@ -119,9 +119,11 @@ function OverlayScene({ api, state, viewport, send, onDragging }: SceneProps) {
       {!look.docked && (
         <TimerButton
           timer={state.timer}
+          minutes={state.timerMinutes}
           anchor={stackAnchor(orb, state.edge, viewport)}
           up={verticalToward(orb, state.edge, viewport) === 'up'}
-          onClick={() => send({ type: 'timerClick' })}
+          onStart={(minutes) => send({ type: 'timerStart', minutes })}
+          onStop={() => send({ type: 'timerClick' })}
           onLongPress={() => send({ type: 'orbLongPress' })}
         />
       )}

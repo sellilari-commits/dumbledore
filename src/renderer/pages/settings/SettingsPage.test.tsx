@@ -63,6 +63,13 @@ describe('SettingsPage', () => {
     expect(await screen.findByText('Waiting for macOS…')).toBeTruthy()
   })
 
+  it('shows the timer length (25 minutes by default)', async () => {
+    const r = renderWithApp(page, { route: '/settings/orb' })
+    expect(await screen.findByText('Timer length')).toBeTruthy()
+    expect(screen.getAllByText('25 minutes').length).toBeGreaterThan(0)
+    expect(r.api.db.settings.timerMinutes).toBe(25)
+  })
+
   it('saves orb switches', async () => {
     const r = renderWithApp(page, { route: '/settings/orb' })
     fireEvent.click(await screen.findByRole('switch', { name: 'Hide into the edge' }))

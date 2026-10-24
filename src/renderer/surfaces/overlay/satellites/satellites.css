@@ -146,3 +146,94 @@
 .ov-chip .ov-key {
   margin-left: 2px;
 }
+
+/* ── Timer chooser (beside the timer square) ────────────────────────── */
+
+.ov-sq[data-open] {
+  background: var(--ov-surfaceHover);
+}
+
+.ov-timer {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 112px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--ov-surface);
+  box-shadow: var(--shadow-md);
+  font-family: var(--font-sans);
+  animation: ov-pop var(--dur-base) var(--ease-out);
+}
+
+.ov-stack[data-up] .ov-timer {
+  top: auto;
+  bottom: 0;
+}
+
+.ov-stack[data-side="left"] .ov-timer {
+  right: calc(100% + 8px);
+}
+
+.ov-stack[data-side="right"] .ov-timer {
+  left: calc(100% + 8px);
+}
+
+.ov-timer__opt,
+.ov-timer__step {
+  all: unset;
+  box-sizing: border-box;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: var(--text-meta);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: 26px;
+  color: var(--c-texPri);
+  cursor: default;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.ov-timer__opt:hover,
+.ov-timer__step:hover:not(:disabled) {
+  background: var(--ov-surfaceHover);
+}
+
+.ov-timer__opt[data-current] {
+  color: var(--c-texPri);
+  background: var(--c-bacTer);
+}
+
+.ov-timer__opt:focus-visible,
+.ov-timer__step:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+.ov-timer__custom {
+  display: flex;
+  align-items: center;
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px solid var(--c-borPri);
+}
+
+.ov-timer__value {
+  flex: 1;
+  text-align: center;
+  padding: 0 4px;
+}
+
+.ov-timer__step {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  padding: 0;
+  color: var(--c-icoPri);
+}
+
+.ov-timer__step:disabled {
+  opacity: 0.35;
+}

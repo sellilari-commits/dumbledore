@@ -5,7 +5,9 @@ import type { OverlayState } from '@shared/state'
 import { describe, expect, it } from 'vitest'
 import { DISPLAY } from '../testing/harness'
 import { OverlayController } from './controller'
-import { TIMER_DONE, TIMER_MS, type TimerNotice } from './timer'
+import { clampTimerMinutes, type TimerNotice, timerDone } from './timer'
+
+const MIN = 60_000
 
 function setup() {
   const clock = new FakeClock()
@@ -23,34 +25,50 @@ function setup() {
   })
   controller.setDisplays([DISPLAY])
   controller.start()
-  return { clock, controller, notices, states }
+  return { clock, controller, notices, states, repos }
 }
 
 describe('timer square', () => {
-  it('starts idle; a click starts 25 minutes, a second click stops it', () => {
+  it('starts idle with the remembered length (25 by default)', () => {
     const t = setup()
     expect(t.controller.state.timer).toBeNull()
-    t.controller.timer.toggle()
+    expect(t.controller.state.timerMinutes).toBe(25)
+  })
+
+  it('starts the chosen length, remembers it, and a click while running stops it', () => {
+    const t = setup()
+    t.controller.startTimer(45)
     expect(t.controller.state.timer).toEqual({
-      endsAt: new Date(t.clock.now() + TIMER_MS).toISOString(),
+      endsAt: new Date(t.clock.now() + 45 * MIN).toISOString(),
     })
-    expect(t.states.at(-1)?.timer).not.toBeNull()
-    t.controller.timer.toggle()
+    expect(t.controller.state.timerMinutes).toBe(45)
+    expect(t.repos.settings.get().timerMinutes).toBe(45)
+    t.controller.stopTimer()
     expect(t.controller.state.timer).toBeNull()
-    t.clock.advance(TIMER_MS + 1000)
+    t.clock.advance(46 * MIN)
     expect(t.notices).toEqual([])
   })
 
-  it('sends one macOS notification when it runs out, then goes idle, with no overlay box', () => {
+  it('sends one macOS notification naming the length when it runs out, with no overlay box', () => {
     const t = setup()
-    t.controller.timer.toggle()
-    t.clock.advance(TIMER_MS - 1000)
+    t.controller.startTimer(15)
+    t.clock.advance(15 * MIN - 1000)
     expect(t.notices).toEqual([])
     t.clock.advance(1000)
-    expect(t.notices).toEqual([TIMER_DONE])
+    expect(t.notices).toEqual([
+      { title: 'Time’s up', body: '15 minutes done. Take a short break.' },
+    ])
     expect(t.controller.state.timer).toBeNull()
     expect(t.controller.state.toasts).toEqual([])
-    t.clock.advance(TIMER_MS)
+    t.clock.advance(15 * MIN)
     expect(t.notices).toHaveLength(1)
+  })
+
+  it('clamps custom lengths to 1–180 whole minutes', () => {
+    expect(clampTimerMinutes(0)).toBe(1)
+    expect(clampTimerMinutes(500)).toBe(180)
+    expect(clampTimerMinutes(12.4)).toBe(12)
+    expect(clampTimerMinutes(Number.NaN)).toBe(25)
+    expect(timerDone(1).body).toBe('1 minute done. Take a short break.')
   })
 })

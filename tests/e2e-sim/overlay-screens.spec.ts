@@ -126,6 +126,16 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(page.getByRole('tooltip')).toHaveCount(0)
     })
 
+    test('timer chooser: pick a length, the square counts down', async ({ page }) => {
+      await overlay(page, 'idle')
+      await page.getByTestId('timer').click()
+      await expect(page.getByTestId('timer-chooser')).toBeVisible()
+      await shoot(page, 'timer-chooser', theme)
+      await page.getByRole('button', { name: '15 min' }).click()
+      await expect(page.getByTestId('timer-chooser')).toHaveCount(0)
+      await expect(page.getByTestId('timer')).toHaveText(/15/)
+    })
+
     test('quiz card: question, feedback, result', async ({ page }) => {
       await overlay(page, 'quiz')
       const card = page.getByTestId('quiz-card')

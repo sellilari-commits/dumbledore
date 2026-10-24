@@ -466,6 +466,8 @@ export const Settings = z.object({
   focusSubjectId: Id.nullable(),
   /** Topic locked in the mini panel (a top-level concept); null = follow the latest. */
   focusTopicId: Id.nullable(),
+  /** Length of the timer under the orb, the last one picked (1–180 minutes). */
+  timerMinutes: z.number().int().min(1).max(180),
   onboardingDone: z.boolean(),
 })
 export type Settings = z.infer<typeof Settings>
@@ -506,5 +508,6 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   focusSubjectId: null,
   focusTopicId: null,
+  timerMinutes: 25,
   onboardingDone: false,
 }
