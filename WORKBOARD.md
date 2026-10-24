@@ -8,7 +8,6 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
-| 2026-10-25 10:45 | Ilari / Claude | Timer: change the time while it runs (−5/−1/+1/+5, Stop) on the square | src/main/overlay/timer.ts (+ test), src/main/overlay/controller.ts (timer bit), src/main/ipc/handlers.ts (one case), src/shared/state.ts (one action), src/renderer/surfaces/overlay/satellites/TimerButton.tsx (+ test, css), OverlayApp.tsx (+ test), overlay mock, tests/e2e-sim/overlay-screens.spec.ts + overlay screenshots | main | deploys after |
 | 2026-10-25 10:30 | Olle / Claude | Study material upload: add PDFs, Word/RTF/HTML, text and Markdown to a subject; Dumbledore reads them into Memory through the existing extraction | `native/helper/Sources/DumbledoreHelper/FileText.swift` (new), `Handlers.swift` (one register line), `native/helper/build.sh` (PDFKit), `src/shared/helper-protocol.ts` (file.pdfText), `src/shared/ipc.ts` (materials.add), `src/main/ipc/handlers.ts` (materials case only), `src/main/app.ts` (file picker extra), `src/main/flows/materials.ts` (+ test, new), `src/main/fakes/` (extras), `src/renderer/lib/mock-api.ts` + `mock/handlers-materials.ts` (new), `src/renderer/pages/subject/` | main | Reuses applyExtraction/brain.extract without editing them |
 | 2026-10-24 22:20 | Olle / Claude | Empty home first steps; onboarding intro; white backgrounds + popovers above dialogs; one-page subject (description, goals, progress, gaps, what Dumbledore caught) | `src/renderer/pages/home/`, `src/renderer/pages/onboarding/`, `src/renderer/pages/subject/`, `src/renderer/design-system/tokens.css`, `docs/DESIGN.md`, `tests/e2e-sim/` (home, onboarding, subject specs + screenshots) | main | Renderer only; /subjects/:id/:view routes kept |
 
@@ -18,6 +17,7 @@ Newest first; keep about the last 20 entries.
 
 | Finished (UTC) | Who / agent | Work | Commit |
 |---|---|---|---|
+| 2026-10-25 | Ilari / Claude | Timer: change the time while it runs (−5/−1/+1/+5, Stop) | 52edb77 |
 | 2026-10-25 | Ilari / Claude | Orb can sit anywhere on the edge again (Wispr band removed) | 45ce959 |
 | 2026-10-25 | Ilari / Claude | Double-tap chat: fixed 380 × 520 box beside the orb, "Chat with Dumbledore" header; study box stays compact | 77706c0 |
 | 2026-10-25 | Ilari / Claude | Timer length: chooser on the timer square (5/15/25/45/60/custom), remembered; Settings → Orb | bb763cc |
