@@ -1,7 +1,8 @@
 /**
  * macOS permissions, shared by Settings and Onboarding: what each one is for, a hook that
  * polls their live status while one is missing, and the status control (✓ Granted, or
- * "Open System Settings" → waiting until macOS reports the switch flipped).
+ * "Open System Settings" / "Turn on" → waiting until macOS reports the switch flipped). Both
+ * permissions are required: Screen Recording stays on so PDFs, slides and video can be read.
  */
 import { Button, Spinner } from '@renderer/design-system'
 import { useAction, usePermissions } from '@renderer/lib/queries'
@@ -16,18 +17,22 @@ export const PERMISSIONS: ReadonlyArray<{
   title: string
   required: boolean
   description: string
+  /** What is missing while it is off (Settings shows it instead of the description). */
+  off: string
 }> = [
   {
     kind: 'accessibility',
     title: 'Accessibility',
     required: true,
     description: 'Lets Dumbledore read the text on screen and paste prompts into chat boxes.',
+    off: 'Off — Dumbledore can’t read the screen or paste prompts',
   },
   {
     kind: 'screenRecording',
     title: 'Screen Recording',
-    required: false,
-    description: 'Only for slides, scanned PDFs and video, where text exists only as pixels.',
+    required: true,
+    description: 'So Dumbledore can read PDFs, slides and video.',
+    off: 'Off — Dumbledore can’t read PDFs, slides or video',
   },
 ]
 
@@ -50,11 +55,13 @@ export function PermissionControl({
   waiting,
   onOpen,
   title,
+  actionLabel = 'Open System Settings',
 }: {
   granted: boolean
   waiting: boolean
   onOpen: () => void
   title: string
+  actionLabel?: string
 }) {
   if (granted) return <OkLabel>Granted</OkLabel>
   if (waiting)
@@ -72,7 +79,7 @@ export function PermissionControl({
     )
   return (
     <Button size="sm" onClick={onOpen} aria-label={`Open System Settings for ${title}`}>
-      Open System Settings
+      {actionLabel}
     </Button>
   )
 }

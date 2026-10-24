@@ -1,13 +1,21 @@
 /**
- * The shortcut decision table (PLAN §5.3 F4, §5.6), as a pure function.
+ * The shortcut decision table (PLAN §4 D8, §5.3 F4, §5.6), as a pure function.
  *
- * A tap resolves in order: ask bar / quiz card open → Enter · password field → refuse ·
- * (a) session in an AI chat → next step · (b) `/d …` line in the field → instruction ·
- * (c) AI-chat box: empty → suggest, text → improve · (d) selection → actions toast ·
- * (e) AI chat open → picker · (f) else → toggle the mini panel. Hold or double-tap → ask bar.
+ * Tap (and an orb click) resolves in order: ask bar / quiz card open → Enter · password field →
+ * refuse · (a) session in an AI chat → next step · (b) `/d …` line in the field → instruction ·
+ * (c) AI-chat box: the student's own text → hint "hold to rewrite", empty → study the subject
+ * worked on last · (d) selection → actions toast · (e) AI chat open → study the subject worked on
+ * last · (f) else → toggle the mini panel. A click on the suggestion chip is a tap, except that it
+ * inserts the suggested prompt into an empty box and rewrites typed text (what the chip offers).
  *
- * The field value and the selection are read from the helper only on an explicit tap, and only
- * when the table needs them: `decide` returns `need` until the caller supplies them.
+ * Hold (holdStart): ask bar / quiz open → nothing · password field → refuse · `/d …` line →
+ * instruction · AI-chat box with text → rewrite it in place (also during a session) · anything
+ * else (empty box, not in an AI chat) → the chat window with subject choices on top. holdEnd →
+ * nothing, so letting go early never cancels the rewrite. Double-tap → the chat window (ask bar);
+ * focus it when it is already open.
+ *
+ * The field value and the selection are read from the helper only on an explicit gesture, and
+ * only when the table needs them: `decide` returns `need` until the caller supplies them.
  */
 import type { Gesture } from '@shared/helper-protocol'
 
@@ -30,18 +38,29 @@ export interface RouteContext {
   selection?: string | null
 }
 
+/** What the student did: a trigger-key gesture, or a click on the suggestion chip. */
+export type RouteInput = Gesture | 'chip'
+
+/** holdToRewrite: a tap on the student's own text in an AI-chat box. */
+export type Hint = 'holdToRewrite'
+
 export type Decision =
   | { kind: 'ignore' }
   | { kind: 'askbar' }
+  | { kind: 'focusAskbar' }
+  /** The chat window with subject choices on top (ask bar route 'choose'). */
+  | { kind: 'chooseSubject' }
+  /** Resume or start the subject worked on last (the router finds it). */
+  | { kind: 'studyLast' }
   | { kind: 'enter'; surface: 'askbar' | 'overlay' }
   | { kind: 'refuseSecure' }
   | { kind: 'sessionNext' }
   | { kind: 'instruction'; text: string; wholeField: boolean }
   | { kind: 'suggest' }
   | { kind: 'improve'; draft: string }
+  | { kind: 'hint'; hint: Hint }
   | { kind: 'unreadable' }
   | { kind: 'selection'; text: string }
-  | { kind: 'picker' }
   | { kind: 'togglePanel' }
   | { kind: 'need'; what: 'fieldText' | 'selection' }
 
@@ -64,34 +83,73 @@ export function instructionLine(text: string | null | undefined): {
   return null
 }
 
-export function decide(gesture: Gesture, ctx: RouteContext): Decision {
-  if (gesture === 'holdEnd') return { kind: 'ignore' }
-  if (gesture === 'holdStart' || gesture === 'doubleTap') {
-    return ctx.askbarOpen ? { kind: 'ignore' } : { kind: 'askbar' }
+export function decide(input: RouteInput, ctx: RouteContext): Decision {
+  switch (input) {
+    case 'holdEnd':
+      return { kind: 'ignore' }
+    case 'doubleTap':
+      return ctx.askbarOpen ? { kind: 'focusAskbar' } : { kind: 'askbar' }
+    case 'holdStart':
+      return decideHold(ctx)
+    default:
+      return decideTap(input, ctx)
   }
+}
+
+const isSecure = (ctx: RouteContext) => ctx.secureInput || ctx.focused?.secure === true
+
+const inChatBox = (ctx: RouteContext) =>
+  ctx.aiChat !== null && ctx.focused !== null && ctx.focused.pid === ctx.aiChat.pid
+
+/** The field text after the `/d` check: the draft, unreadable, or empty. */
+function draftOf(ctx: RouteContext): { draft: string } | 'unreadable' | 'empty' {
+  const draft = ctx.fieldText?.trim() ?? ''
+  if (draft) return { draft }
+  if (ctx.fieldText === null && (ctx.focused?.valueLength ?? 0) > 0) return 'unreadable'
+  return 'empty'
+}
+
+function decideHold(ctx: RouteContext): Decision {
+  if (ctx.askbarOpen || ctx.quizOpen) return { kind: 'ignore' }
+  if (isSecure(ctx)) return { kind: 'refuseSecure' }
+  if (ctx.focused?.editable) {
+    if (ctx.fieldText === undefined) return { kind: 'need', what: 'fieldText' }
+    const line = instructionLine(ctx.fieldText)
+    if (line) return { kind: 'instruction', text: line.text, wholeField: line.wholeField }
+    if (inChatBox(ctx)) {
+      const d = draftOf(ctx)
+      if (d === 'unreadable') return { kind: 'unreadable' }
+      if (d !== 'empty') return { kind: 'improve', draft: d.draft }
+    }
+  }
+  return { kind: 'chooseSubject' }
+}
+
+function decideTap(input: 'tap' | 'chip', ctx: RouteContext): Decision {
   if (ctx.askbarOpen) return { kind: 'enter', surface: 'askbar' }
   if (ctx.quizOpen) return { kind: 'enter', surface: 'overlay' }
-  if (ctx.secureInput || ctx.focused?.secure) return { kind: 'refuseSecure' }
+  if (isSecure(ctx)) return { kind: 'refuseSecure' }
 
   const chat = ctx.aiChat
   if (ctx.sessionActive && chat) return { kind: 'sessionNext' }
 
-  const focused = ctx.focused
-  if (focused?.editable) {
+  if (ctx.focused?.editable) {
     if (ctx.fieldText === undefined) return { kind: 'need', what: 'fieldText' }
     const line = instructionLine(ctx.fieldText)
     if (line) return { kind: 'instruction', text: line.text, wholeField: line.wholeField }
-    if (chat && focused.pid === chat.pid) {
-      const draft = ctx.fieldText?.trim() ?? ''
-      if (draft) return { kind: 'improve', draft }
-      if (ctx.fieldText === null && (focused.valueLength ?? 0) > 0) return { kind: 'unreadable' }
-      return { kind: 'suggest' }
+    if (inChatBox(ctx)) {
+      const d = draftOf(ctx)
+      if (d === 'unreadable') return { kind: 'unreadable' }
+      if (d === 'empty') return input === 'chip' ? { kind: 'suggest' } : { kind: 'studyLast' }
+      return input === 'chip'
+        ? { kind: 'improve', draft: d.draft }
+        : { kind: 'hint', hint: 'holdToRewrite' }
     }
   }
 
   if (ctx.selection === undefined) return { kind: 'need', what: 'selection' }
   const selection = ctx.selection?.trim()
   if (selection) return { kind: 'selection', text: selection }
-  if (chat) return { kind: 'picker' }
+  if (chat) return { kind: 'studyLast' }
   return { kind: 'togglePanel' }
 }

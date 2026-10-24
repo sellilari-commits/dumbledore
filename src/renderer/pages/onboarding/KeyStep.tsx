@@ -1,7 +1,8 @@
 /**
  * Onboarding 5/5 — learn the Dumbledore key by pressing it. A big keycap mirrors the key
  * (pressed while held, a press animation on every tap), a live line coaches ("That’s left ⌥ —
- * tap right ⌥…"), and a two-item checklist explains tap and hold. Continue unlocks after the
+ * tap right ⌥…"), and a checklist explains tap (study what you worked on last / next step), hold
+ * (rewrite your prompt, or pick a subject) and double-tap (chat with Dumbledore). Continue unlocks after the
  * first clean tap. If right ⌥ is taken (Goldfish, Claude Desktop), the conflict note offers
  * right ⌘ instead.
  */
@@ -113,10 +114,13 @@ export function KeyStep({
       </div>
       <ul className="dd-onb__lessons">
         <Lesson done={lesson.tapped} title="Tap">
-          Pastes the next prompt, improves what you typed, or opens the panel.
+          Studies what you worked on last in ChatGPT or any AI chat, or pastes the next step.
         </Lesson>
         <Lesson done={lesson.held} title="Hold">
-          Half a second opens the Ask bar, to ask Dumbledore anything. A double-tap does too.
+          Rewrites the prompt you typed (⌘Z undoes it). With nothing typed, pick a subject.
+        </Lesson>
+        <Lesson done={lesson.doubled} title="Double-tap">
+          Chat with Dumbledore: ask anything, or tell it what to do next.
         </Lesson>
       </ul>
       {shortcut.key === 'rightOption' ? (

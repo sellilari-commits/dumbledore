@@ -47,6 +47,10 @@ describe('SettingsPage', () => {
   it('shows live permission status and waits for macOS after Open System Settings', async () => {
     renderWithApp(page, { route: '/settings/capture' })
     expect(await screen.findByText('Granted')).toBeTruthy()
+    expect(screen.getByText('Off — Dumbledore can’t read PDFs, slides or video')).toBeTruthy()
+    expect(
+      screen.getByRole('button', { name: 'Open System Settings for Screen Recording' }).textContent,
+    ).toBe('Turn on')
     fireEvent.click(
       screen.getByRole('button', { name: 'Open System Settings for Screen Recording' }),
     )
@@ -63,6 +67,19 @@ describe('SettingsPage', () => {
     const r = renderWithApp(page, { route: '/settings/shortcuts' })
     fireEvent.click(await screen.findByRole('button', { name: 'Use right ⌘ instead' }))
     await waitFor(() => expect(r.api.db.settings.shortcut.key).toBe('rightCommand'))
+  })
+
+  it('teaches the key: tap = study last, hold = rewrite or pick, double-tap = chat', async () => {
+    renderWithApp(page, { route: '/settings/shortcuts' })
+    const list = await screen.findByRole('list', { name: 'Dumbledore key' })
+    expect(list.textContent).toContain('Study what you worked on last · next steptap⌥')
+    expect(list.textContent).toContain('Rewrite your prompt, or pick a subjecthold⌥')
+    expect(list.textContent).toContain('Chat with Dumbledoredouble-tap⌥')
+    expect(
+      screen.getByText(
+        /Hold: rewrite your prompt, or pick a subject\. Double-tap: chat with Dumbledore\./,
+      ),
+    ).toBeTruthy()
   })
 
   it('shows a loading state while settings load', () => {

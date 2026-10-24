@@ -68,15 +68,21 @@ describe('decide — the F4 tap table', () => {
     })
   })
 
-  it('(c) suggests for an empty AI-chat box and improves typed text', () => {
+  it('(c) studies the last subject from an empty AI-chat box; typed text gets the hint', () => {
     expect(decide('tap', ctx({ aiChat: CHAT, focused: chatBox(), fieldText: '' }))).toEqual({
-      kind: 'suggest',
+      kind: 'studyLast',
     })
     expect(
       decide('tap', ctx({ aiChat: CHAT, focused: chatBox(15), fieldText: ' what is osmosis ' })),
-    ).toEqual({
-      kind: 'improve',
-      draft: 'what is osmosis',
+    ).toEqual({ kind: 'hint', hint: 'holdToRewrite' })
+  })
+
+  it('a chip click is a tap that rewrites typed text', () => {
+    expect(
+      decide('chip', ctx({ aiChat: CHAT, focused: chatBox(15), fieldText: ' what is osmosis ' })),
+    ).toEqual({ kind: 'improve', draft: 'what is osmosis' })
+    expect(decide('chip', ctx({ aiChat: CHAT, focused: chatBox(), fieldText: '' }))).toEqual({
+      kind: 'suggest',
     })
   })
 
@@ -99,8 +105,8 @@ describe('decide — the F4 tap table', () => {
     ).toEqual({ kind: 'selection', text: 'SN1 is unimolecular' })
   })
 
-  it('(e) opens the picker when an AI chat is open without a session', () => {
-    expect(decide('tap', ctx({ aiChat: CHAT, selection: '' }))).toEqual({ kind: 'picker' })
+  it('(e) studies the last subject when an AI chat is open without a session', () => {
+    expect(decide('tap', ctx({ aiChat: CHAT, selection: '' }))).toEqual({ kind: 'studyLast' })
   })
 
   it('(f) toggles the mini panel anywhere else', () => {
@@ -109,14 +115,78 @@ describe('decide — the F4 tap table', () => {
       kind: 'togglePanel',
     })
   })
+})
 
-  it('hold and double-tap open the ask bar; hold end does nothing', () => {
-    expect(decide('holdStart', ctx())).toEqual({ kind: 'askbar' })
-    expect(decide('doubleTap', ctx({ sessionActive: true, aiChat: CHAT }))).toEqual({
+describe('decide — hold rewrites, double-tap opens the chat window', () => {
+  const typed = { aiChat: CHAT, focused: chatBox(15), fieldText: 'what is osmosis' }
+
+  it('hold reads the field, then rewrites typed text in an AI-chat box', () => {
+    expect(decide('holdStart', ctx({ aiChat: CHAT, focused: chatBox(15) }))).toEqual({
+      kind: 'need',
+      what: 'fieldText',
+    })
+    expect(decide('holdStart', ctx(typed))).toEqual({ kind: 'improve', draft: 'what is osmosis' })
+  })
+
+  it('hold rewrites during a session too', () => {
+    expect(decide('holdStart', ctx({ ...typed, sessionActive: true }))).toEqual({
+      kind: 'improve',
+      draft: 'what is osmosis',
+    })
+  })
+
+  it('hold runs a `/d …` line as an instruction', () => {
+    expect(
+      decide('holdStart', ctx({ aiChat: CHAT, focused: chatBox(9), fieldText: '/d simpler' })),
+    ).toEqual({ kind: 'instruction', text: 'simpler', wholeField: true })
+    expect(decide('holdStart', ctx({ focused: notesField, fieldText: '/d quiz me' }))).toEqual({
+      kind: 'instruction',
+      text: 'quiz me',
+      wholeField: true,
+    })
+  })
+
+  it('hold on an empty AI-chat box, or the chat outside its box, offers the subjects', () => {
+    expect(decide('holdStart', ctx({ aiChat: CHAT, focused: chatBox(), fieldText: ' ' }))).toEqual({
+      kind: 'chooseSubject',
+    })
+    const page = { pid: 501, editable: false, secure: false, valueLength: null }
+    expect(decide('holdStart', ctx({ aiChat: CHAT, focused: page, sessionActive: true }))).toEqual({
+      kind: 'chooseSubject',
+    })
+  })
+
+  it('hold reports an unreadable chat box that has text', () => {
+    expect(
+      decide('holdStart', ctx({ aiChat: CHAT, focused: chatBox(12), fieldText: null })),
+    ).toEqual({ kind: 'unreadable' })
+  })
+
+  it('hold outside an AI chat offers the subjects and never rewrites other fields', () => {
+    expect(decide('holdStart', ctx())).toEqual({ kind: 'chooseSubject' })
+    expect(decide('holdStart', ctx({ focused: notesField, fieldText: 'hello' }))).toEqual({
+      kind: 'chooseSubject',
+    })
+    expect(decide('holdStart', ctx({ aiChat: CHAT, focused: notesField, fieldText: 'x' }))).toEqual(
+      { kind: 'chooseSubject' },
+    )
+  })
+
+  it('hold refuses password fields and is ignored over the ask bar or quiz card', () => {
+    expect(decide('holdStart', ctx({ ...typed, secureInput: true }))).toEqual({
+      kind: 'refuseSecure',
+    })
+    expect(decide('holdStart', ctx({ ...typed, askbarOpen: true }))).toEqual({ kind: 'ignore' })
+    expect(decide('holdStart', ctx({ ...typed, quizOpen: true }))).toEqual({ kind: 'ignore' })
+  })
+
+  it('double-tap opens the chat window anywhere, or focuses it; hold end does nothing', () => {
+    expect(decide('doubleTap', ctx())).toEqual({ kind: 'askbar' })
+    expect(decide('doubleTap', ctx({ ...typed, sessionActive: true }))).toEqual({
       kind: 'askbar',
     })
-    expect(decide('doubleTap', ctx({ askbarOpen: true }))).toEqual({ kind: 'ignore' })
-    expect(decide('holdEnd', ctx())).toEqual({ kind: 'ignore' })
+    expect(decide('doubleTap', ctx({ askbarOpen: true }))).toEqual({ kind: 'focusAskbar' })
+    expect(decide('holdEnd', ctx(typed))).toEqual({ kind: 'ignore' })
   })
 })
 

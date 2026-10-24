@@ -34,13 +34,20 @@ function PermissionRows() {
               <Tag color={p.required ? 'blue' : 'gray'}>{p.required ? 'Required' : 'Optional'}</Tag>
             </>
           }
-          description={p.description}
+          description={
+            flow.granted(p.kind) ? (
+              p.description
+            ) : (
+              <span style={{ color: 'var(--c-red-text)' }}>{p.off}</span>
+            )
+          }
         >
           <PermissionControl
             title={p.title}
             granted={flow.granted(p.kind)}
             waiting={flow.isWaiting(p.kind)}
             onOpen={() => flow.request(p.kind)}
+            actionLabel="Turn on"
           />
         </SettingsRow>
       ))}

@@ -5,6 +5,9 @@
  * value / selection from the helper only when the decision table needs them on an explicit tap,
  * and carries out the decision. Writing work runs as PendingWork, so Esc cancels it and nothing
  * is written if the app or field changed meanwhile (ChatWriter checks the snapshot).
+ *
+ * A key tap waits out the double-tap window first (TapGuard), so a double-tap only opens the
+ * chat window. A hold starts the rewrite at once (orb thinking); its release cancels nothing.
  */
 import type {
   HelperClient,
@@ -14,7 +17,7 @@ import type {
   Repos,
   StudyService,
 } from '@engine/contracts'
-import type { FocusedElement, Gesture } from '@shared/helper-protocol'
+import type { FocusedElement } from '@shared/helper-protocol'
 import { type ChatWriter, snapshotOf } from '../chat/chat-writer'
 import type { AskFlow } from '../flows/ask-flow'
 import { chatContext } from '../flows/context'
@@ -22,9 +25,13 @@ import type { SessionFlow } from '../flows/session-flow'
 import type { Thinking } from '../flows/thinking'
 import type { ToastSpec } from '../overlay/toasts'
 import type { SurfaceControl } from '../platform'
-import { type Decision, decide, type RouteContext } from './decide'
+import { type Decision, decide, type RouteContext, type RouteInput } from './decide'
+import { hintToast, REFUSE_SECURE, unreadableToast } from './hints'
+import { lastStudiedSubject } from './last-subject'
 import type { PendingWork } from './pending'
+import { selectionToast } from './selection-actions'
 import type { SuggestionCache } from './suggestions'
+import { TapGuard } from './tap-guard'
 
 export interface RouterDeps {
   helper: HelperClient
@@ -48,26 +55,28 @@ export interface RouterDeps {
   pending: PendingWork
 }
 
-const preview = (text: string, max = 140) =>
-  text.length > max ? `${text.slice(0, max).trimEnd()}…` : text
-
-export function explainPrompt(selection: string): string {
-  return [
-    "I'm studying this and want to really understand it:",
-    `"${preview(selection, 600)}"`,
-    'Explain it in 3 numbered points with one concrete example. No greetings or small talk. Short structured bullets, max ~150 words, bold key terms. Then ask me one question to check I got it, and wait.',
-  ].join('\n')
+export interface GestureOptions {
+  secureInput?: boolean
+  /** 'key' (default): the trigger key, which can double-tap. 'mouse' / 'chord' act at once. */
+  source?: 'key' | 'mouse' | 'chord'
 }
 
 export class ShortcutRouter {
   /** The last decision, for logs and the test-control channel. */
   lastDecision: Decision | null = null
 
-  constructor(private readonly deps: RouterDeps) {}
+  private readonly tapGuard: TapGuard
 
-  async gesture(gesture: Gesture, opts: { secureInput?: boolean } = {}): Promise<Decision> {
+  constructor(private readonly deps: RouterDeps) {
+    this.tapGuard = new TapGuard(() => deps.repos.settings.get().shortcut.doubleTapMs)
+  }
+
+  async gesture(input: RouteInput, opts: GestureOptions = {}): Promise<Decision> {
     const { surfaces, overlay, study, perception } = this.deps
-    const focused = gesture === 'holdEnd' ? null : await this.focused()
+    // Armed before any await, so a double-tap that lands while we read the context still wins.
+    const settled = input === 'tap' && (opts.source ?? 'key') === 'key' ? this.tapGuard.arm() : null
+    if (input === 'doubleTap') this.tapGuard.supersede()
+    const focused = input === 'holdEnd' ? null : await this.focused()
     const chat = perception.aiChat()
     const phase = study.current()?.phase
     const ctx: RouteContext = {
@@ -85,27 +94,30 @@ export class ShortcutRouter {
         : null,
       secureInput: opts.secureInput ?? false,
     }
-    let decision = decide(gesture, ctx)
+    let decision = decide(input, ctx)
     while (decision.kind === 'need') {
       if (decision.what === 'fieldText') ctx.fieldText = await this.readText('ax.readFocusedValue')
       else ctx.selection = await this.readText('ax.selectedText')
-      decision = decide(gesture, ctx)
+      decision = decide(input, ctx)
     }
+    if (settled && !(await settled)) decision = { kind: 'ignore' }
     this.lastDecision = decision
     await this.execute(decision, focused)
     return decision
   }
 
   orbClick(): Promise<Decision> {
-    return this.gesture('tap')
+    return this.gesture('tap', { source: 'mouse' })
   }
 
+  /** Long-press on the orb: the chat window, like a double-tap (PLAN §5.6 mouse map). */
   orbLongPress(): Promise<Decision> {
-    return this.gesture('holdStart')
+    return this.gesture('doubleTap', { source: 'mouse' })
   }
 
+  /** The chip inserts the suggested prompt, or rewrites typed text ("Improve prompt"). */
   chipClick(): Promise<Decision> {
-    return this.gesture('tap')
+    return this.gesture('chip', { source: 'mouse' })
   }
 
   async pillClick(): Promise<void> {
@@ -145,21 +157,34 @@ export class ShortcutRouter {
       case 'askbar':
         await surfaces.open('askbar', { nearField: focused?.editable ? focused.frame : null })
         return
+      case 'focusAskbar':
+        await surfaces.open('askbar')
+        return
+      case 'chooseSubject':
+        await surfaces.open('askbar', { route: 'choose' })
+        return
+      case 'studyLast': {
+        const subjectId = lastStudiedSubject(this.deps.repos)
+        if (subjectId === null) {
+          await surfaces.open('panel', { route: '/picker' })
+          return
+        }
+        await pending.run((signal) =>
+          sessions.start(
+            { subjectId, goal: null, question: null },
+            { expect: inChatBox ? snapshot : null, signal },
+          ),
+        )
+        return
+      }
       case 'refuseSecure':
-        overlay.showToast({
-          kind: 'info',
-          title: 'Password field',
-          body: 'Dumbledore never reads or writes password fields.',
-          ttlMs: 4000,
-        })
+        overlay.showToast(REFUSE_SECURE)
         return
       case 'unreadable':
-        overlay.showToast({
-          kind: 'error',
-          title: "Couldn't read that field",
-          body: 'Select the text and tap again, or use the ask bar (hold the key).',
-          ttlMs: 6000,
-        })
+        overlay.showToast(unreadableToast(this.key()))
+        return
+      case 'hint':
+        overlay.showToast(hintToast(d.hint, this.key()))
         return
       case 'sessionNext':
         await pending.run((signal) =>
@@ -199,7 +224,7 @@ export class ShortcutRouter {
         return
       case 'improve':
         await pending.run(async (signal) => {
-          const r = await thinking.run('Improving your prompt…', () =>
+          const r = await thinking.run('Rewriting your prompt…', () =>
             this.deps.prompts.improve(d.draft, chatContext(this.deps.perception)),
           )
           if (signal.aborted) return
@@ -213,7 +238,7 @@ export class ShortcutRouter {
           if (out.ok && r.coachTip) {
             overlay.showToast({
               kind: 'tip',
-              title: 'Prompt improved',
+              title: 'Prompt rewritten',
               body: `${r.coachTip} ⌘Z undoes it.`,
               ttlMs: 12_000,
             })
@@ -221,10 +246,7 @@ export class ShortcutRouter {
         })
         return
       case 'selection':
-        this.selectionToast(d.text)
-        return
-      case 'picker':
-        await surfaces.open('panel', { route: '/picker' })
+        selectionToast(this.deps, d.text)
         return
       case 'togglePanel':
         if (surfaces.isOpen('panel')) await surfaces.close('panel')
@@ -233,48 +255,8 @@ export class ShortcutRouter {
     }
   }
 
-  private selectionToast(text: string): void {
-    const assistant = this.deps.perception.aiChat()?.assistant ?? 'ChatGPT'
-    this.deps.overlay.showToast({
-      kind: 'info',
-      title: 'Selected text',
-      body: preview(text),
-      actions: [
-        {
-          id: 'explain',
-          label: `Explain with ${assistant}`,
-          primary: true,
-          run: () => this.explain(text),
-        },
-        { id: 'roadmap', label: 'Add to a roadmap', run: () => this.addToRoadmap(text) },
-        { id: 'quiz', label: 'Quiz me', run: () => this.quizMe(text) },
-      ],
-    })
-  }
-
-  private async explain(text: string): Promise<void> {
-    await this.deps.writer.write({ text: explainPrompt(text), mode: 'insert', target: 'chat' })
-  }
-
-  private async addToRoadmap(text: string): Promise<void> {
-    const subjectId = this.deps.repos.settings.get().focusSubjectId
-    await this.deps.sessions.start({ subjectId, goal: preview(text, 200), question: null })
-  }
-
-  private async quizMe(text: string): Promise<void> {
-    const { repos, quizzes, overlay, ask } = this.deps
-    const lower = text.toLowerCase()
-    const ids = repos.subjects
-      .list({ status: ['active'] })
-      .flatMap((s) => repos.concepts.listBySubject(s.id))
-      .filter((c) => lower.includes(c.name.toLowerCase()))
-      .map((c) => c.id)
-    if (ids.length > 0) {
-      const quiz = await quizzes.startReview(ids)
-      overlay.openQuiz(quiz.id)
-      return
-    }
-    await ask.instruction(`Quiz me on this: ${preview(text, 300)}`)
+  private key() {
+    return this.deps.repos.settings.get().shortcut.key
   }
 
   private inChat(focused: FocusedElement | null): boolean {

@@ -25,8 +25,15 @@ describe('OnboardingPage', () => {
     expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(
       true,
     )
+    expect(screen.getByText('So Dumbledore can read PDFs, slides and video.')).toBeTruthy()
     r.api.db.appState.permissions.accessibility = true
     await waitFor(() => expect(screen.getByText('Granted')).toBeTruthy(), { timeout: 2500 })
+    // Screen Recording is required too: Continue waits for it.
+    expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(
+      true,
+    )
+    r.api.db.appState.permissions.screenRecording = true
+    await waitFor(() => expect(screen.getAllByText('Granted')).toHaveLength(2), { timeout: 2500 })
     click('Continue')
 
     await title('Your AI is ready')
@@ -54,7 +61,11 @@ describe('OnboardingPage', () => {
     )
     expect(r.api.db.profile.aboutMe).toBe('First-year chemistry student.')
     act(() => r.api.pressKey('tap'))
-    expect(await screen.findByText(/That’s it — tap right ⌥ anywhere/)).toBeTruthy()
+    expect(
+      await screen.findByText(
+        /That’s it — tap right ⌥ in an AI chat to study what you worked on last/,
+      ),
+    ).toBeTruthy()
     click('Continue')
 
     await title('You’re all set')
@@ -85,7 +96,7 @@ describe('OnboardingPage', () => {
     act(() => r.api.pressKey('tap', 'leftOption'))
     expect(await screen.findByText('That’s left ⌥ — tap right ⌥ instead.')).toBeTruthy()
     act(() => r.api.pressKey('holdStart'))
-    expect(await screen.findByText(/That’s a hold — it opens the Ask bar/)).toBeTruthy()
+    expect(await screen.findByText(/That’s a hold — it rewrites your prompt/)).toBeTruthy()
     act(() => r.api.pressKey('holdEnd'))
     // A real press in this window: keydown + keyup of the right Option key.
     fireEvent.keyDown(window, { code: 'AltRight', key: 'Alt' })
@@ -94,8 +105,13 @@ describe('OnboardingPage', () => {
     act(() => r.api.pressKey('holdStart'))
     act(() => r.api.pressKey('holdEnd'))
     expect(
-      await screen.findByText('That’s a hold: the Ask bar, to ask Dumbledore anything.'),
+      await screen.findByText(
+        /That’s a hold: it rewrites the prompt you typed, or lets you pick a subject/,
+      ),
     ).toBeTruthy()
+    act(() => r.api.pressKey('doubleTap'))
+    expect(await screen.findByText(/it opens a chat with Dumbledore/)).toBeTruthy()
+    expect(screen.getByText(/Chat with Dumbledore: ask anything/)).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(
       false,
     )

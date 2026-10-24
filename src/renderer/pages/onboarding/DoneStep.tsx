@@ -104,7 +104,8 @@ export function DoneStep({
       </ul>
       <div className="dd-onb__try">
         <span className="dd-onb__try-label">Try it now</span>
-        Open ChatGPT and tap {key}. Dumbledore suggests what to study and writes the first prompt.
+        Open ChatGPT and tap {key}: Dumbledore picks up what you worked on last and writes the first
+        prompt.
       </div>
     </StepFrame>
   )

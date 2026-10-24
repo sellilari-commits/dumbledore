@@ -1,7 +1,7 @@
 /**
  * Onboarding 2/5 — macOS permissions with live status. Each row flips to "✓ Granted" by
- * itself once macOS reports the switch (polled every second). Continue needs Accessibility;
- * Screen Recording is optional.
+ * itself once macOS reports the switch (polled every second). Continue needs both
+ * Accessibility and Screen Recording (PDFs, slides and video are read from pixels).
  */
 import { Button, Tag } from '@renderer/design-system'
 import { MousePointerClick, ScanText } from 'lucide-react'
@@ -14,6 +14,7 @@ export function PermissionsStep({ onNext, onBack }: { onNext: () => void; onBack
   const flow = usePermissionFlow(true)
   const axOk = flow.granted('accessibility')
   const srOk = flow.granted('screenRecording')
+  const allOk = axOk && srOk
   return (
     <StepFrame
       step={1}
@@ -26,12 +27,12 @@ export function PermissionsStep({ onNext, onBack }: { onNext: () => void; onBack
       }
       actions={
         <>
-          {!axOk ? (
+          {!allOk ? (
             <Button variant="ghost" onClick={onNext}>
               Set up later
             </Button>
           ) : null}
-          <Button variant="primary" onClick={onNext} disabled={!axOk}>
+          <Button variant="primary" onClick={onNext} disabled={!allOk}>
             Continue
           </Button>
         </>
@@ -66,10 +67,10 @@ export function PermissionsStep({ onNext, onBack }: { onNext: () => void; onBack
           )
         })}
       </div>
-      {!srOk ? (
+      {!allOk ? (
         <p className="dd-onb__hint">
-          Screen Recording is optional. Without it Dumbledore reads text only, like most of the time
-          anyway — you can switch it on later in Settings.
+          Dumbledore needs both. Screen Recording stays on so it can read PDFs, slides and video;
+          nothing leaves this Mac.
         </p>
       ) : null}
     </StepFrame>

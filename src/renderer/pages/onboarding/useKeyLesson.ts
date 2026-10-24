@@ -1,8 +1,9 @@
 /**
  * The "learn the key" lesson as a small state machine over trigger-key gestures: a clean tap
- * of the configured key passes; a wrong key ("That’s left ⌥ — tap right ⌥ instead"), a hold before the
- * first tap or a double-tap get a coaching line instead. After the tap, a hold is explained
- * (it opens the Ask bar) and recognised. `react` is exported for tests.
+ * of the configured key passes; a wrong key ("That’s left ⌥ — tap right ⌥ instead") or a hold
+ * before the first tap get a coaching line instead. After the tap, the hold (rewrite your prompt,
+ * or pick a subject) and the double-tap (chat with Dumbledore) are explained and recognised. `react` is exported
+ * for tests.
  */
 import { type KeyGesture, useKeyGestures } from '@renderer/lib/gestures'
 import type { Settings, TriggerKey } from '@shared/domain'
@@ -14,6 +15,8 @@ export type Tone = 'idle' | 'good' | 'warn'
 export interface LessonState {
   tapped: boolean
   held: boolean
+  /** A double-tap was seen (it opens the chat with Dumbledore). */
+  doubled: boolean
   /** The keycap is held down (between holdStart and holdEnd). */
   down: boolean
   /** Counts clean presses of the right key; the keycap replays its press animation on change. */
@@ -45,6 +48,7 @@ export function initialLesson(key: TriggerKey): LessonState {
   return {
     tapped: false,
     held: false,
+    doubled: false,
     down: false,
     presses: 0,
     verdict: { tone: 'idle', text: `Waiting for ${keyName(key)}…` },
@@ -70,46 +74,58 @@ export function react(state: LessonState, g: KeyGesture, key: TriggerKey): Lesso
         down: false,
         presses: state.presses + 1,
         verdict: !state.tapped
-          ? { tone: 'good', text: `That’s it — tap ${want} anywhere for the smart next step.` }
-          : state.held
-            ? { tone: 'good', text: 'Tap and hold — you’ve got both.' }
-            : { tone: 'good', text: 'That’s a tap. Now hold it for half a second.' },
+          ? {
+              tone: 'good',
+              text: `That’s it — tap ${want} in an AI chat to study what you worked on last.`,
+            }
+          : { tone: 'good', text: `That’s a tap. ${nextMove(state)}` },
       }
-    case 'doubleTap':
+    case 'doubleTap': {
+      const next = { ...state, tapped: true, doubled: true }
       return {
-        ...state,
-        tapped: true,
+        ...next,
         down: false,
         presses: state.presses + 1,
         verdict: {
           tone: 'good',
-          text: 'A double-tap opens the Ask bar, like a hold. One tap is the everyday move.',
+          text: `That’s a double-tap: it opens a chat with Dumbledore. ${nextMove(next)}`,
         },
       }
+    }
     case 'holdStart':
       return {
         ...state,
         down: true,
         verdict: state.tapped
-          ? { tone: 'good', text: 'Holding… this opens the Ask bar.' }
+          ? {
+              tone: 'good',
+              text: 'Holding… this rewrites the prompt you typed, or lets you pick a subject.',
+            }
           : {
               tone: 'warn',
-              text: `That’s a hold — it opens the Ask bar. First a quick tap: press ${want} and let go.`,
+              text: `That’s a hold — it rewrites your prompt or lets you pick a subject. First a quick tap: press ${want} and let go.`,
             },
       }
-    case 'holdEnd':
-      return state.tapped
-        ? {
-            ...state,
-            held: true,
-            down: false,
-            verdict: {
-              tone: 'good',
-              text: 'That’s a hold: the Ask bar, to ask Dumbledore anything.',
-            },
-          }
-        : { ...state, down: false }
+    case 'holdEnd': {
+      if (!state.tapped) return { ...state, down: false }
+      const next = { ...state, held: true }
+      return {
+        ...next,
+        down: false,
+        verdict: {
+          tone: 'good',
+          text: `That’s a hold: it rewrites the prompt you typed, or lets you pick a subject. ${nextMove(next)}`,
+        },
+      }
+    }
   }
+}
+
+/** What to try next, once the first tap is done. */
+function nextMove(s: LessonState): string {
+  if (!s.held) return 'Now hold it for half a second.'
+  if (!s.doubled) return 'Now double-tap it: two quick taps.'
+  return 'Tap, hold, double-tap — you’ve got all three.'
 }
 
 export function useKeyLesson(shortcut: Settings['shortcut']): LessonState {

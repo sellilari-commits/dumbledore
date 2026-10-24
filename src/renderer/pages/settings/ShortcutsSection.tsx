@@ -1,6 +1,8 @@
 /**
  * Settings → Shortcuts: the Dumbledore key (with the ⌥-conflict note), the fallback chord,
- * gesture timings, and a reference of in-app and global shortcuts.
+ * gesture timings, and a reference of the key's gestures (tap = study what you worked on last /
+ * next step, hold = rewrite your prompt or pick a subject, double-tap = chat with Dumbledore) plus
+ * in-app and global shortcuts.
  */
 import { Button, Callout, Kbd, toast } from '@renderer/design-system'
 import type { Settings, TriggerKey } from '@shared/domain'
@@ -30,7 +32,22 @@ export function Keys({ keys }: { keys: KeyToken[] }) {
   )
 }
 
-const KEY_GROUPS: Array<{ group: string; items: Array<{ label: string; keys: KeyToken[] }> }> = [
+type KeyGroup = { group: string; items: Array<{ label: string; keys: KeyToken[] }> }
+
+/** The Dumbledore key's three gestures, shown with the configured key. */
+export function gestureGroup(key: TriggerKey): KeyGroup {
+  const glyph = TRIGGER_KEYS[key].glyph
+  return {
+    group: 'Dumbledore key',
+    items: [
+      { label: 'Study what you worked on last · next step', keys: [{ sep: 'tap' }, glyph] },
+      { label: 'Rewrite your prompt, or pick a subject', keys: [{ sep: 'hold' }, glyph] },
+      { label: 'Chat with Dumbledore', keys: [{ sep: 'double-tap' }, glyph] },
+    ],
+  }
+}
+
+const KEY_GROUPS: KeyGroup[] = [
   {
     group: 'In the app',
     items: [
@@ -105,7 +122,7 @@ export function ShortcutsSection({ settings }: { settings: Settings }) {
       >
         <SettingsRow
           label="Key"
-          description="Tap: next prompt, improve what you typed, or open the panel. Hold or double-tap: Ask bar."
+          description="Tap: study what you worked on last, or the next step. Hold: rewrite your prompt, or pick a subject. Double-tap: chat with Dumbledore."
         >
           <SelectMenu<TriggerKey>
             label="Dumbledore key"
@@ -136,7 +153,7 @@ export function ShortcutsSection({ settings }: { settings: Settings }) {
         title="Keyboard shortcuts"
         description="Notion’s shortcuts in the app, and only two global ones to stay out of other apps’ way."
       >
-        {KEY_GROUPS.map((g) => (
+        {[gestureGroup(s.key), ...KEY_GROUPS].map((g) => (
           <div key={g.group}>
             <div className="dd-set-keys__group">{g.group}</div>
             <ul className="dd-set-keys" aria-label={g.group}>
