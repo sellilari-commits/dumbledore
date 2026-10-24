@@ -8,7 +8,7 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
-| 2026-10-24 21:20 | Ilari / Claude | Remove the ▸ Next square under the orb (Quiz square stays) | src/main/overlay/controller.ts (+ test), src/renderer/surfaces/overlay/satellites/SideStack.tsx, src/renderer/surfaces/overlay/OverlayApp.tsx (+ tests) | main | |
+| 2026-10-24 21:20 | Ilari / Claude | Remove the Quiz square under the orb (▸ Next stays) | src/main/overlay/controller.ts (+ test), src/renderer/surfaces/overlay/satellites/SideStack.tsx, src/renderer/surfaces/overlay/OverlayApp.tsx (+ tests) | main | |
 | 2026-10-24 21:05 | Olle / Claude | Ink & paper look: ink accents instead of blue, warm paper backgrounds, light & dark | `src/renderer/design-system/tokens.css`, `src/renderer/design-system/base.css` (links), `docs/DESIGN.md` (tokens), `tests/e2e-sim/__screenshots__/` | main | Colours only; no layout or component changes |
 
 ## Done recently
