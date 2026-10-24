@@ -8,7 +8,7 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
-| _nothing in progress_ | | | | | |
+| 2026-10-24 20:20 | Ilari / Claude | Delete a subject (trash button) and everything Dumbledore remembers about it | src/engine/contracts.ts, src/engine/store/repos/subjects.ts, src/engine/testing/memory-repos.ts, src/engine/store/conformance/subjects.ts, src/engine/subjects/subject-service.ts, src/shared/ipc.ts, src/main/ipc/handlers.ts, src/main/fakes/fake-services.ts, src/renderer/lib/mock/handlers-core.ts, src/renderer/lib/queries.ts, src/renderer/surfaces/app/AppSidebar.tsx, src/renderer/pages/subject/ | main | |
 
 ## Done recently
 
