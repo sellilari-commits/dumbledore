@@ -87,6 +87,8 @@ async function start(paths: AppPaths): Promise<void> {
       })
   const composition = real ?? compose({ ownPid: process.pid, secrets })
   const { services } = composition
+  // The installed app is always on: it starts at login (capture keeps its own on/off switch).
+  if (app.isPackaged && !isTest) app.setLoginItemSettings({ openAtLogin: true })
   /** Stops the services; the real engine also closes its database. */
   const shutdown = () => (real ? real.close() : services.stop())
   const windows = new WindowManager({

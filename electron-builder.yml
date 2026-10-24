@@ -1,0 +1,26 @@
+# Packages Dumbledore.app (`npm run package`) with the Swift helper embedded at
+# Contents/Library/LoginItems/Dumbledore Helper.app, where src/engine/helper/launcher.ts looks for
+# it. The helper holds the macOS permissions (Accessibility, Screen Recording), so rebuilding the
+# Electron side never resets them. Build the helper first: `bash native/helper/build.sh`.
+appId: org.stuhi.dumbledore
+productName: Dumbledore
+directories:
+  output: release
+  buildResources: resources
+files:
+  - out/**
+  - package.json
+electronDist: node_modules/electron/dist
+npmRebuild: false
+asarUnpack:
+  - '**/*.node'
+extraFiles:
+  - from: native/helper/build/Dumbledore Helper.app
+    to: Library/LoginItems/Dumbledore Helper.app
+mac:
+  target: dir
+  category: public.app-category.education
+  # Local ad-hoc signing (scripts sign after packaging); no Developer ID yet.
+  identity: null
+  extendInfo:
+    LSUIElement: true
