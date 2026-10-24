@@ -49,6 +49,16 @@ import {
 const Void = z.void()
 const WindowSurface = z.enum(['app', 'panel', 'askbar'])
 
+/** What adding one study-material file did: how many notes it filed, or why it couldn't. */
+export const MaterialResult = z.object({
+  name: z.string(),
+  ok: z.boolean(),
+  notes: z.number().int(),
+  truncated: z.boolean(),
+  error: z.string().nullable(),
+})
+export type MaterialResult = z.infer<typeof MaterialResult>
+
 export const ipcInvoke = {
   // App status & settings
   'app.getState': { req: Void, res: AppState },
@@ -112,6 +122,13 @@ export const ipcInvoke = {
     res: Void,
   },
   'assignments.add': { req: NewAssignmentInput, res: Assignment },
+
+  /**
+   * Study material: main opens a file picker (PDF, Word, RTF, HTML, text, Markdown), reads each
+   * file and files what it teaches into the subject's memory. One result per chosen file; an
+   * empty list when the picker was cancelled.
+   */
+  'materials.add': { req: z.object({ subjectId: Id }), res: z.array(MaterialResult) },
 
   // Memory control (docs/NOTES.md §7): the topic tree with notes, loose notes, edit and delete
   'subjects.tree': { req: Id, res: SubjectTree },

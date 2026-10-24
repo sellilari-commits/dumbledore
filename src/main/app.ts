@@ -9,10 +9,11 @@
  */
 import { join, resolve } from 'node:path'
 import { APP_NAME } from '@shared/constants'
-import { app, clipboard, ipcMain, Notification, shell } from 'electron'
+import { app, clipboard, dialog, ipcMain, Notification, shell } from 'electron'
 import { compose } from './compose'
 import { deleteEverything } from './data/delete-all'
 import { watchRenderer } from './diagnostics'
+import { MATERIAL_EXTENSIONS } from './flows/materials'
 import { Broadcaster } from './ipc/broadcast'
 import { StateBroadcast, wireBroadcasts } from './ipc/events'
 import { createHandlers } from './ipc/handlers'
@@ -167,6 +168,15 @@ async function start(paths: AppPaths): Promise<void> {
     exportDir: paths.exportsDir,
     revealFile: (path) => shell.showItemInFolder(path),
     deleteAllData: () => deleteEverything({ paths, stopServices: shutdown, relaunch: !isTest }),
+    pickMaterialFiles: async () => {
+      const r = await dialog.showOpenDialog({
+        title: 'Add study material',
+        buttonLabel: 'Add',
+        properties: ['openFile', 'multiSelections'],
+        filters: [{ name: 'Study material', extensions: MATERIAL_EXTENSIONS }],
+      })
+      return r.canceled ? [] : r.filePaths
+    },
   })
   const unregister = registerIpc(ipcMain, handlers, {
     identify: windows.identify,

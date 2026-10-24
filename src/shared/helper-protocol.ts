@@ -126,6 +126,11 @@ export const helperMethods = {
     }),
     result: z.object({ windows: z.array(PerceivedWindow) }),
   },
+  /** Text of a PDF the student added as study material (PDFKit). Empty for a scanned PDF. */
+  'file.pdfText': {
+    params: z.object({ path: z.string(), maxChars: z.number().int().default(200_000) }),
+    result: z.object({ text: z.string(), pages: z.number().int(), truncated: z.boolean() }),
+  },
   'ax.focused': { params: Empty, result: FocusedElement.nullable() },
   /** Only on an explicit user action (key tap / Improve). Refuses secure fields. */
   'ax.readFocusedValue': { params: Empty, result: z.object({ text: z.string().nullable() }) },
@@ -169,7 +174,10 @@ export const helperMethods = {
   /** e.g. "cmd+a", "escape", "enter" — keycodes resolved for the current keyboard layout. */
   'input.key': { params: z.object({ combo: z.string() }), result: z.object({ ok: z.boolean() }) },
   /** Hand focus back to an app (after typing in one of Dumbledore's panels). */
-  'app.activate': { params: z.object({ pid: z.number().int() }), result: z.object({ ok: z.boolean() }) },
+  'app.activate': {
+    params: z.object({ pid: z.number().int() }),
+    result: z.object({ ok: z.boolean() }),
+  },
   'system.idle': { params: Empty, result: z.object({ seconds: z.number() }) },
   'system.displays': { params: Empty, result: z.object({ displays: z.array(Display) }) },
   /** Configure the trigger key gestures. The helper polls modifier state (no Input Monitoring). */

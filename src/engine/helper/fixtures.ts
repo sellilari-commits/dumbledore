@@ -94,6 +94,7 @@ export function defaultResult<M extends HelperMethod>(method: M): HelperResult<M
     'permissions.request': { opened: true },
     frontmost: null,
     perceive: { windows: [] },
+    'file.pdfText': { text: '', pages: 0, truncated: false },
     'ax.focused': null,
     'ax.readFocusedValue': { text: null },
     'ax.selectedText': { text: null },

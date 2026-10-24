@@ -7,6 +7,7 @@
 import type { Settings } from '@shared/domain'
 import type { MemoryScope, OverlayAction } from '@shared/state'
 import { buildExport, writeExport } from '../data/export'
+import { MaterialsFlow } from '../flows/materials'
 import type { SecretKey } from '../services'
 import type { ShellCore } from '../shell'
 import type { Handlers, InvokeContext } from './types'
@@ -31,6 +32,8 @@ export interface HandlerExtras {
   revealFile: (path: string) => void
   /** "Delete everything": wipes the store, memory files and keys, then relaunches the app. */
   deleteAllData: () => Promise<void>
+  /** File picker for study material; [] when cancelled. */
+  pickMaterialFiles: () => Promise<string[]>
 }
 
 export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers {
@@ -38,6 +41,13 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
   const { bus, repos, queries, study, quizzes, subjects, helper } = services
   const memory = (scope: MemoryScope, ids: (string | null)[]) =>
     bus.emit('memory:changed', { scope, ids: ids.filter((id): id is string => id !== null) })
+  const materials = new MaterialsFlow({
+    repos,
+    brain: services.brain,
+    clock: services.clock,
+    helper,
+    changed: (subjectId) => memory('subjects', [subjectId]),
+  })
   const settingsChanged = () => {
     const settings = repos.settings.get()
     bus.emit('settings:changed', { settings })
@@ -208,6 +218,10 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
     'concepts.delete': (id) => {
       const concept = subjects.deleteConcept(id)
       memory('subjects', [concept.subjectId])
+    },
+    'materials.add': async ({ subjectId }) => {
+      const paths = await extras.pickMaterialFiles()
+      return paths.length ? materials.add(subjectId, paths) : []
     },
     'encounters.delete': (id) => {
       const encounter = subjects.deleteEncounter(id)

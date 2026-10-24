@@ -42,6 +42,7 @@ enum Handlers {
       TriggerPoller.shared.configure(p)
       return OkResult(ok: true)
     }
+    r.register("file.pdfText") { (p: FileTextParams, _) in try FileText.pdf(p) }
     r.register("llm.onDevice.status") { (_: EmptyParams, _) in OnDevice.status() }
     r.register("llm.onDevice.generate", on: Queues.llm) { (p: GenerateParams, ctx) in
       try OnDevice.generate(p, line: ctx.line)

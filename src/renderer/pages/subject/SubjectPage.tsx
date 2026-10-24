@@ -17,6 +17,7 @@ import { Eye } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Redirect, useParams } from 'wouter'
 import { PageFrame } from '../PageFrame'
+import { AddMaterial } from './AddMaterial'
 import { MemoryTree } from './MemoryTree'
 import { SeenView } from './SeenView'
 import { GenerateExamButton, SubjectMenu } from './SubjectActions'
@@ -89,7 +90,12 @@ export function SubjectPage() {
         <div className="sp-sections">
           <ProgressSection detail={detail} />
           <GapsSection concepts={detail.concepts} />
-          <Section id="subject-caught" title="What Dumbledore caught" icon={<Eye {...HEAD} />}>
+          <Section
+            id="subject-caught"
+            title="What Dumbledore caught"
+            icon={<Eye {...HEAD} />}
+            actions={<AddMaterial subjectId={detail.subject.id} />}
+          >
             <MemoryTree subjectId={detail.subject.id} />
             {detail.encounters.length > 0 ? (
               <ToggleBlock

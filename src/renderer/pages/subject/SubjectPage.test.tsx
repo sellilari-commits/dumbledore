@@ -168,6 +168,18 @@ describe('SubjectPage memory', () => {
     )
   })
 
+  it('adds study material and shows what it filed', async () => {
+    const r = renderSubject()
+    fireEvent.click(await screen.findByRole('button', { name: 'Add material' }))
+    await waitFor(() => expect(toastTexts()).toContain('Added Lecture notes.pdf: 1 note in memory'))
+    expect(r.api.db.notes.some((n) => n.source.title === 'Lecture notes.pdf')).toBe(true)
+    expect(
+      await screen.findByText(
+        'Added from your lecture notes: the key ideas of this subject, filed into memory.',
+      ),
+    ).toBeTruthy()
+  })
+
   it('lists every capture by day in a toggle and removes one with its ✕', async () => {
     const r = renderSubject()
     fireEvent.click(await screen.findByRole('button', { name: /Everything it saw, by day/ }))

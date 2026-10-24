@@ -204,6 +204,8 @@ describe('IPC handlers', () => {
       text: 'Tampere was founded in 1779',
       source,
     }).note
+    // The fake file picker is cancelled: nothing is read.
+    expect(await call('materials.add', { subjectId: orgo.id })).toEqual([])
     const tree = await call('subjects.tree', orgo.id)
     expect(tree.concepts.find((n) => n.concept.id === concept.id)?.notes.map((n) => n.id)).toEqual([
       placed.id,

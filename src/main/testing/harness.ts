@@ -128,6 +128,10 @@ export function fakeExtras(exportDir: string): { extras: HandlerExtras; calls: s
     exportDir,
     revealFile: (path) => void calls.push(`reveal:${path}`),
     deleteAllData: async () => void calls.push('deleteAll'),
+    pickMaterialFiles: async () => {
+      calls.push('pickMaterial')
+      return []
+    },
   }
   return { extras, calls }
 }

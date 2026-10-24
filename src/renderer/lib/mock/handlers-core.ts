@@ -9,6 +9,7 @@ import type { AppState } from '@shared/state'
 import type { HandlerMap, MockContext } from './context'
 import { examList, homeData, search, subjectDetail, subjectList } from './derive'
 import type { AccountChannel } from './handlers-account'
+import type { MaterialsChannel } from './handlers-materials'
 import type { MemoryChannel } from './handlers-memory'
 import { mockId, nowIso } from './time'
 
@@ -30,6 +31,7 @@ type CoreChannel = Exclude<
   | 'nudge.act'
   | AccountChannel
   | MemoryChannel
+  | MaterialsChannel
 >
 
 type SecretKey = InvokeReq<'secrets.set'>['key']
