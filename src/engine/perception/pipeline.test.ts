@@ -17,6 +17,7 @@ import { createPerceptionStack } from './stack'
 import {
   type EpisodeFixture,
   fixtureExtractor,
+  fixtureTriage,
   loadEpisodeFixtures,
   replayFixture,
 } from './testing/fixtures'
@@ -38,7 +39,7 @@ async function play(fx: EpisodeFixture): Promise<Run> {
   const helper = new ScriptedHelper(clock)
   const repos = createMemoryRepos(clock)
   const bus = createEngineBus()
-  const brain = new FakeBrain({ extract: fixtureExtractor(fx) })
+  const brain = new FakeBrain({ extract: fixtureExtractor(fx), triage: fixtureTriage(fx) })
   const run: Run = { closed: [], chats: [], memoryScopes: [], events: [], brain, repos, helper }
   bus.on('perception:episodeClosed', (e) => {
     run.closed.push(e.episode)

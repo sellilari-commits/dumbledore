@@ -34,7 +34,7 @@ describe('composeReal: perception → memory', () => {
     expect(closed.map((e) => e.url)).toContain(WIKI.url)
     expect(comp.engine.repos.episodes.get(closed[0]?.id ?? '')?.dwellSeconds).toBeGreaterThan(30)
 
-    await runFor(clock, 2 * MINUTE) // the worker's flush interval
+    await runFor(clock, 6 * MINUTE) // the worker judges the 5-minute window
     const inbox = services.queries.inbox({ state: 'new', subjectId: null })
     expect(inbox).toHaveLength(1)
     const encounter = inbox[0]

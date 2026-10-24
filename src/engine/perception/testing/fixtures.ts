@@ -6,7 +6,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
-import type { ExtractInput, ExtractOutput } from '../../brain-contract'
+import type { ExtractInput, ExtractOutput, TriageInput, TriageOutput } from '../../brain-contract'
 import type { FakeClock } from '../../clock'
 import { runFor, type ScriptedHelper, type ScriptedWindow } from './scripted-helper'
 
@@ -136,6 +136,17 @@ const EXAMPLE = /\bexamples?\b/i
 const CONTEXT = /\b(i'm|i am|my (course|class|exam)|for my)\b/i
 const STRUCTURE = /(\d\.|\bsteps?\b|\bbullets?\b|\b\d+ (questions|points)\b)/i
 const CONFUSED = /(don't get|do not get|simpler|simply|confus)/i
+
+/** A stand-in for the P0 triage that answers from the fixture's ground truth. */
+export function fixtureTriage(fx: EpisodeFixture) {
+  return async (input: TriageInput): Promise<TriageOutput> => ({
+    results: input.episodes.map((ep) => ({
+      id: ep.id,
+      hasLearnableContent: fx.learning,
+      reason: fx.learning ? 'study material' : 'not learning',
+    })),
+  })
+}
 
 /** A stand-in for the P1 extractor that answers from the fixture's ground truth. */
 export function fixtureExtractor(fx: EpisodeFixture) {

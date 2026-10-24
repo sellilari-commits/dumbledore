@@ -1,7 +1,7 @@
 import type { Episode } from '@shared/domain'
 import type { MemoryChanged, SessionState } from '@shared/state'
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { ExtractInput } from '../../brain-contract'
+import type { ExtractInput, TriageInput } from '../../brain-contract'
 import { FakeClock } from '../../clock'
 import type { Repos } from '../../contracts'
 import { createEngineBus, type EngineBus } from '../../events'
@@ -47,6 +47,8 @@ describe('ExtractionWorker', () => {
     })
   const extractCalls = () =>
     brain.calls.filter((c) => c.method === 'extract').map((c) => c.input as ExtractInput)
+  const triageCalls = () =>
+    brain.calls.filter((c) => c.method === 'triage').map((c) => c.input as TriageInput)
   const saved = (overrides: Partial<Episode> = {}) => {
     const ep = makeEpisode({ endedAt: clock.nowIso(), ...overrides })
     repos.episodes.save(ep)
@@ -96,15 +98,21 @@ describe('ExtractionWorker', () => {
     expect(extractCalls().map((c) => c.episodes.length)).toEqual([1, 1, 1])
   })
 
-  it('flushes on its own every 2 minutes', async () => {
+  it('judges a window on its own once it is 5 minutes old', async () => {
     const worker = make()
     worker.start()
     bus.emit('perception:episodeClosed', { episode: saved() })
     await flushAsync()
-    expect(extractCalls()).toHaveLength(0)
-    clock.advance(2 * 60 * 1000)
+    clock.advance(4 * 60 * 1000)
+    bus.emit('perception:episodeClosed', { episode: saved({ title: 'SN2 – Wikipedia' }) })
     await flushAsync()
-    expect(extractCalls()).toHaveLength(1)
+    expect(triageCalls()).toHaveLength(0)
+    expect(extractCalls()).toHaveLength(0)
+    clock.advance(60 * 1000)
+    await flushAsync()
+    // One triage call for the whole window, then the "yes" episodes together.
+    expect(triageCalls().map((c) => c.episodes.length)).toEqual([2])
+    expect(extractCalls().map((c) => c.episodes.length)).toEqual([2])
     worker.stop()
   })
 
@@ -121,7 +129,7 @@ describe('ExtractionWorker', () => {
       })
     bus.emit('perception:episodeClosed', { episode: chat() })
     await flushAsync()
-    expect(extractCalls()).toHaveLength(0) // no session: waits for the 2-minute flush
+    expect(extractCalls()).toHaveLength(0) // no session: waits for the 5-minute window
     bus.emit('session:changed', { session: session('step') })
     await flushAsync()
     expect(extractCalls()).toHaveLength(1) // queued chat flushed when the session started
@@ -132,17 +140,122 @@ describe('ExtractionWorker', () => {
   })
 
   it('stops at the daily budget and resumes the next day', async () => {
-    const worker = make({ dailyMaxCalls: 1 })
+    // Triage counts: one window is a triage call plus an extraction call.
+    const worker = make({ dailyMaxCalls: 2 })
     worker.enqueue(saved())
     await worker.flushNow()
     worker.enqueue(saved({ url: 'https://en.wikipedia.org/wiki/SN2_reaction' }))
     await worker.flushNow()
+    expect(triageCalls()).toHaveLength(1)
     expect(extractCalls()).toHaveLength(1)
     expect(worker.pending).toBe(1)
     expect(worker.budgetLeft().calls).toBe(0)
     clock.advance(24 * 60 * 60 * 1000)
     await worker.flushNow()
     expect(extractCalls()).toHaveLength(2)
+  })
+
+  describe('batched decision', () => {
+    // Long enough for the pre-gate, but with no study vocabulary: the old score says no.
+    const PLAIN = 'We went to the lake on Saturday and the weather was fine. '.repeat(5)
+
+    it('sends only the "yes" episodes to P1 and closes the "no" ones without a call', async () => {
+      brain = new FakeBrain({
+        triage: async (input) => ({
+          results: input.episodes.map((e, i) => ({
+            id: e.id,
+            hasLearnableContent: i === 0,
+            reason: i === 0 ? 'history facts' : 'no content',
+          })),
+        }),
+      })
+      const worker = make()
+      const yes = saved({ title: 'Tampere – Wikipedia' })
+      const no = saved({ title: 'Lake trip' })
+      worker.enqueue(yes)
+      worker.enqueue(no)
+      await worker.flushNow()
+      expect(extractCalls().map((c) => c.episodes.map((e) => e.id))).toEqual([[yes.id]])
+      expect(repos.episodes.get(no.id)?.extracted).toBe(true)
+      expect(repos.episodes.get(yes.id)?.extracted).toBe(true)
+    })
+
+    it("gives P1 the window's other episodes as context", async () => {
+      brain = new FakeBrain({
+        triage: async (input) => ({
+          results: input.episodes.map((e) => ({
+            id: e.id,
+            hasLearnableContent: e.title !== 'tampere history - Google Search',
+            reason: '',
+          })),
+        }),
+      })
+      const worker = make()
+      worker.enqueue(saved({ title: 'tampere history - Google Search' }))
+      worker.enqueue(saved({ title: 'Tampere – Wikipedia' }))
+      worker.enqueue(
+        saved({
+          kind: 'ai_chat',
+          title: 'ChatGPT',
+          text: `[R] who was Finlayson\n[L] ${STUDY_TEXT}`,
+        }),
+      )
+      await worker.flushNow()
+      const [call] = extractCalls()
+      expect(call?.episodes).toHaveLength(2)
+      expect(call?.context).toEqual(['tampere history - Google Search (reading)'])
+    })
+
+    it('falls back to the prefilter score when triage fails or gives no answer', async () => {
+      brain = new FakeBrain({
+        triage: async () => {
+          throw new Error('provider down')
+        },
+      })
+      const worker = make()
+      const study = saved()
+      const plain = saved({ text: PLAIN, title: 'Lake trip', url: 'https://someblog.example/lake' })
+      expect(worker.enqueue(plain)).toMatchObject({ gate: true, pass: false })
+      worker.enqueue(study)
+      await worker.flushNow()
+      expect(extractCalls().map((c) => c.episodes.map((e) => e.id))).toEqual([[study.id]])
+      expect(repos.episodes.get(plain.id)?.extracted).toBe(true)
+
+      brain = new FakeBrain({ triage: async () => ({ results: [] }) })
+      const again = make()
+      const next = saved()
+      again.enqueue(next)
+      await again.flushNow()
+      expect(extractCalls()).toHaveLength(1)
+    })
+
+    it('skips triage for highlights and judges their window at once', async () => {
+      const worker = make()
+      worker.start()
+      const plain = saved({ text: PLAIN, title: 'Lake trip', url: 'https://someblog.example/lake' })
+      bus.emit('perception:episodeClosed', { episode: plain })
+      const marked = saved({
+        signals: { ...makeEpisode().signals, highlights: ['Finlayson founded a cotton mill'] },
+      })
+      bus.emit('perception:episodeClosed', { episode: marked })
+      await flushAsync()
+      expect(triageCalls().map((c) => c.episodes.map((e) => e.id))).toEqual([[plain.id]])
+      expect(extractCalls().flatMap((c) => c.episodes.map((e) => e.id))).toContain(marked.id)
+      worker.stop()
+    })
+
+    it('keeps obvious noise and hard-rule failures out of triage', async () => {
+      const worker = make()
+      const feed = saved({
+        url: 'https://www.instagram.com/',
+        title: 'Instagram',
+        text: PLAIN,
+      })
+      expect(worker.enqueue(feed)).toMatchObject({ gate: false })
+      expect(worker.enqueue(saved({ dwellSeconds: 5 }))).toMatchObject({ gate: false })
+      await worker.flushNow()
+      expect(triageCalls()).toHaveLength(0)
+    })
   })
 
   it('retries failed calls a limited number of times', async () => {

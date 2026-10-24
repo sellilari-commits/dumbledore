@@ -57,7 +57,7 @@ export const LlmExtract = z.object({
 })
 export type LlmExtract = z.infer<typeof LlmExtract>
 
-const LEARNING = `LEARNABLE CONTENT (isLearning=true): facts, explanations, definitions, worked examples, formulas, arguments or ideas that a student could know, understand or be tested on afterwards. For example textbook or course material, lecture slides or notes, papers, encyclopedia and history pages, news and articles with real facts, documentation or tutorials, an AI explaining something, practice problems, flashcards, educational videos (captions/slides), assignments, exam or deadline information.
+export const LEARNING = `LEARNABLE CONTENT (isLearning=true): facts, explanations, definitions, worked examples, formulas, arguments or ideas that a student could know, understand or be tested on afterwards. For example textbook or course material, lecture slides or notes, papers, encyclopedia and history pages, news and articles with real facts, documentation or tutorials, an AI explaining something, practice problems, flashcards, educational videos (captions/slides), assignments, exam or deadline information.
 NOTHING TO LEARN FROM (isLearning=false): social media feeds, shopping, entertainment, messaging small talk, email triage, settings and sign-in screens, search result lists, just navigating, routine work where nothing new is being learned, UI noise (menus, buttons, ads, cookie banners).`
 
 /** On-device (4K context) keeps the short form; the cloud prompt spells out the real traps. */
@@ -87,6 +87,8 @@ const NOTE_RULES = `- notes: 1–5 facts worth remembering from this item: a def
 
 /** On-device (4K context): the same notes, said briefly. */
 const NOTE_RULES_COMPACT = `- notes: 1–5 short facts (≤ 25 words, page language, content only), each with 1–3 keywords and conceptId = the ref of the listed concept it belongs to, else newConcept {name, parentId ref or null}.`
+
+const CONTEXT_RULES = `Context: <context> lists what else the student had open in the same few minutes. Use it to judge each episode and to name its topic (a page next to a chat on the same topic is study), but record only the episode's own content. Record the content itself, never site chrome: navigation, sidebars, related links, ads, footers.`
 
 const HIGHLIGHT_RULES = `Highlights: <highlighted> lists text the student selected on screen to mark it as important — a note they chose to keep. An episode with highlights is always learning (isLearning=true): put each highlighted passage in \`seen\` (quote it, or paraphrase it closely) and its key words in keyTerms, even when the rest of the page is noise.`
 
@@ -132,6 +134,8 @@ ${RULES}
 ${ITEM_RULES}
 ${NOTE_RULES}
 
+${CONTEXT_RULES}
+
 ${HIGHLIGHT_RULES}
 
 ${CHAT_RULES}
@@ -146,6 +150,7 @@ ${RULES_COMPACT}
 
 ${ITEM_RULES}
 ${NOTE_RULES_COMPACT}
+Use <context> (other pages in the same minutes) only to judge and name the topic; record only the episode's own content, never site chrome.
 
 Highlighted text is a note the student chose to keep: such an episode is always learning; quote it in seen and keyTerms.
 
@@ -248,6 +253,7 @@ export function buildExtractUser(input: ExtractInput, today: string): string {
       `${input.student.aboutMe || '(no profile)'} · language: ${input.student.language}`,
     ),
     tag('subjects', subjects),
+    ...(input.context?.length ? [tag('context', input.context.slice(0, 8).join(' · '))] : []),
     ...episodes,
   ].join('\n')
 }
@@ -408,7 +414,7 @@ function finalizeOne(
 export const extractPrompt: PromptSpec<ExtractInput, LlmExtract, ExtractOutput> = {
   id: 'P1',
   task: 'extract',
-  version: 3,
+  version: 4,
   tier: 'extract',
   temperature: 0.1,
   maxOutputTokens: 2800,

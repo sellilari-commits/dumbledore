@@ -1,18 +1,27 @@
 /**
  * Extraction worker (docs/PLAN.md §5.3 F1 steps 4–6, §6.4 "Extraction queue", "Retention").
  *
- * Closed episodes pass the local prefilter or are marked done without an LLM call (episodes that
- * arrive already done, coding agent sessions, are skipped outright). Passing ones
- * queue up and go to `Brain.extract` in batches (≤ 3 episodes or a token cap), every 2 minutes,
- * or at once for AI-chat episodes during a study session. A daily budget caps calls and tokens,
- * sized for a whole day of normal use. Results are applied through Repos (./apply), episodes are
+ * Batched decision (Ilari, 2026-10-24): closed episodes pass the local pre-gate (prefilter.ts: hard
+ * rules and obvious noise) or are marked done without an LLM call (episodes that arrive already
+ * done, coding agent sessions, are skipped outright). The rest collect into a window of about the
+ * last 5 minutes. When the window is 5 minutes old — or at once for something urgent (a
+ * highlight, an AI chat during a study session) — one cheap triage call (P0) judges the whole
+ * window together: "learnable content?" per episode. "No" episodes are done; "yes" episodes go to
+ * `Brain.extract` (P1) in batches (≤ 3 episodes or a token cap) with the window's other titles as
+ * context. Highlighted episodes skip triage (always yes); if triage fails, the old prefilter score
+ * decides. A daily budget caps calls (triage included) and tokens, sized for a whole day of use. Results are applied through Repos (./apply), episodes are
  * marked extracted and 'memory:changed' is emitted. Hourly, episode text past the retention window
  * is purged and episodes still unextracted in the DB (queue overflow, a provider outage that used
  * up their attempts, yesterday's budget) are queued again, so nothing waits for an app restart.
  */
 import type { Concept, Episode } from '@shared/domain'
 import type { MemoryChanged } from '@shared/state'
-import { type Brain, type ExtractInput, ExtractOutput } from '../../brain-contract'
+import {
+  type Brain,
+  type ExtractInput,
+  ExtractOutput,
+  type TriageInput,
+} from '../../brain-contract'
 import type { Cancel, Clock } from '../../clock'
 import type { MasteryModel, Repos } from '../../contracts'
 import type { EngineBus } from '../../events'
@@ -20,13 +29,25 @@ import { redact } from '../../privacy/redact'
 import { HOUR, MINUTE } from '../types'
 import { type ApplyOutcome, applyExtraction, PromptMemory } from './apply'
 import { DailyBudget, estimateTokens } from './budget'
-import { type PrefilterOptions, type PrefilterResult, prefilter } from './prefilter'
+import {
+  cleanEpisodeText,
+  type PrefilterOptions,
+  type PrefilterResult,
+  prefilter,
+} from './prefilter'
 
 export interface WorkerOptions {
   maxBatch: number
   maxBatchTokens: number
   maxEpisodeChars: number
+  /** How often the worker looks whether the window is due. */
   flushEveryMs: number
+  /** A window is judged once its oldest episode has waited this long. */
+  windowMs: number
+  /** Episodes per triage call (bigger windows take more calls). */
+  maxTriage: number
+  /** Characters of cleaned text per episode in the triage list. */
+  triageExcerptChars: number
   purgeEveryMs: number
   dailyMaxCalls: number
   dailyMaxTokens: number
@@ -40,7 +61,10 @@ export const WORKER_DEFAULTS: WorkerOptions = {
   maxBatch: 3,
   maxBatchTokens: 4000,
   maxEpisodeChars: 6000,
-  flushEveryMs: 2 * MINUTE,
+  flushEveryMs: 30_000,
+  windowMs: 5 * MINUTE,
+  maxTriage: 20,
+  triageExcerptChars: 300,
   purgeEveryMs: HOUR,
   // A batch is ≤ 4k tokens: ~300 batches ≈ a full day of reading and AI chats. On Gemini Flash-Lite
   // that is ~€0.10 at most; the brain's spend cap and per-provider limits still apply on top.
@@ -54,7 +78,7 @@ export const WORKER_DEFAULTS: WorkerOptions = {
 
 export interface ExtractionWorkerDeps {
   repos: Repos
-  brain: Pick<Brain, 'extract'>
+  brain: Pick<Brain, 'extract' | 'triage'>
   bus: EngineBus
   clock: Clock
   mastery?: MasteryModel | null
@@ -67,12 +91,20 @@ export interface ExtractionWorkerDeps {
 interface QueueItem {
   episode: Episode
   score: number
+  /** The prefilter's score decision: the fallback when triage fails. */
+  pass: boolean
+  /** Triage answer (highlights: true from the start); undefined = not judged yet. */
+  decision?: boolean
   urgent: boolean
   attempts: number
   seq: number
+  enqueuedAt: number
 }
 
 const PROMPT_OVERHEAD_TOKENS = 600
+const TRIAGE_OVERHEAD_TOKENS = 450
+const TRIAGE_TOKENS_PER_EPISODE = 40
+const MAX_CONTEXT_TITLES = 8
 const ACTIVE_PHASES = new Set(['planning', 'step', 'checkpoint'])
 
 export class ExtractionWorker {
@@ -120,7 +152,7 @@ export class ExtractionWorker {
       }),
     )
     this.cancels.push(
-      clock.setInterval(() => void this.flushNow(), this.opts.flushEveryMs),
+      clock.setInterval(() => void this.flushIfDue(), this.opts.flushEveryMs),
       clock.setInterval(() => {
         this.purge()
         this.recover()
@@ -138,21 +170,30 @@ export class ExtractionWorker {
     this.cancels = []
   }
 
-  /** Prefilters a closed episode; queues it or marks it done. */
+  /** Pre-gates a closed episode; adds it to the window or marks it done. */
   enqueue(episode: Episode): PrefilterResult {
     // Closed as already done (a coding agent session): nothing to learn, no LLM call.
-    if (episode.extracted) return { pass: false, score: 0, cleanChars: 0, reasons: ['extracted'] }
+    if (episode.extracted)
+      return { gate: false, pass: false, score: 0, cleanChars: 0, reasons: ['extracted'] }
     const result = prefilter(episode, this.opts.prefilter)
-    if (!result.pass) {
+    if (!result.gate) {
       this.markExtracted(episode.id)
       return result
     }
     if (this.inFlight.has(episode.id) || this.queue.some((i) => i.episode.id === episode.id))
       return result
-    const urgent =
-      (episode.kind === 'ai_chat' && this.sessionActive) ||
-      (episode.signals.highlights?.length ?? 0) > 0
-    this.queue.push({ episode, score: result.score, urgent, attempts: 0, seq: this.seq++ })
+    const highlighted = (episode.signals.highlights?.length ?? 0) > 0
+    const urgent = (episode.kind === 'ai_chat' && this.sessionActive) || highlighted
+    this.queue.push({
+      episode,
+      score: result.score,
+      pass: result.pass,
+      ...(highlighted ? { decision: true } : {}),
+      urgent,
+      attempts: 0,
+      seq: this.seq++,
+      enqueuedAt: this.deps.clock.now(),
+    })
     if (this.queue.length > this.opts.maxQueue) {
       this.sortQueue()
       this.queue.length = this.opts.maxQueue // lowest priority stays unextracted in the DB
@@ -161,7 +202,14 @@ export class ExtractionWorker {
     return result
   }
 
-  /** Sends everything queued now (within budget). Resolves when the queue is drained. */
+  /** Judges the window when it is due: its oldest episode waited windowMs, or one is urgent. */
+  flushIfDue(): Promise<void> {
+    const now = this.deps.clock.now()
+    const due = this.queue.some((i) => i.urgent || now - i.enqueuedAt >= this.opts.windowMs)
+    return due ? this.flushNow() : (this.running ?? Promise.resolve())
+  }
+
+  /** Judges and extracts everything queued now (within budget). Resolves when drained. */
   flushNow(): Promise<void> {
     if (this.running) {
       this.again = true
@@ -200,11 +248,74 @@ export class ExtractionWorker {
   }
 
   private async drain(): Promise<void> {
+    // 1. Triage: one cheap call judges the window's undecided episodes together.
+    if (!(await this.triage())) return
+    // 2. "No": done without a P1 call.
+    for (const item of this.queue.filter((i) => i.decision === false))
+      this.markExtracted(item.episode.id)
+    const window = this.queue.map((i) => i.episode)
+    this.queue = this.queue.filter((i) => i.decision === true)
+    // 3. "Yes": full extraction, the window's other episodes as context.
     while (this.queue.length > 0) {
       const batch = this.takeBatch()
       if (!batch) return
+      const ids = new Set(batch.map((i) => i.episode.id))
+      const context = contextTitles(window.filter((e) => !ids.has(e.id)))
       // A failed call usually means the providers are down or limited: retry at the next flush.
-      if (!(await this.run(batch))) return
+      if (!(await this.run(batch, context))) return
+    }
+  }
+
+  /** Decides every undecided item; false when the budget is used up (they stay queued). */
+  private async triage(): Promise<boolean> {
+    const { brain, clock } = this.deps
+    while (true) {
+      const items = this.queue
+        .filter((i) => i.decision === undefined && !this.inFlight.has(i.episode.id))
+        .slice(0, this.opts.maxTriage)
+      if (items.length === 0) return true
+      const input = this.triageInput(items.map((i) => i.episode))
+      const tokens =
+        TRIAGE_OVERHEAD_TOKENS +
+        items.length * TRIAGE_TOKENS_PER_EPISODE +
+        estimateTokens(input.episodes.map((e) => e.excerpt).join('\n'))
+      if (!this.budget.canSpend(tokens, clock.now())) {
+        if (!this.budgetWarned) this.deps.log?.('[perception] daily extraction budget reached')
+        this.budgetWarned = true
+        return false
+      }
+      this.budget.spend(tokens, clock.now())
+      let answers = new Map<string, boolean | null>()
+      try {
+        const out = await brain.triage(input, { timeoutMs: this.opts.timeoutMs })
+        answers = new Map(out.results.map((r) => [r.id, r.hasLearnableContent]))
+      } catch (error) {
+        this.deps.log?.('[perception] triage failed; using the prefilter score', error)
+      }
+      for (const item of items) item.decision = answers.get(item.episode.id) ?? item.pass
+    }
+  }
+
+  private triageInput(episodes: readonly Episode[]): TriageInput {
+    const mask = this.deps.repos.settings.get().privacy.redact
+    const max = this.opts.triageExcerptChars
+    return {
+      language: this.deps.repos.profile.get().promptLanguage,
+      episodes: episodes.map((e) => {
+        const clean = cleanEpisodeText(mask ? redact(this.clip(e)) : this.clip(e))
+        // A chat's latest turns say most; a page's beginning does.
+        const excerpt = e.kind === 'ai_chat' ? clean.slice(-max) : clean.slice(0, max)
+        return {
+          id: e.id,
+          kind: e.kind,
+          app: e.app,
+          title: e.title,
+          url: e.url,
+          dwellSeconds: e.dwellSeconds,
+          signals: e.signals,
+          excerpt,
+        }
+      }),
     }
   }
 
@@ -237,21 +348,27 @@ export class ExtractionWorker {
   }
 
   /** Returns false when the LLM call failed (the items are re-queued up to maxAttempts). */
-  private async run(items: QueueItem[]): Promise<boolean> {
+  private async run(items: QueueItem[], context: string[] = []): Promise<boolean> {
     const episodes = items.map((i) => i.episode)
     for (const e of episodes) this.inFlight.add(e.id)
     try {
-      return await this.extractAndApply(items, episodes)
+      return await this.extractAndApply(items, episodes, context)
     } finally {
       for (const e of episodes) this.inFlight.delete(e.id)
     }
   }
 
-  private async extractAndApply(items: QueueItem[], episodes: Episode[]): Promise<boolean> {
+  private async extractAndApply(
+    items: QueueItem[],
+    episodes: Episode[],
+    context: string[],
+  ): Promise<boolean> {
     const { brain, repos, clock } = this.deps
     let output: ExtractOutput
     try {
-      const raw = await brain.extract(this.buildInput(episodes), { timeoutMs: this.opts.timeoutMs })
+      const raw = await brain.extract(this.buildInput(episodes, context), {
+        timeoutMs: this.opts.timeoutMs,
+      })
       output = ExtractOutput.parse(raw)
     } catch (error) {
       this.deps.log?.('[perception] extraction failed', error)
@@ -280,7 +397,7 @@ export class ExtractionWorker {
     return true
   }
 
-  private buildInput(episodes: readonly Episode[]): ExtractInput {
+  private buildInput(episodes: readonly Episode[], context: string[] = []): ExtractInput {
     const { repos } = this.deps
     const profile = repos.profile.get()
     const mask = repos.settings.get().privacy.redact
@@ -317,6 +434,7 @@ export class ExtractionWorker {
         signals: e.signals,
         text: mask ? redact(this.clip(e)) : this.clip(e),
       })),
+      ...(context.length ? { context } : {}),
     }
   }
 
@@ -347,6 +465,16 @@ export class ExtractionWorker {
     if (outcome.profileChanged) emit('profile', [])
     for (const p of outcome.episodeSubjects) this.deps.onEpisodeSubject?.(p.episodeId, p.subjectId)
   }
+}
+
+/** "Tampere – Wikipedia (reading)", newest last, deduped, for P1's <context>. */
+export function contextTitles(episodes: readonly Episode[]): string[] {
+  const out: string[] = []
+  for (const e of episodes) {
+    const title = `${(e.title ?? e.app).slice(0, 80)} (${e.kind === 'ai_chat' ? 'AI chat' : e.kind})`
+    if (!out.includes(title)) out.push(title)
+  }
+  return out.slice(-MAX_CONTEXT_TITLES)
 }
 
 /** Concepts listed for note placement: per subject, and across all subjects of one call. */

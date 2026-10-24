@@ -9,7 +9,7 @@ import { ExtractionWorker, type WorkerOptions } from './extraction/worker'
 import { Perception, type PerceptionDeps } from './service'
 
 export interface PerceptionStackDeps extends PerceptionDeps {
-  brain: Pick<Brain, 'extract'>
+  brain: Pick<Brain, 'extract' | 'triage'>
   mastery?: MasteryModel | null
   workerOptions?: Partial<WorkerOptions>
 }

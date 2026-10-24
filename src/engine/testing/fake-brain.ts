@@ -30,6 +30,8 @@ import type {
   StepOutput,
   SuggestInput,
   SuggestOutput,
+  TriageInput,
+  TriageOutput,
   VerifyResult,
 } from '../brain-contract'
 
@@ -41,7 +43,9 @@ const BREVITY = 'No greetings or small talk. Answer in short structured bullets,
 function questionFor(concept: string, i: number, difficulty = 2): QuestionDraft {
   const correctIndex = i % 4
   const options = [0, 1, 2, 3].map((k) =>
-    k === correctIndex ? `The accurate statement about ${concept}` : `A common misconception about ${concept} (#${k + 1})`,
+    k === correctIndex
+      ? `The accurate statement about ${concept}`
+      : `A common misconception about ${concept} (#${k + 1})`,
   )
   return {
     concept,
@@ -49,7 +53,9 @@ function questionFor(concept: string, i: number, difficulty = 2): QuestionDraft 
     options,
     correctIndex,
     rationales: options.map((_, k) =>
-      k === correctIndex ? `This matches how ${concept} works.` : 'Plausible, but it confuses cause and effect.',
+      k === correctIndex
+        ? `This matches how ${concept} works.`
+        : 'Plausible, but it confuses cause and effect.',
     ),
     difficulty,
   }
@@ -62,6 +68,22 @@ export class FakeBrain implements Brain {
 
   private record(method: BrainMethod, input: unknown): void {
     this.calls.push({ method, input })
+  }
+
+  /** Yes for an excerpt of course-like length or any highlight, like `extract` below. */
+  async triage(input: TriageInput, opts?: CallOptions): Promise<TriageOutput> {
+    this.record('triage', input)
+    if (this.overrides.triage) return this.overrides.triage(input, opts)
+    return {
+      results: input.episodes.map((ep) => {
+        const yes = ep.excerpt.trim().length >= 200 || (ep.signals.highlights?.length ?? 0) > 0
+        return {
+          id: ep.id,
+          hasLearnableContent: yes,
+          reason: yes ? 'Explanatory text' : 'Too little content',
+        }
+      }),
+    }
   }
 
   async extract(input: ExtractInput, opts?: CallOptions): Promise<ExtractOutput> {
@@ -80,13 +102,18 @@ export class FakeBrain implements Brain {
           items: isLearning
             ? [
                 {
-                  subject: subject ? { matchId: subject.id, newName: null } : { matchId: null, newName: topic },
+                  subject: subject
+                    ? { matchId: subject.id, newName: null }
+                    : { matchId: null, newName: topic },
                   topicPath: [subject?.name ?? topic, topic],
                   seen: ep.text.trim().slice(0, 200),
                   bigPicture: `Trying to understand ${topic}.`,
                   understanding:
                     ep.signals.scrollBacks >= 3
-                      ? { status: 'struggling' as const, evidence: `Scrolled back ${ep.signals.scrollBacks} times` }
+                      ? {
+                          status: 'struggling' as const,
+                          evidence: `Scrolled back ${ep.signals.scrollBacks} times`,
+                        }
                       : { status: 'unknown' as const, evidence: '' },
                   openQuestions: [`How does ${topic} work?`],
                   keyTerms: [topic],
@@ -134,7 +161,9 @@ export class FakeBrain implements Brain {
         {
           kind: 'checkpoint',
           covers: [`${g} basics`, `${g} mechanism`, `${g} application`],
-          probes: [{ concept: `${g} application`, misconception: 'Applying the rule outside its limits' }],
+          probes: [
+            { concept: `${g} application`, misconception: 'Applying the rule outside its limits' },
+          ],
           nQuestions: 3,
         },
       ],
@@ -145,7 +174,9 @@ export class FakeBrain implements Brain {
   async writeStep(input: StepInput, opts?: CallOptions): Promise<StepOutput> {
     this.record('writeStep', input)
     if (this.overrides.writeStep) return this.overrides.writeStep(input, opts)
-    const misses = input.recentMisses.map((m) => ` I thought "${m.misconception}" — explain why that's wrong.`).join('')
+    const misses = input.recentMisses
+      .map((m) => ` I thought "${m.misconception}" — explain why that's wrong.`)
+      .join('')
     return {
       prompt: `${input.step.promptDraft}${misses}`,
       coachTip: 'Asking for numbered points and a check question keeps answers short and active.',
@@ -157,7 +188,9 @@ export class FakeBrain implements Brain {
     this.record('makeCheckpoint', input)
     if (this.overrides.makeCheckpoint) return this.overrides.makeCheckpoint(input, opts)
     const pool = [...input.carry, ...input.concepts]
-    return Array.from({ length: input.n }, (_, i) => questionFor(pool[i % pool.length] ?? 'the topic', i))
+    return Array.from({ length: input.n }, (_, i) =>
+      questionFor(pool[i % pool.length] ?? 'the topic', i),
+    )
   }
 
   async verifyQuestions(questions: QuestionDraft[], opts?: CallOptions): Promise<VerifyResult[]> {
@@ -171,8 +204,11 @@ export class FakeBrain implements Brain {
     if (this.overrides.makeExam) return this.overrides.makeExam(input, opts)
     const names = input.concepts.map((c) => c.name)
     const pool = names.length > 0 ? names : input.subjects.map((s) => s.name)
-    const difficulty = input.spec.difficulty === 'easy' ? 1 : input.spec.difficulty === 'hard' ? 3 : 2
-    return Array.from({ length: input.spec.count }, (_, i) => questionFor(pool[i % pool.length] ?? 'the subject', i, difficulty))
+    const difficulty =
+      input.spec.difficulty === 'easy' ? 1 : input.spec.difficulty === 'hard' ? 3 : 2
+    return Array.from({ length: input.spec.count }, (_, i) =>
+      questionFor(pool[i % pool.length] ?? 'the subject', i, difficulty),
+    )
   }
 
   async fixGaps(input: GapInput, opts?: CallOptions): Promise<GapOutput> {
@@ -180,7 +216,10 @@ export class FakeBrain implements Brain {
     if (this.overrides.fixGaps) return this.overrides.fixGaps(input, opts)
     const concepts = [...new Set(input.misses.map((m) => m.concept))]
     return {
-      diagnoses: input.misses.map((m) => ({ concept: m.concept, misconception: `Chose "${m.chosen}"` })),
+      diagnoses: input.misses.map((m) => ({
+        concept: m.concept,
+        misconception: `Chose "${m.chosen}"`,
+      })),
       prompt: `I keep getting ${concepts.join(' and ')} wrong. For each, contrast the wrong idea with the right one and give one example. ${BREVITY} Then quiz me with 2 new questions and wait for my answers.`,
       nextTopic: concepts[0] ? `${concepts[0]} in practice` : 'Next chapter',
     }
@@ -234,6 +273,10 @@ export class FakeBrain implements Brain {
   async buildProfile(input: ProfileInput, opts?: CallOptions): Promise<ProfileOutput> {
     this.record('buildProfile', input)
     if (this.overrides.buildProfile) return this.overrides.buildProfile(input, opts)
-    return { summary: input.aboutMe || 'Student', level: null, habitsToCoach: ['Give context in prompts'] }
+    return {
+      summary: input.aboutMe || 'Student',
+      level: null,
+      habitsToCoach: ['Give context in prompts'],
+    }
   }
 }

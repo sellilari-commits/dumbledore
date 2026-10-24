@@ -28,6 +28,8 @@ import {
   type StepOutput,
   SuggestInput,
   type SuggestOutput,
+  TriageInput,
+  type TriageOutput,
   type VerifyResult,
 } from '@engine/brain-contract'
 import type { Settings } from '@shared/domain'
@@ -47,6 +49,7 @@ import type { SpendSummary } from './llm/spend'
 import { deadlineFor, type RunnerDeps, runStructured } from './llm/structured'
 import { clip } from './llm/text'
 import type { Backend } from './llm/types'
+import { triagePrompt } from './prompts/p00-triage'
 import { extractPrompt } from './prompts/p01-extract'
 import { roadmapPrompt } from './prompts/p03-roadmap'
 import { stepPrompt } from './prompts/p04-step'
@@ -169,6 +172,12 @@ export function createBrain(deps: BrainDeps = {}): BrainHandle {
     router,
 
     spend: () => router.spend.summary(),
+
+    async triage(raw: TriageInput, opts?: CallOptions): Promise<TriageOutput> {
+      const input = TriageInput.parse(raw)
+      if (input.episodes.length === 0) return { results: [] }
+      return runStructured(runner, triagePrompt, input, opts)
+    },
 
     async extract(raw: ExtractInput, opts?: CallOptions): Promise<ExtractOutput> {
       const input = ExtractInput.parse(raw)

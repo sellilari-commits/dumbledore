@@ -21,6 +21,39 @@ const Lang = z.string() // BCP-47-ish: "en", "fi", … or "auto"
 
 // ─── P1 Extractor ───────────────────────────────────────────────────────────────────────────
 
+// ─── P0 Triage ──────────────────────────────────────────────────────────────────────────────
+
+/** A window of the last few minutes, one short excerpt per episode, judged together. */
+export const TriageInput = z.object({
+  language: Lang,
+  episodes: z.array(
+    z.object({
+      id: z.string(),
+      kind: EpisodeKind,
+      app: z.string(),
+      title: z.string().nullable(),
+      url: z.string().nullable(),
+      dwellSeconds: z.number(),
+      signals: EpisodeSignals,
+      /** About 300 characters of cleaned, redacted text. */
+      excerpt: z.string(),
+    }),
+  ),
+})
+export type TriageInput = z.infer<typeof TriageInput>
+
+/** One answer per input episode, in input order; null = the model gave none (caller falls back). */
+export const TriageOutput = z.object({
+  results: z.array(
+    z.object({
+      id: z.string(),
+      hasLearnableContent: z.boolean().nullable(),
+      reason: z.string(),
+    }),
+  ),
+})
+export type TriageOutput = z.infer<typeof TriageOutput>
+
 export const ExtractInput = z.object({
   student: z.object({ aboutMe: z.string(), language: Lang }),
   subjects: z.array(
@@ -48,6 +81,8 @@ export const ExtractInput = z.object({
       text: z.string(), // cleaned + redacted; lines may carry [L]/[C]/[R] alignment tags
     }),
   ),
+  /** What else the student had open in the same few minutes (titles), as context only. */
+  context: z.array(z.string()).optional(),
 })
 export type ExtractInput = z.infer<typeof ExtractInput>
 
@@ -339,6 +374,8 @@ export class BrainUnavailableError extends Error {
 }
 
 export interface Brain {
+  /** P0: cheap yes/no "learnable content?" for a window of episodes, judged together. */
+  triage(input: TriageInput, opts?: CallOptions): Promise<TriageOutput>
   extract(input: ExtractInput, opts?: CallOptions): Promise<ExtractOutput>
   buildRoadmap(input: RoadmapInput, opts?: CallOptions): Promise<RoadmapPlan>
   writeStep(input: StepInput, opts?: CallOptions): Promise<StepOutput>

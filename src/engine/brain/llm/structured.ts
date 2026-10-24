@@ -16,6 +16,7 @@ import type { BackendResult, ChatTurn, JsonSchema } from './types'
 
 /** Default deadlines per task (ms) when the caller passes no `timeoutMs`. */
 export const DEFAULT_TIMEOUTS: Record<string, number> = {
+  triage: 20_000,
   extract: 60_000,
   buildRoadmap: 45_000,
   writeStep: 2_500,

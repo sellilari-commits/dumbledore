@@ -29,7 +29,7 @@ describe('composeReal: restart', () => {
     await services.start()
     await runFor(clock, MINUTE)
     screen.show(NOTES)
-    await runFor(clock, 3 * MINUTE)
+    await runFor(clock, 6 * MINUTE) // the worker judges the 5-minute window
     expect(services.queries.inbox({ state: null, subjectId: null })).toHaveLength(1)
 
     const subject = services.subjects.create({

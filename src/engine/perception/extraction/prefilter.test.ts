@@ -202,3 +202,27 @@ describe('prefilter', () => {
     )
   })
 })
+
+describe('prefilter as a pre-gate', () => {
+  const PLAIN = 'We went to the lake on Saturday and the weather was fine. '.repeat(5)
+
+  it('lets plain text through to triage that the old score would drop', () => {
+    const plain = makeEpisode({ url: 'https://someblog.example/lake', text: PLAIN })
+    expect(prefilter(plain)).toMatchObject({ gate: true, pass: false })
+    expect(prefilter(makeEpisode())).toMatchObject({ gate: true, pass: true })
+  })
+
+  it('keeps obvious noise and the hard rules out, and always lets highlights in', () => {
+    const feed = makeEpisode({ url: 'https://www.instagram.com/', title: 'Instagram', text: PLAIN })
+    expect(prefilter(feed)).toMatchObject({ gate: false, pass: false })
+    expect(prefilter(feed).reasons).toContain('noise')
+    expect(prefilter(makeEpisode({ dwellSeconds: 5 })).gate).toBe(false)
+    expect(prefilter(makeEpisode({ text: 'short' })).gate).toBe(false)
+    const marked = makeEpisode({
+      dwellSeconds: 3,
+      text: 'short',
+      signals: { ...makeEpisode().signals, highlights: ['founded in 1779'] },
+    })
+    expect(prefilter(marked)).toMatchObject({ gate: true, pass: true })
+  })
+})

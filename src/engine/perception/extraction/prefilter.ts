@@ -1,5 +1,8 @@
 /**
- * Local, free prefilter (docs/PLAN.md §6.4, R27): does an episode deserve an LLM extraction call?
+ * Local, free prefilter (docs/PLAN.md §6.4, R27). Since batched extraction it is mainly a pre-gate
+ * (`gate`): hard rules and obvious noise stay out; everything else goes to the window's triage
+ * call (P0), which decides. The score threshold (`pass`) is kept as the fallback decision when
+ * triage fails. Highlighted episodes always pass both.
  *
  * Hard requirements: dwell ≥ 20 s (any dwell for AI chats) and ≥ 150 characters of clean text.
  * Never sent: Dumbledore's own interface read back from another window (a UI preview in a browser
@@ -16,15 +19,21 @@ export interface PrefilterOptions {
   minDwellSeconds: number
   minChars: number
   threshold: number
+  /** Below this score an episode is obvious noise (social feed, entertainment) and skips triage. */
+  noiseFloor: number
 }
 
 export const PREFILTER_DEFAULTS: PrefilterOptions = {
   minDwellSeconds: 20,
   minChars: 150,
   threshold: 0.45,
+  noiseFloor: 0.2,
 }
 
 export interface PrefilterResult {
+  /** Passes the pre-gate: worth asking triage about. */
+  gate: boolean
+  /** Old score decision: the fallback when triage is unavailable. */
   pass: boolean
   score: number
   cleanChars: number
@@ -135,25 +144,23 @@ export function prefilter(ep: Episode, options: Partial<PrefilterOptions> = {}):
   score = Math.max(0, Math.min(1, score))
 
   let pass = score >= opts.threshold
-  if (isOwnUi(clean)) {
+  let gate = score >= opts.noiseFloor
+  if (!gate) reasons.push('noise')
+  const block = (reason: string) => {
     pass = false
-    reasons.push('dumbledore ui')
-  } else if (isEmptyChatHome(ep)) {
-    pass = false
-    reasons.push('empty chat page')
+    gate = false
+    reasons.push(reason)
   }
-  if (!isChat && ep.dwellSeconds < opts.minDwellSeconds) {
-    pass = false
-    reasons.push(`dwell ${ep.dwellSeconds}s < ${opts.minDwellSeconds}s`)
-  }
-  if (clean.length < opts.minChars) {
-    pass = false
-    reasons.push(`${clean.length} chars < ${opts.minChars}`)
-  }
+  if (isOwnUi(clean)) block('dumbledore ui')
+  else if (isEmptyChatHome(ep)) block('empty chat page')
+  if (!isChat && ep.dwellSeconds < opts.minDwellSeconds)
+    block(`dwell ${ep.dwellSeconds}s < ${opts.minDwellSeconds}s`)
+  if (clean.length < opts.minChars) block(`${clean.length} chars < ${opts.minChars}`)
   // Text the student highlighted is a note they chose to keep: always extracted.
   if ((ep.signals.highlights?.length ?? 0) > 0 && !isOwnUi(clean)) {
     pass = true
+    gate = true
     reasons.push('highlighted')
   }
-  return { pass, score: Math.round(score * 100) / 100, cleanChars: clean.length, reasons }
+  return { gate, pass, score: Math.round(score * 100) / 100, cleanChars: clean.length, reasons }
 }
