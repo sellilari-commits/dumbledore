@@ -7,7 +7,7 @@ import type { DumbledoreApi } from '@shared/ipc'
 import type { ReactNode } from 'react'
 import { useOverlayState } from '../lib/useOverlayState'
 import { useViewport } from '../lib/useViewport'
-import { browserRect, chatBoxRect, SCENES } from './scenes'
+import { articleLines, browserRect, chatBoxRect, SCENES } from './scenes'
 import './mock.css'
 
 export function MockStage({ api, children }: { api: DumbledoreApi; children: ReactNode }) {
@@ -18,6 +18,7 @@ export function MockStage({ api, children }: { api: DumbledoreApi; children: Rea
   const clean = new URLSearchParams(window.location.search).get('clean') === '1'
   const focused = state?.dockTarget != null
   const typed = state?.chip?.kind === 'improve' ? state.chip.text : ''
+  const outline = state?.outline != null
 
   return (
     <>
@@ -32,9 +33,27 @@ export function MockStage({ api, children }: { api: DumbledoreApi; children: Rea
               <i />
               <i />
             </span>
-            <span className="mk-url">chatgpt.com</span>
+            <span className="mk-url">{outline ? 'en.wikipedia.org' : 'chatgpt.com'}</span>
           </div>
-          <div className="mk-thread" style={{ width: box.width }}>
+          {outline ? (
+            <div className="mk-article">
+              {articleLines(vp).map((l, i) => (
+                <div
+                  key={l.text}
+                  className={i === 0 || l.text.length < 12 ? 'mk-article__h' : 'mk-article__p'}
+                  style={{
+                    left: l.rect.x - win.x,
+                    top: l.rect.y - win.y,
+                    width: l.rect.width,
+                    height: l.rect.height,
+                  }}
+                >
+                  {l.text}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <div className="mk-thread" style={{ width: box.width }} data-off={outline || undefined}>
             <div className="mk-bubble mk-bubble--me">
               Why is a tertiary carbocation more stable?
             </div>
@@ -52,6 +71,7 @@ export function MockStage({ api, children }: { api: DumbledoreApi; children: Rea
         </div>
         <div
           className="mk-chatbox"
+          data-off={outline || undefined}
           data-focused={focused || undefined}
           style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
         >

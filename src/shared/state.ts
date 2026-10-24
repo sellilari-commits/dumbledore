@@ -77,6 +77,25 @@ export const Toast = z.object({
 })
 export type Toast = z.infer<typeof Toast>
 
+/** One outlined passage: its box in global screen points, what to do with it and why. */
+export const OutlineMark = z.object({
+  rect: Rect,
+  verdict: z.enum(['read', 'skim', 'skip']),
+  why: z.string(),
+})
+export type OutlineMark = z.infer<typeof OutlineMark>
+
+/** "Outline what I need to read": marks drawn over the page the student is reading. */
+export const OutlineOverlay = z.object({
+  /** The window the marks belong to; marks clear when it changes or scrolls. */
+  windowId: z.number().int().nullable(),
+  title: z.string().nullable(),
+  subjectName: z.string(),
+  summary: z.string(),
+  marks: z.array(OutlineMark),
+})
+export type OutlineOverlay = z.infer<typeof OutlineOverlay>
+
 export const OverlayState = z.object({
   /** Display the orb is on. Overlays on other displays render nothing. */
   displayId: z.number().int(),
@@ -107,6 +126,8 @@ export const OverlayState = z.object({
    * square's progress edge is the elapsed share of startedAt → endsAt, so +/− minutes rescale it.
    */
   timer: z.object({ startedAt: IsoDate, endsAt: IsoDate }).nullable(),
+  /** Outline marks over the page being read, on every display they touch (null = none). */
+  outline: OutlineOverlay.nullable().optional(),
   /** The timer length picked last (minutes); the chooser preselects it. */
   timerMinutes: z.number().int(),
 })

@@ -117,6 +117,19 @@ for (const theme of ['light', 'dark'] as const) {
       }
     })
 
+    test('outline: read / skim / skip marks over the page, with their reasons', async ({
+      page,
+    }) => {
+      await overlay(page, 'outline')
+      await expect(page.getByLabel('Outline for Organic Chemistry')).toBeVisible()
+      await expect(page.getByText('Your gap: carbocation stability')).toBeVisible()
+      await expect(page.getByText('Off your goal')).toBeVisible()
+      await page.screenshot({
+        path: `${SHOTS}/overlay-outline-${theme}.png`,
+        animations: 'disabled',
+      })
+    })
+
     test('session ring, and no text on orb hover', async ({ page }) => {
       await overlay(page, 'session')
       await expect(page.getByTestId('side-next')).toHaveCount(0)

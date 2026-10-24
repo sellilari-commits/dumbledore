@@ -215,3 +215,23 @@
 .mk-controls button:hover {
   background: var(--mk-line);
 }
+
+/* Outline scene: a plain article in the mock browser window. */
+.mk-article > div {
+  position: absolute;
+  font:
+    400 14px / 20px Georgia,
+    serif;
+  color: #202122;
+  white-space: nowrap;
+}
+
+.mk-article__h {
+  font-weight: 700 !important;
+  font-size: 16px !important;
+}
+
+.mk-thread[data-off],
+.mk-chatbox[data-off] {
+  display: none;
+}

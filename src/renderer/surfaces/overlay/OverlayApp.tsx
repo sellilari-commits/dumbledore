@@ -22,6 +22,7 @@ import { type Point, usePointerGesture } from './lib/usePointerGesture'
 import { useViewport } from './lib/useViewport'
 import { Orb } from './orb/Orb'
 import { orbLook } from './orb/orbLook'
+import { OutlineMarks } from './outline/OutlineMarks'
 import { QUIZ_WIDTH, QuizCard } from './quiz/QuizCard'
 import { SuggestionChip } from './satellites/SuggestionChip'
 import { TimerButton } from './satellites/TimerButton'
@@ -55,15 +56,20 @@ export function OverlayApp({ api, displayId }: Props) {
   const [dragging, setDragging] = useState(false)
 
   const mine = state !== null && (displayId === null || state.displayId === displayId)
-  if (!state || (!mine && !dragging)) return null
+  // Outline marks belong to the page, not the orb: every display draws the ones it covers.
+  const marks = state?.outline ? <OutlineMarks outline={state.outline} /> : null
+  if (!state || (!mine && !dragging)) return marks
   return (
-    <OverlayScene
-      api={api}
-      state={state}
-      viewport={viewport}
-      send={send}
-      onDragging={setDragging}
-    />
+    <>
+      {marks}
+      <OverlayScene
+        api={api}
+        state={state}
+        viewport={viewport}
+        send={send}
+        onDragging={setDragging}
+      />
+    </>
   )
 }
 

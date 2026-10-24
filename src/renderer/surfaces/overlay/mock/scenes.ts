@@ -21,6 +21,7 @@ export const SCENES = [
   'quiz',
   'left',
   'timer',
+  'outline',
 ] as const
 export type SceneName = (typeof SCENES)[number]
 
@@ -48,6 +49,41 @@ export function browserRect(vp: Size): Rect {
   const x = 56
   const y = 48
   return { x, y, width: Math.max(480, vp.width - x - 150), height: Math.max(360, vp.height - 96) }
+}
+
+/** The article the outline scene marks up: one line per row, at fixed spots in the window. */
+export const ARTICLE = [
+  'Carbocation',
+  'A carbocation is an ion with a positively charged carbon atom that has only six',
+  'electrons in its valence shell. They are key intermediates in SN1 and E1 reactions.',
+  'Stability',
+  'Carbocation stability increases from methyl to primary, secondary and tertiary.',
+  'Alkyl groups donate electron density through hyperconjugation: adjacent C–H bonds',
+  'overlap with the empty p orbital and spread the positive charge.',
+  'Inductive effects of alkyl groups add to this, which is why 3° cations form fastest.',
+  'History',
+  'The term carbonium ion was used from 1902; Olah’s superacid work in the 1960s made',
+  'carbocations observable by NMR, earning the 1994 Nobel Prize in Chemistry.',
+  'See also: carbanion, radical, Wagner–Meerwein rearrangement.',
+]
+
+export function articleLines(vp: Size): { text: string; rect: Rect }[] {
+  const win = browserRect(vp)
+  return ARTICLE.map((text, i) => ({
+    text,
+    rect: {
+      x: win.x + 160,
+      y: win.y + 64 + i * 30,
+      width: Math.min(620, win.width - 320),
+      height: 20,
+    },
+  }))
+}
+
+const span = (lines: { rect: Rect }[], from: number, to: number): Rect => {
+  const a = lines[from]?.rect ?? { x: 0, y: 0, width: 0, height: 0 }
+  const b = lines[to]?.rect ?? a
+  return { x: a.x, y: a.y, width: a.width, height: b.y + b.height - a.y }
 }
 
 /** The fake chat input inside that window — the orb docks beside it. */
@@ -184,6 +220,23 @@ export function sceneState(name: SceneName, vp: Size): OverlayState {
           endsAt: new Date(Date.now() + 18 * 60_000 - 5_000).toISOString(),
         },
       }
+    case 'outline': {
+      const lines = articleLines(vp)
+      return {
+        ...s,
+        outline: {
+          windowId: 1,
+          title: 'Carbocation – Wikipedia',
+          subjectName: 'Organic Chemistry',
+          summary: 'The Stability section is your gap; skip the history.',
+          marks: [
+            { rect: span(lines, 4, 7), verdict: 'read', why: 'Your gap: carbocation stability' },
+            { rect: span(lines, 1, 2), verdict: 'skim', why: 'Background' },
+            { rect: span(lines, 9, 11), verdict: 'skip', why: 'Off your goal' },
+          ],
+        },
+      }
+    }
     case 'left':
       return {
         ...session(s, 2, 6),

@@ -352,6 +352,41 @@ export const ExamInput = z.object({
 })
 export type ExamInput = z.infer<typeof ExamInput>
 
+// ─── P15 Outline ─────────────────────────────────────────────────────────────────────────────
+
+/** A page the student reads (PDF, article) as numbered lines, plus what they need from it. */
+export const OutlineInput = z.object({
+  subject: z.object({ name: z.string(), goal: z.string().nullable() }),
+  page: z.object({ title: z.string().nullable(), app: z.string() }),
+  /** Concepts the student struggles with or hasn't got yet, with why. */
+  gaps: z.array(z.object({ name: z.string(), why: z.string() })),
+  /** Concepts already mastered: their passages can be skimmed or skipped. */
+  known: z.array(z.string()),
+  openQuestions: z.array(z.string()),
+  lines: z.array(z.object({ i: z.number().int(), text: z.string() })),
+  language: Lang,
+})
+export type OutlineInput = z.infer<typeof OutlineInput>
+
+export const OutlineVerdict = z.enum(['read', 'skim', 'skip'])
+export type OutlineVerdict = z.infer<typeof OutlineVerdict>
+
+export const OutlineOutput = z.object({
+  /** One sentence: what this page gives the student for their goal. */
+  summary: z.string(),
+  /** Line ranges (inclusive), in page order, never overlapping. Lines not covered are left as-is. */
+  ranges: z.array(
+    z.object({
+      from: z.number().int(),
+      to: z.number().int(),
+      verdict: OutlineVerdict,
+      /** ≤ 8 words, e.g. "Your gap: carbocation stability". */
+      why: z.string(),
+    }),
+  ),
+})
+export type OutlineOutput = z.infer<typeof OutlineOutput>
+
 // ─── P7 Gap fixer ───────────────────────────────────────────────────────────────────────────
 
 export const GapInput = z.object({
