@@ -84,13 +84,45 @@ export function primaryDisplay(displays: DisplayInfo[]): DisplayInfo | undefined
   return displays.find((d) => d.primary) ?? displays[0]
 }
 
-/** Default home: right edge of the work area, vertically centred (the notch is Goldfish's). */
+/**
+ * Middle of the right edge kept free: Wispr Flow docks its flow bar there, centred, and grows it
+ * while dictating (Ilari, 2026-10-25: the two must never overlap). Half-height of the band.
+ */
+export const RIGHT_EDGE_RESERVED_HALF = 90
+/** Room for the timer square that sits under (or above) the orb. */
+export const ORB_STACK_EXTENT = 44
+/** Gap kept between the orb (with its square) and the reserved band. */
+export const RESERVED_CLEARANCE = 16
+
+/**
+ * Moves a right-edge height out of the reserved centre band, to whichever side is nearer (above on
+ * a tie), staying inside [topY, bottomY]; the other side when the nearer one has no room.
+ */
+export function clearOfReserved(d: DisplayInfo, y: number, size = ORB_SIZE): number {
+  const wa = localWorkArea(d)
+  const r = size / 2
+  const topY = wa.y + EDGE_INSET + r
+  const bottomY = wa.y + wa.height - EDGE_INSET - r
+  const centre = wa.y + wa.height / 2
+  const reach = r + ORB_STACK_EXTENT + RESERVED_CLEARANCE
+  const above = centre - RIGHT_EDGE_RESERVED_HALF - reach
+  const below = centre + RIGHT_EDGE_RESERVED_HALF + reach
+  if (y <= above || y >= below) return y
+  const options = [above, below].filter((v) => v >= topY && v <= bottomY)
+  if (options.length === 0) return y
+  return options.reduce((best, v) => (Math.abs(v - y) < Math.abs(best - y) ? v : best))
+}
+
+/**
+ * Default home: right edge of the work area, a third of the way down, clear of the reserved
+ * centre band (the notch is Goldfish's).
+ */
 export function defaultHome(d: DisplayInfo, size = ORB_SIZE): OrbSpot {
   const wa = localWorkArea(d)
   return {
     displayId: d.id,
     x: wa.x + wa.width - EDGE_INSET - size / 2,
-    y: wa.y + wa.height / 2,
+    y: clearOfReserved(d, wa.y + wa.height / 3, size),
     edge: 'right',
   }
 }
@@ -105,10 +137,18 @@ export function snapToEdge(d: DisplayInfo, _x: number, y: number, size = ORB_SIZ
   const rightX = wa.x + wa.width - EDGE_INSET - r
   const topY = wa.y + EDGE_INSET + r
   const bottomY = wa.y + wa.height - EDGE_INSET - r
-  return { displayId: d.id, x: rightX, y: clamp(y, topY, bottomY), edge: 'right' }
+  return {
+    displayId: d.id,
+    x: rightX,
+    y: clearOfReserved(d, clamp(y, topY, bottomY), size),
+    edge: 'right',
+  }
 }
 
-/** Re-latches a saved spot so it stays on screen after the display changed size. */
+/**
+ * Re-latches a saved spot so it stays on screen after the display changed size, and out of the
+ * reserved band (this also moves an older saved home that overlaps Wispr Flow's bar).
+ */
 export function fitSpot(d: DisplayInfo, spot: OrbSpot): OrbSpot {
   return snapToEdge(d, spot.x, spot.y)
 }

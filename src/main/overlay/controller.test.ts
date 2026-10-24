@@ -96,12 +96,12 @@ describe('OverlayController', () => {
     t.controller.dragOrb(1, 300, 400, false)
     expect(t.controller.state.orb).toMatchObject({ x: 300, y: 400 })
     expect(t.controller.state.edge).toBe('free')
-    t.controller.dragOrb(1, 60, 420, true)
+    t.controller.dragOrb(1, 60, 300, true)
     const s = t.controller.state
     const rightX = DISPLAY.workArea.x + DISPLAY.workArea.width - EDGE_INSET - ORB_SIZE / 2
-    expect(s.orb).toMatchObject({ x: rightX, y: 420 })
+    expect(s.orb).toMatchObject({ x: rightX, y: 300 })
     expect(s.edge).toBe('right')
-    expect(t.repos.settings.get().orb.home).toEqual({ displayId: 1, x: rightX, y: 420 })
+    expect(t.repos.settings.get().orb.home).toEqual({ displayId: 1, x: rightX, y: 300 })
   })
 
   it('moves the orb to another display when dropped there, and restores the saved home', () => {
