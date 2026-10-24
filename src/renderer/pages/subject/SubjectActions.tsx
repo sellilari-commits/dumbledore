@@ -1,19 +1,19 @@
 /**
- * Top-bar actions of a subject page: the Focus toggle (subject.focus + the global focus subject,
- * which together decide what the picker and nudges favour) and "Generate exam" (the shared
- * New exam dialog with this subject preselected) and the trash button (Delete subject dialog).
+ * Top-bar actions of a subject page: "Make a quiz" (the shared New exam dialog with this subject
+ * preselected) and a "⋯" menu with Focus (subject.focus + the global focus subject, which
+ * together decide what the picker and nudges favour) and Delete subject.
  */
-import { Button, IconButton, Tooltip, toast } from '@renderer/design-system'
+import { Button, IconButton, Menu, MenuItem, MenuSeparator, toast } from '@renderer/design-system'
 import { invoke } from '@renderer/lib/api'
 import { keys, useAction, useSettings } from '@renderer/lib/queries'
 import { useShell } from '@renderer/lib/shell'
 import type { SubjectSummary } from '@shared/domain'
 import { useQueryClient } from '@tanstack/react-query'
-import { Crosshair, FilePenLine, Trash2 } from 'lucide-react'
+import { Crosshair, Ellipsis, FilePenLine, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { DeleteSubjectDialog } from './DeleteSubjectDialog'
 
-export function FocusToggle({ subject }: { subject: SubjectSummary }) {
+function useFocusToggle(subject: SubjectSummary) {
   const qc = useQueryClient()
   const settings = useSettings()
   const update = useAction('subjects.update')
@@ -21,7 +21,6 @@ export function FocusToggle({ subject }: { subject: SubjectSummary }) {
   const globalFocus = settings.data?.focusSubjectId === subject.id
   const on = subject.focus === 'focus' || globalFocus
   const busy = update.isPending || runAction.isPending
-
   const toggle = async () => {
     try {
       await update.mutateAsync({ id: subject.id, patch: { focus: on ? 'normal' : 'focus' } })
@@ -38,25 +37,42 @@ export function FocusToggle({ subject }: { subject: SubjectSummary }) {
       toast(err instanceof Error ? err.message : 'Couldn’t change focus.', { tone: 'error' })
     }
   }
+  return { on, busy, toggle }
+}
 
+/** "⋯" in the top bar: Focus on this subject (checked when on) and Delete subject. */
+export function SubjectMenu({ subject }: { subject: SubjectSummary }) {
+  const focus = useFocusToggle(subject)
+  const [deleting, setDeleting] = useState(false)
   return (
-    <Tooltip
-      content={on ? 'Focused' : 'Focus on this subject'}
-      sub="Suggestions, reviews and nudges favour it"
-    >
-      <Button
-        size="sm"
-        variant="ghost"
-        className="sp-focus"
-        data-on={on}
-        aria-pressed={on}
-        disabled={busy}
-        icon={<Crosshair size={14} strokeWidth={2} />}
-        onClick={() => void toggle()}
+    <>
+      <Menu
+        align="end"
+        trigger={
+          <IconButton label="More" size="sm">
+            <Ellipsis size={16} strokeWidth={2} />
+          </IconButton>
+        }
       >
-        {on ? 'Focused' : 'Focus'}
-      </Button>
-    </Tooltip>
+        <MenuItem
+          icon={<Crosshair size={14} strokeWidth={1.75} />}
+          checked={focus.on}
+          disabled={focus.busy}
+          onSelect={() => void focus.toggle()}
+        >
+          Focus on this subject
+        </MenuItem>
+        <MenuSeparator />
+        <MenuItem
+          icon={<Trash2 size={14} strokeWidth={1.75} />}
+          danger
+          onSelect={() => setDeleting(true)}
+        >
+          Delete subject
+        </MenuItem>
+      </Menu>
+      <DeleteSubjectDialog subject={deleting ? subject : null} onOpenChange={setDeleting} />
+    </>
   )
 }
 
@@ -69,21 +85,7 @@ export function GenerateExamButton({ subjectId }: { subjectId: string }) {
       icon={<FilePenLine size={14} strokeWidth={2} />}
       onClick={() => openNewExam([subjectId])}
     >
-      Generate exam
+      Make a quiz
     </Button>
-  )
-}
-
-export function DeleteSubjectButton({ subject }: { subject: SubjectSummary }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <>
-      <Tooltip content="Delete subject" sub="Dumbledore forgets everything about it">
-        <IconButton label="Delete subject" size="sm" onClick={() => setOpen(true)}>
-          <Trash2 size={14} strokeWidth={2} />
-        </IconButton>
-      </Tooltip>
-      <DeleteSubjectDialog subject={open ? subject : null} onOpenChange={setOpen} />
-    </>
   )
 }

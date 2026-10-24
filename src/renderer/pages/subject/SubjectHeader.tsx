@@ -1,12 +1,13 @@
 /**
  * Subject page header: the editable emoji icon (PageHeader's icon button + the emoji picker),
- * the inline-editable title, the property rows and, for a subject Dumbledore suggested, a
+ * the inline-editable title and description, the goals (goal + deadline) and, for a subject Dumbledore suggested, a
  * callout to keep or dismiss it. All edits go through subjects.update; failures show a toast
  * and the read model snaps back.
  */
 import { Button, Callout, PageHeader, toast } from '@renderer/design-system'
 import { useAction } from '@renderer/lib/queries'
 import type { SubjectDetail, SubjectPatch } from '@shared/state'
+import { Lightbulb } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useLocation } from 'wouter'
 import { EditableText } from './EditableText'
@@ -30,7 +31,11 @@ function SuggestedCallout({ subjectId }: { subjectId: string }) {
       },
     )
   return (
-    <Callout icon="✨" color="blue" className="sp-suggested">
+    <Callout
+      icon={<Lightbulb size={18} strokeWidth={1.75} />}
+      color="blue"
+      className="sp-suggested"
+    >
       <div className="sp-suggested__text">
         Dumbledore suggested this subject from what you read. Keep it to get roadmaps, reviews and
         exams for it.
@@ -75,7 +80,16 @@ export function SubjectHeader({ detail }: { detail: SubjectDetail }) {
             onSave={(name) => patch({ name })}
           />
         }
-        subtitle={subject.description || undefined}
+        subtitle={
+          <EditableText
+            value={subject.description ?? ''}
+            label="Description"
+            placeholder="Add a description: what this subject is about, in a line or two"
+            allowEmpty
+            className="sp-description"
+            onSave={(description) => patch({ description })}
+          />
+        }
       >
         <SubjectProperties detail={detail} onPatch={patch} />
         {subject.status === 'suggested' ? <SuggestedCallout subjectId={subject.id} /> : null}

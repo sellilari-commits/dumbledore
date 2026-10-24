@@ -21,7 +21,6 @@ const CONFIG = resolve(ROOT, 'src/renderer/surfaces/app/vite.preview.config.mjs'
 const SUBJECT = 'sub_orgo'
 const EXAM_DONE = 'quiz_orgo_weak'
 const EXAM_READY = 'quiz_linalg_ready'
-const SUBJECT_VIEWS = ['roadmap', 'concepts', 'seen', 'exams'] as const
 const SETTINGS = ['general', 'capture', 'orb', 'shortcuts', 'ai', 'coaching', 'data', 'about']
 
 const WIDTH = 1200
@@ -43,7 +42,8 @@ const ROUTES: readonly Shot[] = [
   { name: 'inbox', route: '/inbox' },
   { name: 'exams-list', route: '/exams' },
   { name: 'exams-results', route: `/exams/${EXAM_DONE}` },
-  ...SUBJECT_VIEWS.map((v) => ({ name: `subject-${v}`, route: `/subjects/${SUBJECT}/${v}` })),
+  { name: 'subject', route: `/subjects/${SUBJECT}/roadmap` },
+  { name: 'subject-suggested', route: '/subjects/sub_geo/roadmap' },
   ...SETTINGS.map((s) => ({ name: `settings-${s}`, route: `/settings/${s}` })),
   { name: 'onboarding', route: '/onboarding', scenario: 'onboarding' },
   { name: 'onboarding-how', route: '/onboarding?step=how', scenario: 'onboarding' },

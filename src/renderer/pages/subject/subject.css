@@ -375,3 +375,105 @@ button.sp-edit:hover {
   padding-left: 14px;
   border-bottom: 1px solid var(--c-borPri);
 }
+
+/* ── One-page layout: Progress · Gaps · What Dumbledore caught ─────────────── */
+.sp-description {
+  color: var(--c-texSec);
+}
+
+.sp-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  margin-top: 32px;
+  padding-bottom: 96px;
+}
+
+.sp-quiet {
+  margin: 0;
+  color: var(--c-texSec);
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+}
+
+.sp-progress-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 560px;
+}
+
+.sp-progress-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.sp-progress-title {
+  font-weight: var(--weight-medium);
+}
+
+.sp-progress-now {
+  font-size: var(--text-ui);
+  color: var(--c-texSec);
+}
+
+.sp-progress-now strong {
+  color: var(--c-texPri);
+  font-weight: var(--weight-medium);
+}
+
+.sp-progress-mastery {
+  margin: 14px 0 0;
+  font-size: var(--text-ui);
+  color: var(--c-texSec);
+}
+
+.sp-progress-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 560px;
+}
+
+.sp-gaps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sp-gap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--c-borPri);
+}
+
+.sp-gap:last-child {
+  border-bottom: 0;
+}
+
+.sp-gap__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sp-gap__name {
+  font-weight: var(--weight-medium);
+}
+
+.sp-gap__meta {
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+  color: var(--c-texSec);
+}
+
+.sp-gap__why {
+  color: var(--c-red-ink);
+}
