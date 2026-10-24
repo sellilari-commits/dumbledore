@@ -17,11 +17,9 @@ interface Props {
   gesture: Gesture
   /** Keyboard activation (Enter/Space) — pointer clicks come through the gesture. */
   onActivate: () => void
-  onHoverChange: (hovering: boolean) => void
-  tooltipId?: string
 }
 
-export function Orb({ orb, look, center, gesture, onActivate, onHoverChange, tooltipId }: Props) {
+export function Orb({ orb, look, center, gesture, onActivate }: Props) {
   const { size } = look
   return (
     <div
@@ -37,15 +35,12 @@ export function Orb({ orb, look, center, gesture, onActivate, onHoverChange, too
         height: size,
         transform: `translate3d(${center.x - size / 2}px, ${center.y - size / 2}px, 0)`,
       }}
-      onPointerEnter={() => onHoverChange(true)}
-      onPointerLeave={() => onHoverChange(false)}
     >
       <div className="ov-orb__body">
         <button
           type="button"
           className="ov-orb__face"
           aria-label={orbLabel(look, orb)}
-          aria-describedby={tooltipId}
           {...gesture.bind}
           onClick={(e) => {
             // detail 0 = keyboard activation; pointer clicks are handled by the gesture.

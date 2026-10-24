@@ -201,17 +201,12 @@ describe('hit areas when shapes change', () => {
   })
 })
 
-describe('orb tooltip', () => {
-  it('shows "Dumbledore · right ⌥" and the gestures after a short hover', async () => {
+describe('orb hover', () => {
+  it('shows no text when the pointer rests on the orb', async () => {
     await mount('idle')
     vi.useFakeTimers()
     fireEvent.pointerEnter(screen.getByTestId('orb'))
-    expect(screen.queryByRole('tooltip')).toBeNull()
-    act(() => vi.advanceTimersByTime(500))
-    expect(screen.getByRole('tooltip').textContent).toBe(
-      'Dumbledore· right ⌥ · tap: prompt · hold: tell it what you want, it writes the prompt · double-tap: chat',
-    )
-    fireEvent.pointerLeave(screen.getByTestId('orb'))
+    act(() => vi.advanceTimersByTime(2000))
     expect(screen.queryByRole('tooltip')).toBeNull()
   })
 })

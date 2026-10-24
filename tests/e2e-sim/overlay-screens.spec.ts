@@ -117,13 +117,13 @@ for (const theme of ['light', 'dark'] as const) {
       }
     })
 
-    test('session ring and orb tooltip', async ({ page }) => {
+    test('session ring, and no text on orb hover', async ({ page }) => {
       await overlay(page, 'session')
       await expect(page.getByTestId('side-next')).toHaveCount(0)
       await shoot(page, 'session', theme)
       await page.getByTestId('orb').hover()
-      await expect(page.getByRole('tooltip')).toHaveText(/Dumbledore\s*· right ⌥/)
-      await shoot(page, 'tooltip', theme)
+      await page.waitForTimeout(700)
+      await expect(page.getByRole('tooltip')).toHaveCount(0)
     })
 
     test('quiz card: question, feedback, result', async ({ page }) => {

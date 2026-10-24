@@ -14,7 +14,6 @@ import {
   type OrbBox,
   type Size,
   stackAnchor,
-  tooltipAnchor,
   verticalToward,
 } from './lib/layout'
 import { useHitAreaHover } from './lib/useHitAreaHover'
@@ -24,14 +23,12 @@ import { useViewport } from './lib/useViewport'
 import { Orb } from './orb/Orb'
 import { orbLook } from './orb/orbLook'
 import { QUIZ_WIDTH, QuizCard } from './quiz/QuizCard'
-import { OrbTooltip, TOOLTIP_ID } from './satellites/OrbTooltip'
 import { SuggestionChip } from './satellites/SuggestionChip'
 import { TimerButton } from './satellites/TimerButton'
 import { TOAST_WIDTH, ToastStack } from './toast/ToastStack'
 import './styles/base.css'
 import './styles/ui.css'
 
-const TOOLTIP_DELAY_MS = 450
 /** How long a dropped orb waits at the drop point for main's snapped position. */
 const SETTLE_MS = 900
 
@@ -92,19 +89,11 @@ function OverlayScene({ api, state, viewport, send, onDragging }: SceneProps) {
     return () => window.clearTimeout(timer)
   }, [settle])
 
-  const tooltip = useHoverDelay(TOOLTIP_DELAY_MS)
   const gesture = usePointerGesture(statePos, {
     onClick: () => send({ type: 'orbClick' }),
-    onLongPress: () => {
-      tooltip.set(false)
-      send({ type: 'orbLongPress' })
-    },
-    onContextMenu: () => {
-      tooltip.set(false)
-      send({ type: 'orbContextMenu' })
-    },
+    onLongPress: () => send({ type: 'orbLongPress' }),
+    onContextMenu: () => send({ type: 'orbContextMenu' }),
     onDrag: (p, done) => {
-      tooltip.set(false)
       send({ type: 'orbDrag', x: Math.round(p.x), y: Math.round(p.y), done })
       if (done) setSettle(p)
     },
@@ -125,12 +114,7 @@ function OverlayScene({ api, state, viewport, send, onDragging }: SceneProps) {
         center={center}
         gesture={gesture}
         onActivate={() => send({ type: 'orbClick' })}
-        onHoverChange={tooltip.set}
-        tooltipId={tooltip.on ? TOOLTIP_ID : undefined}
       />
-      {tooltip.on && !moving && !gesture.pressed && (
-        <OrbTooltip anchor={tooltipAnchor(orb, viewport)} />
-      )}
 
       {!look.docked && (
         <TimerButton
@@ -166,20 +150,4 @@ function OverlayScene({ api, state, viewport, send, onDragging }: SceneProps) {
       )}
     </div>
   )
-}
-
-/** Hover flag that turns on after a delay and off at once (tooltips). */
-function useHoverDelay(delayMs: number): { on: boolean; set: (hovering: boolean) => void } {
-  const [on, setOn] = useState(false)
-  const timer = useRef(0)
-  useEffect(() => () => window.clearTimeout(timer.current), [])
-  const set = useCallback(
-    (hovering: boolean) => {
-      window.clearTimeout(timer.current)
-      if (hovering) timer.current = window.setTimeout(() => setOn(true), delayMs)
-      else setOn(false)
-    },
-    [delayMs],
-  )
-  return { on, set }
 }
