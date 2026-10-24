@@ -147,7 +147,10 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
     // Read models
     'home.get': () => queries.home(),
     'subjects.list': () => queries.subjects(),
-    'subjects.get': (id) => queries.subject(id),
+    'subjects.get': (id) => {
+      bus.emit('subject:viewed', { subjectId: id }) // app subject page and panel topics
+      return queries.subject(id)
+    },
     'inbox.list': (filter) => queries.inbox(filter),
     'exams.list': () => queries.exams(),
     'search.query': (q) => queries.search(q),

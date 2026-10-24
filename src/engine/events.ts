@@ -25,6 +25,8 @@ export interface EngineEvents {
 
   'memory:changed': MemoryChanged
   'session:changed': { session: SessionState | null }
+  /** A subject was opened in the app or the panel (asks for a debounced consolidation pass). */
+  'subject:viewed': { subjectId: Id }
   'quiz:open': { quizId: Id }
   'nudge:ready': { nudge: Nudge }
   'toast:show': { toast: Toast }
