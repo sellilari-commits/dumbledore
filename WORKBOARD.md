@@ -9,7 +9,7 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
 | 2026-10-24 20:11 | Olle / Claude | Friendlier logo (D2) and light-touch brand accents: ink primary buttons, midnight rings/progress/selection, warm panel, mark in empty states | `src/shared/brand-mark.ts`, `src/main/tray.test.ts`, `tools/brand/`, `resources/icon.*`, `resources/brand/`, `src/renderer/design-system/tokens.css`, `src/renderer/design-system/components/{SpectaclesGlyph,Feedback}.tsx`, `src/renderer/surfaces/panel/panel.css` (card background only), `docs/DESIGN.md` (tokens) | main | Orb picks up the new mark and ring colour via brand-mark.ts and tokens.css; no edits in Ilari's claimed overlay/ folder |
-| 2026-10-24 20:11 | Ilari / Claude | Highlight text → note in memory | src/engine/perception/ (highlights.ts, service.ts, episodes/, extraction/prefilter.ts), src/shared/domain.ts, src/shared/ipc.ts, src/engine/events.ts, src/engine/store/codec.ts, src/engine/brain/prompts/p01-extract.ts, src/main/ (broadcaster wiring), src/renderer/surfaces/overlay/ | main | |
+| 2026-10-24 20:11 | Ilari / Claude | Highlight text → note in memory (done 7f7cf7b) + dedupe stored text | src/engine/perception/ (highlights.ts, service.ts, episodes/, extraction/prefilter.ts), src/shared/domain.ts, src/shared/ipc.ts, src/engine/events.ts, src/engine/store/codec.ts, src/engine/brain/prompts/p01-extract.ts, src/main/ (broadcaster wiring), src/renderer/surfaces/overlay/ | main | |
 
 ## Done recently
 
