@@ -1,0 +1,283 @@
+/* Inbox page: capture line, suggested subjects, filters, extraction rows with their three parts,
+   the subject select button and the loading skeleton. Tokens only; colour only where it means. */
+
+/* ── Capture line under the header ──────────────────────────────────────── */
+
+.ib-capture {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 0 2px;
+  color: var(--c-texSec);
+  font-size: var(--text-ui);
+}
+
+.ib-capture__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-texTer);
+}
+
+.ib-capture__dot[data-on="true"] {
+  background: var(--c-green-text);
+}
+
+/* ── Suggested subjects ─────────────────────────────────────────────────── */
+
+.ib-suggest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.ib-suggest {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px 12px 14px;
+  border-radius: var(--radius-menu);
+  background: var(--c-bacSec);
+  box-shadow: inset 0 0 0 1px var(--c-borPri);
+}
+
+.ib-suggest__emoji {
+  flex: none;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.ib-suggest__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.ib-suggest__name {
+  color: var(--c-texPri);
+  font-weight: var(--weight-semibold);
+}
+
+.ib-suggest__desc {
+  color: var(--c-texSec);
+  font-size: var(--text-meta);
+  line-height: 18px;
+}
+
+.ib-suggest__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+/* ── Filters + list ─────────────────────────────────────────────────────── */
+
+.ib-section {
+  margin-top: 36px;
+}
+
+.ib-filters {
+  margin-bottom: 4px;
+}
+
+.ib-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.ib-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 0 16px;
+  border-bottom: 1px solid var(--c-borPri);
+}
+
+.ib-item__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ib-item__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-control);
+  background: var(--c-bacTer);
+  color: var(--c-icoSec);
+}
+
+.ib-item__source {
+  flex: 1;
+  min-width: 0;
+}
+
+.ib-item__title {
+  overflow: hidden;
+  color: var(--c-texPri);
+  font-size: var(--text-body);
+  line-height: 22px;
+  font-weight: var(--weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ib-item__meta,
+.ib-item__time {
+  color: var(--c-texSec);
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+}
+
+.ib-item__time {
+  flex: none;
+  padding-top: 3px;
+  white-space: nowrap;
+}
+
+.ib-parts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0 0 0 38px;
+  list-style: none;
+}
+
+.ib-part {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  gap: 12px;
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+}
+
+.ib-part__label {
+  color: var(--c-texSec);
+}
+
+.ib-part__value {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  color: var(--c-texPri);
+}
+
+.ib-seen {
+  margin: 0;
+  padding: 0 0 0 12px;
+  border-left: 3px solid var(--c-texPri);
+}
+
+.ib-path {
+  color: var(--c-texSec);
+  font-size: var(--text-small);
+}
+
+.ib-understanding {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.ib-understanding .dd-tag {
+  align-self: center;
+}
+
+.ib-evidence {
+  color: var(--c-texSec);
+  font-size: var(--text-meta);
+}
+
+.ib-item__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 30px;
+}
+
+.ib-item__buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.ib-item__state {
+  padding: 0 6px;
+  color: var(--c-texSec);
+  font-size: var(--text-meta);
+}
+
+/* ── Subject select (Notion's borderless dropdown) ──────────────────────── */
+
+.ib-select {
+  max-width: 260px;
+  gap: 6px;
+  color: var(--c-texPri);
+}
+
+.ib-select__text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ib-select svg {
+  color: var(--c-icoSec);
+}
+
+.ib-select--empty {
+  color: var(--c-texSec);
+}
+
+.ib-select--active {
+  background: var(--c-accentTint);
+}
+
+.ib-select__hint {
+  color: var(--c-texTer);
+}
+
+/* ── Loading ────────────────────────────────────────────────────────────── */
+
+.ib-skeleton {
+  display: flex;
+  flex-direction: column;
+}
+
+.ib-skeleton__item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--c-borPri);
+}
+
+@media (max-width: 720px) {
+  .ib-parts,
+  .ib-item__actions {
+    padding-left: 0;
+  }
+
+  .ib-part {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .ib-suggest {
+    flex-wrap: wrap;
+  }
+}
