@@ -2,7 +2,7 @@
  * Live prompt evals (docs/PLAN.md §9.2) against Gemini (paid, primary) or the free providers.
  * Results → docs/evals/<date>-<suite>.md (with the estimated spend) + docs/evals/history.jsonl.
  *
- *   npx tsx tools/eval-prompts.ts [extraction|roadmaps|quizzes|prompts|all] [--limit N]
+ *   npx tsx tools/eval-prompts.ts [extraction|roadmaps|quizzes|prompts|all] [--limit N] [--only R]
  *       [--provider gemini|ovh|groq|mistral] [--route tier=provider:model] [--concurrency N]
  *       [--max-eur 0.5] [--no-write]
  *

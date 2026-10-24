@@ -45,13 +45,22 @@ export const LlmExtract = z.object({
 })
 export type LlmExtract = z.infer<typeof LlmExtract>
 
-const RULES = `LEARNING: course material, textbooks, lecture slides or notes, papers, documentation or tutorials being studied, explanations in AI chats, practice problems, flashcards, educational videos (captions/slides), assignments, exam or deadline information.
-NOT LEARNING: social media, news, shopping, entertainment, messaging small talk, email triage, settings screens, routine work where nothing new is being learned, UI noise (menus, buttons, ads, cookie banners). When unsure, isLearning=false. Never invent anything the text does not support.`
+const LEARNING = `LEARNING: course material, textbooks, lecture slides or notes, papers, documentation or tutorials being studied, explanations in AI chats, practice problems, flashcards, educational videos (captions/slides), assignments, exam or deadline information.
+NOT LEARNING: social media, news, shopping, entertainment, messaging small talk, email triage, settings screens, routine work where nothing new is being learned, UI noise (menus, buttons, ads, cookie banners).`
+
+/** On-device (4K context) keeps the short form; the cloud prompt spells out the real traps. */
+const RULES_COMPACT = `${LEARNING} Coding-agent work on one's own project and Dumbledore's own screens (its sidebar, subject pages, "Step 3 of 8") are not learning. When unsure, isLearning=false. Never invent anything the text does not support.`
+
+const RULES = `${LEARNING.slice(0, -1)} Also NOT LEARNING:
+- an AI chat's empty start page (greeting, sign-in, terms and cookie text, no question or answer);
+- building or fixing one's own software with a coding agent or AI assistant (edits, builds, signing, permissions, installs, commits, test runs, "Ran a command", task lists) — that is work, even when the AI explains steps, unless the student explicitly asks to understand a concept;
+- the screens of Dumbledore, this study coach, shown in any window (a sidebar "Dumbledore · Search ⌘K · Inbox · Exams · Settings · Subjects", subject pages with goals and progress, "Step 3 of 8", "reviews due", "Struggling with", "Prompting habits", deadlines it lists): these are the coach's own records or demo data, never new evidence, never an assignment.
+Judge an episode by what the student reads, asks or writes, not by subject names that appear in menus or sidebars. When unsure, isLearning=false. Never invent anything the text does not support.`
 
 const ITEM_RULES = `For each learning episode give one item per distinct topic (usually 1, at most 3):
 - topicPath: broad → specific, 2–4 levels, e.g. ["Organic Chemistry","Nucleophilic substitution","SN1"].
-- seen: the actual content on screen — the specific claim, definition, formula or example as shown, paraphrased in ≤ 60 words, keeping key terms and symbols. For AI chats: what the AI explained.
-- bigPicture: one sentence: what the student was most likely trying to understand, and why (course, exam, assignment, curiosity).
+- seen: the actual content on screen — the specific claim, definition, formula or example as shown, paraphrased in ≤ 60 words, keeping key terms and symbols. For AI chats: what the AI explained, or what the student asked if there is no answer yet. Describe the content, never the interface ("the chat displays…", "the page shows…").
+- bigPicture: one sentence: what the student is trying to learn or be able to do, and why (course, exam, assignment, curiosity).
 - evidence, then understanding: quote concrete signals or chat text as evidence, then choose
   understood = positive evidence (correct answer, correct explain-back);
   unclear = some sign of difficulty (one rephrased question, "simpler please", slowish reading);
@@ -108,7 +117,7 @@ ${EXAMPLES}`
 
 const SYSTEM_COMPACT = `You are the perception module of a study coach. From screen text of one episode plus behaviour signals, decide whether the student was trying to learn something, and if so record it precisely.
 
-${RULES}
+${RULES_COMPACT}
 
 ${ITEM_RULES}
 
@@ -248,7 +257,7 @@ export function finalizeExtract(out: LlmExtract, input: ExtractInput): ExtractOu
 export const extractPrompt: PromptSpec<ExtractInput, LlmExtract, ExtractOutput> = {
   id: 'P1',
   task: 'extract',
-  version: 1,
+  version: 2,
   tier: 'extract',
   temperature: 0.1,
   maxOutputTokens: 2400,

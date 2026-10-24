@@ -1,6 +1,8 @@
 /**
  * Picks the DumbledoreApi for this window: the preload's `window.dumbledore` inside Electron, or
- * the in-memory mock (demo data, simulated latency and events) in a plain browser or with ?mock=1.
+ * the in-memory mock (demo data, simulated latency and events) only when asked for: ?mock=1, or a
+ * dev-server page in a plain browser. A built app whose preload bridge is missing gets an API that
+ * fails every call, so demo subjects can never show up (or be read back from the screen) as real.
  * Everything else in the renderer goes through `invoke`/`on` from here, never the global directly.
  */
 import type {
@@ -51,16 +53,42 @@ export function mockOptionsFromUrl(): MockOptions {
   }
 }
 
+function inElectron(): boolean {
+  return typeof navigator !== 'undefined' && /\bElectron\//.test(navigator.userAgent)
+}
+
+/**
+ * Mock only on request: ?mock=1, or the Vite dev server opened in a plain browser (the UI
+ * previews). Never in a production build or inside Electron without ?mock=1.
+ */
 export function isMock(): boolean {
+  if (params().get('mock') === '1') return true
   const real = typeof window === 'undefined' ? undefined : window.dumbledore
-  return !real || params().get('mock') === '1'
+  if (real) return false
+  return import.meta.env.DEV && !inElectron()
+}
+
+/** Stand-in when the preload bridge is missing in the real app: every call fails loudly. */
+export function unavailableApi(): DumbledoreApi {
+  const error = () =>
+    new Error(
+      'Dumbledore could not connect to its engine (preload bridge missing). Restart the app.',
+    )
+  return {
+    surface: surfaceFromPath(),
+    invoke: (() => Promise.reject(error())) as DumbledoreApi['invoke'],
+    on: () => () => {},
+  } as DumbledoreApi
 }
 
 export function getApi(): DumbledoreApi {
   if (current) return current
   const real = typeof window === 'undefined' ? undefined : window.dumbledore
   if (real && !isMock()) current = real
-  else {
+  else if (!isMock()) {
+    console.error('[dumbledore] preload bridge missing: not falling back to demo data')
+    current = unavailableApi()
+  } else {
     const mock = createMockApi(mockOptionsFromUrl())
     // For the browser console and screenshot scripts: __dumbledoreMock.pressKey(), .db, .emit().
     ;(globalThis as { __dumbledoreMock?: MockApi }).__dumbledoreMock = mock

@@ -39,6 +39,8 @@ export interface EvalContext {
   records: LlmCallRecord[]
   root: string
   limit: number | null
+  /** Only cases whose id starts with this prefix (e.g. "R" for the real-episode cases). */
+  only?: string | null
   concurrency: number
   timeoutMs: number
   log: (line: string) => void

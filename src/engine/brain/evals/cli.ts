@@ -1,6 +1,6 @@
 /**
  * Eval CLI body (launched by tools/eval-prompts.ts under tsconfig.node.json so aliases resolve).
- *   eval-prompts [extraction|roadmaps|quizzes|prompts|all] [--limit N]
+ *   eval-prompts [extraction|roadmaps|quizzes|prompts|all] [--limit N] [--only <id prefix>]
  *                [--provider gemini|ovh|groq|mistral] [--route tier=provider:model[,provider:model]]
  *                [--concurrency N] [--timeout ms] [--max-eur N] [--no-write]
  * Calls real providers: Gemini (paid; GEMINI_API_KEY via env, .env.local or DUMBLEDORE_ENV_FILES),
@@ -35,6 +35,7 @@ const TIERS: LlmTier[] = ['triage', 'extract', 'reason', 'write', 'chat']
 interface Args {
   suites: string[]
   limit: number | null
+  only: string | null
   provider: ProviderId | null
   routes: Partial<Record<LlmTier, ModelRoute[]>>
   concurrency: number
@@ -47,6 +48,7 @@ export function parseArgs(argv: string[]): Args {
   const args: Args = {
     suites: [],
     limit: null,
+    only: null,
     provider: null,
     routes: {},
     concurrency: 2,
@@ -58,6 +60,7 @@ export function parseArgs(argv: string[]): Args {
     const a = argv[i] as string
     const next = () => argv[++i] ?? ''
     if (a === '--limit') args.limit = Number(next())
+    else if (a === '--only') args.only = next() || null
     else if (a === '--provider') args.provider = next() as ProviderId
     else if (a === '--concurrency') args.concurrency = Math.max(1, Number(next()))
     else if (a === '--timeout') args.timeoutMs = Number(next())
@@ -148,6 +151,7 @@ export async function main(argv: string[], root = process.cwd()): Promise<number
       records,
       root,
       limit: args.limit,
+      only: args.only,
       concurrency: args.concurrency,
       timeoutMs: args.timeoutMs,
       log,

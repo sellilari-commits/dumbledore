@@ -4,9 +4,11 @@
  * Closed episodes pass the local prefilter or are marked done without an LLM call (episodes that
  * arrive already done, coding agent sessions, are skipped outright). Passing ones
  * queue up and go to `Brain.extract` in batches (≤ 3 episodes or a token cap), every 2 minutes,
- * or at once for AI-chat episodes during a study session. A daily budget caps calls and tokens.
- * Results are applied through Repos (./apply), episodes are marked extracted and
- * 'memory:changed' is emitted. Episode text past the retention window is purged hourly.
+ * or at once for AI-chat episodes during a study session. A daily budget caps calls and tokens,
+ * sized for a whole day of normal use. Results are applied through Repos (./apply), episodes are
+ * marked extracted and 'memory:changed' is emitted. Hourly, episode text past the retention window
+ * is purged and episodes still unextracted in the DB (queue overflow, a provider outage that used
+ * up their attempts, yesterday's budget) are queued again, so nothing waits for an app restart.
  */
 import type { Episode } from '@shared/domain'
 import type { MemoryChanged } from '@shared/state'
@@ -40,8 +42,10 @@ export const WORKER_DEFAULTS: WorkerOptions = {
   maxEpisodeChars: 6000,
   flushEveryMs: 2 * MINUTE,
   purgeEveryMs: HOUR,
-  dailyMaxCalls: 150,
-  dailyMaxTokens: 200_000,
+  // A batch is ≤ 4k tokens: ~300 batches ≈ a full day of reading and AI chats. On Gemini Flash-Lite
+  // that is ~€0.10 at most; the brain's spend cap and per-provider limits still apply on top.
+  dailyMaxCalls: 400,
+  dailyMaxTokens: 1_200_000,
   maxAttempts: 3,
   maxQueue: 200,
   timeoutMs: 60_000,
@@ -76,6 +80,8 @@ export class ExtractionWorker {
   private readonly budget: DailyBudget
   private readonly prompts = new PromptMemory()
   private queue: QueueItem[] = []
+  /** Episodes in a running LLM call, so a recovery pass never queues them twice. */
+  private readonly inFlight = new Set<string>()
   private seq = 0
   private cancels: Cancel[] = []
   private offs: (() => void)[] = []
@@ -115,7 +121,11 @@ export class ExtractionWorker {
     )
     this.cancels.push(
       clock.setInterval(() => void this.flushNow(), this.opts.flushEveryMs),
-      clock.setInterval(() => this.purge(), this.opts.purgeEveryMs),
+      clock.setInterval(() => {
+        this.purge()
+        this.recover()
+        void this.flushNow()
+      }, this.opts.purgeEveryMs),
     )
     this.purge()
     this.recover()
@@ -137,7 +147,8 @@ export class ExtractionWorker {
       this.markExtracted(episode.id)
       return result
     }
-    if (this.queue.some((i) => i.episode.id === episode.id)) return result
+    if (this.inFlight.has(episode.id) || this.queue.some((i) => i.episode.id === episode.id))
+      return result
     const urgent = episode.kind === 'ai_chat' && this.sessionActive
     this.queue.push({ episode, score: result.score, urgent, attempts: 0, seq: this.seq++ })
     if (this.queue.length > this.opts.maxQueue) {
@@ -225,8 +236,17 @@ export class ExtractionWorker {
 
   /** Returns false when the LLM call failed (the items are re-queued up to maxAttempts). */
   private async run(items: QueueItem[]): Promise<boolean> {
-    const { brain, repos, clock } = this.deps
     const episodes = items.map((i) => i.episode)
+    for (const e of episodes) this.inFlight.add(e.id)
+    try {
+      return await this.extractAndApply(items, episodes)
+    } finally {
+      for (const e of episodes) this.inFlight.delete(e.id)
+    }
+  }
+
+  private async extractAndApply(items: QueueItem[], episodes: Episode[]): Promise<boolean> {
+    const { brain, repos, clock } = this.deps
     let output: ExtractOutput
     try {
       const raw = await brain.extract(this.buildInput(episodes), { timeoutMs: this.opts.timeoutMs })

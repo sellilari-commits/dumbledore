@@ -42,11 +42,19 @@ export const VISIBLE_EVERY_N_TICKS = 3
 const POKE_DELAY_MS = 300
 const RETRY_MS = 5000
 const MIN_GAP_MS = 100
+/**
+ * A lock with fresh keyboard/mouse input long after it began means the unlock event was missed
+ * (e.g. the helper restarted while locked): capture resumes. Safe if wrong: the helper itself
+ * returns no windows while the screen is locked.
+ */
+const STALE_LOCK_MS = 60_000
+const FRESH_INPUT_SECONDS = 5
 
 export class CaptureScheduler {
   private running = false
   private enabled = true
   private locked = false
+  private lockedAt = 0
   private inFlight = false
   private pokeAfterTick = false
   private timer: Cancel | null = null
@@ -86,6 +94,7 @@ export class CaptureScheduler {
 
   setLocked(locked: boolean): void {
     this.locked = locked
+    if (locked) this.lockedAt = this.deps.clock.now()
     if (locked) this.pause('locked')
     else this.poke()
   }
@@ -180,6 +189,14 @@ export class CaptureScheduler {
     const { helper, clock } = this.deps
     const settings = this.deps.settings()
     const { seconds: idleSeconds } = await helper.call('system.idle', {})
+    if (
+      this.locked &&
+      idleSeconds < FRESH_INPUT_SECONDS &&
+      clock.now() - this.lockedAt >= STALE_LOCK_MS
+    ) {
+      this.deps.log?.('[perception] input while marked locked: unlock event missed, resuming')
+      this.locked = false
+    }
     const cadence = cadenceFor({
       idleSeconds,
       locked: this.locked,

@@ -163,6 +163,32 @@ describe('ExtractionWorker', () => {
     expect(repos.episodes.get(ep.id)?.extracted).toBe(false) // retried after the next start
   })
 
+  it('re-queues episodes left unextracted by an outage on its hourly pass', async () => {
+    let attempts = 0
+    const ok = new FakeBrain()
+    brain = new FakeBrain({
+      extract: async (input, opts) => {
+        attempts++
+        if (attempts <= 2) throw new Error('provider down')
+        return ok.extract(input, opts)
+      },
+    })
+    const worker = make({ maxAttempts: 2, flushEveryMs: 10 * 60 * 1000 })
+    worker.start()
+    const ep = saved()
+    worker.enqueue(ep)
+    await worker.flushNow()
+    await worker.flushNow()
+    expect(worker.pending).toBe(0) // attempts used up, still unextracted in the DB
+    expect(repos.episodes.get(ep.id)?.extracted).toBe(false)
+    clock.advance(60 * 60 * 1000)
+    await flushAsync()
+    await worker.flushNow()
+    expect(attempts).toBe(3)
+    expect(repos.episodes.get(ep.id)?.extracted).toBe(true)
+    worker.stop()
+  })
+
   it('rejects malformed brain output without touching memory', async () => {
     brain = new FakeBrain({ extract: async () => ({ results: [{ episodeId: 1 }] }) as never })
     const worker = make({ maxAttempts: 1 })

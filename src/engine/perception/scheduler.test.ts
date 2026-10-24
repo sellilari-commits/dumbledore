@@ -197,6 +197,20 @@ describe('CaptureScheduler', () => {
     expect(helper.callsOf('perceive').length).toBe(before + 1)
   })
 
+  it('resumes by itself when the unlock event was missed', async () => {
+    scheduler.start()
+    await runFor(clock, 100)
+    scheduler.setLocked(true)
+    helper.idleSeconds = 400 // away while locked
+    const before = helper.callsOf('perceive').length
+    await runFor(clock, 120_000)
+    expect(helper.callsOf('perceive').length).toBe(before)
+    helper.idleSeconds = 1 // back at the keyboard, no 'screen.unlocked' arrived
+    await runFor(clock, 6000)
+    expect(helper.callsOf('perceive').length).toBeGreaterThan(before)
+    expect(scheduler.isActive()).toBe(true)
+  })
+
   it('survives helper errors and keeps ticking', async () => {
     helper.failNext.add('frontmost')
     scheduler.start()

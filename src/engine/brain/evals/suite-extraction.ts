@@ -1,5 +1,5 @@
 /**
- * Extraction eval (PLAN §9.2): 30 labelled episodes through brain.extract in queue-sized batches of
+ * Extraction eval (PLAN §9.2): 30 labelled episodes plus 12 real ones (R*, `--only R`) through brain.extract in queue-sized batches of
  * 3 → precision/recall of "is learning", three parts always filled, "struggling" only with
  * evidence, plus understanding/subject/assignment/student-prompt agreement for diagnosis.
  */
@@ -48,7 +48,8 @@ function interleave(cases: Case[]): Case[] {
 
 export async function runExtraction(ctx: EvalContext): Promise<SuiteResult> {
   const fx = loadFixture<Fixture>(ctx.root, 'extraction.json')
-  const cases = interleave(take(fx.cases, ctx.limit))
+  const picked = ctx.only ? fx.cases.filter((c) => c.id.startsWith(ctx.only as string)) : fx.cases
+  const cases = interleave(take(picked, ctx.limit))
   const groups: Case[][] = []
   for (let i = 0; i < cases.length; i += 3) groups.push(cases.slice(i, i + 3))
   const outs = await pool(groups, ctx.concurrency, async (g, i) => {

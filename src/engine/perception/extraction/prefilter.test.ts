@@ -125,4 +125,68 @@ describe('prefilter', () => {
   it('accepts overrides of the thresholds', () => {
     expect(prefilter(makeEpisode({ dwellSeconds: 12 }), { minDwellSeconds: 10 }).pass).toBe(true)
   })
+
+  it("never sends Dumbledore's own screens read back from a preview window", () => {
+    const preview = makeEpisode({
+      bundleId: 'com.anthropic.claudefordesktop',
+      app: 'Claude',
+      title: 'Claude',
+      url: null,
+      kind: 'ai_chat',
+      aiProvider: 'claude',
+      text: [
+        '[L] Ran a command, read 2 files',
+        '[L] Dumbledore',
+        '[R] Search ⌘K',
+        '[R] Inbox 6',
+        '[R] Exams',
+        '[R] Settings',
+        '[L] Subjects',
+        '[L] 🧪 Organic Chemistry Focus',
+        '[R] Lab report: SN1 hydrolysis',
+        '[R] in 10 days',
+        STUDY_TEXT,
+      ].join('\n'),
+    })
+    const r = prefilter(preview)
+    expect(r.pass).toBe(false)
+    expect(r.reasons).toContain('dumbledore ui')
+    const mockChat = makeEpisode({
+      url: 'http://127.0.0.1:5199/',
+      title: 'ChatGPT (mock) — Dumbledore test page',
+      text: `Organic chemistry: SN1 vs SN2\nMock chat for Dumbledore tests. Nothing leaves this computer.\n${STUDY_TEXT}`,
+    })
+    expect(prefilter(mockChat).reasons).toContain('dumbledore ui')
+  })
+
+  it("drops an AI chat's empty start page but keeps typed prompts and conversations", () => {
+    const home = (text: string, url = 'https://chatgpt.com/') =>
+      makeEpisode({ kind: 'ai_chat', aiProvider: 'chatgpt', title: 'ChatGPT', url, text })
+    const empty = [
+      '[L] Images',
+      '[L] Get responses tailored to you',
+      '[L] Log in to get answers based on saved chats, plus create images and upload files.',
+      '[C] Where should we begin?',
+      '[L] ChatGPT is AI. By using it, you agree to ourTerms&Privacy Policy. Chats may be reviewed and used to improve our AI models.Learn more',
+      '[L] Cookies help this site function, measure usage, and support marketing.Manage',
+    ].join('\n')
+    const r = prefilter(home(empty))
+    expect(r.pass).toBe(false)
+    expect(r.reasons).toContain('empty chat page')
+    const fi = [
+      '[L] Uusi keskustelu',
+      '[L] Kirjaudu sisään saadaksesi vastauksia tallennettujen keskustelujen perusteella sekä luodaksesi kuvia.',
+      '[R] Mistä aloitetaan?',
+      '[R] ChatGPT on tekoäly. Kun käytät sitä, hyväksyt käyttöehdot ja tietosuojakäytännön.',
+      '[C] Keskustelu ChatGPT:n kanssa',
+    ].join('\n')
+    expect(prefilter(home(fi, 'https://gemini.google.com/app?hl=fi')).reasons).toContain(
+      'empty chat page',
+    )
+    const typed = `${empty}\n[L] I am new to organic chemistry and trying to understand SN1 vs SN2. Short bullets, bold key terms, then quiz me.`
+    expect(prefilter(home(typed)).pass).toBe(true)
+    expect(prefilter(home(empty, 'https://chatgpt.com/c/6adcecef-5cf4')).reasons).not.toContain(
+      'empty chat page',
+    )
+  })
 })
