@@ -1,0 +1,400 @@
+/* Subject page: header (icon picker, inline title, properties), view tabs, roadmap, concepts,
+   seen and exams views, skeleton. Notion tokens only (design-system/tokens.css). */
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+.sp-header {
+  padding-top: 64px;
+}
+
+.sp-header .dd-page-header {
+  padding-top: 0;
+}
+
+.sp-icon {
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.sp-icon:hover,
+.sp-icon[data-state="open"] {
+  background: var(--c-hover);
+}
+
+/* Click-to-edit text: looks like plain text until hovered or edited. */
+.sp-edit {
+  display: inline-block;
+  max-width: 100%;
+  min-height: 1.2em;
+  margin: 0 -4px;
+  padding: 0 4px;
+  border-radius: var(--radius-control);
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: text;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+button.sp-edit:hover {
+  background: var(--c-hover);
+}
+
+.sp-edit--empty {
+  color: var(--c-texTer);
+}
+
+.sp-edit--input {
+  width: calc(100% + 8px);
+  border: 0;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.sp-edit--input:focus-visible {
+  box-shadow: none;
+}
+
+.sp-title {
+  line-height: 1.2;
+}
+
+.dd-prop__value .sp-edit {
+  line-height: 30px;
+}
+
+/* Emoji picker */
+.sp-emoji-pop {
+  width: 324px;
+  max-width: 324px;
+}
+
+.sp-emoji-pop__head {
+  padding: 2px 4px 8px;
+  color: var(--c-texSec);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+}
+
+.sp-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+}
+
+.sp-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  border-radius: var(--radius-control);
+  font-size: 22px;
+  line-height: 1;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.sp-emoji:hover {
+  background: var(--c-hover);
+}
+
+.sp-emoji[aria-pressed="true"] {
+  background: var(--c-accentTint);
+}
+
+/* Deadline popover */
+.sp-date-pop {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 240px;
+}
+
+.sp-date-pop__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* Property values */
+.sp-tags {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sp-muted {
+  color: var(--c-texSec);
+}
+
+.sp-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sp-assignment {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sp-assignment__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sp-suggested {
+  margin-top: 16px;
+}
+
+.sp-suggested__text {
+  color: var(--c-texPri);
+}
+
+.sp-suggested__actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.sp-focus[data-on="true"] {
+  color: var(--c-blue-text);
+}
+
+/* ── Tabs & views ───────────────────────────────────────────────────────── */
+
+.sp-tabs {
+  margin-top: 28px;
+}
+
+.sp-tabs .dd-btn--ghost {
+  color: var(--c-texSec);
+}
+
+.sp-view {
+  padding-top: 16px;
+}
+
+.sp-error {
+  padding-top: 96px;
+}
+
+/* ── Roadmap ────────────────────────────────────────────────────────────── */
+
+.sp-roadmap {
+  display: flex;
+  flex-direction: column;
+}
+
+.sp-roadmap__head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sp-roadmap__title {
+  font-size: var(--text-h3);
+  line-height: var(--leading-h3);
+  font-weight: var(--weight-semibold);
+  color: var(--c-texPri);
+}
+
+.sp-roadmap__head .sp-muted {
+  font-size: var(--text-ui);
+}
+
+.sp-roadmap__goal {
+  margin-top: 2px;
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  color: var(--c-texSec);
+}
+
+.sp-roadmap__why {
+  margin-top: 14px;
+}
+
+.sp-roadmap__items {
+  display: flex;
+  flex-direction: column;
+  margin-top: 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.sp-roadmap__next {
+  margin-top: 18px;
+  font-size: var(--text-ui);
+  color: var(--c-texPri);
+}
+
+/* ── Concepts ───────────────────────────────────────────────────────────── */
+
+.sp-mastery {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sp-mastery .dd-table__num {
+  min-width: 3ch;
+  color: var(--c-texSec);
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-due {
+  color: var(--c-orange-text);
+  font-weight: var(--weight-medium);
+}
+
+/* ── Seen ───────────────────────────────────────────────────────────────── */
+
+.sp-seen {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.sp-day {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sp-day__label {
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--c-borPri);
+  color: var(--c-texSec);
+  font-size: var(--text-ui);
+  font-weight: var(--weight-medium);
+}
+
+.sp-enc {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px 14px;
+  border-radius: var(--radius-menu);
+  box-shadow: inset 0 0 0 1px var(--c-borPri);
+}
+
+.sp-enc__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--text-ui);
+}
+
+.sp-enc__icon {
+  flex: none;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.sp-enc__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--weight-semibold);
+  color: var(--c-texPri);
+}
+
+.sp-enc__meta {
+  flex: none;
+  margin-left: auto;
+  color: var(--c-texSec);
+  font-size: var(--text-small);
+  white-space: nowrap;
+}
+
+.sp-enc__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sp-part {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+}
+
+.sp-part__label {
+  flex: none;
+  width: 112px;
+  color: var(--c-texSec);
+}
+
+.sp-part__value {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--c-texPri);
+}
+
+.sp-quote {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--c-texPri);
+}
+
+.sp-path {
+  color: var(--c-texSec);
+  font-size: var(--text-small);
+}
+
+.sp-understanding {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.sp-questions {
+  margin: 0;
+  padding-left: 18px;
+}
+
+/* ── Skeleton ───────────────────────────────────────────────────────────── */
+
+.sp-skel-icon {
+  display: block;
+  margin-bottom: 14px;
+}
+
+.sp-skel-props {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.sp-skel-prop {
+  display: flex;
+  align-items: center;
+  gap: 66px;
+  padding-left: 6px;
+}
+
+.sp-skel-tabs {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  height: 40px;
+  margin-top: 28px;
+  padding-left: 14px;
+  border-bottom: 1px solid var(--c-borPri);
+}

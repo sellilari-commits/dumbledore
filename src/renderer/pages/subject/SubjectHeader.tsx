@@ -1,0 +1,77 @@
+/**
+ * Subject page header: the editable emoji icon, the inline-editable title, the property rows and,
+ * for a subject Dumbledore suggested, a callout to keep or dismiss it. All edits go through
+ * subjects.update; failures show a toast and the read model snaps back.
+ */
+import { Button, Callout, PageHeader, toast } from '@renderer/design-system'
+import { useAction } from '@renderer/lib/queries'
+import type { SubjectDetail, SubjectPatch } from '@shared/state'
+import { useLocation } from 'wouter'
+import { EditableText } from './EditableText'
+import { EmojiPicker } from './EmojiPicker'
+import { SubjectProperties } from './SubjectProperties'
+
+function SuggestedCallout({ subjectId }: { subjectId: string }) {
+  const act = useAction('suggested.act')
+  const [, navigate] = useLocation()
+  const run = (action: 'accept' | 'dismiss') =>
+    act.mutate(
+      { subjectId, action, intoId: null },
+      {
+        onSuccess: () => {
+          if (action === 'dismiss') {
+            toast('Suggestion dismissed')
+            navigate('/home')
+          } else toast('Added to your subjects', { tone: 'success' })
+        },
+        onError: (err) => toast(err.message, { tone: 'error' }),
+      },
+    )
+  return (
+    <Callout icon="✨" color="blue" className="sp-suggested">
+      <div className="sp-suggested__text">
+        Dumbledore suggested this subject from what you read. Keep it to get roadmaps, reviews and
+        exams for it.
+      </div>
+      <div className="sp-suggested__actions">
+        <Button size="sm" variant="primary" loading={act.isPending} onClick={() => run('accept')}>
+          Add to my subjects
+        </Button>
+        <Button size="sm" variant="ghost" disabled={act.isPending} onClick={() => run('dismiss')}>
+          Dismiss
+        </Button>
+      </div>
+    </Callout>
+  )
+}
+
+export function SubjectHeader({ detail }: { detail: SubjectDetail }) {
+  const { subject } = detail
+  const update = useAction('subjects.update')
+  const patch = (p: SubjectPatch) =>
+    update.mutate(
+      { id: subject.id, patch: p },
+      { onError: (err) => toast(err.message, { tone: 'error' }) },
+    )
+
+  return (
+    <div className="sp-header">
+      <EmojiPicker value={subject.emoji} onChange={(emoji) => patch({ emoji })} />
+      <PageHeader
+        title={
+          <EditableText
+            value={subject.name}
+            label="Subject name"
+            placeholder="Untitled"
+            className="sp-title"
+            onSave={(name) => patch({ name })}
+          />
+        }
+        subtitle={subject.description || undefined}
+      >
+        <SubjectProperties detail={detail} onPatch={patch} />
+        {subject.status === 'suggested' ? <SuggestedCallout subjectId={subject.id} /> : null}
+      </PageHeader>
+    </div>
+  )
+}
