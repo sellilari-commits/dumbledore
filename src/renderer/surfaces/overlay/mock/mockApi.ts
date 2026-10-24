@@ -124,6 +124,12 @@ function createOverlayMock(params: URLSearchParams): DumbledoreApi {
       case 'sideQuiz':
         set({ ...state, quiz: { quizId: DEMO_QUIZ_ID } })
         return
+      case 'timerClick':
+        set({
+          ...state,
+          timer: state.timer ? null : { endsAt: new Date(Date.now() + 25 * 60_000).toISOString() },
+        })
+        return
       case 'quizClose': {
         const p = state.orb.progress
         set({

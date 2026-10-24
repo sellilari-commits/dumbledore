@@ -102,6 +102,7 @@ const STATIC_SCENES = [
   'tip',
   'checkpoint',
   'left',
+  'timer',
 ]
 
 for (const theme of ['light', 'dark'] as const) {

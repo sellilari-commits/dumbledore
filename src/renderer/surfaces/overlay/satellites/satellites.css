@@ -1,4 +1,4 @@
-/* Side stack squares, Study pill and suggestion chip — the orb's small companions. */
+/* The timer square under the orb, and the suggestion chip — the orb's small companions. */
 
 .ov-stack {
   display: flex;
@@ -61,6 +61,14 @@
 
 .ov-sq svg:first-child {
   margin-left: 1px;
+}
+
+/* Timer square: minutes left while running. */
+.ov-sq__count {
+  font-size: var(--text-small);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-texPri);
 }
 
 .ov-sq__label {

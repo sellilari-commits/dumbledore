@@ -34,6 +34,8 @@ export interface ShellHooks {
   onBusy: (busy: boolean) => void
   /** Something AppState depends on changed. */
   onAppStateChange: () => void
+  /** A system (macOS) notification, e.g. when the timer under the orb runs out. */
+  notify?: (notice: { title: string; body: string }) => void
 }
 
 export interface ShellCore {
@@ -94,6 +96,7 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     suggestionPreview: async () => (await suggestions.get()).prompt,
     onNudge: (id, choice) => void nudges?.act(id, choice),
     onNudgeExpired: (id) => nudges?.expired(id),
+    notify: (notice) => hooks.notify?.(notice),
   })
   const writer = new ChatWriter({
     helper,

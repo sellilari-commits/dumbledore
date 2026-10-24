@@ -102,6 +102,8 @@ export const OverlayState = z.object({
   toasts: z.array(Toast),
   quiz: z.object({ quizId: Id }).nullable(),
   aiChat: z.object({ provider: z.string() }).nullable(),
+  /** The timer square under the orb: when it runs out (null = idle). */
+  timer: z.object({ endsAt: IsoDate }).nullable(),
 })
 export type OverlayState = z.infer<typeof OverlayState>
 
@@ -114,6 +116,8 @@ export const OverlayAction = z.discriminatedUnion('type', [
   z.object({ type: z.literal('chipClick') }),
   z.object({ type: z.literal('sideNext') }),
   z.object({ type: z.literal('sideQuiz') }),
+  /** The timer square: start the 25-minute timer, or stop it while running. */
+  z.object({ type: z.literal('timerClick') }),
   z.object({ type: z.literal('toastAction'), toastId: z.string(), actionId: z.string() }),
   z.object({ type: z.literal('toastDismiss'), toastId: z.string() }),
   z.object({ type: z.literal('quizClose') }),

@@ -260,6 +260,7 @@ export const coreHandlers: HandlerMap<CoreChannel> = {
     toasts: [],
     quiz: null,
     aiChat: ctx.db.appState.aiChat,
+    timer: null,
   }),
   'overlay.action': () => undefined,
   'window.open': (ctx, { surface, route }) => {

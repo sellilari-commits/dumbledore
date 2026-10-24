@@ -140,13 +140,30 @@ describe('satellites', () => {
     expect(screen.getByTestId('suggestion-chip').textContent).toBe('Rewrite prompt·⌥')
   })
 
-  it('no squares under the orb during a session or at a checkpoint', async () => {
+  it('one square under the orb: the timer, never Next or Quiz', async () => {
     const { local } = await mount('session')
     expect(screen.queryByTestId('side-next')).toBeNull()
+    expect(screen.getAllByTestId('timer')).toHaveLength(1)
     act(() => local.emit('overlay.changed', state('checkpoint')))
     expect(screen.queryByTestId('side-quiz')).toBeNull()
   })
 
+  it('timer square: idle glyph, click sends timerClick, running shows minutes left', async () => {
+    const { local } = await mount('idle')
+    const timer = screen.getByTestId('timer')
+    expect(timer.getAttribute('aria-label')).toBe('Start 25-min timer')
+    fireEvent.click(timer, { detail: 0 })
+    expect(sentTypes(local)).toEqual(['timerClick'])
+    act(() => local.emit('overlay.changed', state('timer')))
+    const running = screen.getByTestId('timer')
+    expect(running.textContent).toContain('18')
+    expect(running.getAttribute('aria-label')).toBe('18 min left · click to stop')
+  })
+
+  it('hides the timer square while docked beside a chat box', async () => {
+    await mount('docked')
+    expect(screen.queryByTestId('timer')).toBeNull()
+  })
 })
 
 describe('hit areas', () => {

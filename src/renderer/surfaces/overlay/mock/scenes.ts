@@ -20,6 +20,7 @@ export const SCENES = [
   'tip',
   'quiz',
   'left',
+  'timer',
 ] as const
 export type SceneName = (typeof SCENES)[number]
 
@@ -110,6 +111,7 @@ function base(vp: Size): OverlayState {
     toasts: [],
     quiz: null,
     aiChat: null,
+    timer: null,
   }
 }
 
@@ -172,6 +174,8 @@ export function sceneState(name: SceneName, vp: Size): OverlayState {
         side: { next: null, quiz: true },
         quiz: { quizId: DEMO_QUIZ_ID },
       }
+    case 'timer':
+      return { ...s, timer: { endsAt: new Date(Date.now() + 18 * 60_000 - 5_000).toISOString() } }
     case 'left':
       return {
         ...session(s, 2, 6),

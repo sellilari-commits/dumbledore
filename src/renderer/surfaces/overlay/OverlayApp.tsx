@@ -1,8 +1,8 @@
 /**
- * The overlay page: renders OverlayState on a transparent full-screen canvas — the orb (the only
- * button on the screen edge), suggestion chip, toasts and the quiz card — and sends OverlayActions
- * back. Renders
- * nothing when the state belongs to another display. Hit areas report hover for click-through.
+ * The overlay page: renders OverlayState on a transparent full-screen canvas — the orb with its
+ * one timer square under it, the suggestion chip, toasts and the quiz card — and sends
+ * OverlayActions back. Renders nothing when the state belongs to another display. Hit areas
+ * report hover for click-through.
  */
 import type { DumbledoreApi } from '@shared/ipc'
 import type { OverlayAction, OverlayState } from '@shared/state'
@@ -13,7 +13,9 @@ import {
   chipAnchor,
   type OrbBox,
   type Size,
+  stackAnchor,
   tooltipAnchor,
+  verticalToward,
 } from './lib/layout'
 import { useHitAreaHover } from './lib/useHitAreaHover'
 import { useOverlayState } from './lib/useOverlayState'
@@ -24,6 +26,7 @@ import { orbLook } from './orb/orbLook'
 import { QUIZ_WIDTH, QuizCard } from './quiz/QuizCard'
 import { OrbTooltip, TOOLTIP_ID } from './satellites/OrbTooltip'
 import { SuggestionChip } from './satellites/SuggestionChip'
+import { TimerButton } from './satellites/TimerButton'
 import { TOAST_WIDTH, ToastStack } from './toast/ToastStack'
 import './styles/base.css'
 import './styles/ui.css'
@@ -129,6 +132,15 @@ function OverlayScene({ api, state, viewport, send, onDragging }: SceneProps) {
         <OrbTooltip anchor={tooltipAnchor(orb, viewport)} />
       )}
 
+      {!look.docked && (
+        <TimerButton
+          timer={state.timer}
+          anchor={stackAnchor(orb, state.edge, viewport)}
+          up={verticalToward(orb, state.edge, viewport) === 'up'}
+          onClick={() => send({ type: 'timerClick' })}
+          onLongPress={() => send({ type: 'orbLongPress' })}
+        />
+      )}
       {state.chip && (
         <SuggestionChip
           chip={state.chip}

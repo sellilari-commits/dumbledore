@@ -9,7 +9,7 @@
  */
 import { join, resolve } from 'node:path'
 import { APP_NAME } from '@shared/constants'
-import { app, clipboard, ipcMain, shell } from 'electron'
+import { app, clipboard, ipcMain, Notification, shell } from 'electron'
 import { compose } from './compose'
 import { deleteEverything } from './data/delete-all'
 import { watchRenderer } from './diagnostics'
@@ -146,6 +146,9 @@ async function start(paths: AppPaths): Promise<void> {
     },
     onChatDelta: (delta) => broadcaster.emit('chat.delta', delta),
     onBusy: (busy) => shortcuts.setEscape(busy, () => core.router.cancel()),
+    notify: ({ title, body }) => {
+      if (Notification.isSupported()) new Notification({ title, body }).show()
+    },
     onAppStateChange: () => {
       stateBroadcast.schedule()
       tray?.refresh()

@@ -32,6 +32,7 @@ import {
   toLocalRect,
 } from './geometry'
 import { chipPreview, coachActionLabel } from './labels'
+import { FocusTimer, type TimerNotice } from './timer'
 import { ToastCenter, type ToastSpec } from './toasts'
 
 export const RETURN_HOME_MS = 1500
@@ -53,6 +54,8 @@ export interface OverlayControllerDeps {
   onNudge?: (nudgeId: Id, choice: NudgeChoice) => void
   /** An ignored nudge left the orange dot after an hour. */
   onNudgeExpired?: (nudgeId: Id) => void
+  /** A system (macOS) notification, e.g. when the timer runs out. */
+  notify?: (notice: TimerNotice) => void
 }
 
 interface Dock {
@@ -65,6 +68,7 @@ interface Dock {
 
 export class OverlayController {
   readonly toasts: ToastCenter
+  readonly timer: FocusTimer
   private displays: DisplayInfo[] = []
   private home: OrbSpot | null = null
   private readonly homes = new Map<number, OrbSpot>()
@@ -89,6 +93,11 @@ export class OverlayController {
 
   constructor(private readonly deps: OverlayControllerDeps) {
     this.toasts = new ToastCenter(deps.clock, () => this.update())
+    this.timer = new FocusTimer(
+      deps.clock,
+      (notice) => deps.notify?.(notice),
+      () => this.update(),
+    )
     const settings = deps.settings.get()
     this.orb = settings.orb
     this.captureEnabled = settings.captureEnabled
@@ -118,6 +127,7 @@ export class OverlayController {
 
   dispose(): void {
     for (const off of this.offs.splice(0)) off()
+    this.timer.dispose()
     this.returnHome?.()
     this.hideTimer?.()
     for (const cancel of this.collapsed.values()) cancel()
@@ -476,6 +486,7 @@ export class OverlayController {
       toasts: this.toasts.list(),
       quiz: this.quiz,
       aiChat: this.aiChat,
+      timer: this.timer.state,
     }
   }
 }
