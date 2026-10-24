@@ -197,6 +197,34 @@ test('forwards quiz-card keys into the non-focusable overlay', async () => {
   const subjects = (await invoke('subjects.list')) as { id: string; name: string }[]
   const orgo = subjects.find((s) => s.name === 'Organic Chemistry')
   if (!orgo) throw new Error('demo seed missing')
+  // A step only counts once its paste is confirmed, so give the fake helper a ChatGPT window it
+  // can type into (by default it cannot type at all).
+  const chatgpt = {
+    pid: 4242,
+    bundleId: 'com.openai.chat',
+    appName: 'ChatGPT',
+    windowId: 1,
+    windowTitle: 'ChatGPT',
+    windowFrame: null,
+    isFullScreen: false,
+    url: null,
+  }
+  await control('POST', '/fake/helper/state', {
+    apps: [chatgpt],
+    frontmost: chatgpt,
+    chatInput: { found: true, frame: null, ref: 'ax-4242-input', method: 'ax_search' },
+    writeResult: { ok: true, method: 'ax', verified: true, reason: null },
+  })
+  await control('POST', '/fake/perception', {
+    aiChat: {
+      key: 'chatgpt',
+      assistant: 'ChatGPT',
+      pid: 4242,
+      bundleId: 'com.openai.chat',
+      url: null,
+      windowTitle: 'ChatGPT',
+    },
+  })
   await invoke('session.start', { subjectId: orgo.id, goal: null, question: null })
   await invoke('session.next')
   await invoke('session.next')
