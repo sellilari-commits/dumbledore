@@ -5,10 +5,23 @@ import { runFor, ScriptedHelper } from './testing/scripted-helper'
 
 describe('normalizeHighlight', () => {
   it('collapses whitespace, drops tiny selections and cuts long ones', () => {
-    expect(normalizeHighlight('  James  Finlayson\nfounded a ')).toBe('James Finlayson founded a')
+    expect(normalizeHighlight('  James  Finlayson\nfounded a mill ')).toBe(
+      'James Finlayson founded a mill',
+    )
     expect(normalizeHighlight('ab')).toBeNull()
     expect(normalizeHighlight(null)).toBeNull()
-    expect(normalizeHighlight('x'.repeat(5000))?.length).toBe(MAX_HIGHLIGHT_CHARS)
+    expect(normalizeHighlight('word '.repeat(1000))?.length).toBe(MAX_HIGHLIGHT_CHARS - 1)
+  })
+
+  it('trims word pieces cut at the edges and drops fragments under three words', () => {
+    expect(normalizeHighlight("n John von Neumann's model. The")).toBe("John von Neumann's model.")
+    expect(normalizeHighlight('James Finlayson founded a')).toBe('James Finlayson founded')
+    expect(normalizeHighlight('rs (hidden layers). A n')).toBeNull()
+    expect(normalizeHighlight('graphics processing')).toBeNull()
+    expect(normalizeHighlight('ally called a')).toBeNull()
+    expect(normalizeHighlight('Backpropagation computes the gradient')).toBe(
+      'Backpropagation computes the gradient',
+    )
   })
 })
 
@@ -55,11 +68,11 @@ describe('HighlightWatcher', () => {
   })
 
   it('catches the same text again after it was deselected', async () => {
-    helper.selection = 'Tammerkoski rapids'
+    helper.selection = 'Tammerkoski rapids in Tampere'
     await runFor(clock, 1000)
     helper.selection = null
     await runFor(clock, 1000)
-    helper.selection = 'Tammerkoski rapids'
+    helper.selection = 'Tammerkoski rapids in Tampere'
     await runFor(clock, 1000)
     expect(caught).toHaveLength(2)
   })
