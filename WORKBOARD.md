@@ -8,7 +8,7 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
-| _nothing in progress_ | | | | | |
+| 2026-10-24 21:05 | Olle / Claude | Ink & paper look: ink accents instead of blue, warm paper backgrounds, light & dark | `src/renderer/design-system/tokens.css`, `src/renderer/design-system/base.css` (links), `docs/DESIGN.md` (tokens), `tests/e2e-sim/__screenshots__/` | main | Colours only; no layout or component changes |
 
 ## Done recently
 
