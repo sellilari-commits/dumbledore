@@ -1,9 +1,14 @@
-/** SQLite SubjectRepo, including merge (moves everything a subject owns into another). */
+/**
+ * SQLite SubjectRepo, including merge: moves everything a subject owns into another, folding each
+ * concept that the target already has (same conceptKey) into the target's concept.
+ */
 import type { Subject } from '@shared/domain'
 import type { SubjectRepo } from '../../contracts'
 import { newId } from '../../ids'
 import { codec, insertSql, normalizeName, type Row, updateSql } from '../codec'
+import { conceptKey } from '../concept-key'
 import { must, type StoreCtx } from '../context'
+import { foldConcept } from './concept-rows'
 
 export const subjectCodec = codec<Subject>({
   id: 'text',
@@ -91,7 +96,7 @@ export function createSubjectRepo(ctx: StoreCtx): SubjectRepo {
     merge(fromId, intoId) {
       must(row(fromId), `subject ${fromId}`)
       must(row(intoId), `subject ${intoId}`)
-      if (fromId === intoId) throw new Error(`cannot merge subject ${fromId} into itself`)
+      if (fromId === intoId) return
       ctx.db.transaction(() => mergeSubjects(ctx, fromId, intoId))()
     },
   }
@@ -100,26 +105,25 @@ export function createSubjectRepo(ctx: StoreCtx): SubjectRepo {
 
 function mergeSubjects(ctx: StoreCtx, fromId: string, intoId: string): void {
   const { stmt, index } = ctx
-  const moving = stmt(
-    'SELECT seq, id, name_key FROM concepts WHERE subject_id = ? ORDER BY seq',
-  ).all(fromId) as { seq: number; id: string; name_key: string }[]
-  const twins: { seq: number; id: string; twinId: string }[] = []
-  for (const c of moving) {
-    const twinId = stmt(
-      'SELECT id FROM concepts WHERE subject_id = ? AND name_key = ? ORDER BY seq LIMIT 1',
-    )
-      .pluck()
-      .get(intoId, c.name_key) as string | undefined
-    if (twinId) twins.push({ seq: c.seq, id: c.id, twinId })
-    else stmt('UPDATE concepts SET subject_id = ? WHERE id = ?').run(intoId, c.id)
+  const list = (subjectId: string) =>
+    stmt('SELECT id, name FROM concepts WHERE subject_id = ? ORDER BY seq').all(subjectId) as {
+      id: string
+      name: string
+    }[]
+  const twins = new Map<string, string>() // conceptKey → oldest concept of the target
+  for (const c of list(intoId))
+    if (!twins.has(conceptKey(c.name))) twins.set(conceptKey(c.name), c.id)
+  const folds: { id: string; twinId: string }[] = []
+  for (const c of list(fromId)) {
+    const key = conceptKey(c.name)
+    const twinId = twins.get(key)
+    if (twinId) folds.push({ id: c.id, twinId })
+    else {
+      stmt('UPDATE concepts SET subject_id = ? WHERE id = ?').run(intoId, c.id)
+      twins.set(key, c.id)
+    }
   }
-  for (const t of twins) {
-    stmt('UPDATE concepts SET parent_id = ? WHERE parent_id = ?').run(t.twinId, t.id)
-    stmt('UPDATE encounters SET concept_id = ? WHERE concept_id = ?').run(t.twinId, t.id)
-    stmt('UPDATE questions SET concept_id = ? WHERE concept_id = ?').run(t.twinId, t.id)
-    stmt('DELETE FROM concepts WHERE id = ?').run(t.id)
-    index.remove('concept', t.seq)
-  }
+  for (const f of folds) foldConcept(ctx, f.id, f.twinId)
   stmt('UPDATE encounters SET subject_id = ? WHERE subject_id = ?').run(intoId, fromId)
   stmt('UPDATE roadmaps SET subject_id = ? WHERE subject_id = ?').run(intoId, fromId)
   stmt('UPDATE assignments SET subject_id = ? WHERE subject_id = ?').run(intoId, fromId)

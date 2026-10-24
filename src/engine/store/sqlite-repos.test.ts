@@ -89,15 +89,10 @@ describe('createSqliteRepos', () => {
   it('handles inputs the in-memory twin gets wrong', () => {
     const repos = make()
     const s = repos.subjects.create({ name: 'Chem' })
-    const c = repos.concepts.upsert({ subjectId: s.id, name: 'SN1', parentName: 'sn1' })
-    expect(c.parentId).toBeNull()
-    expect(repos.concepts.listBySubject(s.id)).toHaveLength(1)
     repos.encounters.add(encounterInput({ subjectId: s.id, openQuestions: ['Why?'] }))
     expect(repos.encounters.openQuestions(s.id, 0)).toEqual([])
     repos.chat.append({ thread: 't', role: 'user', content: 'hi', actions: [] })
     expect(repos.chat.history('t', 0)).toEqual([])
-    expect(() => repos.subjects.merge(s.id, s.id)).toThrow(/itself/)
-    expect(repos.subjects.get(s.id)).not.toBeNull()
   })
 
   it('remaps quiz questions of merged-away concepts', () => {

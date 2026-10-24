@@ -3,8 +3,9 @@
  *
  * Behaves exactly like the in-memory twin (engine/testing/memory-repos.ts); the shared
  * conformance suite (repos.conformance.ts) runs against both. Extras beyond the contract:
- * `close()`, the raw `db`, and `relink` (moving a concept / re-pointing an encounter, which the
- * Repos contract can't express yet — SubjectService uses it when present).
+ * `close()`, the raw `db`, a read-only mode, and `relink` (moving a concept, re-pointing an
+ * encounter, folding a duplicate concept — writes the Repos contract can't express yet;
+ * SubjectService and tools/cleanup-memory.ts use them).
  */
 import type { Id } from '@shared/domain'
 import type { Clock } from '../clock'
@@ -27,6 +28,13 @@ export interface RelinkSupport {
   moveConcept(conceptId: Id, subjectId: Id): void
   /** Re-points an encounter at another concept (or none). */
   setEncounterConcept(encounterId: Id, conceptId: Id | null): void
+  /** Folds a duplicate concept into another of the same subject (stats combined, refs moved). */
+  mergeConcepts(fromId: Id, intoId: Id): void
+}
+
+export interface SqliteReposOptions {
+  /** Opens without writing anything: no migrations, no default rows (dry runs, inspection). */
+  readonly?: boolean
 }
 
 export interface SqliteRepos extends Repos {
@@ -35,8 +43,12 @@ export interface SqliteRepos extends Repos {
   close(): void
 }
 
-export function createSqliteRepos(dbPath: string, clock: Clock): SqliteRepos {
-  const db = openDatabase(dbPath, { nowIso: clock.nowIso() })
+export function createSqliteRepos(
+  dbPath: string,
+  clock: Clock,
+  opts: SqliteReposOptions = {},
+): SqliteRepos {
+  const db = openDatabase(dbPath, { nowIso: clock.nowIso(), readonly: opts.readonly })
   const ctx: StoreCtx = {
     db,
     stmt: statementCache(db),
@@ -65,6 +77,7 @@ export function createSqliteRepos(dbPath: string, clock: Clock): SqliteRepos {
       moveConcept: (conceptId, subjectId) => void concepts.moveToSubject(conceptId, subjectId),
       setEncounterConcept: (encounterId, conceptId) =>
         void encounters.setConcept(encounterId, conceptId),
+      mergeConcepts: (fromId, intoId) => void concepts.mergeInto(fromId, intoId),
     },
     close: () => {
       if (db.open) db.close()

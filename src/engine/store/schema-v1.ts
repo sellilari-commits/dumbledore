@@ -3,7 +3,8 @@
  *
  * Conventions: every entity table has `seq INTEGER PRIMARY KEY` (stable insertion order, which
  * the in-memory twin exposes through Map order) and a unique text `id`. Arrays and objects are
- * JSON text. `*_key` columns hold normalizeName() of a name/title for case-insensitive lookups.
+ * JSON text. `*_key` columns hold normalizeName() of a name/title for case-insensitive lookups
+ * (concept names are matched by conceptKey() in code; see concept-key.ts).
  * `search_fts` is an FTS5 trigram index over normalized text; its rowid is `seq * 4 + kind`.
  */
 export const SCHEMA_V1 = `

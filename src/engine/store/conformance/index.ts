@@ -4,6 +4,7 @@
  */
 import { afterEach, beforeEach, describe } from 'vitest'
 import { FakeClock } from '../../clock'
+import { conceptMatchingSuite } from './concept-matching'
 import { encounterSuite, episodeSuite } from './encounters'
 import type { ConformanceTarget, ReposFactory } from './fixtures'
 import { learningSuite } from './learning'
@@ -35,6 +36,7 @@ export function describeReposConformance(label: string, factory: ReposFactory): 
     }
     subjectSuite(current)
     conceptSuite(current)
+    conceptMatchingSuite(current)
     encounterSuite(current)
     episodeSuite(current)
     learningSuite(current)

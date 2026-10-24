@@ -24,6 +24,8 @@ import type { SearchHit, UsageSummary } from '@shared/state'
 import { type Clock, systemClock } from '../clock'
 import type { LlmCallRecord, Repos } from '../contracts'
 import { newId } from '../ids'
+import { foldConcepts, relinkAction, survivorParent } from '../store/concept-fold'
+import { conceptKey, isNicerName } from '../store/concept-key'
 
 export const normalizeName = (s: string): string => s.trim().toLowerCase().replace(/\s+/g, ' ')
 const clone = <T>(value: T): T => structuredClone(value)
@@ -63,6 +65,24 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
   let settings: Settings = clone(DEFAULT_SETTINGS)
   const now = () => clock.nowIso()
 
+  /** Same as the SQLite foldConcept (store/repos/concept-rows.ts). */
+  const foldConcept = (fromId: Id, intoId: Id) => {
+    const from = must(concepts.get(fromId), `concept ${fromId}`)
+    const into = must(concepts.get(intoId), `concept ${intoId}`)
+    const merged: Concept = { ...foldConcepts(into, from), parentId: survivorParent(into, from) }
+    for (const c of concepts.values())
+      if (c.parentId === fromId && c.id !== intoId) c.parentId = intoId
+    for (const e of encounters.values()) if (e.conceptId === fromId) e.conceptId = intoId
+    for (const q of quizzes.values())
+      for (const question of q.questions)
+        if (question.conceptId === fromId) question.conceptId = intoId
+    for (const m of chat) m.actions = m.actions.map((a) => relinkAction(a, fromId, intoId) ?? a)
+    for (const n of nudges.values())
+      if (n.action) n.action = relinkAction(n.action, fromId, intoId) ?? n.action
+    concepts.delete(fromId)
+    concepts.set(intoId, merged)
+  }
+
   const repos: Repos = {
     subjects: {
       list(filter) {
@@ -96,32 +116,31 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
       },
       update(id, patch) {
         const current = must(subjects.get(id), `subject ${id}`)
-        const next: Subject = { ...current, ...patch, id, createdAt: current.createdAt, updatedAt: now() }
+        const next: Subject = {
+          ...current,
+          ...patch,
+          id,
+          createdAt: current.createdAt,
+          updatedAt: now(),
+        }
         subjects.set(id, next)
         return clone(next)
       },
       merge(fromId, intoId) {
         must(subjects.get(fromId), `subject ${fromId}`)
         must(subjects.get(intoId), `subject ${intoId}`)
-        const remap = new Map<Id, Id>()
+        if (fromId === intoId) return
+        const folds: [Id, Id][] = []
         for (const c of [...concepts.values()].filter((c) => c.subjectId === fromId)) {
+          const key = conceptKey(c.name)
           const twin = [...concepts.values()].find(
-            (x) => x.subjectId === intoId && normalizeName(x.name) === normalizeName(c.name),
+            (x) => x.subjectId === intoId && conceptKey(x.name) === key,
           )
-          if (twin) {
-            remap.set(c.id, twin.id)
-            concepts.delete(c.id)
-          } else {
-            concepts.set(c.id, { ...c, subjectId: intoId })
-          }
+          if (twin) folds.push([c.id, twin.id])
+          else concepts.set(c.id, { ...c, subjectId: intoId })
         }
-        for (const c of concepts.values()) {
-          if (c.parentId && remap.has(c.parentId)) c.parentId = remap.get(c.parentId) ?? null
-        }
-        for (const e of encounters.values()) {
-          if (e.subjectId === fromId) e.subjectId = intoId
-          if (e.conceptId && remap.has(e.conceptId)) e.conceptId = remap.get(e.conceptId) ?? null
-        }
+        for (const [from, into] of folds) foldConcept(from, into)
+        for (const e of encounters.values()) if (e.subjectId === fromId) e.subjectId = intoId
         for (const r of roadmaps.values()) if (r.subjectId === fromId) r.subjectId = intoId
         for (const q of quizzes.values()) {
           q.subjectIds = [...new Set(q.subjectIds.map((s) => (s === fromId ? intoId : s)))]
@@ -136,22 +155,28 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
         [...concepts.values()].filter((c) => c.subjectId === subjectId).map(clone),
       get: (id) => clone(concepts.get(id) ?? null),
       findByName(subjectId, name) {
-        const n = normalizeName(name)
+        const key = conceptKey(name)
         return clone(
           [...concepts.values()].find(
-            (c) => c.subjectId === subjectId && normalizeName(c.name) === n,
+            (c) => c.subjectId === subjectId && conceptKey(c.name) === key,
           ) ?? null,
         )
       },
       upsert(input) {
         const existing = repos.concepts.findByName(input.subjectId, input.name)
         if (existing) {
-          if (input.summary && !existing.summary) return repos.concepts.update(existing.id, { summary: input.summary })
-          return existing
+          const patch: { name?: string; summary?: string } = {}
+          if (isNicerName(existing.name, input.name)) patch.name = input.name.trim()
+          if (input.summary && !existing.summary) patch.summary = input.summary
+          return Object.keys(patch).length > 0
+            ? repos.concepts.update(existing.id, patch)
+            : existing
         }
-        const parent = input.parentName
-          ? repos.concepts.upsert({ subjectId: input.subjectId, name: input.parentName })
-          : null
+        const parentName = input.parentName?.trim() ? input.parentName : null
+        const parent =
+          parentName && conceptKey(parentName) !== conceptKey(input.name)
+            ? repos.concepts.upsert({ subjectId: input.subjectId, name: parentName })
+            : null
         const concept: Concept = {
           id: newId('con'),
           subjectId: input.subjectId,
@@ -344,7 +369,13 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
 
     nudges: {
       add(input) {
-        const nudge: Nudge = { ...clone(input), id: newId('ndg'), createdAt: now(), shownAt: null, outcome: 'pending' }
+        const nudge: Nudge = {
+          ...clone(input),
+          id: newId('ndg'),
+          createdAt: now(),
+          shownAt: null,
+          outcome: 'pending',
+        }
         nudges.set(nudge.id, nudge)
         return clone(nudge)
       },
@@ -371,7 +402,11 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
         chat.push(message)
         return clone(message)
       },
-      history: (thread, limit) => chat.filter((m) => m.thread === thread).slice(-limit).map(clone),
+      history: (thread, limit) =>
+        chat
+          .filter((m) => m.thread === thread)
+          .slice(-limit)
+          .map(clone),
     },
 
     profile: {
@@ -413,8 +448,13 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
         return [...rows.values()]
       },
       countSince(provider, model, sinceIso) {
-        const calls = usage.filter((u) => u.provider === provider && u.model === model && u.at >= sinceIso)
-        return { requests: calls.length, tokens: calls.reduce((n, c) => n + c.tokensIn + c.tokensOut, 0) }
+        const calls = usage.filter(
+          (u) => u.provider === provider && u.model === model && u.at >= sinceIso,
+        )
+        return {
+          requests: calls.length,
+          tokens: calls.reduce((n, c) => n + c.tokensIn + c.tokensOut, 0),
+        }
       },
     },
 
@@ -427,19 +467,47 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
           texts.some((t) => t && normalizeName(t).includes(n))
         for (const s of subjects.values()) {
           if (has(s.name, s.description, s.goal))
-            hits.push({ kind: 'subject', id: s.id, title: `${s.emoji} ${s.name}`, snippet: s.goal ?? s.description, subjectId: s.id, route: `/subjects/${s.id}/roadmap` })
+            hits.push({
+              kind: 'subject',
+              id: s.id,
+              title: `${s.emoji} ${s.name}`,
+              snippet: s.goal ?? s.description,
+              subjectId: s.id,
+              route: `/subjects/${s.id}/roadmap`,
+            })
         }
         for (const c of concepts.values()) {
           if (has(c.name, c.summary))
-            hits.push({ kind: 'concept', id: c.id, title: c.name, snippet: c.summary, subjectId: c.subjectId, route: `/subjects/${c.subjectId}/concepts` })
+            hits.push({
+              kind: 'concept',
+              id: c.id,
+              title: c.name,
+              snippet: c.summary,
+              subjectId: c.subjectId,
+              route: `/subjects/${c.subjectId}/concepts`,
+            })
         }
         for (const e of encounters.values()) {
           if (e.inboxState !== 'ignored' && has(e.seen, e.bigPicture, e.topicPath.join(' ')))
-            hits.push({ kind: 'encounter', id: e.id, title: e.topicPath.at(-1) ?? e.source.title ?? 'Seen', snippet: e.seen.slice(0, 140), subjectId: e.subjectId, route: e.subjectId ? `/subjects/${e.subjectId}/seen` : '/inbox' })
+            hits.push({
+              kind: 'encounter',
+              id: e.id,
+              title: e.topicPath.at(-1) ?? e.source.title ?? 'Seen',
+              snippet: e.seen.slice(0, 140),
+              subjectId: e.subjectId,
+              route: e.subjectId ? `/subjects/${e.subjectId}/seen` : '/inbox',
+            })
         }
         for (const quiz of quizzes.values()) {
           if (quiz.kind === 'exam' && has(quiz.title))
-            hits.push({ kind: 'exam', id: quiz.id, title: quiz.title, snippet: `${quiz.questions.length} questions`, subjectId: quiz.subjectIds[0] ?? null, route: `/exams/${quiz.id}` })
+            hits.push({
+              kind: 'exam',
+              id: quiz.id,
+              title: quiz.title,
+              snippet: `${quiz.questions.length} questions`,
+              subjectId: quiz.subjectIds[0] ?? null,
+              route: `/exams/${quiz.id}`,
+            })
         }
         return hits.slice(0, limit)
       },

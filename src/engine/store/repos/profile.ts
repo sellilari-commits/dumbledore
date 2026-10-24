@@ -48,10 +48,12 @@ export function createProfileRepo(ctx: StoreCtx): ProfileRepo {
     summary: '',
     updatedAt: ctx.now(),
   })
-  stmt(`${insertSql('profile', ['id', ...profileCodec.columns])} ON CONFLICT (id) DO NOTHING`).run({
-    id: 1,
-    ...profileCodec.params(defaults()),
-  })
+  // A read-only connection (dry runs, inspection) can't write; get() falls back to the defaults.
+  if (!ctx.db.readonly) {
+    stmt(
+      `${insertSql('profile', ['id', ...profileCodec.columns])} ON CONFLICT (id) DO NOTHING`,
+    ).run({ id: 1, ...profileCodec.params(defaults()) })
+  }
   const get = (): Profile => {
     const r = stmt('SELECT * FROM profile WHERE id = 1').get() as Row | undefined
     return r ? profileCodec.decode(r) : defaults()

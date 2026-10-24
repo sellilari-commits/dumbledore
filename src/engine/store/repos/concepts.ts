@@ -1,29 +1,25 @@
-/** SQLite ConceptRepo: per-subject concept tree with mastery and review scheduling fields. */
+/**
+ * SQLite ConceptRepo: per-subject concept tree with mastery and review scheduling fields.
+ * Names match by conceptKey() (case, spacing, punctuation and simple plurals ignored), computed
+ * here rather than stored: `name_key` keeps normalizeName(), which older app builds look up.
+ */
 import type { Concept, Id } from '@shared/domain'
 import type { ConceptRepo } from '../../contracts'
 import { newId } from '../../ids'
-import { codec, insertSql, normalizeName, type Row, updateSql } from '../codec'
+import { insertSql, normalizeName, type Row, updateSql } from '../codec'
+import { conceptKey, isNicerName } from '../concept-key'
 import { must, type StoreCtx, sqlLimit } from '../context'
+import { conceptCodec, findConceptSeq, foldConcept } from './concept-rows'
 
-export const conceptCodec = codec<Concept>({
-  id: 'text',
-  subjectId: 'text',
-  parentId: 'text',
-  name: 'text',
-  summary: 'text',
-  mastery: 'num',
-  box: 'num',
-  nextReviewAt: 'text',
-  status: 'text',
-  struggleCount: 'num',
-  lastSeenAt: 'text',
-})
+export { conceptCodec } from './concept-rows'
 
 const INSERT = insertSql('concepts', [...conceptCodec.columns, 'name_key'])
 
-/** Concept repo plus the one write the contract lacks: moving a concept to another subject. */
+/** Concept repo plus writes the contract lacks: moving a concept, folding two into one. */
 export interface SqliteConceptRepo extends ConceptRepo {
   moveToSubject(id: Id, subjectId: Id): Concept
+  /** Folds `fromId` into `intoId` (same subject) and deletes `fromId`; see concept-fold.ts. */
+  mergeInto(fromId: Id, intoId: Id): Concept
 }
 
 export function createConceptRepo(ctx: StoreCtx): SqliteConceptRepo {
@@ -47,23 +43,23 @@ export function createConceptRepo(ctx: StoreCtx): SqliteConceptRepo {
     },
 
     findByName(subjectId, name) {
-      const r = stmt(
-        'SELECT * FROM concepts WHERE subject_id = ? AND name_key = ? ORDER BY seq LIMIT 1',
-      ).get(subjectId, normalizeName(name)) as Row | undefined
-      return r ? conceptCodec.decode(r) : null
+      const seq = findConceptSeq(ctx, subjectId, conceptKey(name))
+      if (seq === null) return null
+      const r = stmt('SELECT * FROM concepts WHERE seq = ?').get(seq) as Row
+      return conceptCodec.decode(r)
     },
 
     upsert(input) {
       const existing = repo.findByName(input.subjectId, input.name)
       if (existing) {
-        if (input.summary && !existing.summary)
-          return repo.update(existing.id, { summary: input.summary })
-        return existing
+        const patch: { name?: string; summary?: string } = {}
+        if (isNicerName(existing.name, input.name)) patch.name = input.name.trim()
+        if (input.summary && !existing.summary) patch.summary = input.summary
+        return Object.keys(patch).length > 0 ? repo.update(existing.id, patch) : existing
       }
       const parentName = input.parentName?.trim() ? input.parentName : null
-      // A concept can't be its own parent; the in-memory twin would create a duplicate here.
-      const selfParent =
-        parentName !== null && normalizeName(parentName) === normalizeName(input.name)
+      // A concept can't be its own parent.
+      const selfParent = parentName !== null && conceptKey(parentName) === conceptKey(input.name)
       const parent =
         parentName && !selfParent
           ? repo.upsert({ subjectId: input.subjectId, name: parentName })
@@ -135,6 +131,14 @@ export function createConceptRepo(ctx: StoreCtx): SqliteConceptRepo {
         )
       })()
       return must(repo.get(id), `concept ${id}`)
+    },
+
+    mergeInto(fromId, intoId) {
+      const from = must(repo.get(fromId), `concept ${fromId}`)
+      const into = must(repo.get(intoId), `concept ${intoId}`)
+      if (from.subjectId !== into.subjectId)
+        throw new Error(`concepts ${fromId} and ${intoId} belong to different subjects`)
+      return ctx.db.transaction(() => foldConcept(ctx, fromId, intoId))()
     },
   }
   return repo
