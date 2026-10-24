@@ -51,7 +51,7 @@ const ALIGN_TAG = /^\[(L|C|R)\] /gm
  * demo subjects that must never become the student's memory.
  */
 const OWN_UI = [
-  /\bDumbledore Search ⌘K (?:Home )?Inbox(?: \d+)? Exams Settings\b/,
+  /\bDumbledore Search ⌘K (?:Home )?(?:Inbox|Memory)(?: \d+)? Exams Settings\b/,
   /\bMeet the Dumbledore key\b/,
   /\bMock chat for Dumbledore tests\b/,
 ]

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { answerOf, demoQuiz, QUESTIONS, resultOf } from '../mock/fixtures'
 import { fakeApi } from '../testing/fakeApi'
 import { QuizCard } from './QuizCard'
+import { sentNote } from './ResultView'
 
 const anchor = { left: 10, top: 10, origin: 'right top' }
 
@@ -126,5 +127,13 @@ describe('QuizCard', () => {
     const { onClose } = await mount()
     fireEvent.click(screen.getByRole('button', { name: 'Close quiz' }))
     expect(onClose).toHaveBeenCalled()
+  })
+})
+
+describe('sentNote', () => {
+  it('says where the fix prompt went', () => {
+    expect(sentNote(null)).toBe('Pasted into your chat')
+    expect(sentNote({ name: 'Claude', prefilled: true })).toBe('Opened Claude with the prompt')
+    expect(sentNote({ name: 'ChatGPT', prefilled: false })).toBe('Opened ChatGPT · paste with ⌘V')
   })
 })

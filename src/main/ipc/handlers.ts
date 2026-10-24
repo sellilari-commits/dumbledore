@@ -51,13 +51,6 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
     bus.emit('memory:changed', { scope, ids: ids.filter((id): id is string => id !== null) })
   /** The AI the student studies with most, from their recent captures. */
   const usualFromCaptures = () => usualAssistantFrom(repos, services.clock.now())
-  /** The open AI chat, else the usual one: one name for every label and link. */
-  const studentAssistant = () => {
-    const open = services.perception.aiChat()
-    if (open) return { key: open.key, name: open.assistant, open: true }
-    const usual = usualFromCaptures()
-    return usual ? { key: usual.key, name: usual.name, open: false } : null
-  }
   const materials = new MaterialsFlow({
     repos,
     brain: services.brain,
@@ -134,7 +127,7 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
 
   return {
     // App status & settings
-    'app.getState': () => ({ ...core.appState(), assistant: studentAssistant() }),
+    'app.getState': () => core.appState(),
     'settings.get': () => repos.settings.get(),
     'settings.update': (patch) => {
       repos.settings.update(patch)

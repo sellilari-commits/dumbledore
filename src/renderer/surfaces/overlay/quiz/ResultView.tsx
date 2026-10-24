@@ -1,6 +1,7 @@
 /**
  * Quiz result: score, per-concept breakdown, the gaps, and "Fix my gaps", which pastes the
- * engine's repair prompt into the open chat (`prompt.sendToChat`).
+ * engine's repair prompt into the open chat (`prompt.sendToChat`), or with no chat open opens the
+ * student's usual AI with the prompt (typed in, or on the clipboard).
  */
 import type { MasteryStatus, QuizResult } from '@shared/domain'
 import type { DumbledoreApi } from '@shared/ipc'
@@ -27,7 +28,7 @@ const STATUS: Record<MasteryStatus, { label: string; color: string }> = {
 type SendState =
   | { kind: 'idle' }
   | { kind: 'sending' }
-  | { kind: 'sent' }
+  | { kind: 'sent'; note: string }
   | { kind: 'failed'; reason: string }
 
 export function headline(correct: number, total: number): string {
@@ -35,6 +36,14 @@ export function headline(correct: number, total: number): string {
   if (correct === total) return 'All correct — nicely done.'
   const missed = total - correct
   return missed === 1 ? 'One idea to fix.' : `${missed} ideas to fix.`
+}
+
+/** What happened to the fix prompt: pasted into the open chat, or the usual AI opened with it. */
+export function sentNote(opened: { name: string; prefilled: boolean } | null): string {
+  if (!opened) return 'Pasted into your chat'
+  return opened.prefilled
+    ? `Opened ${opened.name} with the prompt`
+    : `Opened ${opened.name} · paste with ⌘V`
 }
 
 export function ResultView({ api, result, onDone, primaryRef }: Props) {
@@ -49,7 +58,9 @@ export function ResultView({ api, result, onDone, primaryRef }: Props) {
       .invoke('prompt.sendToChat', fixPrompt)
       .then((r) =>
         setSend(
-          r.ok ? { kind: 'sent' } : { kind: 'failed', reason: r.reason ?? 'Could not paste.' },
+          r.ok
+            ? { kind: 'sent', note: sentNote(r.opened ?? null) }
+            : { kind: 'failed', reason: r.reason ?? 'Could not paste.' },
         ),
       )
       .catch((error: unknown) => setSend({ kind: 'failed', reason: errorMessage(error) }))
@@ -107,7 +118,7 @@ export function ResultView({ api, result, onDone, primaryRef }: Props) {
       <div className="ov-quiz__actions">
         {send.kind === 'sent' && (
           <span className="ov-quiz__sent" role="status">
-            <Check size={14} aria-hidden /> Pasted into your chat
+            <Check size={14} aria-hidden /> {send.note}
           </span>
         )}
         {send.kind === 'failed' && (

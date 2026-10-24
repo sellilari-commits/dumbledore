@@ -164,6 +164,9 @@ describe('prefilter', () => {
     const r = prefilter(preview)
     expect(r.pass).toBe(false)
     expect(r.reasons).toContain('dumbledore ui')
+    // The page was renamed Inbox → Memory; both sidebars are Dumbledore's own.
+    const renamed = makeEpisode({ ...preview, text: preview.text.replace('Inbox 6', 'Memory 6') })
+    expect(prefilter(renamed).reasons).toContain('dumbledore ui')
     const mockChat = makeEpisode({
       url: 'http://127.0.0.1:5199/',
       title: 'ChatGPT (mock) — Dumbledore test page',

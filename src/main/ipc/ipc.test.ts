@@ -285,6 +285,8 @@ describe('IPC handlers', () => {
     })
     const state = await call('app.getState')
     expect(state.assistant).toEqual({ key: 'claude', name: 'Claude', open: false })
+    // The pushed AppState ('state.changed') carries it too, not only the first read.
+    expect(h.core.appState().assistant).toEqual(state.assistant)
     const out = await call('prompt.sendToChat', 'Explain why the Sphinx is 4th dynasty')
     expect(out).toEqual({ ok: true, reason: null, opened: { name: 'Claude', prefilled: true } })
     expect(calls.at(-1)).toBe(

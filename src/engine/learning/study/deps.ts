@@ -30,7 +30,7 @@ export interface StudyOptions {
    * the step was pasted, so the quiz sees the AI's answer (D11). Without one it starts at once.
    */
   prefetchDelayMs: number
-  /** Assistant name used when no AI chat is known. */
+  /** Assistant name used when no AI chat is known; empty lets the prompts say "their AI assistant". */
   defaultAssistant: string
   /** Characters of the chat excerpt handed to the step writer (newest end). */
   stepExcerptChars: number
@@ -51,7 +51,7 @@ export const DEFAULT_STUDY_OPTIONS: StudyOptions = {
   maxRegenerateTries: 2,
   maxCheckpointFailures: 2,
   prefetchDelayMs: 20_000,
-  defaultAssistant: 'ChatGPT',
+  defaultAssistant: '',
   stepExcerptChars: 1500,
   studiedExcerptChars: 4000,
   requireAnswer: true,
@@ -79,7 +79,7 @@ export interface PromptOptions {
 
 export const DEFAULT_PROMPT_OPTIONS: PromptOptions = {
   timeoutMs: 2500,
-  defaultAssistant: 'ChatGPT',
+  defaultAssistant: '',
   contextChars: 600,
 }
 

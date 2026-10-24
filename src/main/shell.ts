@@ -4,6 +4,8 @@
  * the window manager (SurfaceControl) and the broadcast hooks; tests supply fakes.
  */
 
+import type { AssistantConfig } from '@engine/perception/ai-chat/assistants'
+import { usualAssistantFrom } from '@engine/perception/ai-chat/usual'
 import { blockReason, excludedBundleIds } from '@engine/privacy'
 import type { EventPayload } from '@shared/ipc'
 import type { AppState, OverlayState } from '@shared/state'
@@ -80,6 +82,14 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
       perception,
       nowIso: () => clock.nowIso(),
     })
+  // AppState is rebuilt on every change; the usual AI (a scan of recent captures) is kept a minute.
+  let usual: { at: number; value: AssistantConfig | null } | null = null
+  const usualAssistant = () => {
+    const now = clock.now()
+    if (!usual || now - usual.at > 60_000)
+      usual = { at: now, value: usualAssistantFrom(repos, now) }
+    return usual.value
+  }
   const suggestions = new SuggestionCache(
     services.prompts,
     () => chatContext(perception),
@@ -267,6 +277,7 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
         helper,
         providers: services.providers,
         permissions,
+        usualAssistant,
         version: hooks.version,
       }),
     start() {

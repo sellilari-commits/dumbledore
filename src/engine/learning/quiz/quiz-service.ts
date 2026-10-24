@@ -123,7 +123,7 @@ export function createQuizService(deps: QuizServiceDeps): QuizServiceImpl {
     if (misses.length === 0) return { gaps: [], fixPrompt: null, nextTopic: next }
     const profile = repos.profile.get()
     const input = gapInput(misses, {
-      assistant: deps.assistantName?.() ?? 'ChatGPT',
+      assistant: deps.assistantName?.() ?? '', // empty: P07 says "their AI assistant"
       language: profile.promptLanguage,
       profile: profile.summary || profile.aboutMe || 'Student',
     })

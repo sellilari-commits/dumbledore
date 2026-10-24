@@ -25,7 +25,7 @@ describe('StudyService — cold start from free text', () => {
     expect(input).toMatchObject({
       goal: "I don't get the Calvin cycle",
       subject: { id: subject?.id, name: 'Biology' },
-      assistant: 'ChatGPT',
+      assistant: '', // no chat known yet
       mastery: [],
       encounters: [],
       doneSteps: [],

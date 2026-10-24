@@ -1,7 +1,8 @@
 /** The Home page read model (PLAN §5.3 F7): continue, due, struggling, deadlines, this week. */
-import type { Concept, Encounter, Quiz, Subject } from '@shared/domain'
+import type { Concept, Encounter, Quiz, Roadmap, Subject } from '@shared/domain'
 import type { HomeData } from '@shared/state'
 import type { Repos } from '../contracts'
+import { openRoadmap } from '../learning/study/session-target'
 import { struggleReason } from './struggle'
 import { currentItemIndex, studyMinutes } from './summary'
 import { DAY_MS, dueTime, iso } from './time'
@@ -13,6 +14,8 @@ export interface HomeOptions {
   startOfDay: (ms: number) => number
 }
 
+const rank = (r: Roadmap) => (r.status === 'active' ? 0 : 1)
+
 export function buildHome(repos: Repos, opts: HomeOptions): HomeData {
   const { nowMs } = opts
   const nowIso = iso(nowMs)
@@ -22,7 +25,12 @@ export function buildHome(repos: Repos, opts: HomeOptions): HomeData {
   const emojiOf = (subjectId: string | null) =>
     (subjectId ? active.get(subjectId)?.emoji : undefined) ?? null
 
-  const roadmaps = repos.roadmaps.listActive().filter((r) => active.has(r.subjectId))
+  // Per subject, the roadmap a study session would pick up: the running one, else the one parked
+  // last (ending a session parks it; it stays resumable from here).
+  const roadmaps = [...active.keys()]
+    .map((id) => openRoadmap(repos, id))
+    .filter((r): r is Roadmap => r !== null)
+    .sort((a, b) => rank(a) - rank(b) || b.updatedAt.localeCompare(a.updatedAt))
   const due = repos.concepts.listDue(nowIso, 50).filter((c) => active.has(c.subjectId))
   const struggling = repos.concepts.listStruggling(10).filter((c) => active.has(c.subjectId))
   const histories = new Map<string, { quizzes: Quiz[]; encounters: Encounter[] }>()

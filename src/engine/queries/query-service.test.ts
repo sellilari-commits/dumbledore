@@ -68,6 +68,15 @@ describe.each([
     expect(home.habits.promptsSeen).toBe(23)
   })
 
+  it('keeps a roadmap on Continue after its session ends (parked), and drops it once done', () => {
+    const roadmap = repos.roadmaps.get(seed.roadmapId)
+    if (!roadmap) throw new Error('seed roadmap missing')
+    repos.roadmaps.save({ ...roadmap, status: 'paused' })
+    expect(q.home().continue.map((c) => c.roadmapId)).toEqual([seed.roadmapId])
+    repos.roadmaps.save({ ...roadmap, status: 'done' })
+    expect(q.home().continue).toEqual([])
+  })
+
   it('keeps bare-date deadlines due today and drops past ones', () => {
     repos.assignments.upsert({
       subjectId: null,

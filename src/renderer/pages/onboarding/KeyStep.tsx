@@ -115,8 +115,8 @@ export function KeyStep({
       </div>
       <ul className="dd-onb__lessons">
         <Lesson done={lesson.tapped} title="Tap">
-          Writes the prompt in ChatGPT or any AI chat: for what you studied last, or the next step.
-          Typed your own? It rewrites it (⌘Z undoes).
+          Writes the prompt in your AI chat (ChatGPT, Claude, Gemini…): for what you studied last,
+          or the next step. Typed your own? It rewrites it (⌘Z undoes).
         </Lesson>
         <Lesson done={lesson.held} title="Hold">
           Tell Dumbledore what you want, it writes the prompt and pastes it into your AI chat.

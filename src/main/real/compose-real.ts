@@ -15,6 +15,7 @@
  *   4. `npm run dev` (the shell uses composeReal unless DUMBLEDORE_FAKES=1). better-sqlite3's
  *      Node-API prebuild loads in Electron 45 as is (checked); keep it external in the bundle.
  */
+
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { type BrainDeps, type BrainHandle, createBrain, createKeyGetter } from '@engine/brain'
@@ -28,6 +29,7 @@ import { createMasteryModel } from '@engine/learning/mastery'
 import { createQuizService } from '@engine/learning/quiz'
 import { createPromptService, createStudyService } from '@engine/learning/study'
 import { createPerceptionStack } from '@engine/perception'
+import { usualAssistantFrom } from '@engine/perception/ai-chat/usual'
 import { redact } from '@engine/privacy'
 import { createQueryService } from '@engine/queries'
 import { createSqliteRepos, ensureDataDirs, resolveDataPaths } from '@engine/store'
@@ -128,7 +130,12 @@ export function composeReal(opts: RealComposeOptions = {}): RealComposition {
     bus,
     clock,
     mastery,
-    assistantName: () => perception.aiChat()?.assistant ?? study.current()?.assistant ?? null,
+    // The open chat, the session's, else the one the student usually studies with.
+    assistantName: () =>
+      perception.aiChat()?.assistant ??
+      study.current()?.assistant ??
+      usualAssistantFrom(repos, clock.now())?.name ??
+      null,
     log,
   })
   quizzes.setCheckpointHandler((quizId, result) => study.handleCheckpointResult(quizId, result))

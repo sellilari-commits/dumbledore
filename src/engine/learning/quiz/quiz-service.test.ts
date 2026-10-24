@@ -83,7 +83,7 @@ describe('QuizService.finish', () => {
     )
     const gapCall = (w.brain as FakeBrain).calls.find((c) => c.method === 'fixGaps')
     expect(gapCall?.input).toMatchObject({
-      assistant: 'ChatGPT',
+      assistant: '', // no chat known: the prompt says "their AI assistant"
       misses: [
         { concept: 'SN1', chosen: 'Option D', correct: 'Option B', rationale: 'D is the reverse.' },
       ],

@@ -1,5 +1,6 @@
 /**
- * AppState (capture, permissions, helper, AI readiness, focus, "right now", AI chat) and a small
+ * AppState (capture, permissions, helper, AI readiness, focus, "right now", AI chat, the
+ * student's usual AI) and a small
  * permissions cache that polls the helper so onboarding's ✓ flips by itself once granted.
  */
 import type { Cancel, Clock } from '@engine/clock'
@@ -57,7 +58,19 @@ export interface AppStateDeps {
   helper: Pick<HelperClient, 'status'>
   providers: Pick<ProviderService, 'status'>
   permissions: Pick<PermissionsCache, 'current'>
+  /** The AI the student usually studies with (from captures), for when no chat is open. */
+  usualAssistant?: () => { key: string; name: string } | null
   version: string
+}
+
+/** The open AI chat, else the usual one: one name for every label and link. */
+function assistantOf(
+  chat: ReturnType<PerceptionService['aiChat']>,
+  usual: AppStateDeps['usualAssistant'],
+): AppState['assistant'] {
+  if (chat) return { key: chat.key, name: chat.assistant, open: true }
+  const u = usual?.()
+  return u ? { key: u.key, name: u.name, open: false } : null
 }
 
 export function buildAppState(d: AppStateDeps): AppState {
@@ -71,6 +84,7 @@ export function buildAppState(d: AppStateDeps): AppState {
     focusSubjectId: settings.focusSubjectId,
     now: d.perception.now(),
     aiChat: chat ? { provider: chat.assistant } : null,
+    assistant: assistantOf(chat, d.usualAssistant),
     onboardingDone: settings.onboardingDone,
     version: d.version,
   }

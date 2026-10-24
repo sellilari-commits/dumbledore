@@ -3,15 +3,36 @@
  * (a subject exists · something was captured · a prompt was written · a quiz was answered).
  * The next open step carries the action. On a first day it is the whole page with a short
  * welcome; later it sits on top of Home until every step is done, then disappears.
+ * A step stays ticked once done (this week's quiz count or the Memory queue can drop back to
+ * zero); with no subjects left (a fresh start) the ticks reset.
  */
 import { Button, Kbd, Section } from '@renderer/design-system'
 import { useInbox, useSettings, useSubjects } from '@renderer/lib/queries'
 import { useShell } from '@renderer/lib/shell'
 import type { HomeData } from '@shared/state'
 import { Check, ListChecks, Plus } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { type ReactNode, useEffect } from 'react'
 import { useLocation } from 'wouter'
 import { TRIGGER_KEYS } from '../settings/keys'
+
+const DONE_KEY = 'dd.firstSteps.done'
+
+function rememberedDone(): Set<string> {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(DONE_KEY) ?? '[]')
+    return new Set(Array.isArray(raw) ? raw.filter((x) => typeof x === 'string') : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function rememberDone(ids: string[]): void {
+  try {
+    window.localStorage.setItem(DONE_KEY, JSON.stringify(ids))
+  } catch {
+    // private mode / blocked storage: the ticks just follow the live data
+  }
+}
 
 interface Step {
   id: string
@@ -63,8 +84,8 @@ export function useFirstSteps(home: HomeData) {
       title: 'Get your first prompt',
       body: (
         <>
-          Open ChatGPT, Claude or Gemini and tap <Kbd boxed>{key}</Kbd>. Dumbledore writes a prompt
-          that starts from what you already know and pastes it in for you.
+          Open your AI chat (ChatGPT, Claude, Gemini…) and tap <Kbd boxed>{key}</Kbd>. Dumbledore
+          writes a prompt that starts from what you already know and pastes it in for you.
         </>
       ),
       done: home.continue.length > 0 || home.habits.promptsSeen > 0,
@@ -81,7 +102,18 @@ export function useFirstSteps(home: HomeData) {
       ),
     },
   ]
-  return steps
+  const hasSubjects = (subjects.data?.length ?? 0) > 0
+  const remembered = rememberedDone()
+  const sticky = steps.map((s) => ({ ...s, done: s.done || (hasSubjects && remembered.has(s.id)) }))
+  const doneIds = sticky
+    .filter((s) => s.done)
+    .map((s) => s.id)
+    .join(',')
+  useEffect(() => {
+    if (!subjects.data) return
+    rememberDone(subjects.data.length > 0 && doneIds ? doneIds.split(',') : [])
+  }, [subjects.data, doneIds])
+  return sticky
 }
 
 export function FirstSteps({ steps, welcome }: { steps: Step[]; welcome?: boolean }) {
