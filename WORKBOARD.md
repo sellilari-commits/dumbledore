@@ -10,7 +10,6 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 |---|---|---|---|---|---|
 | 2026-10-24 22:50 | Ilari / Claude | Notes phase 3: memory control (subject tree with notes, edit/delete note/concept/encounter, loose notes filing) | src/shared/ipc.ts, src/shared/state.ts, src/engine/contracts.ts (ConceptRepo/EncounterRepo.remove, MemoryService), src/engine/store/repos/{concepts,encounters,notes}.ts, src/engine/store/conformance/, src/engine/testing/memory-repos.ts, src/engine/subjects/ (memory-service), src/main/ipc/ (handlers, ipc.test), src/main/fakes/, src/main/real/compose-real.ts (wire service), src/renderer/lib/mock/, src/renderer/lib/memory-queries.ts (new), src/renderer/lib/queries.ts (invalidation entries only), src/renderer/pages/subject/, src/renderer/pages/inbox/, tests/e2e-sim/ subject+inbox specs and their screenshots | main | coordinator deploys |
 | 2026-10-24 22:40 | Ilari / Claude | Batched extraction: ~5 min windows, cheap triage yes/no (P0) together, full P1 only for yes, prefilter as pre-gate | src/engine/perception/extraction/ (worker, prefilter, budget + tests), src/engine/brain-contract.ts, src/engine/brain/brain.ts, src/engine/brain/prompts/p00-triage.ts (new) + p01-extract.ts (context line), src/engine/brain/*.test.ts, src/engine/testing/fake-brain.ts | main | coordinator deploys |
-| 2026-10-24 22:30 | Ilari / Claude | Mini panel: only the topics of the current subject (focus, else latest new info), calm and simple | `src/renderer/surfaces/panel/`, panel queries in `src/renderer/lib/` (if any), `tests/e2e-sim/ui-panel.spec.ts` + its panel screenshots | main | coordinator deploys |
 | 2026-10-24 22:20 | Olle / Claude | Empty home: first-steps checklist; onboarding: "How Dumbledore works" intro step | `src/renderer/pages/home/`, `src/renderer/pages/onboarding/`, `tests/e2e-sim/` (home/onboarding specs + screenshots) | main | Renderer only; no data or engine changes |
 
 ## Done recently
@@ -19,6 +18,7 @@ Newest first; keep about the last 20 entries.
 
 | Finished (UTC) | Who / agent | Work | Commit |
 |---|---|---|---|
+| 2026-10-25 | Ilari / Claude | Mini panel: only the topics of one subject (focus, else latest new info), calm and simple | c6aeffd |
 | 2026-10-25 | Ilari / Claude | Only the orb on the right: Study pill removed | 1bfd3ea |
 | 2026-10-24 | Ilari / Claude | Notes phase 1: notes + concept edges storage, LLM-placed notes with keywords, highlight and loose notes; capture every 1 s | 32065e8, 0b11e71, f96a20c |
 | 2026-10-24 | Olle / Claude | Ink & parchment look: ink accents, parchment backgrounds, line icons instead of interface emojis, Inbox → Memory | a16eb45 |
