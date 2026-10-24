@@ -1,6 +1,7 @@
 /**
  * Demo notes (docs/NOTES.md §3) for the mock API: a few facts and a highlight on the Organic
- * Chemistry concepts, a prerequisite edge between them, and two loose notes from casual reading.
+ * Chemistry concepts, a highlight on Geography (a subject with no roadmap), a prerequisite edge,
+ * and two loose notes from casual reading.
  */
 import type { ConceptEdge, Note, NoteKind } from '@shared/domain'
 import { DAY, HOUR, isoAgo } from './time'
@@ -89,6 +90,15 @@ export function demoNotes(): Note[] {
       'Polar protic solvents stabilise ions in solution.',
       'Solvent effects – Khan Academy',
       2 * HOUR,
+    ),
+    note(
+      'note_geo1',
+      'sub_geo',
+      'con_plates',
+      'highlight',
+      'The lithosphere is broken into about fifteen major plates that move a few centimetres a year.',
+      'Plate tectonics – Wikipedia',
+      26 * HOUR,
     ),
     note(
       'note_loose1',

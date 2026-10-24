@@ -232,3 +232,292 @@ body {
   gap: 10px;
   padding: 14px 18px;
 }
+
+/* ── Topic detail: roadmap and flags ───────────────────────────────────── */
+
+/* List ⇄ detail: a short slide (the body is re-keyed on each switch). */
+.pn-body[data-pane="detail"] {
+  animation: pn-in-right var(--dur-base) var(--ease-out);
+}
+
+.pn-body[data-pane="list"] {
+  animation: pn-in-left var(--dur-base) var(--ease-out);
+}
+
+@keyframes pn-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+
+@keyframes pn-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pn-body[data-pane] {
+    animation: none;
+  }
+}
+
+.pn-detail__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 6px 6px;
+}
+
+.pn-detail__title {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pn-detail__name {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: var(--weight-semibold);
+  color: var(--c-texPri);
+}
+
+.pn-detail__subject {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--c-texTer);
+}
+
+.pn-sec {
+  padding: 6px 18px 4px;
+}
+
+.pn-sec + .pn-sec {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--c-borPri);
+}
+
+.pn-sec__head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: var(--weight-medium);
+  color: var(--c-texSec);
+}
+
+.pn-sec__count {
+  color: var(--c-texTer);
+  font-weight: var(--weight-regular);
+}
+
+.pn-empty--inline {
+  padding: 2px 0 6px;
+}
+
+/* Steps: a quiet vertical track, done steps ticked, the current one in ink. */
+.pn-steps {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pn-step {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  padding: 0 0 10px;
+}
+
+.pn-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  bottom: 0;
+  left: 7px;
+  width: 1px;
+  background: var(--c-borPri);
+}
+
+.pn-step__mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--c-borStr);
+  border-radius: 50%;
+  background: var(--c-popBac);
+  color: var(--c-popBac);
+}
+
+.pn-step[data-kind="checkpoint"] .pn-step__mark {
+  width: 11px;
+  height: 11px;
+  margin: 4px 2px 0;
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+
+.pn-step[data-state="done"] .pn-step__mark {
+  border-color: var(--c-texPri);
+  background: var(--c-texPri);
+}
+
+.pn-step[data-state="current"] .pn-step__mark,
+.pn-step[data-state="waiting"] .pn-step__mark {
+  border-color: var(--c-texPri);
+  box-shadow:
+    inset 0 0 0 3px var(--c-popBac),
+    inset 0 0 0 8px var(--c-texPri);
+}
+
+.pn-step[data-state="waiting"] .pn-step__mark {
+  animation: pn-wait 1.6s ease-in-out infinite;
+}
+
+@keyframes pn-wait {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pn-step[data-state="waiting"] .pn-step__mark {
+    animation: none;
+  }
+}
+
+.pn-step__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pn-step__title {
+  font-size: 13.5px;
+  line-height: 19px;
+  color: var(--c-texSec);
+}
+
+.pn-step[data-state="current"] .pn-step__title,
+.pn-step[data-state="waiting"] .pn-step__title {
+  color: var(--c-texPri);
+  font-weight: var(--weight-medium);
+}
+
+.pn-step[data-state="skipped"] .pn-step__title {
+  text-decoration: line-through;
+  color: var(--c-texTer);
+}
+
+.pn-step__meta {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--c-texTer);
+}
+
+.pn-step[data-state="waiting"] .pn-step__meta {
+  color: var(--c-texSec);
+}
+
+/* Flags: the passages the student marked, newest first. */
+.pn-flags {
+  display: grid;
+  gap: 2px;
+  list-style: none;
+  margin: 0 -8px;
+  padding: 0;
+}
+
+.pn-flag {
+  display: flex;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: var(--radius-control);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+
+.pn-flag:hover {
+  background: var(--c-hover);
+}
+
+.pn-flag[data-removing] {
+  opacity: 0.4;
+}
+
+.pn-flag__icon {
+  flex: none;
+  margin-top: 3px;
+  color: var(--c-icoSec);
+}
+
+.pn-flag__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.pn-flag__text {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  font-size: 13.5px;
+  line-height: 19px;
+  color: var(--c-texPri);
+  overflow-wrap: anywhere;
+}
+
+.pn-flag__text[data-open] {
+  display: block;
+}
+
+.pn-flag__meta {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--c-texTer);
+}
+
+.pn-flag__more {
+  padding: 0;
+  font-size: 12px;
+  color: var(--c-texSec);
+}
+
+.pn-flag__more:hover {
+  color: var(--c-texPri);
+}
+
+.pn-flag__remove {
+  flex: none;
+  align-self: flex-start;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.pn-flag:hover .pn-flag__remove,
+.pn-flag:focus-within .pn-flag__remove {
+  opacity: 1;
+}

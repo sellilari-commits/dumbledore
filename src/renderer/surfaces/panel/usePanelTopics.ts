@@ -1,8 +1,9 @@
 /**
  * The panel's topics and its lock, read once in MiniPanel and passed down so the header's lock
  * and the list always agree. Topics come from every counted subject (shared/topics.ts). The
- * current topic is the locked one (settings.focusTopicId), else the newest. Picking a topic locks
- * it and focuses its subject; unlocking clears both, so the panel follows the latest again.
+ * current topic is the locked one (settings.focusTopicId), else the newest. Locking a topic (from
+ * the header or a topic's detail) focuses its subject; unlocking clears both, so the panel follows
+ * the latest again.
  * Saving is shown optimistically.
  */
 import { invoke } from '@renderer/lib/api'
@@ -17,7 +18,9 @@ export interface PanelTopics {
   current: Topic | null
   locked: boolean
   /** Makes `topic` current and locks it. */
-  pick: (topic: Topic) => void
+  lock: (topic: Topic) => void
+  /** Follows the newest topic again. */
+  unlock: () => void
   /** Locks the current topic, or unlocks to follow the latest. */
   toggleLock: () => void
   loading: boolean
@@ -48,16 +51,19 @@ export function usePanelTopics(): PanelTopics {
   const current = currentTopic(topics, lockedId)
   const locked = lockedId !== null && current?.id === lockedId
 
-  const lock = (t: Topic) => update.mutate({ focusTopicId: t.id, focusSubjectId: t.subjectId })
+  const lock = (t: Topic) => {
+    if (!(locked && t.id === lockedId))
+      update.mutate({ focusTopicId: t.id, focusSubjectId: t.subjectId })
+  }
+  const unlock = () => update.mutate({ focusTopicId: null, focusSubjectId: null })
   return {
     topics,
     current,
     locked,
-    pick: (t) => {
-      if (!(locked && t.id === lockedId)) lock(t)
-    },
+    lock,
+    unlock,
     toggleLock: () => {
-      if (locked) update.mutate({ focusTopicId: null, focusSubjectId: null })
+      if (locked) unlock()
       else if (current) lock(current)
     },
     loading: subjects.isLoading || settings.isLoading || details.some((d) => d.isLoading),

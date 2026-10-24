@@ -1,13 +1,15 @@
 /**
  * Mini panel against the mock API: topic names only (every counted subject, newest first), the
- * current topic softly marked, a click locks a topic (it never opens the app), the header's lock
- * toggles between a held topic and following the latest, and the window is sized to the card.
+ * current topic softly marked, a click opens the topic's detail (roadmap and flags) in place, the
+ * header's lock toggles between a held topic and following the latest, and the window is sized to
+ * the card.
  */
 import { useToasts } from '@renderer/design-system'
 import type { MockDb } from '@renderer/lib/mock/db'
 import { listTopics } from '@shared/topics'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { EMPTY_FLAGS } from './TopicDetail'
 import { EMPTY_TOPICS } from './TopicList'
 import { renderPanel } from './testing/render'
 import { MIN_HEIGHT, PANEL_WIDTH } from './usePanelAutoSize'
@@ -50,19 +52,82 @@ describe('MiniPanel', () => {
     )
   })
 
-  it('clicking a topic makes it current and locks it, without opening the app', async () => {
+  it('clicking a topic opens its detail in place, without opening the app or locking it', async () => {
     const r = renderPanel()
-    const pick = expectedTopics(r.api.db).at(-1)
-    if (!pick) throw new Error('demo has no topics')
-    const row = (await rows()).find((b) => b.textContent?.startsWith(pick.name))
+    const row = (await rows()).find((b) => b.textContent?.startsWith('Carbocation stability'))
     fireEvent.click(row as HTMLElement)
+    expect(await screen.findByRole('heading', { name: 'Carbocation stability' })).toBeTruthy()
+    expect(screen.queryByRole('list', { name: 'Topics' })).toBeNull()
+    expect(r.calls('window.open')).toEqual([])
+    expect(r.calls('settings.update')).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Back to topics' }))
+    expect(await screen.findByRole('list', { name: 'Topics' })).toBeTruthy()
+  })
+
+  it('the detail shows the roadmap with each step state, and the flags', async () => {
+    renderPanel()
+    fireEvent.click(
+      (await rows()).find((b) => b.textContent?.startsWith('Carbocation stability')) as HTMLElement,
+    )
+    const steps = await screen.findByRole('list', { name: 'Roadmap steps' })
+    const items = within(steps).getAllByRole('listitem')
+    expect(items.map((li) => li.getAttribute('data-state'))).toContain('done')
+    expect(items.find((li) => li.getAttribute('aria-current') === 'step')?.textContent).toMatch(
+      /Carbocation stability/,
+    )
+    expect(items.some((li) => li.getAttribute('data-kind') === 'checkpoint')).toBe(true)
+    const flags = await screen.findByRole('list', { name: 'Flags' })
+    expect(flags.textContent).toMatch(/hyperconjugation/)
+    expect(flags.textContent).toMatch(/LibreTexts/)
+  })
+
+  it('without a roadmap only the flags show, and with no flags one calm line', async () => {
+    renderPanel({
+      prepare: (db) => {
+        db.roadmaps = []
+        db.notes = db.notes.filter((n) => n.kind !== 'highlight')
+      },
+    })
+    fireEvent.click(
+      (await rows()).find((b) => b.textContent?.startsWith('Carbocation stability')) as HTMLElement,
+    )
+    expect(await screen.findByText(EMPTY_FLAGS)).toBeTruthy()
+    expect(screen.queryByRole('list', { name: 'Roadmap steps' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: /Flags/ })).toBeNull()
+  })
+
+  it('✕ deletes a flag', async () => {
+    const r = renderPanel()
+    fireEvent.click(
+      (await rows()).find((b) => b.textContent?.startsWith('Carbocation stability')) as HTMLElement,
+    )
+    const flags = await screen.findByRole('list', { name: 'Flags' })
+    fireEvent.click(within(flags).getAllByRole('button', { name: 'Delete flag' })[0] as HTMLElement)
+    await waitFor(() => expect(r.calls('notes.delete')).toEqual(['note_cc2']))
+    await waitFor(() => expect(screen.queryByRole('list', { name: 'Flags' })).toBeNull())
+  })
+
+  it('locks a topic from its detail, and unlocks it again', async () => {
+    const r = renderPanel()
+    const pick = expectedTopics(r.api.db).find((t) => t.name === 'Carbocation stability')
+    if (!pick) throw new Error('demo has no carbocation topic')
+    fireEvent.click((await rows()).find((b) => b.textContent?.startsWith(pick.name)) as HTMLElement)
+    fireEvent.click(await screen.findByRole('button', { name: 'Lock this topic' }))
     await waitFor(() => expect(r.api.db.settings.focusTopicId).toBe(pick.id))
     expect(r.api.db.settings.focusSubjectId).toBe(pick.subjectId)
-    await waitFor(async () => expect(await current()).toBe(pick.name))
-    expect(screen.getByRole('button', { name: 'Unlock topic' }).getAttribute('aria-pressed')).toBe(
-      'true',
-    )
-    expect(r.calls('window.open')).toEqual([])
+    fireEvent.click(await screen.findByRole('button', { name: 'Unlock this topic' }))
+    await waitFor(() => expect(r.api.db.settings.focusTopicId).toBeNull())
+  })
+
+  it('Esc goes back from a detail, then closes', async () => {
+    const r = renderPanel()
+    fireEvent.click((await rows())[0] as HTMLElement)
+    await screen.findByRole('button', { name: 'Back to topics' })
+    act(() => {
+      fireEvent.keyDown(window, { key: 'Escape' })
+    })
+    expect(await screen.findByRole('list', { name: 'Topics' })).toBeTruthy()
+    expect(r.calls('window.close')).toEqual([])
   })
 
   it('the lock holds the current topic, and unlocking follows the latest again', async () => {

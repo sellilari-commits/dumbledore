@@ -62,12 +62,28 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(page.getByRole('button', { name: /subject:/i })).toHaveCount(0)
       await shoot(page, 'home', theme)
 
-      const pick = topics(page).nth(3)
-      await pick.click()
-      await expect(pick).toHaveAttribute('aria-current', 'true')
+      await page.getByRole('button', { name: 'Lock topic' }).click()
       await expect(page.getByRole('button', { name: 'Unlock topic' })).toBeVisible()
       await page.mouse.move(0, 0)
       await shoot(page, 'locked', theme)
+    })
+
+    test('panel: a topic with its roadmap and flags, and one with flags only', async ({ page }) => {
+      await open(page)
+      await loaded(page)
+      await topics(page).filter({ hasText: 'Carbocation stability' }).click()
+      await expect(page.getByRole('list', { name: 'Roadmap steps' })).toBeVisible()
+      await expect(page.getByRole('list', { name: 'Flags' })).toBeVisible()
+      await page.mouse.move(0, 0)
+      await shoot(page, 'detail', theme)
+
+      await page.getByRole('button', { name: 'Back to topics' }).click()
+      await topics(page).filter({ hasText: 'Plate tectonics' }).click()
+      await expect(page.getByRole('heading', { name: 'Plate tectonics' })).toBeVisible()
+      await expect(page.getByRole('list', { name: 'Flags' })).toBeVisible()
+      await expect(page.getByRole('list', { name: 'Roadmap steps' })).toHaveCount(0)
+      await page.mouse.move(0, 0)
+      await shoot(page, 'detail-flags', theme)
     })
 
     test('panel: first day (empty)', async ({ page }) => {
@@ -93,7 +109,7 @@ for (const theme of ['light', 'dark'] as const) {
 test.describe('panel flows', () => {
   test.use({ viewport: { width: 560, height: 700 } })
 
-  test('a topic locks (no app opens), unlock follows the latest; the picker returns to topics', async ({
+  test('a topic opens its detail (no app opens), locks there; back and Esc return to topics', async ({
     page,
   }) => {
     const errors: string[] = []
@@ -105,11 +121,19 @@ test.describe('panel flows', () => {
     const newest = topics(page).first()
     await expect(newest).toHaveAttribute('aria-current', 'true')
     const pick = topics(page).last()
+    const name = (await pick.locator('.pn-topic__name').textContent()) ?? ''
     await pick.click()
-    await expect(pick).toHaveAttribute('aria-current', 'true')
+    await expect(page.getByRole('heading', { name })).toBeVisible()
+    await page.getByRole('button', { name: 'Lock this topic' }).click()
+    await expect(page.getByRole('button', { name: 'Unlock this topic' })).toBeVisible()
+    await page.getByRole('button', { name: 'Back to topics' }).click()
+    await expect(topics(page).last()).toHaveAttribute('aria-current', 'true')
     await page.getByRole('button', { name: 'Unlock topic' }).click()
     await expect(page.getByRole('button', { name: 'Lock topic' })).toBeVisible()
     await expect(topics(page).first()).toHaveAttribute('aria-current', 'true')
+    await topics(page).first().click()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('list', { name: 'Topics' })).toBeVisible()
     expect(popups).toBe(0)
 
     await page.goto(`${base}/panel.html?mock=1&latency=0#/picker`)
