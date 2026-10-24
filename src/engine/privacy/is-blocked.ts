@@ -25,6 +25,7 @@ export type BlockReason =
   | { kind: 'user_host'; pattern: string }
   | { kind: 'path'; segment: string }
   | { kind: 'private_window' }
+  | { kind: 'secret_file'; name: string }
 
 export interface AppLike {
   bundleId: string
@@ -33,6 +34,20 @@ export interface AppLike {
 
 /** The part of Settings the gate needs; a full Settings object works too. */
 export type PrivacySettings = Pick<Settings, 'excludedBundleIds' | 'excludedHosts'>
+
+/**
+ * Window titles naming a file that holds secrets (an editor or viewer showing `.env`, a private
+ * key, cloud credentials…). Such windows are never read, so neither capture nor highlights see
+ * their keys. Matched as a whole file name within the title ("hugo — .env — Edited").
+ */
+const SECRET_FILE_NAME =
+  /(?:^|[\s/\\—–|•·:(["'])(\.env(?:\.[\w-]+)?|[\w.-]+\.env|\.npmrc|\.pypirc|\.netrc|\.pgpass|\.git-credentials|\.htpasswd|id_(?:rsa|dsa|ecdsa|ed25519)(?:\.pub)?|[\w.-]+\.(?:pem|key|p8|p12|pfx|keystore|jks|ppk)|credentials(?:\.json|\.csv)?|secrets?\.(?:json|ya?ml|toml|env)|service[-_]account[\w.-]*\.json|kubeconfig)(?=$|[\s—–|•·:)\]"',])/i
+
+/** The secret-looking file name in a window title, or null. */
+export function secretFileInTitle(title: string | null | undefined): string | null {
+  if (!title) return null
+  return SECRET_FILE_NAME.exec(title)?.[1] ?? null
+}
 
 /** App names that identify a password manager even when the bundle id is unknown. */
 const PASSWORD_MANAGER_NAMES =
@@ -61,6 +76,8 @@ export function blockReason(
   if (title && PRIVATE_WINDOW_MARKERS.some((re) => re.test(title))) {
     return { kind: 'private_window' }
   }
+  const secretFile = secretFileInTitle(title)
+  if (secretFile) return { kind: 'secret_file', name: secretFile }
 
   const parsed = parseUrl(url)
   if (parsed?.host) {

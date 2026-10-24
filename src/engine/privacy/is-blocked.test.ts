@@ -1,6 +1,6 @@
 import { DEFAULT_SETTINGS } from '@shared/domain'
 import { describe, expect, it } from 'vitest'
-import { blockReason, excludedBundleIds, isBlocked } from './is-blocked'
+import { blockReason, excludedBundleIds, isBlocked, secretFileInTitle } from './is-blocked'
 import { hostMatches, pageIdentity, parseUrl } from './url'
 
 const settings = {
@@ -36,6 +36,33 @@ describe('url helpers', () => {
 })
 
 describe('isBlocked', () => {
+  it('never reads windows that show a secret file (.env, private keys, credentials)', () => {
+    const editor = { bundleId: 'com.apple.TextEdit', appName: 'TextEdit' }
+    for (const title of [
+      '.env',
+      '.env — Edited',
+      'hugo-backend — .env.local',
+      '.env — hugo — Visual Studio Code',
+      'id_ed25519',
+      'server.pem',
+      'credentials.json — Downloads',
+      'secrets.yaml',
+      'service-account-prod.json',
+      '.npmrc',
+    ]) {
+      expect(blockReason(editor, null, title), title).toMatchObject({ kind: 'secret_file' })
+    }
+    for (const title of [
+      'README.md',
+      'Environment variables – MDN',
+      'notes about .envelope',
+      'Keynote',
+    ]) {
+      expect(isBlocked(editor, null, title), title).toBe(false)
+    }
+    expect(secretFileInTitle('hugo-backend — .env')).toBe('.env')
+  })
+
   it('blocks password managers, Keychain Access, Apple Passwords and System Settings', () => {
     for (const id of [
       'com.1password.1password',

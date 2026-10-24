@@ -20,6 +20,7 @@ export {
   excludedBundleIds,
   isBlocked,
   type PrivacySettings,
+  secretFileInTitle,
 } from './is-blocked'
 export {
   REDACTION_PLACEHOLDER,
