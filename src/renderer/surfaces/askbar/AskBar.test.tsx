@@ -80,6 +80,14 @@ describe('AskBar', () => {
     expect(screen.getByRole('heading', { name: CHAT_TITLE })).toBeTruthy()
   })
 
+  it('the chat header holds the title and its buttons (the drag region, see windows.test)', () => {
+    const local = askApi()
+    render(<AskBar api={local.api} />)
+    const head = screen.getByRole('heading', { name: CHAT_TITLE }).closest('header')
+    expect(head?.className).toBe('ask__head')
+    expect(head?.querySelector('button')).toBeTruthy()
+  })
+
   it('Enter → ask.submit, then the markdown reply and action chips', async () => {
     const local = askApi()
     render(<AskBar api={local.api} />)

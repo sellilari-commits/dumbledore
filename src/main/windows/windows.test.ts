@@ -1,11 +1,15 @@
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { CHAT_PANEL_WIDTH, chatPanelHeight, isPromptRoute } from '@shared/chat-panel'
 import { describe, expect, it, vi } from 'vitest'
-import { DISPLAY } from '../testing/harness'
+import { DISPLAY, SECOND_DISPLAY } from '../testing/harness'
+import { fileChatSpotStore, memoryChatSpotStore } from './chat-spots'
 import {
   askbarBounds,
   askbarOpenBounds,
   chatBounds,
+  chatOpenBounds,
   clampRect,
   PANEL_SIZE,
   panelBounds,
@@ -172,6 +176,59 @@ describe('window placement', () => {
     expect(askbarOpenBounds(DISPLAY, null, orb, field)).toEqual(chat) // the chat ignores the field
     const box = askbarOpenBounds(DISPLAY, 'prompt', orb, null)
     expect(box).toMatchObject({ width: 560, height: 52 })
+  })
+
+  it('reopens the chat where the student dragged it on that display', () => {
+    const orb = { displayId: 1, x: 1480, y: 491, edge: 'right' as const }
+    const saved = { x: 120, y: 200 }
+    expect(chatOpenBounds(DISPLAY, orb, saved)).toEqual({ x: 120, y: 200, width: 380, height: 520 })
+    // The Ask bar passes the saved spot for the chat only, never for the study box.
+    expect(askbarOpenBounds(DISPLAY, null, orb, null, saved)).toEqual(
+      chatOpenBounds(DISPLAY, orb, saved),
+    )
+    expect(askbarOpenBounds(DISPLAY, 'prompt', orb, null, saved)).toMatchObject({ height: 52 })
+    // Dragged half past the edge: it comes back fully on screen at the same height.
+    const edge = chatOpenBounds(DISPLAY, orb, { x: 1300, y: 600 })
+    expect(edge.x + edge.width).toBeLessThanOrEqual(wa.x + wa.width - 8)
+    expect(edge.y + edge.height).toBeLessThanOrEqual(wa.y + wa.height - 8)
+  })
+
+  it('falls back to beside the orb when the saved spot is off this display', () => {
+    const orb = { displayId: 1, x: 1480, y: 491, edge: 'right' as const }
+    const beside = chatBounds(DISPLAY, orb)
+    // A spot from the second display (to the right) is not on this one.
+    expect(chatOpenBounds(DISPLAY, orb, { x: 2000, y: 300 })).toEqual(beside)
+    expect(chatOpenBounds(DISPLAY, orb, { x: -900, y: 300 })).toEqual(beside)
+    expect(chatOpenBounds(DISPLAY, orb, undefined)).toEqual(beside)
+    // On its own display the same spot is fine.
+    expect(chatOpenBounds(SECOND_DISPLAY, null, { x: 2000, y: 300 })).toMatchObject({
+      x: 2000,
+      y: 300,
+    })
+  })
+
+  it('the chat is dragged by its header; the header buttons stay clickable', () => {
+    const file = resolve(__dirname, '../../renderer/surfaces/askbar/askbar.css')
+    const css = readFileSync(file, 'utf8').replace(/\s+/g, ' ')
+    expect(css).toMatch(/\.ask__head \{[^}]*-webkit-app-region: drag;/)
+    expect(css).toMatch(/\.ask__head button \{[^}]*-webkit-app-region: no-drag;/)
+  })
+
+  it('stores chat spots per display in a file, ignoring bad entries', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'chat-spots-'))
+    try {
+      const file = join(dir, 'chat-spots.json')
+      const store = fileChatSpotStore(file)
+      expect(store.load()).toEqual({})
+      store.save({ '1': { x: 10, y: 20 } })
+      expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ '1': { x: 10, y: 20 } })
+      expect(fileChatSpotStore(file).load()).toEqual({ '1': { x: 10, y: 20 } })
+      const mem = memoryChatSpotStore({ '2': { x: 1, y: 2 } })
+      mem.save({ '2': { x: 3, y: 4 } })
+      expect(mem.load()).toEqual({ '2': { x: 3, y: 4 } })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 
   it('grows a window from its top edge around the same centre', () => {

@@ -1,8 +1,8 @@
 /**
  * Where windows open, pure maths in global points: the panel beside the orb (toward the screen
- * centre), the double-tap chat as a tall panel beside the orb, the study box centred on the active
- * display or over the focused field, and resizing that keeps a window's top edge and horizontal
- * centre in place.
+ * centre), the double-tap chat as a tall panel beside the orb (or where the student last dragged it),
+ * the study box centred on the active display or over the focused field, and resizing that keeps a
+ * window's top edge and horizontal centre in place.
  */
 import { chatPanelSize, isPromptRoute } from '@shared/chat-panel'
 import type { Rect } from '@shared/geometry'
@@ -70,6 +70,26 @@ export function chatBounds(d: DisplayInfo, orb: OrbSpot | null): Rect {
   return clampRect({ x, y, width: size.width, height: size.height }, wa)
 }
 
+/** Where the student last dragged the chat on each display: its top-left, global points. */
+export type ChatSpot = { x: number; y: number }
+export type ChatSpots = Record<string, ChatSpot>
+
+/**
+ * The chat at the spot the student dragged it to on this display, kept on screen; beside the orb
+ * when there is no saved spot or its centre is no longer on the display (it changed or moved).
+ */
+export function chatOpenBounds(d: DisplayInfo, orb: OrbSpot | null, saved?: ChatSpot): Rect {
+  const size = chatPanelSize(d.workArea.height)
+  if (saved) {
+    const r = { x: saved.x, y: saved.y, ...size }
+    const c = { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+    const wa = d.workArea
+    const inside = c.x >= wa.x && c.x <= wa.x + wa.width && c.y >= wa.y && c.y <= wa.y + wa.height
+    if (inside) return clampRect(r, wa)
+  }
+  return chatBounds(d, orb)
+}
+
 /** The study box sits over the focused field when there is one, else high on the active display. */
 export function askbarBounds(d: DisplayInfo, nearField: Rect | null, size = ASKBAR_SIZE): Rect {
   const wa = d.workArea
@@ -94,8 +114,9 @@ export function askbarOpenBounds(
   route: string | null | undefined,
   orb: OrbSpot | null,
   nearField: Rect | null,
+  savedChat?: ChatSpot,
 ): Rect {
-  return isPromptRoute(route) ? askbarBounds(d, nearField) : chatBounds(d, orb)
+  return isPromptRoute(route) ? askbarBounds(d, nearField) : chatOpenBounds(d, orb, savedChat)
 }
 
 /** New size for a window that grows with its content: top edge and centre stay put. */

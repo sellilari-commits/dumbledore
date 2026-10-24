@@ -27,6 +27,7 @@ import { GlobalShortcuts } from './shortcuts'
 import { createTestControlApi } from './test-control/api'
 import { TestControlServer } from './test-control/server'
 import { AppTray } from './tray'
+import { fileChatSpotStore } from './windows/chat-spots'
 import { WindowManager } from './windows/manager'
 import { registerSchemePrivileges } from './windows/protocol'
 
@@ -110,6 +111,7 @@ async function start(paths: AppPaths): Promise<void> {
     devUrl,
     devTools: !app.isPackaged,
     test: isTest,
+    chatSpots: isTest ? undefined : fileChatSpotStore(join(paths.dataDir, 'chat-spots.json')),
   })
   windowsRef = windows
   const broadcaster = new Broadcaster(windows, !app.isPackaged)

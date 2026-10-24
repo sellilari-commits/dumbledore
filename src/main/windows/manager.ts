@@ -5,6 +5,8 @@
  *   senders (only our own webContents are answered).
  * - Typing surfaces (panel, ask bar) remember the previous frontmost app when they open,
  *   activate Dumbledore so typing works (#52915), hide on blur, and hand focus back on close.
+ * - The double-tap chat can be dragged by its header; where it lands is remembered per display
+ *   (ChatSpotStore) and it reopens there while that spot is still on screen.
  * - The app window is created on demand and destroyed on close; the Dock icon shows only while
  *   it is open (accessory activation policy otherwise).
  * - The overlay never has focus, so quiz-card keys are injected into it (`forwardKey`).
@@ -21,12 +23,14 @@ import type { InvokeContext } from '../ipc/types'
 import type { OverlayController } from '../overlay/controller'
 import { type DisplayInfo, displayAt, primaryDisplay } from '../overlay/geometry'
 import type { OpenOptions, SurfaceControl, WindowSurface } from '../platform'
+import { type ChatSpotStore, memoryChatSpotStore } from './chat-spots'
 import { refreshShadow, sendKey } from './native'
 import { appOptions, finishTyping, typingOptions, webPreferences } from './options'
 import { OverlayWindows } from './overlays'
 import {
   ASKBAR_SIZE,
   askbarOpenBounds,
+  type ChatSpots,
   PANEL_SIZE,
   panelBounds,
   panelOpenSize,
@@ -40,6 +44,8 @@ export interface WindowManagerOptions {
   devTools: boolean
   /** Test mode: typing surfaces do not hide on blur (the test runner owns focus). */
   test: boolean
+  /** Where the student dragged the chat, per display; in memory when not given. */
+  chatSpots?: ChatSpotStore
 }
 
 export interface WindowBindings {
@@ -66,8 +72,16 @@ export class WindowManager implements SurfaceControl, EventSink {
   private readonly ready = new WeakSet<BrowserWindow>()
   private readonly shownAt = new WeakMap<BrowserWindow, number>()
   private bindings: WindowBindings | null = null
+  private readonly chatStore: ChatSpotStore
+  private readonly chatSpots: ChatSpots
+  /** The Ask bar's current route ('prompt' = the study box, anything else = the chat). */
+  private askbarRoute: string | null = null
+  /** The Ask bar's last position set by us, so our own moves are not taken for a drag. */
+  private askbarPlaced: { x: number; y: number } | null = null
 
   constructor(private readonly opts: WindowManagerOptions) {
+    this.chatStore = opts.chatSpots ?? memoryChatSpotStore()
+    this.chatSpots = this.chatStore.load()
     this.overlays = new OverlayWindows({
       devUrl: opts.devUrl,
       prefs: this.prefs(),
@@ -112,7 +126,12 @@ export class WindowManager implements SurfaceControl, EventSink {
     // The ask bar always hears its route on open (no route = the chat).
     if (surface === 'askbar') this.askbarRouteOpened = opts.route ?? null
     const win = this.ensureTyping(surface, opts.route ?? null)
-    win.setBounds(await this.placement(surface, opts))
+    const bounds = await this.placement(surface, opts)
+    if (surface === 'askbar') {
+      this.askbarRoute = opts.route ?? null
+      this.askbarPlaced = { x: bounds.x, y: bounds.y }
+    }
+    win.setBounds(bounds)
     await this.showTyping(win)
   }
 
@@ -155,7 +174,9 @@ export class WindowManager implements SurfaceControl, EventSink {
     const current = win.getBounds()
     const area = displayAt(this.displays(), rectCenter(current))?.workArea ?? current
     if (surface === 'panel') this.panelFitted = { width: w, height: h }
-    win.setBounds(resizeKeepingTop(current, w, h, area))
+    const next = resizeKeepingTop(current, w, h, area)
+    if (surface === 'askbar') this.askbarPlaced = { x: next.x, y: next.y }
+    win.setBounds(next)
     refreshShadow(win)
   }
 
@@ -217,6 +238,7 @@ export class WindowManager implements SurfaceControl, EventSink {
     finishTyping(win)
     this.register(win, surface, null)
     win.on('blur', () => this.onTypingBlur(win))
+    if (surface === 'askbar') win.on('moved', () => this.rememberChatSpot(win))
     win.on('closed', () => {
       if (this.typing[surface] === win) this.typing[surface] = null
     })
@@ -244,7 +266,21 @@ export class WindowManager implements SurfaceControl, EventSink {
       : displays.find((d) => d.id === anchor?.displayId)
     const target = display ?? primaryDisplay(displays)
     if (!target) return { x: 100, y: 100, ...(prompt ? ASKBAR_SIZE : chatPanelSize(900)) }
-    return askbarOpenBounds(target, opts.route, anchor, opts.nearField ?? null)
+    const saved = prompt ? undefined : this.chatSpots[String(target.id)]
+    return askbarOpenBounds(target, opts.route, anchor, opts.nearField ?? null, saved)
+  }
+
+  /** The student dragged the chat: remember where, for the display it now stands on. */
+  private rememberChatSpot(win: BrowserWindow): void {
+    if (win.isDestroyed() || isPromptRoute(this.askbarRoute)) return
+    const { x, y, width, height } = win.getBounds()
+    const placed = this.askbarPlaced
+    if (placed && Math.abs(placed.x - x) < 2 && Math.abs(placed.y - y) < 2) return
+    const display = displayAt(this.displays(), rectCenter({ x, y, width, height }))
+    if (!display) return
+    this.askbarPlaced = { x, y }
+    this.chatSpots[String(display.id)] = { x, y }
+    this.chatStore.save(this.chatSpots)
   }
 
   /** The display of the focused field, else of the frontmost window, else under the pointer. */
