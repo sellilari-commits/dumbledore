@@ -14,6 +14,7 @@ import { FakeBrain } from '../testing/fake-brain'
 import { createMemoryRepos } from '../testing/memory-repos'
 import { WORKER_DEFAULTS } from './extraction/worker'
 import { createPerceptionStack } from './stack'
+import { ONE_SEGMENT_PER_VISIT } from './testing/episodes'
 import {
   type EpisodeFixture,
   fixtureExtractor,
@@ -53,7 +54,14 @@ async function play(fx: EpisodeFixture): Promise<Run> {
   bus.on('perception:now', (e) => run.events.push(e))
   bus.on('memory:changed', (e) => run.memoryScopes.push(e.scope))
 
-  const stack = createPerceptionStack({ helper, repos, bus, clock, brain })
+  const stack = createPerceptionStack({
+    helper,
+    repos,
+    bus,
+    clock,
+    brain,
+    episodeOptions: ONE_SEGMENT_PER_VISIT,
+  })
   stack.start()
   await replayFixture(fx, helper, clock)
   await runFor(clock, WORKER_DEFAULTS.flushEveryMs) // the worker's periodic flush

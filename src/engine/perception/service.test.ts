@@ -8,7 +8,7 @@ import { FakeBrain } from '../testing/fake-brain'
 import { createMemoryRepos } from '../testing/memory-repos'
 import { Perception } from './service'
 import { createPerceptionStack } from './stack'
-import { makeEpisode } from './testing/episodes'
+import { makeEpisode, ONE_SEGMENT_PER_VISIT } from './testing/episodes'
 import { prose } from './testing/frames'
 import { runFor, ScriptedHelper, type ScriptedWindow } from './testing/scripted-helper'
 
@@ -65,7 +65,13 @@ describe('Perception', () => {
     bus.on('perception:aiChat', ({ chat }) => chats.push(chat))
     bus.on('perception:episodeClosed', ({ episode }) => closed.push(episode))
     bus.on('perception:now', ({ now }) => nows.push(now))
-    perception = new Perception({ helper, repos, bus, clock })
+    perception = new Perception({
+      helper,
+      repos,
+      bus,
+      clock,
+      episodeOptions: ONE_SEGMENT_PER_VISIT,
+    })
   })
 
   it('detects an AI chat within one tick and serves its excerpt', async () => {
@@ -267,7 +273,14 @@ describe('createPerceptionStack', () => {
     const repos = createMemoryRepos(clock)
     const bus = createEngineBus()
     const brain = new FakeBrain()
-    const stack = createPerceptionStack({ helper, repos, bus, clock, brain })
+    const stack = createPerceptionStack({
+      helper,
+      repos,
+      bus,
+      clock,
+      brain,
+      episodeOptions: ONE_SEGMENT_PER_VISIT,
+    })
     helper.front = wiki
     stack.start()
     await runFor(clock, 60_000)
@@ -281,9 +294,10 @@ describe('createPerceptionStack', () => {
     await runFor(clock, 12_000)
     await stack.worker.flushNow()
     expect(repos.encounters.list({})).toHaveLength(1)
-    // A single read with no matching subject stays loose (docs/NOTES.md §10.4).
-    expect(repos.encounters.list({})[0]?.subjectId).toBeNull()
-    expect(repos.subjects.list()).toEqual([])
+    // Subjects come straight from structuring: created active, the encounter filed under it.
+    const [subject] = repos.subjects.list()
+    expect(subject?.status).toBe('active')
+    expect(repos.encounters.list({})[0]?.subjectId).toBe(subject?.id)
     stack.stop()
   })
 })

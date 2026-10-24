@@ -86,8 +86,8 @@ describe('ExtractionWorker', () => {
     expect(repos.encounters.list({})).toHaveLength(5)
     expect(changes.map((c) => c.scope)).toContain('inbox')
     expect(changes.map((c) => c.scope)).toContain('subjects')
-    // The first read stays loose; the topic coming back makes the suggested subject.
-    expect(linked).toHaveLength(4)
+    // Subjects come straight from structuring: every episode is filed under one.
+    expect(linked).toHaveLength(5)
   })
 
   it('respects the token cap per batch', async () => {
@@ -98,21 +98,73 @@ describe('ExtractionWorker', () => {
     expect(extractCalls().map((c) => c.episodes.length)).toEqual([1, 1, 1])
   })
 
-  it('judges a window on its own once it is 5 minutes old', async () => {
+  it('judges what arrived together ~5 s after the last episode, with recent ones as context', async () => {
     const worker = make()
     worker.start()
     bus.emit('perception:episodeClosed', { episode: saved() })
     await flushAsync()
-    clock.advance(4 * 60 * 1000)
+    clock.advance(3000)
     bus.emit('perception:episodeClosed', { episode: saved({ title: 'SN2 – Wikipedia' }) })
     await flushAsync()
-    expect(triageCalls()).toHaveLength(0)
-    expect(extractCalls()).toHaveLength(0)
-    clock.advance(60 * 1000)
+    clock.advance(3000) // 3 s after the last one: still collecting
     await flushAsync()
-    // One triage call for the whole window, then the "yes" episodes together.
+    expect(triageCalls()).toHaveLength(0)
+    clock.advance(2000) // 5 s after the last one
+    await flushAsync()
+    // One triage call for both, then the "yes" episodes together in one P1 call.
     expect(triageCalls().map((c) => c.episodes.length)).toEqual([2])
     expect(extractCalls().map((c) => c.episodes.length)).toEqual([2])
+    // A minute later: the two judged pages ride along as neighbours and context titles.
+    clock.advance(60_000)
+    bus.emit('perception:episodeClosed', { episode: saved({ title: 'E1 – Wikipedia' }) })
+    await flushAsync()
+    clock.advance(5000)
+    await flushAsync()
+    expect(
+      triageCalls()
+        .at(-1)
+        ?.episodes.map((e) => e.title),
+    ).toContain('SN2 – Wikipedia')
+    expect(extractCalls().at(-1)?.context?.join(' ')).toContain('SN2 – Wikipedia')
+    worker.stop()
+  })
+
+  it('judges at most 20 s after the first waiting episode, even while new ones keep coming', async () => {
+    const worker = make()
+    worker.start()
+    for (let t = 0; t < 20; t += 4) {
+      bus.emit('perception:episodeClosed', { episode: saved({ title: `Page ${t}` }) })
+      await flushAsync()
+      clock.advance(4000)
+      await flushAsync()
+    }
+    expect(triageCalls()).toHaveLength(1)
+    worker.stop()
+  })
+
+  it('waits before trying again after a failed extraction call', async () => {
+    let attempts = 0
+    const ok = new FakeBrain()
+    brain = new FakeBrain({
+      extract: async (input, opts) => {
+        attempts++
+        if (attempts === 1) throw new Error('provider down')
+        return ok.extract(input, opts)
+      },
+    })
+    const worker = make({ retryAfterFailMs: 30_000 })
+    worker.start()
+    bus.emit('perception:episodeClosed', { episode: saved() })
+    await flushAsync()
+    clock.advance(5000)
+    await flushAsync()
+    expect(extractCalls()).toHaveLength(1)
+    clock.advance(10_000)
+    await flushAsync()
+    expect(extractCalls()).toHaveLength(1)
+    clock.advance(25_000)
+    await flushAsync()
+    expect(extractCalls()).toHaveLength(2)
     worker.stop()
   })
 
@@ -278,7 +330,10 @@ describe('ExtractionWorker', () => {
       worker.enqueue(chatgpt)
       worker.enqueue(claudeApp)
       await worker.flushNow()
-      expect(triageCalls().map((c) => c.episodes.map((e) => e.id))).toEqual([[claudeApp.id]])
+      // The ChatGPT page (already a note) rides along as a neighbour; only the Claude one is judged.
+      expect(triageCalls().map((c) => c.episodes.map((e) => e.id))).toEqual([
+        [chatgpt.id, claudeApp.id],
+      ])
       expect(extractCalls().flatMap((c) => c.episodes.map((e) => e.id))).toEqual([chatgpt.id])
       expect(repos.episodes.get(claudeApp.id)?.extracted).toBe(true)
       expect(repos.notes.list({ status: null }).map((n) => n.text)).not.toContain(

@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import type { Episode } from '@shared/domain'
 import type { MemoryChanged } from '@shared/state'
 import { afterEach, describe, expect, it } from 'vitest'
-import { CHATGPT, createRig, disposeRig, MINUTE, NOTES, type Rig, runFor, WIKI } from './test-kit'
+import { CHATGPT, createRig, disposeRig, type Rig, runFor, WIKI } from './test-kit'
 
 describe('composeReal: perception → memory', () => {
   let rig: Rig
@@ -15,7 +15,7 @@ describe('composeReal: perception → memory', () => {
     await disposeRig(rig)
   })
 
-  it('turns a page the student read into a loose Inbox encounter the student can file', async () => {
+  it('turns a page the student read into an active subject with a memory file within seconds', async () => {
     rig = createRig({ compose: { tuning: { memoryDebounceMs: 0 } } })
     const { services, screen, clock, comp } = rig
     const closed: Episode[] = []
@@ -25,40 +25,28 @@ describe('composeReal: perception → memory', () => {
 
     screen.show(WIKI)
     await services.start()
-    await runFor(clock, MINUTE)
+    // The visit's first segment closes ~12 s after the page has text; the worker judges ~5 s later.
+    await runFor(clock, 30_000)
     expect(services.perception.isActive()).toBe(true)
     expect(services.perception.now()).toMatchObject({ app: 'Google Chrome', kind: 'reading' })
-
-    screen.show(NOTES) // switching away closes the reading episode after ~8 s
-    await runFor(clock, 15_000)
     expect(closed.map((e) => e.url)).toContain(WIKI.url)
-    expect(comp.engine.repos.episodes.get(closed[0]?.id ?? '')?.dwellSeconds).toBeGreaterThan(30)
 
-    await runFor(clock, 6 * MINUTE) // the worker judges the 5-minute window
-    const inbox = services.queries.inbox({ state: 'new', subjectId: null })
-    expect(inbox).toHaveLength(1)
-    const encounter = inbox[0]
+    // Subjects come straight from structuring: active, no "suggested" step, no roadmap.
+    const [subject] = services.queries.subjects()
+    expect(subject?.name).toBe('Photosynthesis')
+    expect(subject?.status).toBe('active')
+    const [encounter] = services.repos.encounters.list({ subjectId: subject?.id ?? '' })
     expect(encounter?.seen).toContain('Photosynthesis is the process')
     expect(encounter?.bigPicture).toBe('Trying to understand Photosynthesis.')
     expect(encounter?.understanding).toBe('unknown')
     expect(encounter?.source).toMatchObject({ app: 'Google Chrome', url: WIKI.url })
     expect(encounter?.openQuestions).toEqual(['How does Photosynthesis work?'])
-    expect(changes.some((c) => c.scope === 'inbox')).toBe(true)
-
-    // One casual read creates no subject: the encounter stays loose until it is filed.
-    expect(services.queries.subjects()).toEqual([])
-    expect(encounter?.subjectId).toBeNull()
+    expect(services.repos.concepts.listBySubject(subject?.id ?? '').length).toBeGreaterThan(0)
+    expect(services.repos.roadmaps.listBySubject(subject?.id ?? '')).toEqual([])
+    expect(changes.some((c) => c.scope === 'subjects')).toBe(true)
     expect(services.repos.episodes.listUnextracted(10)).toEqual([])
 
-    // Filing it under a new subject gives that subject a memory file (MemoryMirror via the bus).
-    const subject = services.subjects.create({
-      name: 'Photosynthesis',
-      emoji: null,
-      goal: null,
-      deadline: null,
-    })
-    services.subjects.actInbox(encounter?.id ?? '', 'assign', subject.id)
-    expect(services.repos.encounters.list({ subjectId: subject.id })).toHaveLength(1)
+    // The new subject gets its memory file (MemoryMirror via the bus).
     clock.advance(10)
     const file = comp.engine.mirror()?.pathFor(subject?.id ?? '')
     expect(file).toBeTruthy()

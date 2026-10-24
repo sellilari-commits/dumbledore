@@ -1,6 +1,7 @@
 import type { Episode } from '@shared/domain'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AiChatTracker } from '../ai-chat/tracker'
+import { ONE_SEGMENT_PER_VISIT } from '../testing/episodes'
 import { batch, prose, win } from '../testing/frames'
 import { EpisodeBuilder } from './builder'
 import { pageKeyOf } from './keys'
@@ -62,6 +63,7 @@ describe('EpisodeBuilder: only new lines are stored', () => {
         if (e.url === URL) closed.push(e)
       },
       stored,
+      options: ONE_SEGMENT_PER_VISIT,
     })
   })
 

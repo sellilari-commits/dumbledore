@@ -7,6 +7,7 @@
 import type { Episode } from '@shared/domain'
 import { describe, expect, it } from 'vitest'
 import { EpisodeBuilder } from '../episodes/builder'
+import { ONE_SEGMENT_PER_VISIT } from '../testing/episodes'
 import { loadEpisodeFixtures } from '../testing/fixtures'
 import { batch, type LineSpec, win } from '../testing/frames'
 import { codingEvidence, looksLikeCodingSession } from './coding'
@@ -106,7 +107,7 @@ describe('episodes of a coding session', () => {
       isAgentSession: (w) => tracker.isAgentSession(w),
       redact: () => false,
       onClose: (e) => closed.push(e),
-      options: { minPersistDwellS: 0 },
+      options: { minPersistDwellS: 0, ...ONE_SEGMENT_PER_VISIT },
     })
     const T0 = Date.parse('2026-10-24T09:00:00.000Z')
     const chat: LineSpec[] = [

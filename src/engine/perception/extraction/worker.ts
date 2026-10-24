@@ -3,12 +3,14 @@
  *
  * Batched decision (Ilari, 2026-10-24): closed episodes pass the local pre-gate (prefilter.ts: hard
  * rules and obvious noise) or are marked done without an LLM call (episodes that arrive already
- * done, coding agent sessions, are skipped outright). The rest collect into a window of about the
- * last 5 minutes. When the window is 5 minutes old — or at once for something urgent (a
- * highlight, an AI chat during a study session) — one cheap triage call (P0) judges the whole
- * window together: "learnable content?" per episode. "No" episodes are done; "yes" episodes go to
- * `Brain.extract` (P1) in batches (≤ 3 episodes or a token cap) with the window's other titles as
- * context. Highlighted episodes skip triage (always yes); if triage fails, the old prefilter score
+ * done, coding agent sessions, are skipped outright). The rest are judged fast (Ilari: a page
+ * should show in the side panel within 5–30 s): about 5 s after the last episode arrived (at most
+ * 20 s after the first waiting one), or at once for something urgent (a highlight, an AI chat
+ * during a study session). One cheap triage call (P0) judges what arrived together — with up to
+ * three episodes judged in the last 5 minutes added as neighbours, their answers unused — then
+ * "no" episodes are done and "yes" episodes go straight on to `Brain.extract` (P1) in batches (≤ 3
+ * episodes or a token cap), with the titles of everything open in the last 5 minutes as context.
+ * After a failed P1 call the queue waits retryAfterFailMs before trying again. Highlighted episodes skip triage (always yes); if triage fails, the old prefilter score
  * decides. A daily budget caps calls (triage included) and tokens, sized for a whole day of use. Results are applied through Repos (./apply), episodes are
  * marked extracted and 'memory:changed' is emitted. Hourly, episode text past the retention window
  * is purged and episodes still unextracted in the DB (queue overflow, a provider outage that used
@@ -28,7 +30,12 @@ import type { EngineBus } from '../../events'
 import { redact } from '../../privacy/redact'
 import { isCodingApp, isCodingSite } from '../ai-chat/coding'
 import { HOUR, MINUTE } from '../types'
-import { type ApplyOutcome, applyExtraction, PromptMemory } from './apply'
+import {
+  type ApplyOutcome,
+  activateSuggestedSubjects,
+  applyExtraction,
+  PromptMemory,
+} from './apply'
 import { DailyBudget, estimateTokens } from './budget'
 import {
   cleanEpisodeText,
@@ -41,10 +48,16 @@ export interface WorkerOptions {
   maxBatch: number
   maxBatchTokens: number
   maxEpisodeChars: number
-  /** How often the worker looks whether the window is due. */
+  /** How often the worker looks whether waiting episodes are due. */
   flushEveryMs: number
-  /** A window is judged once its oldest episode has waited this long. */
-  windowMs: number
+  /** Judge once no new episode arrived for this long… */
+  debounceMs: number
+  /** …or once the oldest waiting episode has waited this long. */
+  maxWaitMs: number
+  /** Judged episodes this recent are neighbours (triage) and context titles (P1). */
+  contextMs: number
+  /** Pause after a failed P1 call before the queue is tried again. */
+  retryAfterFailMs: number
   /** Episodes per triage call (bigger windows take more calls). */
   maxTriage: number
   /** Characters of cleaned text per episode in the triage list. */
@@ -62,8 +75,11 @@ export const WORKER_DEFAULTS: WorkerOptions = {
   maxBatch: 3,
   maxBatchTokens: 4000,
   maxEpisodeChars: 6000,
-  flushEveryMs: 30_000,
-  windowMs: 5 * MINUTE,
+  flushEveryMs: 1000,
+  debounceMs: 5000,
+  maxWaitMs: 20_000,
+  contextMs: 5 * MINUTE,
+  retryAfterFailMs: 30_000,
   maxTriage: 20,
   triageExcerptChars: 300,
   purgeEveryMs: HOUR,
@@ -106,6 +122,7 @@ const PROMPT_OVERHEAD_TOKENS = 600
 const TRIAGE_OVERHEAD_TOKENS = 450
 const TRIAGE_TOKENS_PER_EPISODE = 40
 const MAX_CONTEXT_TITLES = 8
+const MAX_NEIGHBOURS = 3
 const ACTIVE_PHASES = new Set(['planning', 'step', 'checkpoint'])
 
 export class ExtractionWorker {
@@ -122,6 +139,10 @@ export class ExtractionWorker {
   private running: Promise<void> | null = null
   private again = false
   private budgetWarned = false
+  private lastEnqueuedAt = 0
+  private retryAt = 0
+  /** Episodes judged in the last contextMs: neighbours for triage, titles for P1. */
+  private recent: { episode: Episode; at: number }[] = []
 
   constructor(private readonly deps: ExtractionWorkerDeps) {
     this.opts = { ...WORKER_DEFAULTS, ...deps.options }
@@ -162,6 +183,17 @@ export class ExtractionWorker {
     )
     this.purge()
     this.recover()
+    this.activateSuggested()
+  }
+
+  /** Subjects from before "subjects come straight from structuring": active once they hold content. */
+  private activateSuggested(): void {
+    try {
+      const ids = this.deps.repos.transaction(() => activateSuggestedSubjects(this.deps.repos))
+      if (ids.length > 0) this.deps.bus.emit('memory:changed', { scope: 'subjects', ids })
+    } catch (error) {
+      this.deps.log?.('[perception] could not activate suggested subjects', error)
+    }
   }
 
   stop(): void {
@@ -198,6 +230,7 @@ export class ExtractionWorker {
       seq: this.seq++,
       enqueuedAt: this.deps.clock.now(),
     })
+    this.lastEnqueuedAt = this.deps.clock.now()
     if (this.queue.length > this.opts.maxQueue) {
       this.sortQueue()
       this.queue.length = this.opts.maxQueue // lowest priority stays unextracted in the DB
@@ -206,11 +239,19 @@ export class ExtractionWorker {
     return result
   }
 
-  /** Judges the window when it is due: its oldest episode waited windowMs, or one is urgent. */
+  /**
+   * Judges waiting episodes when due: one is urgent, none arrived for debounceMs, or the oldest
+   * waited maxWaitMs. After a failed P1 call, nothing is due until retryAfterFailMs has passed.
+   */
   flushIfDue(): Promise<void> {
     const now = this.deps.clock.now()
-    const due = this.queue.some((i) => i.urgent || now - i.enqueuedAt >= this.opts.windowMs)
-    return due ? this.flushNow() : (this.running ?? Promise.resolve())
+    const idle = Promise.resolve()
+    if (this.queue.length === 0 || now < this.retryAt) return this.running ?? idle
+    const due =
+      this.queue.some((i) => i.urgent) ||
+      now - this.lastEnqueuedAt >= this.opts.debounceMs ||
+      this.queue.some((i) => now - i.enqueuedAt >= this.opts.maxWaitMs)
+    return due ? this.flushNow() : (this.running ?? idle)
   }
 
   /** Judges and extracts everything queued now (within budget). Resolves when drained. */
@@ -254,8 +295,9 @@ export class ExtractionWorker {
   private async drain(): Promise<void> {
     // 1. Triage: one cheap call judges the window's undecided episodes together.
     if (!(await this.triage())) return
-    // The window as judged: "no" episodes still tell P1 what else was open.
-    const window = this.queue.filter((i) => i.decision !== undefined).map((i) => i.episode)
+    // What was judged now and in the last few minutes: "no" episodes still tell P1 what was open.
+    this.remember(this.queue.filter((i) => i.decision !== undefined).map((i) => i.episode))
+    const window = this.recent.map((r) => r.episode)
     // 2. "No": done without a P1 call. (Episodes that arrived meanwhile stay for their turn.)
     for (const item of this.queue.filter((i) => i.decision === false))
       this.markExtracted(item.episode.id)
@@ -267,8 +309,21 @@ export class ExtractionWorker {
       const ids = new Set(batch.map((i) => i.episode.id))
       const context = contextTitles(window.filter((e) => !ids.has(e.id)))
       // A failed call usually means the providers are down or limited: retry at the next flush.
-      if (!(await this.run(batch, context))) return
+      if (!(await this.run(batch, context))) {
+        this.retryAt = this.deps.clock.now() + this.opts.retryAfterFailMs
+        return
+      }
     }
+  }
+
+  /** Keeps judged episodes of the last contextMs (newest last), without duplicates. */
+  private remember(episodes: readonly Episode[]): void {
+    const now = this.deps.clock.now()
+    const ids = new Set(episodes.map((e) => e.id))
+    this.recent = [
+      ...this.recent.filter((r) => !ids.has(r.episode.id) && now - r.at < this.opts.contextMs),
+      ...episodes.map((episode) => ({ episode, at: now })),
+    ]
   }
 
   /** Decides every undecided item; false when the budget is used up (they stay queued). */
@@ -279,10 +334,16 @@ export class ExtractionWorker {
         .filter((i) => i.decision === undefined && !this.inFlight.has(i.episode.id))
         .slice(0, this.opts.maxTriage)
       if (items.length === 0) return true
-      const input = this.triageInput(items.map((i) => i.episode))
+      // Recently judged episodes ride along as neighbours, so related pages are judged together.
+      const ids = new Set(items.map((i) => i.episode.id))
+      const neighbours = this.recent
+        .filter((r) => !ids.has(r.episode.id) && clock.now() - r.at < this.opts.contextMs)
+        .slice(-MAX_NEIGHBOURS)
+        .map((r) => r.episode)
+      const input = this.triageInput([...neighbours, ...items.map((i) => i.episode)])
       const tokens =
         TRIAGE_OVERHEAD_TOKENS +
-        items.length * TRIAGE_TOKENS_PER_EPISODE +
+        input.episodes.length * TRIAGE_TOKENS_PER_EPISODE +
         estimateTokens(input.episodes.map((e) => e.excerpt).join('\n'))
       if (!this.budget.canSpend(tokens, clock.now())) {
         if (!this.budgetWarned) this.deps.log?.('[perception] daily extraction budget reached')

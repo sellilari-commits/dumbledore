@@ -4,7 +4,10 @@
  * Frames are grouped per app + window + page. Dwell counts only while a window is in front (or,
  * for side-by-side windows, while its content changes). An episode closes 8 s after the student
  * switched away, when capture pauses (idle, lock, switch off), or every 3 min as a rolling
- * checkpoint for long reads (the page continues as a new segment). It also keeps "Right now".
+ * checkpoint for long reads (the page continues as a new segment). A visit's first segment closes
+ * early, ~12 s after it has readable text, so a new page reaches memory within seconds (Ilari:
+ * "see it in the side panel in 5–30 s"); dedupe keeps the later segments to new lines only. It
+ * also keeps "Right now".
  */
 import type { Episode } from '@shared/domain'
 import type { PerceivedWindow } from '@shared/helper-protocol'
@@ -20,6 +23,8 @@ import { StoredLines } from './stored-lines'
 
 export interface EpisodeOptions {
   switchCloseMs: number
+  /** The first segment of a visit closes this early (once it has text), then every checkpointMs. */
+  firstCheckpointMs: number
   checkpointMs: number
   maxDwellStepMs: number
   idleDwellCapSeconds: number
@@ -30,6 +35,7 @@ export interface EpisodeOptions {
 
 export const EPISODE_DEFAULTS: EpisodeOptions = {
   switchCloseMs: 8 * SECOND,
+  firstCheckpointMs: 12 * SECOND,
   checkpointMs: 3 * MINUTE,
   maxDwellStepMs: 15 * SECOND,
   idleDwellCapSeconds: 120,
@@ -104,7 +110,7 @@ export class EpisodeBuilder {
     }
     for (const ep of [...this.open.values()]) {
       if (ep.leftAt !== null && at - ep.leftAt >= this.opts.switchCloseMs) this.close(ep, ep.leftAt)
-      else if (at - ep.startedAt >= this.opts.checkpointMs) this.checkpoint(ep, at)
+      else if (at - ep.startedAt >= this.checkpointAfter(ep)) this.checkpoint(ep, at)
     }
     this.emitNow()
   }
@@ -260,6 +266,14 @@ export class EpisodeBuilder {
     this.remember(ep, endedAt)
     const episode = ep.finalize(endedAt, this.env)
     if (episode) this.deps.onClose(episode, ep.pageKey)
+  }
+
+  /** First segment of a visit with text: early; otherwise the rolling checkpoint. */
+  private checkpointAfter(ep: OpenEpisode): number {
+    const { firstCheckpointMs, checkpointMs } = this.opts
+    return ep.segment === 0 && ep.merged.size > 0
+      ? Math.min(firstCheckpointMs, checkpointMs)
+      : checkpointMs
   }
 
   private checkpoint(ep: OpenEpisode, at: number): void {

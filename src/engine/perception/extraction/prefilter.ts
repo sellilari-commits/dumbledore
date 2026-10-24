@@ -4,7 +4,8 @@
  * call (P0), which decides. The score threshold (`pass`) is kept as the fallback decision when
  * triage fails. Highlighted episodes always pass both.
  *
- * Hard requirements: dwell ≥ 20 s (any dwell for AI chats) and ≥ 150 characters of clean text.
+ * Hard requirements: dwell ≥ 10 s (any dwell for AI chats; a visit's first segment closes at
+ * ~12 s) and ≥ 150 characters of clean text.
  * Never sent: Dumbledore's own interface read back from another window (a UI preview in a browser
  * or in the Claude app's preview pane, the mock chat test page) and an AI chat's empty start page
  * (only menus, sign-in and cookie text, no conversation). Then a 0–1 score from app/domain hints, academic vocabulary density, maths notation, deadline
@@ -24,7 +25,7 @@ export interface PrefilterOptions {
 }
 
 export const PREFILTER_DEFAULTS: PrefilterOptions = {
-  minDwellSeconds: 20,
+  minDwellSeconds: 10,
   minChars: 150,
   threshold: 0.45,
   noiseFloor: 0.2,

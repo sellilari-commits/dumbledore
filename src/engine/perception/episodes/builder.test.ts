@@ -2,6 +2,7 @@ import type { Episode } from '@shared/domain'
 import type { NowContext } from '@shared/state'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AiChatTracker } from '../ai-chat/tracker'
+import { ONE_SEGMENT_PER_VISIT } from '../testing/episodes'
 import { batch, prose, win } from '../testing/frames'
 import { EpisodeBuilder } from './builder'
 import { chatExcerptOf, pageContextOf } from './context'
@@ -46,6 +47,7 @@ describe('EpisodeBuilder', () => {
       onNow: (n) => nows.push(n),
       onFrame: () => frames++,
       subjectFor: (page) => (page.includes('SN1') ? 'sub_chem' : null),
+      options: ONE_SEGMENT_PER_VISIT,
     })
   })
 

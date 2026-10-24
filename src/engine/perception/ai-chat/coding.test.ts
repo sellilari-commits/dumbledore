@@ -6,6 +6,7 @@ import type { Episode } from '@shared/domain'
 import type { FocusedElement } from '@shared/helper-protocol'
 import { describe, expect, it } from 'vitest'
 import { EpisodeBuilder } from '../episodes/builder'
+import { ONE_SEGMENT_PER_VISIT } from '../testing/episodes'
 import { batch, type LineSpec, win } from '../testing/frames'
 import { codingEvidence, looksLikeCodingSession } from './coding'
 import { detectAssistant } from './detector'
@@ -120,7 +121,7 @@ describe('switching between the Chat and Code tabs of one window', () => {
       classify: (w) => tracker.classify(w),
       redact: () => false,
       onClose: (e) => closed.push(e),
-      options: { minPersistDwellS: 0 },
+      options: { minPersistDwellS: 0, ...ONE_SEGMENT_PER_VISIT },
     })
     const T0 = Date.parse('2026-10-24T09:00:00.000Z')
     for (let t = 0; t <= 20; t += 2) builder.ingest(batch(T0 + t * 1000, claudeWin(CLAUDE_CHAT)))

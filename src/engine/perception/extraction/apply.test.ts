@@ -3,9 +3,16 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { ExtractedItem, ExtractOutput } from '../../brain-contract'
 import { FakeClock } from '../../clock'
 import type { MasteryModel, Repos } from '../../contracts'
+import { encounterInput } from '../../store/conformance/fixtures'
 import { createMemoryRepos } from '../../testing/memory-repos'
 import { makeEpisode } from '../testing/episodes'
-import { applyExtraction, normalizeDue, PromptMemory, sameSubjectName } from './apply'
+import {
+  activateSuggestedSubjects,
+  applyExtraction,
+  normalizeDue,
+  PromptMemory,
+  sameSubjectName,
+} from './apply'
 
 const item = (overrides: Partial<ExtractedItem> = {}): ExtractedItem => ({
   subject: { matchId: null, newName: 'Organic Chemistry' },
@@ -47,12 +54,12 @@ describe('applyExtraction', () => {
     prompts = new PromptMemory()
   })
 
-  it('suggests a new subject from an AI chat and builds the concept chain under it', () => {
+  it('creates a new subject from an AI chat, active, and builds the concept chain under it', () => {
     const ep = makeEpisode({ kind: 'ai_chat' })
     repos.episodes.save(ep)
     const out = applyExtraction(output(ep.id, [item()]), [ep], repos, { prompts, nowIso })
     const subject = repos.subjects.findByName('organic chemistry')
-    expect(subject?.status).toBe('suggested')
+    expect(subject?.status).toBe('active')
     expect(out.newSubjectIds).toEqual([subject?.id])
     const concepts = repos.concepts.listBySubject(subject?.id as Id)
     expect(concepts.map((c) => c.name).sort()).toEqual(['Nucleophilic substitution', 'SN1'])
@@ -184,11 +191,11 @@ describe('applyExtraction', () => {
     expect(repos.subjects.list()).toHaveLength(0)
   })
 
-  describe('loose notes: a subject only with study evidence', () => {
-    const casual = () =>
+  describe('subjects come straight from structuring', () => {
+    const casual = (newName: string | null = 'Finnish history') =>
       item({
-        subject: { matchId: null, newName: 'Finnish history' },
-        topicPath: ['Finnish history', 'Tampere'],
+        subject: { matchId: null, newName },
+        topicPath: newName ? [newName, 'Tampere'] : [],
         notes: [
           {
             text: 'Tampere was founded in 1779',
@@ -199,38 +206,41 @@ describe('applyExtraction', () => {
         ],
       })
 
-    it('keeps one casual read loose: no subject, no concept, loose notes', () => {
+    it('one casual read creates the subject at once, active, with its topic and note', () => {
       const ep = makeEpisode()
       const out = applyExtraction(output(ep.id, [casual()]), [ep], repos, { prompts, nowIso })
-      expect(repos.subjects.list()).toEqual([])
+      const [subject] = repos.subjects.list()
+      expect(subject).toMatchObject({ name: 'Finnish history', status: 'active' })
       const [enc] = repos.encounters.list({})
-      expect(enc).toMatchObject({ subjectId: null, conceptId: null })
-      expect(repos.notes.list({ subjectId: null })).toEqual([
-        expect.objectContaining({
-          text: 'Tampere was founded in 1779',
-          conceptId: null,
-          encounterId: enc?.id,
-          keywords: ['Tampere'],
-        }),
-      ])
-      expect(out.noteIds).toHaveLength(1)
-      expect(out.episodeSubjects).toEqual([])
+      expect(enc?.subjectId).toBe(subject?.id)
+      const concepts = repos.concepts.listBySubject(subject?.id as Id).map((c) => c.name)
+      expect(concepts).toContain('Tampere')
+      expect(repos.notes.list({ subjectId: null })).toEqual([])
+      expect(out.newSubjectIds).toEqual([subject?.id])
+      expect(out.episodeSubjects).toEqual([{ episodeId: ep.id, subjectId: subject?.id }])
     })
 
-    it('suggests the subject when the topic comes back, or with an assignment', () => {
-      const first = makeEpisode()
-      applyExtraction(output(first.id, [casual()]), [first], repos, { prompts, nowIso })
-      const again = makeEpisode()
-      applyExtraction(output(again.id, [casual()]), [again], repos, { prompts, nowIso })
-      expect(repos.subjects.list().map((x) => [x.name, x.status])).toEqual([
-        ['Finnish history', 'suggested'],
-      ])
-      const fresh = createMemoryRepos(new FakeClock())
+    it('stays a loose note only when the model names no subject at all', () => {
       const ep = makeEpisode()
-      const withTask = casual()
-      withTask.assignment = { title: 'Essay on Tampere', course: null, dueAt: null }
-      applyExtraction(output(ep.id, [withTask]), [ep], fresh, { prompts, nowIso })
-      expect(fresh.subjects.list()).toHaveLength(1)
+      applyExtraction(output(ep.id, [casual(null)]), [ep], repos, { prompts, nowIso })
+      expect(repos.subjects.list()).toEqual([])
+      expect(repos.notes.list({ subjectId: null })).toHaveLength(1)
+    })
+
+    it('an older suggested subject becomes active when new content arrives, or at start-up', () => {
+      const old = repos.subjects.create({ name: 'Finnish history', status: 'suggested' })
+      const ep = makeEpisode()
+      applyExtraction(output(ep.id, [casual()]), [ep], repos, { prompts, nowIso })
+      expect(repos.subjects.get(old.id)?.status).toBe('active')
+
+      const fresh = createMemoryRepos(new FakeClock())
+      const withContent = fresh.subjects.create({ name: 'Statistics', status: 'suggested' })
+      const empty = fresh.subjects.create({ name: 'Empty', status: 'suggested' })
+      fresh.encounters.add(encounterInput({ subjectId: withContent.id }))
+      expect(activateSuggestedSubjects(fresh)).toEqual([withContent.id])
+      expect(fresh.subjects.get(withContent.id)?.status).toBe('active')
+      expect(fresh.subjects.get(empty.id)?.status).toBe('suggested')
+      expect(activateSuggestedSubjects(fresh)).toEqual([]) // idempotent
     })
   })
 

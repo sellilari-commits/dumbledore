@@ -64,8 +64,9 @@ describe('prefilter', () => {
     expect(r.reasons.join(' ')).toContain('reference')
   })
 
-  it('requires 20 s of dwell except for AI chats', () => {
-    expect(prefilter(makeEpisode({ dwellSeconds: 12 })).pass).toBe(false)
+  it('requires 10 s of dwell except for AI chats (a first segment closes at ~12 s)', () => {
+    expect(prefilter(makeEpisode({ dwellSeconds: 8 })).pass).toBe(false)
+    expect(prefilter(makeEpisode({ dwellSeconds: 12 })).gate).toBe(true)
     const chat = makeEpisode({
       kind: 'ai_chat',
       aiProvider: 'chatgpt',

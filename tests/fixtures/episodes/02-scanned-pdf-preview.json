@@ -95,6 +95,8 @@
       "textIncludes": ["Lecture 4 - Entropy and the Second Law", "dS = δQ_rev / T", "Clausius inequality"]
     },
     "encounters": 1,
-    "understanding": "unknown"
+    "understanding": "unknown",
+    "subject": "Thermodynamics",
+    "concepts": ["Entropy", "Second law of thermodynamics"]
   }
 }

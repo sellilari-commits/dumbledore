@@ -38,3 +38,10 @@ export function makeEpisode(overrides: Partial<Episode> = {}): Episode {
     ...overrides,
   }
 }
+
+/**
+ * Episode options for suites that test the reading model on whole visits (dwell, scroll-backs,
+ * dedupe across checkpoints): no early first checkpoint, so one visit stays one segment until the
+ * rolling 3-minute checkpoint. The early checkpoint has its own tests with the real defaults.
+ */
+export const ONE_SEGMENT_PER_VISIT = { firstCheckpointMs: Number.POSITIVE_INFINITY } as const

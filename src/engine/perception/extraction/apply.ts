@@ -1,5 +1,5 @@
 /**
- * Applies extractor (P1) results to memory: matches or suggests a subject (no duplicates by
+ * Applies extractor (P1) results to memory: matches or creates a subject (no duplicates by
  * name), adds encounters with the three parts and their atomic notes (docs/NOTES.md), upserts
  * assignments, counts prompt habits and lets the mastery model react. Pure Repos work, run
  * inside one transaction by the worker.
@@ -10,9 +10,11 @@
  * the old name match on topicPath is the fallback when the answer is missing or invalid.
  * Highlighted passages become `highlight` notes word for word.
  *
- * Loose notes (docs/NOTES.md §10.4): an item that matches no subject only creates a suggested
- * subject when there is study evidence — an assignment, an AI chat, or the same topic seen before
- * in an earlier loose encounter. Otherwise its encounter and notes stay unfiled (no subject).
+ * Subjects come straight from structuring (Ilari, 2026-10-25): what passed triage is learnable
+ * content, so an item that matches no subject creates it at once, active (no "suggested" step and
+ * no roadmap); the student removes unwanted subjects with the trash button. Only an item the model
+ * could not name a subject for stays a loose note (no subject). Older "suggested" subjects become
+ * active the first time they get new content, or at start-up when they already have encounters.
  */
 import type { Concept, Episode, PromptHabits, SourceRef, Subject } from '@shared/domain'
 import type { ExtractedItem, ExtractOutput } from '../../brain-contract'
@@ -99,41 +101,42 @@ export function normalizeDue(due: string | null): string | null {
   return Number.isNaN(t) ? null : new Date(t).toISOString()
 }
 
-/** Is there study evidence for a subject the student hasn't got yet? (see the header) */
-function studyEvidence(repos: Repos, item: ExtractedItem, episode: Episode, name: string): boolean {
-  if (item.assignment?.title.trim()) return true
-  if (episode.kind === 'ai_chat') return true
-  return repos.encounters
-    .list({ limit: 500 })
-    .some(
-      (e) =>
-        e.subjectId === null &&
-        e.episodeId !== episode.id &&
-        e.topicPath.some((t) => sameSubjectName(t, name)),
-    )
+/** Older "suggested" subjects that already hold content become active (idempotent). */
+export function activateSuggestedSubjects(repos: Repos): string[] {
+  const promoted: string[] = []
+  for (const s of repos.subjects.list({ status: ['suggested'] })) {
+    if (repos.encounters.list({ subjectId: s.id, limit: 1 }).length === 0) continue
+    repos.subjects.update(s.id, { status: 'active' })
+    promoted.push(s.id)
+  }
+  return promoted
+}
+
+/** A suggested subject that gets new content becomes active. */
+function active(repos: Repos, subject: Subject): Subject {
+  return subject.status === 'suggested'
+    ? repos.subjects.update(subject.id, { status: 'active' })
+    : subject
 }
 
 export function resolveSubject(
   repos: Repos,
   item: ExtractedItem,
-  episode?: Episode,
 ): { subject: Subject | null; created: boolean } {
   const byId = item.subject.matchId ? repos.subjects.get(item.subject.matchId) : null
-  if (byId) return { subject: byId, created: false }
+  if (byId) return { subject: active(repos, byId), created: false }
   const name = item.subject.newName?.trim() || null
   const lookup = name ?? item.topicPath[0] ?? null
   if (lookup) {
     const exact = repos.subjects.findByName(lookup)
-    if (exact) return { subject: exact, created: false }
+    if (exact) return { subject: active(repos, exact), created: false }
     const fuzzy = repos.subjects.list().find((s) => sameSubjectName(s.name, lookup))
-    if (fuzzy) return { subject: fuzzy, created: false }
+    if (fuzzy) return { subject: active(repos, fuzzy), created: false }
   }
   if (!name) return { subject: null, created: false }
-  if (episode && !studyEvidence(repos, item, episode, name))
-    return { subject: null, created: false }
   const subject = repos.subjects.create({
     name: name.slice(0, 80),
-    status: 'suggested',
+    status: 'active',
     description: item.bigPicture.slice(0, 200),
   })
   return { subject, created: true }
@@ -184,7 +187,7 @@ export function applyExtraction(
     }
     let highlightsPlaced = false
     for (const item of result.items) {
-      const { subject, created } = resolveSubject(repos, item, episode)
+      const { subject, created } = resolveSubject(repos, item)
       if (subject) {
         add(outcome.subjectIds, subject.id)
         if (created) add(outcome.newSubjectIds, subject.id)
@@ -295,12 +298,15 @@ function placeNote(
   }).id
 }
 
-/** Upserts topicPath (minus the subject itself) as a parent → child chain; returns the leaf id. */
+/**
+ * Upserts topicPath (minus the subject itself) as a parent → child chain; returns the leaf id.
+ * When the path only repeats the subject, its last entry still becomes a top-level topic, so the
+ * page always shows up as a topic in the side panel.
+ */
 function upsertChain(repos: Repos, subject: Subject, item: ExtractedItem): string | null {
-  const chain = item.topicPath
-    .map((t) => t.trim().slice(0, 80))
-    .filter((t) => t && !sameSubjectName(t, subject.name))
-    .slice(-4)
+  const path = item.topicPath.map((t) => t.trim().slice(0, 80)).filter(Boolean)
+  const below = path.filter((t) => !sameSubjectName(t, subject.name)).slice(-4)
+  const chain = below.length > 0 ? below : path.slice(-1)
   let parent: string | null = null
   let leafId: string | null = null
   for (const [i, name] of chain.entries()) {
