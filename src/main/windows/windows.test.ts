@@ -236,6 +236,25 @@ describe('window placement', () => {
     expect(huge.y + huge.height).toBeLessThanOrEqual(wa.y + wa.height)
   })
 
+  it('the dragged and resized chat reopens the same after a restart (bounds in the data folder)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'chat-restart-'))
+    try {
+      const file = join(dir, 'chat-spots.json')
+      const orb = { displayId: 1, x: 1480, y: 491, edge: 'right' as const }
+      // Session 1: the student moves and resizes the chat; main saves it (as rememberChatSpot does).
+      const placed = { x: 200, y: 120, width: 640, height: 720 }
+      fileChatSpotStore(file).save({ [String(DISPLAY.id)]: placed })
+      // The app quits. Session 2: a fresh WindowManager loads the store from disk on start.
+      const reloaded = fileChatSpotStore(file).load()
+      expect(chatOpenBounds(DISPLAY, orb, reloaded[String(DISPLAY.id)])).toEqual(placed)
+      expect(askbarOpenBounds(DISPLAY, null, orb, null, reloaded[String(DISPLAY.id)])).toEqual(
+        placed,
+      )
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('only the chat is resizable; the study box keeps its fixed size', () => {
     const limits = askbarResize(null, DISPLAY.workArea)
     expect(limits).toEqual({
