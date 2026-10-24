@@ -5,6 +5,7 @@
  * The section hides itself when there are none.
  */
 import { IconButton, Section, toast } from '@renderer/design-system'
+import { errorToast } from '@renderer/lib/errors'
 import { formatRelative } from '@renderer/lib/format'
 import { useLooseNotes } from '@renderer/lib/memory-queries'
 import { useAction } from '@renderer/lib/queries'
@@ -12,7 +13,7 @@ import type { Note, SubjectSummary } from '@shared/domain'
 import { Highlighter, StickyNote, X } from 'lucide-react'
 import { SubjectMenu } from './SubjectMenu'
 
-const report = (err: Error) => toast(err.message, { tone: 'error' })
+const report = (err: Error) => errorToast(err)
 
 function LooseNote({ note, subjects }: { note: Note; subjects: SubjectSummary[] }) {
   const file = useAction('notes.file', {

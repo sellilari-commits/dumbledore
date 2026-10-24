@@ -7,6 +7,7 @@ import { useAction } from '@renderer/lib/queries'
 import { useShell } from '@renderer/lib/shell'
 import { type FormEvent, useState } from 'react'
 import { useLocation } from 'wouter'
+import { errorToast } from '@renderer/lib/errors'
 
 export const SUBJECT_EMOJI = [
   '📘',
@@ -103,7 +104,7 @@ export function NewSubjectDialog() {
           navigate(`/subjects/${subject.id}/roadmap`)
           toast(`${subject.emoji} ${subject.name} added`, { tone: 'success' })
         },
-        onError: (err) => toast(err.message, { tone: 'error' }),
+        onError: (err) => errorToast(err),
       },
     )
   }

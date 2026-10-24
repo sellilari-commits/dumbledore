@@ -13,6 +13,7 @@ import type {
   InvokeChannel,
   InvokeRes,
 } from '@shared/ipc'
+import { cleanError } from './errors'
 import { createMockApi, type MockApi, type MockOptions } from './mock-api'
 
 let current: DumbledoreApi | null = null
@@ -106,7 +107,11 @@ export function invoke<C extends InvokeChannel>(
   channel: C,
   ...args: InvokeArgs<C>
 ): Promise<InvokeRes<C>> {
-  return getApi().invoke(channel, ...args)
+  return getApi()
+    .invoke(channel, ...args)
+    .catch((err: unknown) => {
+      throw cleanError(err)
+    })
 }
 
 export function on<E extends EventChannel>(

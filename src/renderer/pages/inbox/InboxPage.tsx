@@ -14,6 +14,7 @@ import {
   Skeleton,
   toast,
 } from '@renderer/design-system'
+import { errorToast } from '@renderer/lib/errors'
 import { useAction, useAppState, useInbox, useSubjects } from '@renderer/lib/queries'
 import type { Encounter, SubjectSummary } from '@shared/domain'
 import { Archive, Brain, CheckCheck, EyeOff, Search } from 'lucide-react'
@@ -143,7 +144,7 @@ export function InboxPage() {
             next.delete(e.id)
             return next
           })
-          toast(err.message, { tone: 'error' })
+          errorToast(err)
         },
       },
     )

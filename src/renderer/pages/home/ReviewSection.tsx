@@ -3,6 +3,7 @@
  * action, "Start 5-min review" (coach.runAction start_review → the review opens as an exam).
  */
 import { Button, Section, Tag, toast } from '@renderer/design-system'
+import { errorToast } from '@renderer/lib/errors'
 import { useAction } from '@renderer/lib/queries'
 import { DUE } from '@renderer/lib/status'
 import { APP_ROUTES, type HomeData } from '@shared/state'
@@ -23,7 +24,7 @@ export function ReviewSection({ items }: { items: HomeData['dueReviews'] }) {
       { type: 'start_review', conceptIds: items.map((i) => i.conceptId) },
       {
         onSuccess: () => toast('Writing your review — it opens in a moment'),
-        onError: (err) => toast(err.message, { tone: 'error' }),
+        onError: (err) => errorToast(err),
       },
     )
 

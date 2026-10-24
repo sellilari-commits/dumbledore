@@ -3,6 +3,7 @@
  * into an existing subject (its concepts and notes move over), or dismiss it (suggested.act).
  */
 import { Button, Section, toast } from '@renderer/design-system'
+import { errorToast } from '@renderer/lib/errors'
 import { useAction } from '@renderer/lib/queries'
 import type { SubjectSummary } from '@shared/domain'
 import { Check, Sparkles, X } from 'lucide-react'
@@ -31,7 +32,7 @@ function SuggestionRow({
                 : `Dismissed ${subject.name}`,
             { tone: action === 'dismiss' ? 'info' : 'success' },
           ),
-        onError: (err) => toast(err.message, { tone: 'error' }),
+        onError: (err) => errorToast(err),
       },
     )
   const busy = act.isPending

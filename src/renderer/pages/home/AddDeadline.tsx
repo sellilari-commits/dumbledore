@@ -3,6 +3,7 @@
  * subject, saved through assignments.add. Enter saves, Esc cancels.
  */
 import { Button, Input, Menu, MenuItem, MenuSeparator, toast } from '@renderer/design-system'
+import { errorToast } from '@renderer/lib/errors'
 import { formatDate } from '@renderer/lib/format'
 import { useAction, useSubjects } from '@renderer/lib/queries'
 import { ChevronDown } from 'lucide-react'
@@ -76,7 +77,7 @@ export function AddDeadline({ onClose }: { onClose: () => void }) {
           })
           onClose()
         },
-        onError: (err) => toast(err.message, { tone: 'error' }),
+        onError: (err) => errorToast(err),
       },
     )
   }

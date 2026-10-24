@@ -4,6 +4,7 @@
  * to hand it to the student's AI — Explore with ChatGPT (pasted, never sent) or Copy prompt.
  */
 import { Button, Callout, toast } from '@renderer/design-system'
+import { errorToast } from '@renderer/lib/errors'
 import { useAction } from '@renderer/lib/queries'
 import { Copy, Lightbulb, Send } from 'lucide-react'
 import type { GapRow } from './exam-utils'
@@ -33,7 +34,7 @@ export function ExamGaps({ rows, prompt, assistant, onShowQuestion }: ExamGapsPr
     if (!prompt) return
     copy.mutate(prompt, {
       onSuccess: () => toast(`Prompt copied — paste it into ${assistant}`, { tone: 'success' }),
-      onError: (err) => toast(err.message, { tone: 'error' }),
+      onError: (err) => errorToast(err),
     })
   }
   const explore = () => {
@@ -49,7 +50,7 @@ export function ExamGaps({ rows, prompt, assistant, onShowQuestion }: ExamGapsPr
               action: { label: 'Copy instead', onClick: copyPrompt },
               ttlMs: 8000,
             }),
-      onError: (err) => toast(err.message, { tone: 'error' }),
+      onError: (err) => errorToast(err),
     })
   }
 

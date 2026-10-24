@@ -3,7 +3,8 @@
  * reviews, everything) and a difficulty — then 'exams.create' and open the exam page.
  * Opened through useShell().openNewExam(subjectIds?).
  */
-import { Button, Choices, Dialog, RadioGroup, RadioRow, toast } from '@renderer/design-system'
+import { Button, Choices, Dialog, RadioGroup, RadioRow } from '@renderer/design-system'
+import { errorToast } from '@renderer/lib/errors'
 import { useAction, useSettings, useSubjects } from '@renderer/lib/queries'
 import { useShell } from '@renderer/lib/shell'
 import type { ExamSpec, SubjectSummary } from '@shared/domain'
@@ -121,7 +122,7 @@ export function NewExamDialog() {
           closeNewExam()
           navigate(`/exams/${quiz.id}`)
         },
-        onError: (err) => toast(err.message, { tone: 'error' }),
+        onError: (err) => errorToast(err),
       },
     )
   }

@@ -5,6 +5,7 @@
  */
 import { Button, Kbd, PageHeader, ProgressBar, QuizQuestion, toast } from '@renderer/design-system'
 import { invoke } from '@renderer/lib/api'
+import { errorToast } from '@renderer/lib/errors'
 import { keys, useAction } from '@renderer/lib/queries'
 import type { Question, Quiz } from '@shared/domain'
 import { useQueryClient } from '@tanstack/react-query'
@@ -43,7 +44,7 @@ export function ExamTaking({ quiz, subjectLine }: ExamTakingProps) {
       )
       scrollPageToTop()
     },
-    onError: (err) => toast(err.message, { tone: 'error' }),
+    onError: (err) => errorToast(err),
   })
 
   const choose = async (q: Question, optionIndex: number, viaKeyboard = false) => {

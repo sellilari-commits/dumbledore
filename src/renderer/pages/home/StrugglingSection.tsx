@@ -4,6 +4,7 @@
  * (coach.runAction start_roadmap on that concept). Hidden when nothing is a struggle.
  */
 import { Button, Callout, toast } from '@renderer/design-system'
+import { errorToast } from '@renderer/lib/errors'
 import { useAction } from '@renderer/lib/queries'
 import { APP_ROUTES, type HomeData } from '@shared/state'
 import { CircleAlert } from 'lucide-react'
@@ -18,7 +19,7 @@ function StruggleRow({ item }: { item: Item }) {
       { type: 'start_roadmap', subjectId: item.subjectId, goal: item.conceptName },
       {
         onSuccess: () => toast(`Building a roadmap for ${item.conceptName}…`),
-        onError: (err) => toast(err.message, { tone: 'error' }),
+        onError: (err) => errorToast(err),
       },
     )
   return (

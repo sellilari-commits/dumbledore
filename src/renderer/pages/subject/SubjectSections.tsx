@@ -5,6 +5,7 @@
  * (coach.runAction start_roadmap on that concept).
  */
 import { Button, ProgressBar, Section, toast } from '@renderer/design-system'
+import { errorToast } from '@renderer/lib/errors'
 import { formatMinutes } from '@renderer/lib/format'
 import { keys, useAction } from '@renderer/lib/queries'
 import type { Concept } from '@shared/domain'
@@ -27,7 +28,7 @@ function StartRoadmap({ detail }: { detail: SubjectDetail }) {
           void qc.invalidateQueries({ queryKey: keys.subject(subject.id) })
           toast('Planning your roadmap…')
         },
-        onError: (err) => toast(err.message, { tone: 'error' }),
+        onError: (err) => errorToast(err),
       },
     )
   return (
@@ -97,7 +98,7 @@ function GapRow({ concept }: { concept: Concept }) {
       { type: 'start_roadmap', subjectId: concept.subjectId, goal: concept.name },
       {
         onSuccess: () => toast(`Building a roadmap for ${concept.name}…`),
-        onError: (err) => toast(err.message, { tone: 'error' }),
+        onError: (err) => errorToast(err),
       },
     )
   const why =

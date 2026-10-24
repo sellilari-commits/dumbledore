@@ -3,6 +3,7 @@
  * bar and "k/n"). The card opens the roadmap; "Resume" picks the study session up again.
  */
 import { Button, ProgressBar, Section, toast } from '@renderer/design-system'
+import { errorToast } from '@renderer/lib/errors'
 import { useAction } from '@renderer/lib/queries'
 import { APP_ROUTES, type HomeData } from '@shared/state'
 import { Milestone, Play } from 'lucide-react'
@@ -23,7 +24,7 @@ function ContinueCard({ item }: { item: Item }) {
           toast(`Resumed at step ${step} of ${item.total} — tap right ⌥ in your AI chat`, {
             tone: 'success',
           }),
-        onError: (err) => toast(err.message, { tone: 'error' }),
+        onError: (err) => errorToast(err),
       },
     )
   return (

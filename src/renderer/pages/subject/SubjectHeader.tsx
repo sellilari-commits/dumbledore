@@ -5,6 +5,7 @@
  * and the read model snaps back.
  */
 import { Button, Callout, PageHeader, toast } from '@renderer/design-system'
+import { errorToast } from '@renderer/lib/errors'
 import { useAction } from '@renderer/lib/queries'
 import type { SubjectDetail, SubjectPatch } from '@shared/state'
 import { Lightbulb } from 'lucide-react'
@@ -27,7 +28,7 @@ function SuggestedCallout({ subjectId }: { subjectId: string }) {
             navigate('/home')
           } else toast('Added to your subjects', { tone: 'success' })
         },
-        onError: (err) => toast(err.message, { tone: 'error' }),
+        onError: (err) => errorToast(err),
       },
     )
   return (
@@ -58,10 +59,7 @@ export function SubjectHeader({ detail }: { detail: SubjectDetail }) {
   const iconRef = useRef<HTMLButtonElement>(null)
   const [picking, setPicking] = useState(false)
   const patch = (p: SubjectPatch) =>
-    update.mutate(
-      { id: subject.id, patch: p },
-      { onError: (err) => toast(err.message, { tone: 'error' }) },
-    )
+    update.mutate({ id: subject.id, patch: p }, { onError: (err) => errorToast(err) })
 
   return (
     <>
