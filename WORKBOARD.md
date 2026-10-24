@@ -8,7 +8,7 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
-| 2026-10-24 20:11 | Olle / Claude | Friendlier logo (D2) and light-touch brand accents: ink primary buttons, midnight rings/progress/selection, warm panel, mark in empty states | `src/shared/brand-mark.ts`, `src/main/tray.test.ts`, `tools/brand/`, `resources/icon.*`, `resources/brand/`, `src/renderer/design-system/tokens.css`, `src/renderer/design-system/components/{SpectaclesGlyph,Feedback}.tsx`, `src/renderer/surfaces/panel/panel.css` (card background only), `docs/DESIGN.md` (tokens) | main | Orb picks up the new mark and ring colour via brand-mark.ts and tokens.css; no edits in Ilari's claimed overlay/ folder |
+| _nothing in progress_ | | | | | |
 
 ## Done recently
 
@@ -16,6 +16,7 @@ Newest first; keep about the last 20 entries.
 
 | Finished (UTC) | Who / agent | Work | Commit |
 |---|---|---|---|
+| 2026-10-24 | Olle / Claude | Friendlier mark (D2) and light-touch accents: ink buttons, midnight rings/progress, warm panel, mark in empty states | 57915fe |
 | 2026-10-24 | Ilari / Claude | Highlight text → note in memory; store only new lines per page (dedupe) | 7f7cf7b, c2f71b7 |
 | 2026-10-24 | Olle / Claude | Logo D (spectacles and beard): orb, tray, app icon, favicon; `npm run icons` | 2641a58 |
 | 2026-10-24 | Ilari / Claude | Delete a subject: trash button in the sidebar and on the subject page, forgets everything about it | 57a2609 |
