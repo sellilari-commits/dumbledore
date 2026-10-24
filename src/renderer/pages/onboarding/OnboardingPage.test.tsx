@@ -16,10 +16,13 @@ beforeEach(() => useToasts.setState({ toasts: [] }))
 afterEach(() => window.history.replaceState({}, '', '/'))
 
 describe('OnboardingPage', () => {
-  it('walks welcome → permissions → AI → subjects → key → done and saves onboardingDone', async () => {
+  it('walks welcome → how it works → permissions → AI → subjects → key → done and saves onboardingDone', async () => {
     const r = start()
     await title('Meet Dumbledore')
     click('Get started')
+
+    await title('How Dumbledore works')
+    click('Set it up')
 
     await title('Let Dumbledore see your screen')
     expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(

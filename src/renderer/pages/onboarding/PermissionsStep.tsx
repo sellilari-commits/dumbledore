@@ -1,5 +1,5 @@
 /**
- * Onboarding 2/5 — macOS permissions with live status. Each row flips to "✓ Granted" by
+ * Onboarding 3/6 — macOS permissions with live status. Each row flips to "✓ Granted" by
  * itself once macOS reports the switch (polled every second). Continue needs both
  * Accessibility and Screen Recording (PDFs, slides and video are read from pixels).
  */
@@ -17,7 +17,7 @@ export function PermissionsStep({ onNext, onBack }: { onNext: () => void; onBack
   const allOk = axOk && srOk
   return (
     <StepFrame
-      step={1}
+      step={2}
       title="Let Dumbledore see your screen"
       lead="macOS asks once for each. Flip the switch for Dumbledore in System Settings — this page notices by itself."
       back={

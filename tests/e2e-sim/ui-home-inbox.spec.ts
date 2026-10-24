@@ -97,7 +97,7 @@ test.describe('home & inbox states', () => {
 
   test('first day, loading and error', async ({ page }) => {
     await open(page, '/home', 'light', 'empty')
-    await expect(page.getByText('Nothing here yet — and that’s fine')).toBeVisible()
+    await expect(page.getByText('Let’s get started')).toBeVisible()
     await shoot(page, 'ui-home-empty-light')
 
     await open(page, '/home', 'light', 'slow')

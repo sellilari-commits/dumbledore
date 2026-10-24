@@ -46,6 +46,8 @@ const ROUTES: readonly Shot[] = [
   ...SUBJECT_VIEWS.map((v) => ({ name: `subject-${v}`, route: `/subjects/${SUBJECT}/${v}` })),
   ...SETTINGS.map((s) => ({ name: `settings-${s}`, route: `/settings/${s}` })),
   { name: 'onboarding', route: '/onboarding', scenario: 'onboarding' },
+  { name: 'onboarding-how', route: '/onboarding?step=how', scenario: 'onboarding' },
+  { name: 'home-first-day', route: '/home', scenario: 'empty' },
 ]
 
 /**
@@ -68,8 +70,12 @@ interface PageGlobals {
 let server: ViteDevServer
 let base = ''
 
-const url = (route: string, theme: Theme, scenario: Scenario = 'demo') =>
-  `${base}/app.html?mock=1&latency=0&scenario=${scenario}&theme=${theme}#${route}`
+/** A route may carry page query params after a `?` (e.g. onboarding's `?step=`). */
+const url = (route: string, theme: Theme, scenario: Scenario = 'demo') => {
+  const [path, query] = route.split('?')
+  const extra = query ? `&${query}` : ''
+  return `${base}/app.html?mock=1&latency=0&scenario=${scenario}&theme=${theme}${extra}#${path}`
+}
 
 /** Waits until skeletons are gone (or 6 s pass — some states keep one on purpose). */
 async function settle(page: Page) {

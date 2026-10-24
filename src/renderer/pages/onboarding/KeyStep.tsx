@@ -1,5 +1,5 @@
 /**
- * Onboarding 5/5 — learn the Dumbledore key by pressing it. A big keycap mirrors the key
+ * Onboarding 6/6 — learn the Dumbledore key by pressing it. A big keycap mirrors the key
  * (pressed while held, a press animation on every tap), a live line coaches ("That’s left ⌥ —
  * tap right ⌥…"), and a checklist explains tap (the prompt: written for what you studied last, the
  * next step, or yours rewritten), hold (tell Dumbledore what you want, it writes the prompt) and
@@ -78,7 +78,7 @@ export function KeyStep({
   }, [lesson.tapped, onLearned])
   return (
     <StepFrame
-      step={4}
+      step={5}
       title="Meet the Dumbledore key"
       lead={`${name[0]?.toUpperCase()}${name.slice(1)} does the smart thing wherever you are. Tap it now: press and let go.`}
       back={

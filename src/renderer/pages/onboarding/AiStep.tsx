@@ -1,5 +1,5 @@
 /**
- * Onboarding 3/5 — the AI. Gemini 3.5 is checked by itself on arrival: in development it is
+ * Onboarding 4/6 — the AI. Gemini 3.5 is checked by itself on arrival: in development it is
  * ready with the Hugo project's key ("Using key from Hugo project"); otherwise the student
  * pastes a key, which is saved to the Keychain and re-checked. The keyless fallbacks are named
  * so nobody feels stuck without a key.
@@ -19,7 +19,7 @@ export function AiStep({ onNext, onBack }: { onNext: () => void; onBack: () => v
   const needsKey = state.kind === 'missing' || state.kind === 'failed'
   return (
     <StepFrame
-      step={2}
+      step={3}
       title={ready ? 'Your AI is ready' : 'Connect an AI'}
       lead="Gemini 3.5 plans your roadmaps, writes the prompts and builds the quizzes. Text is redacted before it leaves your Mac."
       back={

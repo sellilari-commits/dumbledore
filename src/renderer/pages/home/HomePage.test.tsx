@@ -101,9 +101,11 @@ describe('HomePage', () => {
     expect(screen.queryByLabelText('Deadline title')).toBeNull()
   })
 
-  it('shows one calm empty state on the first day', async () => {
+  it('guides a first day with first steps instead of empty sections', async () => {
     renderWithApp(<HomePage />, { scenario: 'empty' })
-    expect(await screen.findByText('Nothing here yet — and that’s fine')).toBeTruthy()
+    expect(await screen.findByText('Let’s get started')).toBeTruthy()
+    expect(await screen.findByRole('region', { name: 'First steps' })).toBeTruthy()
+    expect(screen.getByText('0 of 4 done')).toBeTruthy()
     expect(screen.queryByRole('region', { name: 'Continue' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Add a subject' }))
     expect(useShell.getState().newSubjectOpen).toBe(true)

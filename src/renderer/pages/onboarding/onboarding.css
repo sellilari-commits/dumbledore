@@ -511,3 +511,123 @@
 .dd-onb__status .dd-set-muted {
   white-space: normal;
 }
+
+/* ── How it works (step 2) ─────────────────────────────────────────────── */
+.dd-onb__column--wide {
+  width: min(760px, calc(100vw - 48px));
+}
+
+.dd-how {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dd-how__card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 14px 18px;
+  border-radius: var(--radius-panel);
+  background: var(--c-bacSec);
+  box-shadow: inset 0 0 0 1px var(--c-borPri);
+}
+
+.dd-how__art {
+  height: 112px;
+  margin-bottom: 8px;
+  border-radius: var(--radius-menu);
+  background: var(--c-bacPri);
+  box-shadow: inset 0 0 0 1px var(--c-borPri);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  overflow: hidden;
+}
+
+.dd-how__doc {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.dd-how__doc span {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--c-borPri);
+}
+
+.dd-how__doc .dd-how__mark {
+  height: 10px;
+  margin: -2px 0;
+  border-radius: 2px;
+  background: var(--c-yellow-bg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-yellow-text) 45%, transparent);
+}
+
+.dd-how__chat {
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.dd-how__prompt {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--c-bacSec);
+  box-shadow: inset 0 0 0 1px var(--c-borStr);
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--c-texSec);
+  text-align: left;
+}
+
+.dd-how__quiz {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dd-how__option {
+  height: 18px;
+  border-radius: 5px;
+  background: var(--c-bacSec);
+  box-shadow: inset 0 0 0 1px var(--c-borStr);
+}
+
+.dd-how__option--right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 6px;
+  color: var(--c-green-ink);
+  background: var(--c-green-bg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-green-text) 50%, transparent);
+}
+
+.dd-how__title {
+  font-weight: var(--weight-semibold);
+}
+
+.dd-how__text {
+  margin: 0;
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+  color: var(--c-texSec);
+}
+
+@media (max-width: 640px) {
+  .dd-how {
+    grid-template-columns: 1fr;
+  }
+}

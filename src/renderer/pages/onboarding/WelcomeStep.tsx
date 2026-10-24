@@ -1,4 +1,4 @@
-/** Onboarding 1/5 — welcome and the three privacy promises. */
+/** Onboarding 1/6 — welcome and the three privacy promises. */
 import { Button, SpectaclesGlyph } from '@renderer/design-system'
 import { EyeOff, HardDrive, ScanText } from 'lucide-react'
 import { StepFrame } from './StepFrame'

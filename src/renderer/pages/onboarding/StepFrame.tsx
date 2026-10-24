@@ -1,12 +1,12 @@
 /**
- * The frame every onboarding step shares: progress dots ("Step 2 of 5", "All set" on the final
+ * The frame every onboarding step shares: progress dots ("Step 2 of 6", "All set" on the final
  * screen), a title that takes focus when the step appears, a lead sentence, the step's content
  * and a footer row (Back on the left, secondary and primary actions on the right).
  */
 import { type ReactNode, useEffect, useRef } from 'react'
 import './onboarding.css'
 
-export const STEP_COUNT = 5
+export const STEP_COUNT = 6
 
 export function Progress({ step }: { step: number }) {
   return (
@@ -33,6 +33,8 @@ export interface StepFrameProps {
   /** Shown above the title (welcome mark). */
   art?: ReactNode
   center?: boolean
+  /** A wider column for steps that lay content out side by side. */
+  wide?: boolean
   children?: ReactNode
   /** Footer: left side (Back) and right side (secondary + primary). */
   back?: ReactNode
@@ -45,6 +47,7 @@ export function StepFrame({
   lead,
   art,
   center,
+  wide,
   children,
   back,
   actions,
@@ -54,7 +57,9 @@ export function StepFrame({
     titleRef.current?.focus({ preventScroll: true })
   }, [])
   return (
-    <div className={center ? 'dd-onb__column dd-onb__column--center' : 'dd-onb__column'}>
+    <div
+      className={`dd-onb__column${center ? ' dd-onb__column--center' : ''}${wide ? ' dd-onb__column--wide' : ''}`}
+    >
       <Progress step={step} />
       {art}
       <h1 className="dd-onb__title" ref={titleRef} tabIndex={-1}>

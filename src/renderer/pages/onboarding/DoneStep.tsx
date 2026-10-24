@@ -48,7 +48,7 @@ export function DoneStep({
   const aiOk = gemini.state.kind === 'ready'
   return (
     <StepFrame
-      step={5}
+      step={6}
       center
       art={
         <div className="dd-onb__mark" aria-hidden>

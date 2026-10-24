@@ -1,5 +1,5 @@
 /**
- * Onboarding 4/5 — "What are you studying?": subjects with deadlines (SubjectsCard) and
+ * Onboarding 5/6 — "What are you studying?": subjects with deadlines (SubjectsCard) and
  * "About you" (a few lines + level), saved through 'profile.update' on Continue. Everything is
  * optional: Dumbledore also suggests subjects from what it sees.
  */
@@ -34,7 +34,7 @@ export function StudyStep({ onNext, onBack }: { onNext: () => void; onBack: () =
   }
   return (
     <StepFrame
-      step={3}
+      step={4}
       title="What are you studying?"
       lead="Add your subjects and any exam dates. Dumbledore files what you read under them and plans reviews before each deadline."
       back={

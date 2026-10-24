@@ -1,24 +1,17 @@
 /**
  * Home (/home): the greeting and today's line, then Continue, Due for review, Struggling with,
  * Upcoming deadlines, This week and Prompting habits (PLAN F7). Loading shows the page's shape
- * with specific copy; a first day with nothing captured gets one calm empty state.
+ * with specific copy. First steps guide a new student (the whole page on a first day, then on
+ * top until every step is done).
  */
-import {
-  Button,
-  EmptyState,
-  ErrorState,
-  LoadingState,
-  PageHeader,
-  Skeleton,
-} from '@renderer/design-system'
+import { ErrorState, LoadingState, PageHeader, Skeleton } from '@renderer/design-system'
 import { greeting } from '@renderer/lib/format'
 import { useHome } from '@renderer/lib/queries'
-import { useShell } from '@renderer/lib/shell'
 import type { HomeData } from '@shared/state'
-import { BookOpen, Plus } from 'lucide-react'
 import { PageFrame } from '../PageFrame'
 import { ContinueSection } from './ContinueSection'
 import { DeadlinesSection } from './DeadlinesSection'
+import { FirstSteps, useFirstSteps } from './FirstSteps'
 import { HabitsSection } from './HabitsSection'
 import { isFirstDay, summaryLine, todayLabel } from './home-utils'
 import { ReviewSection } from './ReviewSection'
@@ -47,29 +40,12 @@ function HomeSkeleton() {
   )
 }
 
-function FirstDay() {
-  const setNewSubject = useShell((s) => s.setNewSubject)
-  return (
-    <EmptyState
-      className="hm-first-day"
-      icon={<BookOpen size={28} strokeWidth={1.5} />}
-      title="Nothing here yet — and that’s fine"
-      actions={
-        <Button variant="primary" icon={<Plus size={16} />} onClick={() => setNewSubject(true)}>
-          Add a subject
-        </Button>
-      }
-    >
-      Study the way you normally do — lecture notes, articles, ChatGPT. Dumbledore notices what you
-      work on, and this page fills up with what to continue, review and watch out for.
-    </EmptyState>
-  )
-}
-
 function HomeBody({ home }: { home: HomeData }) {
-  if (isFirstDay(home)) return <FirstDay />
+  const steps = useFirstSteps(home)
+  if (isFirstDay(home)) return <FirstSteps steps={steps} welcome />
   return (
     <>
+      <FirstSteps steps={steps} />
       <ContinueSection items={home.continue} />
       <ReviewSection items={home.dueReviews} />
       <StrugglingSection items={home.struggling} />
