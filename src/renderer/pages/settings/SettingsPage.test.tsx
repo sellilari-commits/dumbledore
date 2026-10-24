@@ -36,6 +36,12 @@ describe('SettingsPage', () => {
     await waitFor(() => expect(r.api.db.settings.captureEnabled).toBe(false))
   })
 
+  it('offers "Every second" capture, the default', async () => {
+    const r = renderWithApp(page, { route: '/settings/capture' })
+    expect(await screen.findByText('Every second')).toBeTruthy()
+    expect(r.api.db.settings.cadence.activeMs).toBe(1000)
+  })
+
   it('adds an excluded site from a pasted link', async () => {
     const r = renderWithApp(page, { route: '/settings/capture' })
     const input = await screen.findByPlaceholderText('e.g. mail.google.com')

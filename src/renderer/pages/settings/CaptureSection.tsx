@@ -10,6 +10,7 @@ import { SelectMenu, type SelectOption, SettingsRow, SettingsSection } from './u
 import { useCaptureSwitch, useSettingsPatch } from './useSettingsPatch'
 
 const CADENCE: SelectOption<number>[] = [
+  { value: 1000, label: 'Every second' },
   { value: 2000, label: 'Every 2 seconds' },
   { value: 4000, label: 'Every 4 seconds' },
   { value: 8000, label: 'Every 8 seconds' },
