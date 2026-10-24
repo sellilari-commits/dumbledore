@@ -109,7 +109,7 @@ export async function generateExamQuestions(
     .map((e) => ({ seen: e.seen.slice(0, 240), bigPicture: e.bigPicture.slice(0, 160) }))
   const studied = studiedDigest(repos, subjectIds)
   const find = conceptFinder(repos, subjectIds, selected)
-  const subjectRefs = subjects.map((s) => ({ id: s.id, name: s.name }))
+  const subjectRefs = subjects.map((s) => ({ id: s.id, name: s.name, goal: s.goal }))
 
   const regenerate = (failed: QuestionDraft[]) => {
     const names = [...new Set(failed.map((q) => q.concept).filter(Boolean))]

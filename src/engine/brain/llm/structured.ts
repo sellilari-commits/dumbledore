@@ -19,7 +19,7 @@ export const DEFAULT_TIMEOUTS: Record<string, number> = {
   triage: 20_000,
   extract: 60_000,
   consolidate: 90_000,
-  buildRoadmap: 45_000,
+  buildRoadmap: 60_000, // the keyless fallback (OVH) needs most of it
   writeStep: 2_500,
   makeCheckpoint: 30_000,
   verifyQuestions: 20_000,

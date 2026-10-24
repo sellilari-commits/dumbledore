@@ -353,7 +353,8 @@ export const VerifyResult = z.object({
 export type VerifyResult = z.infer<typeof VerifyResult>
 
 export const ExamInput = z.object({
-  subjects: z.array(z.object({ id: z.string(), name: z.string() })),
+  /** `goal`: what the student is working towards; steers the topics while none are known. */
+  subjects: z.array(z.object({ id: z.string(), name: z.string(), goal: z.string().nullish() })),
   spec: ExamSpec,
   concepts: z.array(z.object({ name: z.string(), status: MasteryStatus, mastery: z.number() })),
   encounters: z.array(z.object({ seen: z.string(), bigPicture: z.string() })),

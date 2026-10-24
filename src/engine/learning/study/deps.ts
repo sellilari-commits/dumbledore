@@ -45,7 +45,9 @@ export interface StudyOptions {
 
 export const DEFAULT_STUDY_OPTIONS: StudyOptions = {
   writeStepTimeoutMs: 2500,
-  roadmapTimeoutMs: 30_000,
+  // Same as the brain's own buildRoadmap budget (llm/structured.ts): a shorter deadline here cut
+  // off the slow keyless fallback before the brain gave up on it.
+  roadmapTimeoutMs: 60_000,
   checkpointTimeoutMs: 25_000,
   verifyTimeoutMs: 15_000,
   maxRegenerateTries: 2,

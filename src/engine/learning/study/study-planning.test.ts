@@ -5,6 +5,7 @@ import {
   type RoadmapPlan,
   type StepInput,
 } from '../../brain-contract'
+import { DEFAULT_STUDY_OPTIONS } from './deps'
 import { MOVE_TIPS } from './step-writer'
 import { chat, createHarness, deferred, flush, ORGO_PLAN, seedSubject } from './test-helpers'
 
@@ -120,7 +121,7 @@ describe('StudyService — planning', () => {
     const subject = seedSubject(h.repos, 'Organic Chemistry')
     const starting = h.service.start({ subjectId: subject.id, goal: null, question: null }, chat())
     await flush()
-    h.clock.advance(30_000)
+    h.clock.advance(DEFAULT_STUDY_OPTIONS.roadmapTimeoutMs)
     await expect(starting).rejects.toThrow(/timed out/)
     expect(h.service.current()).toBeNull()
   })

@@ -47,9 +47,9 @@ export function planExam(input: ExamInput): Omit<ExamBatch, 'avoid'>[] {
   }
   if (pool.length === 0) {
     // No topics known yet: every question picks its own topic of the subject (OPEN_TOPIC), so
-    // the answers still teach Dumbledore which topics the student knows.
+    // the answers still teach Dumbledore which topics the student knows; the goal steers it.
     pool = input.subjects.map((s) => ({
-      name: `${OPEN_TOPIC} ${s.name}`,
+      name: `${OPEN_TOPIC} ${s.name}${s.goal?.trim() ? ` (goal: ${s.goal.trim()})` : ''}`,
       status: 'new' as const,
       mastery: 0,
     }))
@@ -113,7 +113,7 @@ function system(b: ExamBatch): string {
 - Test understanding and transfer, not recall: at least one question per concept should apply it in a context the student has not seen.
 - Base questions on what the student studied (<studied>) where possible; otherwise on standard course material at their level.
 - Write one question per line of <plan>, in that order, testing that concept. Make questions that share a concept clearly different.
-- \`concept\` names the specific topic the question tests, in 1–5 words (e.g. "Ramesses II", "Carbocation stability"), never a subject's own name. A plan line "${OPEN_TOPIC} <subject>" means: choose a different important topic of that subject for each such line and use its name as \`concept\`.
+- \`concept\` names the specific topic the question tests, in 1–5 words (e.g. "Ramesses II", "Carbocation stability"), never a subject's own name. A plan line "${OPEN_TOPIC} <subject>" means: choose a different important topic of that subject for each such line and use its name as \`concept\`; when the line names a goal, every topic must serve that goal (its parts, prerequisites and the contrasts it needs).
 - Difficulty: ${DIFFICULTY[b.difficulty]}.
 - Never repeat or reword a question from <avoid>.
 
@@ -141,7 +141,7 @@ function user(b: ExamBatch): string {
 export const examBatchPrompt: PromptSpec<ExamBatch, LlmQuestions, QuestionDraft[]> = {
   id: 'P6',
   task: 'makeExam',
-  version: 2,
+  version: 3,
   tier: 'reason',
   temperature: 0.3,
   maxOutputTokens: 3200,

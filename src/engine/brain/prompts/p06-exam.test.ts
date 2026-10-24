@@ -25,6 +25,22 @@ describe('P6 topics', () => {
     expect(batch?.plan.every((p) => p.concept === `${OPEN_TOPIC} Egyptian History`)).toBe(true)
   })
 
+  it('names the goal on the open-topic line, so the topics serve it', () => {
+    const withGoal = input([])
+    withGoal.subjects = [
+      {
+        ...withGoal.subjects[0],
+        id: 'sub_egypt',
+        name: 'Egyptian History',
+        goal: 'The New Kingdom pharaohs',
+      },
+    ]
+    const [batch] = planExam(withGoal)
+    expect(batch?.plan[0]?.concept).toBe(
+      `${OPEN_TOPIC} Egyptian History (goal: The New Kingdom pharaohs)`,
+    )
+  })
+
   it('keeps known concepts in the plan', () => {
     const [batch] = planExam(input([{ name: 'Ramesses II', status: 'struggling', mastery: 0.2 }]))
     expect(batch?.plan[0]?.concept).toBe('Ramesses II')
