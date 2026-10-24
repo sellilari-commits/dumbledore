@@ -8,7 +8,6 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
-| 2026-10-24 | Ilari / Claude | Fresh install starts empty: orb and chat window never fall back to demo data | 84f8871 |
 | _nothing in progress_ | | | | | |
 
 ## Done recently
@@ -17,6 +16,7 @@ Newest first; keep about the last 20 entries.
 
 | Finished (UTC) | Who / agent | Work | Commit |
 |---|---|---|---|
+| 2026-10-24 | Ilari / Claude | Fresh install starts empty: orb and chat window never fall back to demo data | 84f8871 |
 | 2026-10-24 | Ilari / Claude | Workboard rules for every agent (AGENTS.md + pointers) and the pre-push hook | see log |
 | 2026-10-24 | Ilari / Claude | Double-tap chat: recent topics carousel on top | c13beea |
 | 2026-10-24 | Ilari / Claude | Capture stays on while the screen changes, even without input | 250e04b |
