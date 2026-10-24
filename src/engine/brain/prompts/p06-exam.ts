@@ -10,6 +10,8 @@ import { checkQuestions, finalizeQuestions, LlmQuestions, QUESTION_RULES } from 
 import { bullets, languageName, type PromptSpec, tag } from './shared'
 
 export const EXAM_BATCH_SIZE = 5
+/** Plan line for a subject with no known topics yet: the model names a specific topic. */
+export const OPEN_TOPIC = 'Pick a key topic of'
 
 export interface ExamBatch {
   subjects: string[]
@@ -44,7 +46,13 @@ export function planExam(input: ExamInput): Omit<ExamBatch, 'avoid'>[] {
     pool.sort((a, b) => a.mastery - b.mastery)
   }
   if (pool.length === 0) {
-    pool = input.subjects.map((s) => ({ name: s.name, status: 'new' as const, mastery: 0 }))
+    // No topics known yet: every question picks its own topic of the subject (OPEN_TOPIC), so
+    // the answers still teach Dumbledore which topics the student knows.
+    pool = input.subjects.map((s) => ({
+      name: `${OPEN_TOPIC} ${s.name}`,
+      status: 'new' as const,
+      mastery: 0,
+    }))
   }
   const perQuestion = Array.from(
     { length: count },
@@ -71,6 +79,24 @@ export function planExam(input: ExamInput): Omit<ExamBatch, 'avoid'>[] {
   })
 }
 
+const norm = (t: string) =>
+  t
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+
+/** A question whose concept is a whole subject teaches nothing about which topic was missed. */
+export function topicIssues(questions: readonly QuestionDraft[], b: ExamBatch): string[] {
+  const subjects = new Set(b.subjects.map(norm))
+  return questions.flatMap((q, i) =>
+    subjects.has(norm(q.concept)) || norm(q.concept).startsWith(norm(OPEN_TOPIC))
+      ? [
+          `question ${i + 1}: concept "${q.concept}" is a subject, not a topic; name the specific topic it tests`,
+        ]
+      : [],
+  )
+}
+
 const FOCUS: Record<ExamBatch['focus'], string> = {
   weak: 'weak-spots exam: the concepts the student struggles with most',
   due: 'review exam: concepts due for spaced review',
@@ -87,6 +113,7 @@ function system(b: ExamBatch): string {
 - Test understanding and transfer, not recall: at least one question per concept should apply it in a context the student has not seen.
 - Base questions on what the student studied (<studied>) where possible; otherwise on standard course material at their level.
 - Write one question per line of <plan>, in that order, testing that concept. Make questions that share a concept clearly different.
+- \`concept\` names the specific topic the question tests, in 1–5 words (e.g. "Ramesses II", "Carbocation stability"), never a subject's own name. A plan line "${OPEN_TOPIC} <subject>" means: choose a different important topic of that subject for each such line and use its name as \`concept\`.
 - Difficulty: ${DIFFICULTY[b.difficulty]}.
 - Never repeat or reword a question from <avoid>.
 
@@ -114,7 +141,7 @@ function user(b: ExamBatch): string {
 export const examBatchPrompt: PromptSpec<ExamBatch, LlmQuestions, QuestionDraft[]> = {
   id: 'P6',
   task: 'makeExam',
-  version: 1,
+  version: 2,
   tier: 'reason',
   temperature: 0.3,
   maxOutputTokens: 3200,
@@ -125,6 +152,9 @@ export const examBatchPrompt: PromptSpec<ExamBatch, LlmQuestions, QuestionDraft[
   cacheable: false,
   language: (b) => b.language,
   build: (b) => ({ system: system(b), user: user(b) }),
-  check: (out, b) => checkQuestions(out.questions, b.plan.length),
+  check: (out, b) => [
+    ...checkQuestions(out.questions, b.plan.length),
+    ...topicIssues(out.questions, b),
+  ],
   finalize: (out, b) => finalizeQuestions(out.questions, b.plan.length),
 }
