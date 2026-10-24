@@ -36,18 +36,17 @@ const CANNED: Canned[] = [
     test: /limiting/i,
     reply:
       'The **limiting reagent** runs out first, so it decides how much product you get.\n\n1. Convert every reactant to moles.\n2. Divide by its coefficient in the balanced equation.\n3. The smallest result is the limiting one.\n\nTry it with 2 H₂ + O₂ → 2 H₂O and 3 mol of each.',
-    actions: [
-      { type: 'insert_prompt', text: 'Give me 3 limiting-reagent problems, one at a time.' },
-    ],
+    actions: [{ type: 'start_review', conceptIds: ['c_limiting'] }],
   },
   {
     test: /mole|stoich|molar/i,
     reply:
-      'A **mole** is a count, like a dozen: 6.022 × 10²³ particles. **Molar mass** (g/mol) turns grams into that count:\n\n- `n = m / M` — moles = mass ÷ molar mass\n- 18 g of water ÷ 18 g/mol = **1 mol** of H₂O\n\nThe usual slip is using the mass of one atom instead of the whole formula. Want a prompt that drills exactly that?',
+      'A **mole** is a count, like a dozen: 6.022 × 10²³ particles. **Molar mass** (g/mol) turns grams into that count:\n\n- `n = m / M` — moles = mass ÷ molar mass\n- 18 g of water ÷ 18 g/mol = **1 mol** of H₂O\n\nThe usual slip is using the mass of one atom instead of the whole formula. Want me to put that first on your roadmap?',
     actions: [
       {
-        type: 'insert_prompt',
-        text: 'Give me 5 grams-to-moles problems with whole formulas, one at a time, and check each answer before the next.',
+        type: 'adjust_roadmap',
+        subjectId: 'sub_chem',
+        instruction: 'Drill grams-to-moles with whole formulas before moving on',
       },
     ],
   },
@@ -67,7 +66,8 @@ const CANNED: Canned[] = [
 
 export function cannedReply(text: string): AskResult {
   const hit = CANNED.find((c) => c.test.test(text))
-  const pasted = text.trim().toLowerCase() === 'paste'
+  // The double-tap chat never pastes into the AI chat.
+  const pasted = false
   if (hit) return { reply: hit.reply, actions: hit.actions, pasted }
   return {
     reply:
