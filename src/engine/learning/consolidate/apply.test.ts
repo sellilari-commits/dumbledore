@@ -131,6 +131,53 @@ describe('applyConsolidation', () => {
     expect(report.placedNotes).toBe(1)
   })
 
+  it('moves a concept with its notes to another active subject, never elsewhere', () => {
+    const enzymes = concept('Enzymes')
+    const sn1 = concept('SN1')
+    const a = note(enzymes, 'Enzymes lower the activation energy')
+    const b = note(enzymes, 'Active sites bind substrates', { kind: 'highlight' })
+    repos.notes.update(b, { pinned: true })
+    const stay = note(sn1, 'SN1 has two steps')
+    const bio = repos.subjects.create({ name: 'Biology' }).id
+    const old = repos.subjects.create({ name: 'Old', status: 'archived' }).id
+    const report = applyConsolidation(
+      repos,
+      subject,
+      empty({
+        moveConcepts: [
+          { conceptId: sn1, subjectId: 'sub_missing' },
+          { conceptId: sn1, subjectId: old },
+          { conceptId: sn1, subjectId: subject },
+          { conceptId: 'c42', subjectId: bio },
+          { conceptId: enzymes, subjectId: bio },
+        ],
+      }),
+      { relink: repos.relink },
+    )
+    expect(repos.concepts.get(enzymes)?.subjectId).toBe(bio)
+    expect(repos.notes.get(a)?.subjectId).toBe(bio)
+    expect(repos.notes.get(b)).toMatchObject({ subjectId: bio, conceptId: enzymes, pinned: true })
+    expect(repos.concepts.get(sn1)?.subjectId).toBe(subject)
+    expect(repos.notes.get(stay)?.subjectId).toBe(subject)
+    expect(report.movedConcepts).toBe(1)
+    expect(report.movedTo).toEqual([bio])
+    expect(report.skipped).toEqual([
+      `moveConcepts ${sn1}: unknown`,
+      `moveConcepts ${sn1}: unknown`,
+      `moveConcepts ${sn1}: unknown`,
+      'moveConcepts c42: unknown',
+    ])
+    // Without relink, moves are skipped.
+    const r2 = applyConsolidation(
+      repos,
+      subject,
+      empty({ moveConcepts: [{ conceptId: sn1, subjectId: bio }] }),
+    )
+    expect(r2.skipped).toEqual([`moveConcepts ${sn1}: no relink`])
+    expect(r2).toMatchObject({ movedConcepts: 0, movedTo: [] })
+    expect(repos.concepts.get(sn1)?.subjectId).toBe(subject)
+  })
+
   it('builds topics with evidence, refuses loops and empty topics', () => {
     const sn1 = concept('SN1')
     const sn2 = concept('SN2')

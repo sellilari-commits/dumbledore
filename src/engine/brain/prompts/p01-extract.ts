@@ -83,10 +83,10 @@ const ITEM_RULES = `For each learning episode give one item per distinct topic (
 - subjectMatchId: id of the listed subject this belongs to, else null. subjectNewName: when no listed subject fits, a short, broad subject name for this content (course-like, e.g. "Linear Algebra", "Finnish History"); it is created right away, so reuse a listed subject whenever one fits. null only when no sensible subject exists. Never fill both.
 - assignment: only when the text names an assignment, exam or deadline: {title, course or null, dueAt as YYYY-MM-DD or null}; resolve relative dates ("Friday") from <today>. Otherwise null.`
 
-const NOTE_RULES = `- notes: 1–5 facts worth remembering from this item: a definition, fact, formula, date or example, each ≤ 25 words and self-contained ("X is Y"), in the language of the page, about the content only (never the site, menus or interface), no two saying the same thing. For each note: keywords (1–5 short terms, for linking notes later) and its place in the subject's concept tree, listed under <subjects> as "c3 Name < c1" (c1 is its parent): conceptId = the ref of the existing concept it belongs to (prefer this), or, when none fits, conceptId null and newConcept {name: a specific topic of 2–5 words, never a sentence; parentId: the ref of its parent concept, or null for a new top-level topic}. With no matching subject, use newConcept with parentId null.`
+const NOTE_RULES = `- notes: 1–5 facts worth remembering from this item: a definition, fact, formula, date or example, each ≤ 25 words and self-contained ("X is Y"), in the language of the page, about the content only (never the site, menus or interface; leave out page controls glued to the text, e.g. a Wikipedia "edit" link: "Economics and political scienceedit" → "Economics and political science", and "[edit]", "[1]"), no two saying the same thing. For each note: keywords (1–5 short terms, for linking notes later) and its place in the subject's concept tree, listed under <subjects> as "c3 Name < c1" (c1 is its parent): conceptId = the ref of the existing concept it belongs to (prefer this: a topic gathers every page about the same thing, so content about an existing topic goes there even when it comes from another site or uses other words), or, when none fits, conceptId null and newConcept {name: a specific topic of 2–5 words, never a sentence; parentId: the ref of its parent concept, or null for a new top-level topic}. With no matching subject, use newConcept with parentId null.`
 
 /** On-device (4K context): the same notes, said briefly. */
-const NOTE_RULES_COMPACT = `- notes: 1–5 short facts (≤ 25 words, page language, content only), each with 1–3 keywords and conceptId = the ref of the listed concept it belongs to, else newConcept {name, parentId ref or null}.`
+const NOTE_RULES_COMPACT = `- notes: 1–5 short facts (≤ 25 words, page language, content only), each with 1–3 keywords and conceptId = the ref of the listed concept it belongs to (same thing from another page = same concept), else newConcept {name, parentId ref or null}.`
 
 const CONTEXT_RULES = `Context: <context> lists what else the student had open in the same few minutes. Use it to judge each episode and to name its topic (a page next to a chat on the same topic is study), but record only the episode's own content. Record the content itself, never site chrome: navigation, sidebars, related links, ads, footers.`
 
@@ -414,7 +414,7 @@ function finalizeOne(
 export const extractPrompt: PromptSpec<ExtractInput, LlmExtract, ExtractOutput> = {
   id: 'P1',
   task: 'extract',
-  version: 4,
+  version: 5,
   tier: 'extract',
   temperature: 0.1,
   maxOutputTokens: 2800,

@@ -23,14 +23,18 @@ export const LlmConsolidate = z.object({
   placeNotes: z.array(z.object({ note: z.string(), concept: z.string() })),
   edges: z.array(z.object({ from: z.string(), to: z.string(), why: z.string() })),
   openQuestions: z.array(z.object({ concept: z.string().nullable(), question: z.string() })),
+  moveConcepts: z.array(z.object({ concept: z.string(), subject: z.string() })).optional(),
 })
 export type LlmConsolidate = z.infer<typeof LlmConsolidate>
 
-const SYSTEM = `You keep one subject of a student's study notes tidy, like a careful tutor organising a notebook. You get the subject's concept tree, its notes and its prerequisite edges. Concepts are "c3 Name < c1" (c3 sits under c1; "< -" = top level) with status and mastery; notes are "n7 c3 fact: text" ("-" = not placed yet), and [pinned] marks a note the student wrote or edited.
+const SYSTEM = `You keep one subject of a student's study notes tidy, like a careful tutor organising a notebook. You get the subject's concept tree, its notes and its prerequisite edges. Concepts are "c3 Name < c1" (c3 sits under c1; "< -" = top level) with status and mastery; notes are "n7 c3 fact: text {source}" ("-" = not placed yet; {source} = the page or app it was read in), and [pinned] marks a note the student wrote or edited.
+
+The student reads about the same thing in many places. One topic gathers all its sources: pages about the same thing belong to ONE concept, never one concept per page or site.
 
 Return:
-- summaries: for every concept that has notes, 1–3 plain sentences written only from its notes (and its children's), in the language of the notes. Skip concepts without notes.
-- mergeConcepts: two concepts that are the same thing, from → into (into = the clearer name).
+- summaries: for every concept that has notes, written only from its notes (and its children's), in the language of the notes, without page controls (a glued "edit" link, "[edit]", "[1]"). For a top-level topic this is its big picture: one short paragraph (2–4 sentences) that synthesises what ALL its sources say, not a list of pages. Other concepts: 1–3 plain sentences. Skip concepts without notes.
+- mergeConcepts: unite concepts that are about the same thing, even when their names differ or their notes come from different sources, from → into (into = the clearer name).
+- moveConcepts: a concept that clearly belongs to another of the student's subjects (listed in <other_subjects>) → that subject's ref (s1…). Only when it plainly fits there better; usually [].
 - mergeNotes: two notes that say the same thing, from → into, with text = a better combined wording or null. Never merge a pinned note.
 - topics: the subject's top level — 3 to 9 broad topics (fewer only when the subject is tiny). Each topic is an existing concept (concept = its ref) or a new topic (concept null, a short name of 1–4 words), and children = the refs of the concepts that belong directly under it. Every concept that has notes ends up under a topic. A topic needs at least one child with notes. Never put a concept under itself or under its own child.
 - placeNotes: each unplaced or misplaced note → the concept it belongs to. Never move a pinned note.
@@ -44,10 +48,16 @@ export function consolidateRefs(input: ConsolidateInput): {
   toId: Map<string, string>
   conceptRef: Map<string, string>
   noteRef: Map<string, string>
+  subjectRef: Map<string, string>
 } {
   const toId = new Map<string, string>()
   const conceptRef = new Map<string, string>()
   const noteRef = new Map<string, string>()
+  const subjectRef = new Map<string, string>()
+  ;(input.otherSubjects ?? []).forEach((s, i) => {
+    subjectRef.set(s.id, `s${i + 1}`)
+    toId.set(`s${i + 1}`, s.id)
+  })
   input.concepts.forEach((c, i) => {
     conceptRef.set(c.id, `c${i + 1}`)
     toId.set(`c${i + 1}`, c.id)
@@ -56,11 +66,11 @@ export function consolidateRefs(input: ConsolidateInput): {
     noteRef.set(n.id, `n${i + 1}`)
     toId.set(`n${i + 1}`, n.id)
   })
-  return { toId, conceptRef, noteRef }
+  return { toId, conceptRef, noteRef, subjectRef }
 }
 
 export function buildConsolidateUser(input: ConsolidateInput): string {
-  const { conceptRef, noteRef } = consolidateRefs(input)
+  const { conceptRef, noteRef, subjectRef } = consolidateRefs(input)
   const ref = (id: string | null) => (id ? (conceptRef.get(id) ?? '-') : '-')
   const concepts = input.concepts.map((c) => {
     const head = `${ref(c.id)} ${c.name} [${c.status} ${c.mastery.toFixed(2)}] < ${ref(c.parentId)}`
@@ -68,8 +78,9 @@ export function buildConsolidateUser(input: ConsolidateInput): string {
   })
   const notes = input.notes.map(
     (n) =>
-      `${noteRef.get(n.id)} ${ref(n.conceptId)} ${n.kind}${n.pinned ? ' [pinned]' : ''}: ${n.text.replace(/\s+/g, ' ').trim()}`,
+      `${noteRef.get(n.id)} ${ref(n.conceptId)} ${n.kind}${n.pinned ? ' [pinned]' : ''}: ${n.text.replace(/\s+/g, ' ').trim()}${n.source ? ` {${n.source}}` : ''}`,
   )
+  const others = (input.otherSubjects ?? []).map((s) => `${subjectRef.get(s.id)} ${s.name}`)
   const edges = input.edges.map((e) => `${ref(e.fromId)} → ${ref(e.toId)}`)
   return [
     tag(
@@ -79,6 +90,7 @@ export function buildConsolidateUser(input: ConsolidateInput): string {
     tag('concepts', concepts.join('\n') || '(none)'),
     tag('notes', notes.join('\n') || '(none)'),
     tag('edges', edges.join('\n') || '(none)'),
+    tag('other_subjects', others.join('\n') || '(none)'),
   ].join('\n')
 }
 
@@ -113,13 +125,17 @@ export function finalizeConsolidate(
       .filter((q) => q.question.trim())
       .slice(0, 5)
       .map((q) => ({ conceptId: opt(q.concept), question: q.question.trim() })),
+    moveConcepts: (out.moveConcepts ?? []).map((m) => ({
+      conceptId: id(m.concept),
+      subjectId: id(m.subject),
+    })),
   }
 }
 
 export const consolidatePrompt: PromptSpec<ConsolidateInput, LlmConsolidate, ConsolidateOutput> = {
   id: 'P13',
   task: 'consolidate',
-  version: 1,
+  version: 2,
   tier: 'reason',
   temperature: 0.2,
   maxOutputTokens: 5000,

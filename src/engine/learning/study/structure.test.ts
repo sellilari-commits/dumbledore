@@ -60,6 +60,41 @@ describe('roadmap structure from the notes', () => {
     expect(carboNotes?.[0]).toBe('Tertiary carbocations are the most stable')
   })
 
+  it('names the pages each tree entry was read in, its subtree included, at most 4', () => {
+    const { repos, subject, sn1, carbo } = seed()
+    const read = (conceptId: string, text: string, n: number) =>
+      repos.notes.add({
+        subjectId: subject.id,
+        conceptId,
+        encounterId: null,
+        kind: 'fact',
+        text,
+        source: {
+          app: 'Google Chrome',
+          bundleId: null,
+          url: `https://site${n}.example/page`,
+          title: `Page ${n} - Google Chrome`,
+        },
+      })
+    read(sn1.id, 'The rate depends on the substrate only', 1)
+    read(sn1.id, 'Polar protic solvents speed up ionisation', 2)
+    read(sn1.id, 'Racemisation follows from a planar intermediate', 3)
+    read(carbo.id, 'Allylic cations are resonance stabilised', 4)
+    const s = roadmapStructure(repos, subject.id, repos.concepts.listBySubject(subject.id))
+    const sources = (name: string) => s.tree?.find((c) => c.name === name)?.sources
+    expect([...(sources('Carbocations') ?? [])].sort()).toEqual(['Notes', 'Page 4'])
+    expect([...(sources('SN1') ?? [])].sort()).toEqual(['Notes', 'Page 1', 'Page 2', 'Page 3'])
+    // The topic lists its children's pages (5 in all), capped at 4.
+    expect(sources('Substitution')).toHaveLength(4)
+    expect(
+      sources('Substitution')?.every((t) =>
+        ['Notes', 'Page 1', 'Page 2', 'Page 3', 'Page 4'].includes(t),
+      ),
+    ).toBe(true)
+    // No notes, no sources key.
+    expect(s.tree?.find((c) => c.name === 'Atoms')).not.toHaveProperty('sources')
+  })
+
   it('follows the study preferences: skipped topics leave the order, focus leads it', () => {
     const { repos, subject, topic, sn1 } = seed()
     const kinetics = repos.concepts.upsert({ subjectId: subject.id, name: 'Kinetics' })

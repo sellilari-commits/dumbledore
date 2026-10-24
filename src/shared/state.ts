@@ -294,8 +294,27 @@ export const SubjectDetail = z.object({
 })
 export type SubjectDetail = z.infer<typeof SubjectDetail>
 
-/** One concept of a subject's topic tree with its active notes (oldest first). */
-export const ConceptNode = z.object({ concept: Concept, notes: z.array(Note) })
+/** One page (or app window) a topic was read in, from its notes (newest first). */
+export const TopicSource = z.object({
+  title: z.string(),
+  url: z.string().nullable(),
+  app: z.string(),
+  lastSeenAt: IsoDate,
+  noteCount: z.number().int(),
+  /** That page's notes (ids of the topic's and its subtree's notes), oldest first. */
+  noteIds: z.array(z.string()),
+})
+export type TopicSource = z.infer<typeof TopicSource>
+
+/**
+ * One concept of a subject's topic tree with its active notes (oldest first) and its sources: the
+ * pages its notes and its subtree's were read in (a topic unites many pages).
+ */
+export const ConceptNode = z.object({
+  concept: Concept,
+  notes: z.array(Note),
+  sources: z.array(TopicSource).optional(),
+})
 export type ConceptNode = z.infer<typeof ConceptNode>
 
 /**

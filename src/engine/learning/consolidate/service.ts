@@ -5,7 +5,9 @@
  * - about 10 new or changed notes since the last pass (checked every few minutes);
  * - nightly: the first check after 03:00 local time, for every subject with any change;
  * - when the subject is opened in the app or the panel ('subject:viewed'), at most once per
- *   10 minutes, if anything changed since the last pass.
+ *   10 minutes, if anything changed since the last pass;
+ * - about 30 s after a new source (a page not seen in the subject before) adds notes to it, so
+ *   pages about the same thing unite into one topic and its big picture is rewritten.
  * Never for the subject of a running study session. One pass at a time; a failed pass waits
  * 30 minutes before that subject is tried again. The model's answer is validated in ./apply.
  */
@@ -14,6 +16,7 @@ import type { Brain, ConsolidateInput } from '../../brain-contract'
 import type { Cancel, Clock } from '../../clock'
 import type { Repos } from '../../contracts'
 import type { EngineBus } from '../../events'
+import { sourceKey, sourceLabel } from '../../memory/sources'
 import type { RelinkSupport } from '../../store/sqlite-repos'
 import { applyConsolidation, type ConsolidationReport } from './apply'
 
@@ -27,6 +30,8 @@ export interface ConsolidationOptions {
   maxConcepts: number
   maxNotes: number
   timeoutMs: number
+  /** Wait after a new source joins a subject, so a few pages read together go in one pass. */
+  sourceDebounceMs: number
 }
 
 export const CONSOLIDATION_DEFAULTS: ConsolidationOptions = {
@@ -38,6 +43,7 @@ export const CONSOLIDATION_DEFAULTS: ConsolidationOptions = {
   maxConcepts: 60,
   maxNotes: 300,
   timeoutMs: 90_000,
+  sourceDebounceMs: 30_000,
 }
 
 export interface ConsolidationDeps {
@@ -51,7 +57,7 @@ export interface ConsolidationDeps {
   options?: Partial<ConsolidationOptions>
 }
 
-export type ConsolidationReason = 'notes' | 'nightly' | 'viewed' | 'manual'
+export type ConsolidationReason = 'notes' | 'nightly' | 'viewed' | 'manual' | 'source'
 
 export interface ConsolidationService {
   start(): void
@@ -76,6 +82,41 @@ export function createConsolidation(deps: ConsolidationDeps): ConsolidationServi
   let nightlyDay = ''
   const offs: (() => void)[] = []
   let timer: Cancel | null = null
+  /** Sources each subject had at its last pass (lazily from notes older than that pass). */
+  const knownSources = new Map<Id, Set<string>>()
+  const sourceTimers = new Map<Id, Cancel>()
+  /** New sources already waiting for a pass, so further events don't push the pass back. */
+  const pendingSources = new Map<Id, Set<string>>()
+
+  const sourcesOf = (notes: readonly Note[]) => new Set(notes.map((n) => sourceKey(n.source)))
+  const baselineSources = (subjectId: Id): Set<string> => {
+    const since = repos.subjects.consolidatedAt(subjectId)
+    if (since === null) return new Set()
+    return sourcesOf(repos.notes.list({ subjectId }).filter((n) => n.updatedAt <= since))
+  }
+
+  /** A page the subject had no notes from at its last pass → a pass ~30 s later. */
+  const noticeSources = (subjectId: Id) => {
+    if (!repos.subjects.get(subjectId)) return
+    const known = knownSources.get(subjectId) ?? baselineSources(subjectId)
+    knownSources.set(subjectId, known)
+    const pending = pendingSources.get(subjectId) ?? new Set<string>()
+    const fresh = [...sourcesOf(repos.notes.list({ subjectId }))].filter(
+      (k) => !known.has(k) && !pending.has(k),
+    )
+    if (fresh.length === 0) return
+    for (const k of fresh) pending.add(k)
+    pendingSources.set(subjectId, pending)
+    sourceTimers.get(subjectId)?.()
+    sourceTimers.set(
+      subjectId,
+      clock.setTimeout(() => {
+        sourceTimers.delete(subjectId)
+        pendingSources.delete(subjectId)
+        void service.request(subjectId, 'source')
+      }, opts.sourceDebounceMs),
+    )
+  }
 
   /** Notes added or changed since the subject's last pass (all of them if never). */
   const changedNotes = (subjectId: Id): Note[] => {
@@ -142,16 +183,23 @@ export function createConsolidation(deps: ConsolidationDeps): ConsolidationServi
         kind: n.kind,
         text: n.text,
         pinned: n.pinned,
+        source: sourceLabel(n.source),
       })),
       edges: repos.edges
         .list(subjectId)
         .filter((e) => ids.has(e.fromId) && ids.has(e.toId))
         .map((e) => ({ fromId: e.fromId, toId: e.toId })),
+      otherSubjects: repos.subjects
+        .list({ status: ['active'] })
+        .filter((s) => s.id !== subjectId)
+        .map((s) => ({ id: s.id, name: s.name })),
     }
   }
 
   const runNow = async (subjectId: Id): Promise<ConsolidationReport | null> => {
     const startedAt = clock.nowIso()
+    // Sources the pass sees; a page whose notes arrive during it still counts as new afterwards.
+    const seenSources = sourcesOf(repos.notes.list({ subjectId }))
     const input = buildInput(subjectId)
     if (!input) {
       if (repos.subjects.get(subjectId)) repos.subjects.markConsolidated(subjectId, startedAt)
@@ -165,6 +213,8 @@ export function createConsolidation(deps: ConsolidationDeps): ConsolidationServi
         return r
       })
       lastFailure.delete(subjectId)
+      knownSources.set(subjectId, seenSources)
+      for (const target of report.movedTo) knownSources.delete(target)
       if (report.skipped.length)
         log(`[consolidate] ${subjectId}: skipped ${report.skipped.join('; ')}`)
       bus.emit('memory:changed', { scope: 'concepts', ids: [] })
@@ -196,6 +246,10 @@ export function createConsolidation(deps: ConsolidationDeps): ConsolidationServi
       if (offs.length > 0) return
       offs.push(
         bus.on('subject:viewed', ({ subjectId }) => void service.request(subjectId, 'viewed')),
+        bus.on('memory:changed', ({ scope, ids }) => {
+          if (scope !== 'subjects') return
+          for (const id of ids) noticeSources(id)
+        }),
         bus.on('session:changed', ({ session }) => {
           sessionSubject =
             session && !['complete', 'error'].includes(session.phase) ? session.subjectId : null
@@ -214,6 +268,9 @@ export function createConsolidation(deps: ConsolidationDeps): ConsolidationServi
       for (const off of offs.splice(0)) off()
       timer?.()
       timer = null
+      for (const cancel of sourceTimers.values()) cancel()
+      sourceTimers.clear()
+      pendingSources.clear()
     },
     request(subjectId, reason) {
       if (reason === 'viewed') {

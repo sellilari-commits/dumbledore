@@ -1,3 +1,4 @@
+import type { SourceRef } from '@shared/domain'
 import { describe, expect, it } from 'vitest'
 import { FakeClock } from '../clock'
 import { createMemoryRepos } from '../testing/memory-repos'
@@ -17,7 +18,7 @@ function setup() {
   })
   const note = (
     text: string,
-    over: { subjectId?: string | null; conceptId?: string | null } = {},
+    over: { subjectId?: string | null; conceptId?: string | null; source?: SourceRef } = {},
   ) =>
     repos.notes.add({
       subjectId: history.id,
@@ -54,6 +55,40 @@ describe('memory control', () => {
     expect(tree.concepts[1]?.notes.map((n) => n.id)).toEqual([placed.id])
     expect(tree.unplaced.map((n) => n.id)).toEqual([floating.id])
     expect(() => control.tree('sub_missing')).toThrow(/not found/)
+  })
+
+  it("lists each concept's sources, a parent's including its children's", () => {
+    const { control, history, finland, tampere, note } = setup()
+    const page = (url: string, title: string): SourceRef => ({
+      app: 'Google Chrome',
+      bundleId: null,
+      url,
+      title,
+    })
+    const a = note('Tampere lies on the Tammerkoski rapids', {
+      conceptId: tampere.id,
+      source: page('https://en.wikipedia.org/wiki/Tampere', 'Tampere - Wikipedia'),
+    })
+    const b = note('Finlayson built a cotton mill in 1820', {
+      conceptId: tampere.id,
+      source: page('https://visittampere.fi/', 'Visit Tampere'),
+    })
+    const c = note('Finland became independent in 1917', { conceptId: finland.id })
+    const tree = control.tree(history.id)
+    const sources = (id: string) =>
+      tree.concepts
+        .find((n) => n.concept.id === id)
+        ?.sources?.map((s) => [s.title, s.noteIds])
+        .sort((x, y) => String(x[0]).localeCompare(String(y[0])))
+    expect(sources(tampere.id)).toEqual([
+      ['Tampere - Wikipedia', [a.id]],
+      ['Visit Tampere', [b.id]],
+    ])
+    expect(sources(finland.id)).toEqual([
+      ['Tampere', [c.id]],
+      ['Tampere - Wikipedia', [a.id]],
+      ['Visit Tampere', [b.id]],
+    ])
   })
 
   it('pins edited notes, refuses empty text and deleted notes', () => {

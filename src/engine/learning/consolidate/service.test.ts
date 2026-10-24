@@ -40,6 +40,19 @@ describe('consolidation service', () => {
         source: SOURCE,
       })
   }
+  let pageNotes = 0
+  /** One note read on a page (distinct words, so it never counts as a duplicate). */
+  const addPage = (url: string, title: string) => {
+    const k = pageNotes++
+    repos.notes.add({
+      subjectId: subject,
+      conceptId: concept,
+      encounterId: null,
+      kind: 'fact',
+      text: `${WORDS[k % WORDS.length]} ${WORDS[(k + 9) % WORDS.length]} ${WORDS[(k + 17) % WORDS.length]} page fact`,
+      source: { app: 'Google Chrome', bundleId: null, url, title },
+    })
+  }
 
   beforeEach(() => {
     // 10:00 local: past the nightly hour, so the first day's nightly pass is already "done".
@@ -154,8 +167,85 @@ describe('consolidation service', () => {
       ['Carbocations', null],
     ])
     expect(input?.notes).toEqual([
-      { id: n?.id, conceptId: concept, kind: 'fact', text: n?.text, pinned: true },
+      {
+        id: n?.id,
+        conceptId: concept,
+        kind: 'fact',
+        text: n?.text,
+        pinned: true,
+        source: expect.any(String),
+      },
     ])
     expect(input?.edges).toEqual([{ fromId: other, toId: concept }])
+  })
+
+  it("sends each note's source label and the student's other active subjects", async () => {
+    const bio = repos.subjects.create({ name: 'Biology' })
+    repos.subjects.create({ name: 'Old', status: 'archived' })
+    repos.subjects.create({ name: 'Maybe', status: 'suggested' })
+    addPage(
+      'https://en.wikipedia.org/wiki/SN1#Mechanism',
+      'SN1 reaction - Wikipedia - Google Chrome',
+    )
+    addNotes(1)
+    await service.runNow(subject)
+    const input = inputs()[0]
+    expect(input?.notes.map((n) => n.source)).toEqual(['SN1 reaction - Wikipedia', 'Notes'])
+    expect(input?.otherSubjects).toEqual([{ id: bio.id, name: 'Biology' }])
+  })
+
+  it('runs about 30 s after a new source joins a subject, once per source', async () => {
+    const changed = () => bus.emit('memory:changed', { scope: 'subjects', ids: [subject] })
+    addPage('https://a.example/sn1', 'Page A')
+    await service.runNow(subject)
+    expect(inputs()).toHaveLength(1)
+
+    // More notes from a page the last pass already saw: no pass.
+    clock.advance(1000)
+    addPage('https://a.example/sn1#rates', 'Page A')
+    changed()
+    clock.advance(MIN)
+    await settle()
+    expect(inputs()).toHaveLength(1)
+
+    // A new page: a pass ~30 s later, not before.
+    addPage('https://b.example/carbocations', 'Page B')
+    changed()
+    clock.advance(29_000)
+    await settle()
+    expect(inputs()).toHaveLength(1)
+    clock.advance(2000)
+    await settle()
+    expect(inputs()).toHaveLength(2)
+
+    // That page is known now: no second pass for it; other scopes never trigger.
+    changed()
+    bus.emit('memory:changed', { scope: 'concepts', ids: [] })
+    clock.advance(MIN)
+    await settle()
+    expect(inputs()).toHaveLength(2)
+
+    // Pages read close together go in one pass (the wait restarts).
+    clock.advance(1000)
+    addPage('https://c.example/', 'Page C')
+    changed()
+    clock.advance(20_000)
+    addPage('https://d.example/', 'Page D')
+    changed()
+    clock.advance(20_000)
+    await settle()
+    expect(inputs()).toHaveLength(2)
+    clock.advance(11_000)
+    await settle()
+    expect(inputs()).toHaveLength(3)
+
+    // A restarted service takes the known sources from the notes the last pass saw.
+    service.stop()
+    service = createConsolidation({ repos, brain, bus, clock, relink: repos.relink })
+    service.start()
+    changed()
+    clock.advance(MIN)
+    await settle()
+    expect(inputs()).toHaveLength(3)
   })
 })

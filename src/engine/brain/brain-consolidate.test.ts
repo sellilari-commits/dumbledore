@@ -44,6 +44,9 @@ describe('P13 consolidation prompt', () => {
         '<edges>',
         'c1 → c2',
         '</edges>',
+        '<other_subjects>',
+        '(none)',
+        '</other_subjects>',
       ].join('\n'),
     )
   })
@@ -72,7 +75,47 @@ describe('P13 consolidation prompt', () => {
       placeNotes: [{ noteId: 'not_b', conceptId: 'con_1' }],
       edges: [{ fromId: 'con_s', toId: 'con_1', why: 'needs it' }],
       openQuestions: [{ conceptId: 'con_1', question: 'Why tertiary?' }],
+      moveConcepts: [],
     })
+  })
+
+  it("shows each note's source and the other subjects, and maps moves back to ids", () => {
+    const withSources: ConsolidateInput = {
+      ...input,
+      notes: [
+        { ...(input.notes[0] as ConsolidateInput['notes'][number]), source: 'SN1 - Wikipedia' },
+        input.notes[1] as ConsolidateInput['notes'][number],
+      ],
+      otherSubjects: [
+        { id: 'sub_b', name: 'Biology' },
+        { id: 'sub_p', name: 'Physics' },
+      ],
+    }
+    const user = buildConsolidateUser(withSources)
+    expect(user).toContain(
+      '<notes>\nn1 c2 fact: Tertiary favours SN1 {SN1 - Wikipedia}\nn2 - highlight [pinned]: carbocation first\n</notes>',
+    )
+    expect(user).toContain('<other_subjects>\ns1 Biology\ns2 Physics\n</other_subjects>')
+    const out = finalizeConsolidate(
+      {
+        summaries: [],
+        mergeConcepts: [],
+        mergeNotes: [],
+        topics: [],
+        placeNotes: [],
+        edges: [],
+        openQuestions: [],
+        moveConcepts: [
+          { concept: 'c2', subject: 's2' },
+          { concept: 'c1', subject: 's9' },
+        ],
+      },
+      withSources,
+    )
+    expect(out.moveConcepts).toEqual([
+      { conceptId: 'con_1', subjectId: 'sub_p' },
+      { conceptId: 'con_s', subjectId: 's9' },
+    ])
   })
 
   it('runs on the reason tier with the never-invent rules', async () => {
@@ -137,6 +180,23 @@ describe('P3 with the subject structure', () => {
     expect(built.user).toContain('Carbocations: Tertiary carbocations are the most stable')
     expect(built.user).toContain('<suggested_order>\n1. Carbocations\n2. SN1\n</suggested_order>')
     expect(built.system).toContain('When <suggested_order> is given')
+  })
+
+  it('names the pages a concept was read in', () => {
+    const withSources: RoadmapInput = {
+      ...roadmap,
+      tree: (roadmap.tree ?? []).map((c) =>
+        c.id === 't' ? { ...c, sources: ['SN1 - Wikipedia', 'Khan Academy'] } : c,
+      ),
+    }
+    const built = roadmapPrompt.build(withSources, {
+      onDevice: false,
+      today: '2026-10-25 (Sunday)',
+    })
+    expect(built.user).toContain(
+      '<tree>\n- Substitution [new 0.00] (read in: SN1 - Wikipedia; Khan Academy)\n  - Carbocations [learning 0.30]: Positive carbon.\n',
+    )
+    expect(built.system).toContain('"read in" in <tree>')
   })
 
   it('asks for a repair when a step teaches a concept before an earlier one', () => {

@@ -7,7 +7,9 @@
  *   when one of its children has notes;
  * - the tree never gets a loop (a concept under its own descendant), edges never a cycle (the
  *   EdgeRepo refuses those), and the top level keeps at most MAX_TOPICS topics.
- * Concept merges need `relink` (SQLite folds concepts); without it they are skipped.
+ * - a concept moves to another subject only when that subject exists and is active; it takes its
+ *   notes along (its edges go, they never cross subjects).
+ * Concept merges and moves need `relink` (SQLite); without it they are skipped.
  * Callers run this inside one transaction.
  */
 import type { Concept, Note } from '@shared/domain'
@@ -29,6 +31,9 @@ export interface ConsolidationReport {
   newTopics: number
   edges: number
   questions: number
+  movedConcepts: number
+  /** Subjects that received a moved concept. */
+  movedTo: string[]
   /** What was refused, for the log ("mergeNotes not_1: pinned"). */
   skipped: string[]
 }
@@ -48,6 +53,8 @@ export function applyConsolidation(
     newTopics: 0,
     edges: 0,
     questions: 0,
+    movedConcepts: 0,
+    movedTo: [],
     skipped: [],
   }
   const skip = (what: string) => report.skipped.push(what)
@@ -98,6 +105,20 @@ export function applyConsolidation(
     else if (note.conceptId !== target.id) {
       repos.notes.update(note.id, { conceptId: target.id })
       report.placedNotes++
+    }
+  }
+
+  // 3b. Concepts that belong to another of the student's subjects.
+  for (const m of out.moveConcepts ?? []) {
+    const concept = concepts().get(resolve(m.conceptId))
+    const target = repos.subjects.get(m.subjectId)
+    if (!concept || !target || target.id === subjectId || target.status !== 'active')
+      skip(`moveConcepts ${m.conceptId}: unknown`)
+    else if (!opts.relink) skip(`moveConcepts ${m.conceptId}: no relink`)
+    else {
+      opts.relink.moveConcept(concept.id, target.id)
+      report.movedConcepts++
+      if (!report.movedTo.includes(target.id)) report.movedTo.push(target.id)
     }
   }
 

@@ -8,12 +8,15 @@
 import type { Concept, Note, Quiz, Subject } from '@shared/domain'
 import type { RoadmapInput } from '../../brain-contract'
 import type { Repos, StudyPreferences } from '../../contracts'
+import { sourcesOfNotes, subtreeIds } from '../../memory/sources'
 import { studyOrder } from '../consolidate/order'
 import { withDescendants } from './preferences'
 import { isLearn } from './roadmap-ops'
 import { head, languageOf, norm, profileText, uniqueNames } from './text'
 
 export const ENCOUNTER_LIMIT = 20
+/** Source titles listed per concept in the roadmap input. */
+const SOURCES_PER_CONCEPT = 4
 const MASTERY_LIMIT = 40
 const QUESTION_LIMIT = 10
 const DONE_STEP_LIMIT = 30
@@ -161,15 +164,26 @@ export function roadmapStructure(
       .slice(0, KEY_NOTES_PER_CONCEPT)
       .map((n) => ({ conceptId: c.id, text: head(n.text, KEY_NOTE_CHARS) })),
   )
+  const notesOf = new Map<string, Note[]>()
+  for (const n of notes)
+    if (n.conceptId) notesOf.set(n.conceptId, [...(notesOf.get(n.conceptId) ?? []), n])
+  const sourceTitles = (c: Concept) =>
+    sourcesOfNotes([...subtreeIds(c.id, concepts)].flatMap((id) => notesOf.get(id) ?? []))
+      .slice(0, SOURCES_PER_CONCEPT)
+      .map((s) => s.title)
   return {
-    tree: tree.map((c) => ({
-      id: c.id,
-      name: c.name,
-      parentId: c.parentId && keep.has(c.parentId) ? c.parentId : null,
-      status: c.status,
-      mastery: c.mastery,
-      summary: head(c.summary, 240),
-    })),
+    tree: tree.map((c) => {
+      const sources = sourceTitles(c)
+      return {
+        id: c.id,
+        name: c.name,
+        parentId: c.parentId && keep.has(c.parentId) ? c.parentId : null,
+        status: c.status,
+        mastery: c.mastery,
+        summary: head(c.summary, 240),
+        ...(sources.length > 0 ? { sources } : {}),
+      }
+    }),
     edges: edges
       .filter((e) => keep.has(e.fromId) && keep.has(e.toId))
       .map((e) => ({ fromId: e.fromId, toId: e.toId })),

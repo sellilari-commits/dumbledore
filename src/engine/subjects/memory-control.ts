@@ -10,6 +10,7 @@
 import type { Concept, Id, Note } from '@shared/domain'
 import type { ConceptNode, SubjectTree } from '@shared/state'
 import type { MemoryControl, Repos } from '../contracts'
+import { sourcesOfNotes, subtreeIds } from '../memory/sources'
 
 /** Each parent before its children, siblings by name; orphans (missing parent) at the top. */
 export function treeOrder(concepts: readonly Concept[]): Concept[] {
@@ -69,10 +70,14 @@ export function createMemoryControl(repos: Repos): MemoryControl {
           byConcept.set(note.conceptId, list)
         } else unplaced.push(note)
       }
-      const nodes: ConceptNode[] = concepts.map((concept) => ({
-        concept,
-        notes: byConcept.get(concept.id) ?? [],
-      }))
+      const nodes: ConceptNode[] = concepts.map((concept) => {
+        const ids = subtreeIds(concept.id, concepts)
+        return {
+          concept,
+          notes: byConcept.get(concept.id) ?? [],
+          sources: sourcesOfNotes([...ids].flatMap((id) => byConcept.get(id) ?? [])),
+        }
+      })
       const tree: SubjectTree = {
         subjectId,
         concepts: nodes,

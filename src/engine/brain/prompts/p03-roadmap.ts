@@ -69,7 +69,7 @@ function system(input: RoadmapInput, lang: string): string {
    - Skip concepts with solid evidence of mastery (status "mastered", passed checkpoints or exams).
    - Start at the earliest prerequisite that is not mastered or shows struggle ("struggling" status, "struggling"/"unclear" encounters, open questions).
    - Steps in <done_steps> are finished: never repeat them; continue after them.
-   - When <suggested_order> is given, it is the order to teach in: prerequisites first, mastered concepts already left out, the first item is where the student is ready to start. Keep that order (you may group, split or leave out concepts the goal does not need), and use the concept names from it. <prerequisites> says which concept needs which; <key_notes> is what the student has already read or highlighted — build on it in the prompt drafts ("You read that…").
+   - When <suggested_order> is given, it is the order to teach in: prerequisites first, mastered concepts already left out, the first item is where the student is ready to start. Keep that order (you may group, split or leave out concepts the goal does not need), and use the concept names from it. <prerequisites> says which concept needs which; <key_notes> is what the student has already read or highlighted — build on it in the prompt drafts ("You read that…"). "read in" in <tree> = pages read on it.
    - <preferences> is what the student asked this roadmap to cover. Never teach a concept listed under skip (not even as a side topic); start with the focus concepts (after any prerequisite they need, as <suggested_order> already shows), and let the goal follow the student's words.
    - startReason: one sentence to the student ("you"), citing the evidence, e.g. "You already handle X; you stumbled on Y twice, so we start there."
    - offerPlacement: true only when there is no evidence at all (no mastery, encounters or done steps).
@@ -122,7 +122,7 @@ function structureTags(input: RoadmapInput): string[] {
   }
   const lines = tree.map(
     (c) =>
-      `${'  '.repeat(depth(c.parentId))}- ${c.name} [${c.status} ${c.mastery.toFixed(2)}]${c.summary ? `: ${c.summary}` : ''}`,
+      `${'  '.repeat(depth(c.parentId))}- ${c.name} [${c.status} ${c.mastery.toFixed(2)}]${c.summary ? `: ${c.summary}` : ''}${c.sources?.length ? ` (read in: ${c.sources.join('; ')})` : ''}`,
   )
   const prereqs = (input.edges ?? []).flatMap((e) => {
     const a = name.get(e.fromId)
@@ -271,7 +271,7 @@ export function finalizeRoadmap(plan: LlmRoadmap, input: RoadmapInput, lang: str
 export const roadmapPrompt: PromptSpec<RoadmapInput, LlmRoadmap, RoadmapPlan> = {
   id: 'P3',
   task: 'buildRoadmap',
-  version: 4,
+  version: 5,
   tier: 'reason',
   temperature: 0.3,
   maxOutputTokens: 6000,

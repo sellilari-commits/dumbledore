@@ -163,9 +163,13 @@ export const ConsolidateInput = z.object({
       text: z.string(),
       /** Edited by the student: never rewritten, merged or moved. */
       pinned: z.boolean(),
+      /** Where the note was read (page title, else app), so pages about one thing unite. */
+      source: z.string().optional(),
     }),
   ),
   edges: z.array(z.object({ fromId: z.string(), toId: z.string() })),
+  /** The student's other subjects, so a concept filed under the wrong one can move there. */
+  otherSubjects: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
 })
 export type ConsolidateInput = z.infer<typeof ConsolidateInput>
 
@@ -187,6 +191,8 @@ export const ConsolidateOutput = z.object({
   placeNotes: z.array(z.object({ noteId: z.string(), conceptId: z.string() })),
   edges: z.array(z.object({ fromId: z.string(), toId: z.string(), why: z.string() })),
   openQuestions: z.array(z.object({ conceptId: z.string().nullable(), question: z.string() })),
+  /** A concept that belongs to another of the student's subjects → that subject (validated). */
+  moveConcepts: z.array(z.object({ conceptId: z.string(), subjectId: z.string() })).optional(),
 })
 export type ConsolidateOutput = z.infer<typeof ConsolidateOutput>
 
@@ -240,7 +246,10 @@ export const RoadmapInput = z.object({
         parentId: z.string().nullable(),
         status: MasteryStatus,
         mastery: z.number(),
+        /** For a topic: its big picture across all its sources. */
         summary: z.string(),
+        /** Titles of the pages this concept (and its subtree) was read in, newest first. */
+        sources: z.array(z.string()).optional(),
       }),
     )
     .optional(),
