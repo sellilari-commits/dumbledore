@@ -150,10 +150,14 @@ function emptyCounts(): RedactionCounts {
 }
 
 /** Masks secrets and personal data; returns the text and how many of each kind were masked. */
-export function redactDetailed(text: string): { text: string; counts: RedactionCounts } {
+export function redactDetailed(
+  text: string,
+  kinds?: ReadonlySet<RedactionKind>,
+): { text: string; counts: RedactionCounts } {
   const counts = emptyCounts()
   let out = text
   for (const rule of RULES) {
+    if (kinds && !kinds.has(rule.kind)) continue
     rule.re.lastIndex = 0
     out = out.replace(rule.re, (match: string, ...rest: unknown[]) => {
       // rest = [...captureGroups, offset, input, namedGroups?]; groups end at the numeric offset
@@ -174,4 +178,12 @@ export function redactDetailed(text: string): { text: string; counts: RedactionC
 export function redact(text: string): string {
   if (!text) return text
   return redactDetailed(text).text
+}
+
+const SECRET_ONLY: ReadonlySet<RedactionKind> = new Set(['secret'])
+
+/** Masks only keys, tokens, passwords and credentials (for scrubbing text already stored). */
+export function redactSecrets(text: string): string {
+  if (!text) return text
+  return redactDetailed(text, SECRET_ONLY).text
 }

@@ -21,6 +21,7 @@ import { createAssignmentRepo, createChatRepo, createNudgeRepo } from './repos/r
 import { createRoadmapRepo } from './repos/roadmaps'
 import { createSearchRepo } from './repos/search'
 import { createSubjectRepo } from './repos/subjects'
+import { createScrub, type ScrubSupport } from './scrub'
 import { createSearchIndex } from './search-index'
 
 /** Writes the Repos contract lacks (requested as a contract change; see docs/progress/L2a-store.md). */
@@ -41,6 +42,8 @@ export interface SqliteReposOptions {
 export interface SqliteRepos extends Repos {
   readonly db: Db
   readonly relink: RelinkSupport
+  /** Deletes what came from secret files' windows and masks secrets in stored text. */
+  readonly scrub: ScrubSupport
   close(): void
 }
 
@@ -82,6 +85,7 @@ export function createSqliteRepos(
         void encounters.setConcept(encounterId, conceptId),
       mergeConcepts: (fromId, intoId) => void concepts.mergeInto(fromId, intoId),
     },
+    scrub: createScrub(ctx),
     close: () => {
       if (db.open) db.close()
     },

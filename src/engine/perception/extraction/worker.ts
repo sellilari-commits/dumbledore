@@ -43,6 +43,7 @@ import {
   type PrefilterResult,
   prefilter,
 } from './prefilter'
+import { scrubChanged, scrubStoredSecrets } from './scrub-secrets'
 
 export interface WorkerOptions {
   maxBatch: number
@@ -181,9 +182,22 @@ export class ExtractionWorker {
         void this.flushNow()
       }, this.opts.purgeEveryMs),
     )
+    this.scrubSecrets()
     this.purge()
     this.recover()
     this.activateSuggested()
+  }
+
+  /** Masks secrets already stored and drops what came from secret files' windows. */
+  private scrubSecrets(): void {
+    try {
+      const report = scrubStoredSecrets(this.deps.repos)
+      if (!scrubChanged(report)) return
+      this.deps.log?.(`[perception] scrubbed stored secrets: ${JSON.stringify(report)}`)
+      this.deps.bus.emit('memory:changed', { scope: 'inbox', ids: [] })
+    } catch (error) {
+      this.deps.log?.('[perception] could not scrub stored secrets', error)
+    }
   }
 
   /** Subjects from before "subjects come straight from structuring": active once they hold content. */

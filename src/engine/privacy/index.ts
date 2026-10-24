@@ -28,5 +28,6 @@ export {
   type RedactionKind,
   redact,
   redactDetailed,
+  redactSecrets,
 } from './redact'
 export { hostMatches, hostOf, normalizeHost, pageIdentity, parseUrl, pathSegments } from './url'
