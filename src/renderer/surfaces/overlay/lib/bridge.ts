@@ -4,15 +4,22 @@
  * the overlay's main chunk.
  */
 import type { DumbledoreApi } from '@shared/ipc'
+import { unavailableApi } from '../../../lib/api'
 
 export type SurfaceName = 'overlay' | 'askbar'
 
+/**
+ * Mock only on request: `?mock=1`, or the Vite dev server opened in a plain browser. A built app
+ * whose bridge is missing never shows demo data (a fresh install must start empty).
+ */
 export function wantsMock(search: string = window.location.search): boolean {
-  return new URLSearchParams(search).get('mock') === '1' || !window.dumbledore
+  if (new URLSearchParams(search).get('mock') === '1') return true
+  if (window.dumbledore) return false
+  return import.meta.env.DEV && !/Electron/.test(navigator.userAgent)
 }
 
 export async function resolveApi(surface: SurfaceName): Promise<DumbledoreApi> {
-  if (!wantsMock() && window.dumbledore) return window.dumbledore
+  if (!wantsMock()) return window.dumbledore ?? unavailableApi()
   const { createMockApi } = await import('../mock/mockApi')
   return createMockApi(surface)
 }

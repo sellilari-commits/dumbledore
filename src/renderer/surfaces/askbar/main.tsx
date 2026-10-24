@@ -8,6 +8,7 @@ import '../overlay/styles/ui.css'
 import type { DumbledoreApi, EventChannel, InvokeChannel } from '@shared/ipc'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { unavailableApi } from '../../lib/api'
 import { wantsMock } from '../overlay/lib/bridge'
 import { AskBar } from './AskBar'
 
@@ -42,10 +43,11 @@ function deferredApi(ready: Promise<DumbledoreApi>): DumbledoreApi {
 function boot(): void {
   const el = document.getElementById('root')
   if (!el) return
-  if (!wantsMock() && window.dumbledore) {
+  if (!wantsMock()) {
+    // A built app never falls back to the demo driver, even if the bridge is missing.
     createRoot(el).render(
       <StrictMode>
-        <AskBar api={window.dumbledore} />
+        <AskBar api={window.dumbledore ?? unavailableApi()} />
       </StrictMode>,
     )
     return
