@@ -36,6 +36,11 @@ export interface StudyOptions {
   stepExcerptChars: number
   /** Characters of the chat excerpt handed to the quizmaster as "studied". */
   studiedExcerptChars: number
+  /**
+   * A learn step is done only once the AI's answer to its prompt is in the chat (Ilari,
+   * 2026-10-25). Off in tests that walk a roadmap without a chat feed.
+   */
+  requireAnswer: boolean
 }
 
 export const DEFAULT_STUDY_OPTIONS: StudyOptions = {
@@ -49,6 +54,7 @@ export const DEFAULT_STUDY_OPTIONS: StudyOptions = {
   defaultAssistant: 'ChatGPT',
   stepExcerptChars: 1500,
   studiedExcerptChars: 4000,
+  requireAnswer: true,
 }
 
 export interface StudyDeps {

@@ -154,7 +154,8 @@ export function createHarness(opts: HarnessOptions = {}): Harness {
       mastery,
       followUp: { onSessionComplete: (id) => completed.push(id) },
       chatExcerpt: opts.chatExcerpt ?? null,
-      options: opts.options,
+      // Walking a roadmap step by step without a chat feed: the answer gate has its own tests.
+      options: { requireAnswer: false, ...opts.options },
     })
   return {
     clock,

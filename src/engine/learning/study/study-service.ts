@@ -7,6 +7,7 @@ import type { CheckpointItem, Id, LearnItem, Quiz, QuizResult, Roadmap } from '@
 import type { PickerData, SessionState, StartSessionInput, StepInstruction } from '@shared/state'
 import type { ChatContext, StudyService } from '../../contracts'
 import { newId } from '../../ids'
+import { AnswerWatch, hasAnswer } from './answer-watch'
 import { resultFromQuiz, roadmapAfterResult } from './checkpoint-result'
 import { errorMessage } from './deadline'
 import { DEFAULT_STUDY_OPTIONS, type StudyDeps, type StudyOptions } from './deps'
@@ -40,19 +41,32 @@ import { deliverLearnStep, redeliverStep } from './step-writer'
 import { refineNewSubject } from './subject-naming'
 import { UnpastedSteps } from './unpasted'
 
+/** A second tap on a waiting step within this long moves on without the answer. */
+const INSIST_MS = 15_000
+
 export class StudyServiceImpl implements StudyService {
   private readonly opts: StudyOptions
   private readonly quizzes: CheckpointQuizzes
   private readonly gate = new SessionGate()
   private readonly listeners = new SessionListeners()
   private readonly unpasted = new UnpastedSteps()
+  /** Watches the live chat for the answer to the step whose prompt was sent. */
+  private readonly answers: AnswerWatch
+  /** The first tap on a sent but unanswered step: a second tap soon after moves on anyway. */
+  private waitedOn: { itemId: Id; at: number } | null = null
   private meta: SessionMeta | null = null
 
   constructor(private readonly deps: StudyDeps) {
     this.opts = { ...DEFAULT_STUDY_OPTIONS, ...deps.options }
     this.quizzes = new CheckpointQuizzes(deps, this.opts)
+    this.answers = new AnswerWatch(deps.clock, deps.chatExcerpt ?? null, (id) =>
+      this.markAnswered(id),
+    )
     const active = deps.repos.roadmaps.listActive()[0]
-    if (active) this.meta = metaFor(active, null)
+    if (active) {
+      this.meta = metaFor(active, null)
+      this.watchSentStep(active) // a step sent before a restart still waits for its answer
+    }
   }
 
   current(): SessionState | null {
@@ -104,9 +118,13 @@ export class StudyServiceImpl implements StudyService {
       // An unanswered checkpoint can't be skipped: hand out the same quiz again.
       if (isCheckpoint(item)) return await this.deliverCheckpoint(roadmap, item, ctx)
       if (!isDelivered(item)) return await this.deliverLearn(roadmap, item, ctx)
-      const advanced = closeItem(roadmap, idx, this.deps.clock.nowIso())
-      this.save(roadmap, advanced)
-      touchConcepts(this.deps, roadmap.subjectId, item.concepts)
+      // A step is done only once the student got the AI's answer to it (Ilari, 2026-10-25).
+      if (this.opts.requireAnswer && !this.answeredNow(item, ctx) && !this.insists(item.id)) {
+        this.waitedOn = { itemId: item.id, at: this.deps.clock.now() }
+        const who = ctx.assistant ?? meta.assistant ?? 'the AI'
+        return waitFor(`Waiting for ${who}'s answer to this step. Press again to move on anyway.`)
+      }
+      this.closeLearn(roadmap, idx)
       return await this.deliverCurrent(ctx)
     } finally {
       this.gate.finish(seq)
@@ -137,6 +155,7 @@ export class StudyServiceImpl implements StudyService {
   }
 
   pasteFailed(itemId: Id): void {
+    if (this.answers.watching === itemId) this.answers.stop()
     const meta = this.meta
     const roadmap = meta ? this.deps.repos.roadmaps.get(meta.roadmapId) : null
     if (!roadmap || !this.unpasted.fail(this.deps.repos, roadmap, itemId, this.deps.clock.nowIso()))
@@ -150,6 +169,7 @@ export class StudyServiceImpl implements StudyService {
     if (!meta || meta.phase === 'planning' || meta.phase === 'paused') return
     if (this.current()?.phase === 'complete') return
     this.quizzes.cancelScheduled()
+    this.answers.stop()
     parkRoadmap(this.deps.repos, meta.roadmapId, this.deps.clock.nowIso())
     meta.phase = 'paused'
     meta.error = null
@@ -161,6 +181,7 @@ export class StudyServiceImpl implements StudyService {
     if (!meta) return
     this.gate.cancel()
     this.quizzes.cancelScheduled()
+    this.answers.stop()
     parkRoadmap(this.deps.repos, meta.roadmapId, this.deps.clock.nowIso())
     this.meta = null
     this.emitChange()
@@ -257,6 +278,7 @@ export class StudyServiceImpl implements StudyService {
         })
     if (!delivered) return waitFor('The study session ended.')
     this.unpasted.handedOut(delivered.instruction)
+    this.watchSentStep(delivered.roadmap)
     this.settle()
     this.emitChange()
     // D11: the checkpoint after this step is generated while the student reads it.
@@ -325,6 +347,57 @@ export class StudyServiceImpl implements StudyService {
     this.settle()
     this.emitChange()
     return { kind: 'complete', summary: completionSummary(done) }
+  }
+
+  // ─── Waiting for the answer ───────────────────────────────────────────────────────────────
+
+  /** Starts watching the chat when the roadmap's current step was sent but isn't done. */
+  private watchSentStep(roadmap: Roadmap): void {
+    if (!this.opts.requireAnswer) return
+    const item = roadmap.items[currentIndex(roadmap)]
+    if (!isLearn(item) || !isDelivered(item) || item.status === 'done') return
+    if (this.answers.watching === item.id) return
+    this.answers.start({
+      itemId: item.id,
+      prompt: item.promptSent ?? item.promptDraft,
+      assistant: this.meta?.assistant ?? null,
+    })
+  }
+
+  /** On a tap: is the answer to this step already in the chat? */
+  private answeredNow(item: LearnItem, ctx: ChatContext): boolean {
+    const prompt = item.promptSent ?? item.promptDraft
+    const live = this.deps.chatExcerpt?.(this.opts.studiedExcerptChars)
+    const assistant = ctx.assistant ?? this.meta?.assistant ?? null
+    return [live, ctx.chatExcerpt].some((t) => !!t && hasAnswer(t, prompt, assistant))
+  }
+
+  /** A second tap within a short while on the same waiting step: the student moves on anyway. */
+  private insists(itemId: Id): boolean {
+    const w = this.waitedOn
+    return !!w && w.itemId === itemId && this.deps.clock.now() - w.at <= INSIST_MS
+  }
+
+  /** The watcher saw a full answer: the step is done (the next tap hands out the next one). */
+  private markAnswered(itemId: Id): void {
+    const meta = this.meta
+    const roadmap = meta ? this.deps.repos.roadmaps.get(meta.roadmapId) : null
+    if (!roadmap) return
+    const idx = currentIndex(roadmap)
+    const item = roadmap.items[idx]
+    if (!isLearn(item) || item.id !== itemId || !isDelivered(item)) return
+    this.closeLearn(roadmap, idx)
+    this.settle()
+    this.emitChange()
+  }
+
+  private closeLearn(roadmap: Roadmap, idx: number): void {
+    const item = roadmap.items[idx]
+    if (!isLearn(item)) return
+    if (this.answers.watching === item.id) this.answers.stop()
+    if (this.waitedOn?.itemId === item.id) this.waitedOn = null
+    this.save(roadmap, closeItem(roadmap, idx, this.deps.clock.nowIso()))
+    touchConcepts(this.deps, roadmap.subjectId, item.concepts)
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────────────────────

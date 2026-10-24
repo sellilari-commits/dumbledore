@@ -234,6 +234,11 @@ export function createRig(opts: RigOptions = {}): Rig {
     keys: () => undefined,
     log: () => {},
     ...opts.compose,
+    // The scripted chat doesn't answer steps; the answer gate has its own tests.
+    tuning: {
+      ...opts.compose?.tuning,
+      study: { requireAnswer: false, ...opts.compose?.tuning?.study },
+    },
   })
   return { dir, clock, helper, screen, brain, comp, services: comp.services }
 }
