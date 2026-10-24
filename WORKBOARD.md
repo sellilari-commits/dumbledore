@@ -9,7 +9,6 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
 | 2026-10-25 11:20 | Ilari / Claude | Move the double-tap chat box by its header; position remembered per display | src/main/windows/placement.ts, manager.ts, chat-spots.ts (new), windows.test.ts, src/main/app.ts (one option), src/renderer/surfaces/askbar/askbar.css (+ AskBar test), tests/e2e-sim/askbar-*.spec.ts + askbar screenshots | main | deploys live after |
-| 2026-10-25 11:00 | Ilari / Claude | No pop-up boxes except the selection menu and the /d reply (nudges → orb dot, errors logged); timer notification stays | src/main/overlay/controller.ts + toasts.ts (+ tests), src/main/router/selection-actions.ts, src/main/flows/ask-flow.ts (purpose field only), toast-caller tests | main | |
 | 2026-10-25 10:30 | Olle / Claude | Study material upload: add PDFs, Word/RTF/HTML, text and Markdown to a subject; Dumbledore reads them into Memory through the existing extraction | `native/helper/Sources/DumbledoreHelper/FileText.swift` (new), `Handlers.swift` (one register line), `native/helper/build.sh` (PDFKit), `src/shared/helper-protocol.ts` (file.pdfText), `src/shared/ipc.ts` (materials.add), `src/main/ipc/handlers.ts` (materials case only), `src/main/app.ts` (file picker extra), `src/main/flows/materials.ts` (+ test, new), `src/main/fakes/` (extras), `src/renderer/lib/mock-api.ts` + `mock/handlers-materials.ts` (new), `src/renderer/pages/subject/` | main | Reuses applyExtraction/brain.extract without editing them |
 | 2026-10-24 22:20 | Olle / Claude | Empty home first steps; onboarding intro; white backgrounds + popovers above dialogs; one-page subject (description, goals, progress, gaps, what Dumbledore caught) | `src/renderer/pages/home/`, `src/renderer/pages/onboarding/`, `src/renderer/pages/subject/`, `src/renderer/design-system/tokens.css`, `docs/DESIGN.md`, `tests/e2e-sim/` (home, onboarding, subject specs + screenshots) | main | Renderer only; /subjects/:id/:view routes kept |
 
@@ -20,6 +19,7 @@ Newest first; keep about the last 20 entries.
 | Finished (UTC) | Who / agent | Work | Commit |
 |---|---|---|---|
 | 2026-10-25 | Ilari / Claude | Double-tap (or orb long press) closes the open chat | e317da2 |
+| 2026-10-25 | Ilari / Claude | No pop-up boxes except the selection menu and the /d reply; timer notification stays | 6364d96 |
 | 2026-10-25 | Ilari / Claude | Timer: change the time while it runs (−5/−1/+1/+5, Stop) | 52edb77 |
 | 2026-10-25 | Ilari / Claude | Orb can sit anywhere on the edge again (Wispr band removed) | 45ce959 |
 | 2026-10-25 | Ilari / Claude | Double-tap chat: fixed 380 × 520 box beside the orb, "Chat with Dumbledore" header; study box stays compact | 77706c0 |
