@@ -1,0 +1,140 @@
+/* Side stack squares, Study pill and suggestion chip — the orb's small companions. */
+
+.ov-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 28px;
+}
+
+.ov-stack[data-up] {
+  flex-direction: column-reverse;
+}
+
+.ov-sq,
+.ov-pill,
+.ov-chip {
+  all: unset;
+  box-sizing: border-box;
+  height: 28px;
+  color: var(--c-texPri);
+  background: var(--ov-surface);
+  box-shadow: var(--shadow-md);
+  font-family: var(--font-sans);
+  white-space: nowrap;
+  touch-action: none;
+  animation: ov-pop var(--dur-base) var(--ease-out);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    left var(--dur-base) var(--ease-out),
+    right var(--dur-base) var(--ease-out),
+    top var(--dur-base) var(--ease-out),
+    bottom var(--dur-base) var(--ease-out);
+}
+
+.ov-sq:hover,
+.ov-pill:hover,
+.ov-chip:hover {
+  background: var(--ov-surfaceHover);
+}
+
+.ov-sq:focus-visible,
+.ov-pill:focus-visible,
+.ov-chip:focus-visible {
+  box-shadow: var(--shadow-md), var(--shadow-focus);
+}
+
+/* ── Side-stack square ──────────────────────────────────────────────── */
+
+.ov-sq {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  border-radius: 8px;
+  color: var(--c-icoPri);
+}
+
+.ov-sq[data-pressed] {
+  background: var(--c-bacTer);
+}
+
+.ov-sq svg:first-child {
+  margin-left: 1px;
+}
+
+.ov-sq__label {
+  position: absolute;
+  top: 50%;
+  padding: 3px 7px;
+  border-radius: var(--radius-control);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-texSec);
+  background: var(--c-popBac);
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  transform: translateY(-50%);
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.ov-stack[data-side="left"] .ov-sq__label {
+  right: calc(100% + 8px);
+}
+
+.ov-stack[data-side="right"] .ov-sq__label {
+  left: calc(100% + 8px);
+}
+
+.ov-sq:hover .ov-sq__label {
+  opacity: 1;
+}
+
+/* ── Study pill & suggestion chip ───────────────────────────────────── */
+
+.ov-pill,
+.ov-chip {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-radius: 14px;
+  font-size: var(--text-meta);
+  font-weight: var(--weight-medium);
+  line-height: 1;
+}
+
+.ov-pill__sep,
+.ov-pill__count {
+  color: var(--c-texSec);
+}
+
+.ov-pill__count {
+  font-variant-numeric: tabular-nums;
+}
+
+.ov-chip {
+  max-width: 320px;
+  padding: 0 5px 0 10px;
+}
+
+.ov-chip[data-kind="improve"] {
+  padding-left: 12px;
+}
+
+.ov-chip__spark {
+  font-size: 12px;
+}
+
+.ov-chip__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ov-chip .ov-key {
+  margin-left: 2px;
+}

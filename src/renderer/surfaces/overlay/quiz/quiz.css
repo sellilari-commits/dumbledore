@@ -1,0 +1,255 @@
+/* Quiz card: 380 pt Notion card with radio rows, rationale, dots and the result view. */
+
+.ov-quiz {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  border-radius: var(--radius-panel);
+  color: var(--c-texPri);
+  background: var(--c-popBac);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: ov-pop var(--dur-base) var(--ease-out);
+}
+
+.ov-quiz__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 0 16px;
+}
+
+.ov-quiz__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  line-height: 22px;
+  color: var(--c-texSec);
+}
+
+.ov-quiz__body {
+  flex: 1;
+  min-height: 0;
+  padding: 6px 16px 16px;
+  overflow-y: auto;
+}
+
+.ov-quiz__stem {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: var(--weight-semibold);
+  line-height: 22px;
+}
+
+.ov-quiz__options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* ── Radio rows ─────────────────────────────────────────────────────── */
+
+.ov-opt {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 38px;
+  padding: 9px 10px;
+  border-radius: var(--radius-menu);
+  font-size: var(--text-ui);
+  line-height: 20px;
+  color: var(--c-texPri);
+  box-shadow: inset 0 0 0 1px var(--c-borPri);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.ov-opt:hover:not([aria-disabled]) {
+  background: var(--c-bacInt);
+}
+
+.ov-opt:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+.ov-opt__key {
+  margin-top: 1px;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.ov-opt__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.ov-opt__mark {
+  flex: none;
+  margin-top: 2px;
+}
+
+.ov-opt[data-state="picked"] {
+  background: var(--c-accentTint);
+  box-shadow: inset 0 0 0 1px var(--c-accent);
+}
+
+.ov-opt[data-state="correct"] {
+  color: var(--c-green-ink);
+  background: var(--c-green-bg);
+  box-shadow: inset 0 0 0 1px transparent;
+}
+
+.ov-opt[data-state="correct"] .ov-opt__key {
+  color: var(--c-accentText);
+  background: var(--c-green-text);
+}
+
+.ov-opt[data-state="wrong"] {
+  color: var(--c-red-ink);
+  background: var(--c-red-bg);
+  box-shadow: inset 0 0 0 1px transparent;
+}
+
+.ov-opt[data-state="wrong"] .ov-opt__key {
+  color: var(--c-accentText);
+  background: var(--c-red-text);
+}
+
+.ov-opt[data-state="dim"] {
+  opacity: 0.5;
+}
+
+.ov-quiz__why {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-menu);
+  font-size: var(--text-meta);
+  line-height: 19px;
+  color: var(--c-texSec);
+  background: var(--c-bacSec);
+  animation: ov-fade-in var(--dur-base) var(--ease-out);
+}
+
+.ov-quiz__why strong {
+  font-weight: var(--weight-semibold);
+  color: var(--c-green-ink);
+}
+
+.ov-quiz__why[data-correct="false"] strong {
+  color: var(--c-red-ink);
+}
+
+.ov-quiz__error {
+  margin: 10px 0 0;
+  font-size: var(--text-meta);
+  color: var(--c-red-ink);
+}
+
+/* ── Footer: dots, count, Next ──────────────────────────────────────── */
+
+.ov-quiz__foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 12px 0 16px;
+  border-top: 1px solid var(--c-borPri);
+}
+
+.ov-dots {
+  display: flex;
+  gap: 5px;
+}
+
+.ov-dots__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--c-borStr);
+  transition: background-color var(--dur-base) var(--ease-out);
+}
+
+.ov-dots__dot[data-current] {
+  background: var(--c-texSec);
+}
+
+.ov-dots__dot[data-mark="correct"] {
+  background: var(--c-green-text);
+}
+
+.ov-dots__dot[data-mark="wrong"] {
+  background: var(--c-red-text);
+}
+
+.ov-quiz__count {
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-texSec);
+}
+
+.ov-quiz__hint {
+  margin-left: auto;
+  padding-right: 4px;
+  font-size: var(--text-small);
+  color: var(--c-texTer);
+}
+
+.ov-quiz__foot .ov-btn {
+  margin-left: auto;
+}
+
+.ov-quiz__enter {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+/* ── Loading & errors ───────────────────────────────────────────────── */
+
+.ov-quiz__loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 0 2px;
+}
+
+.ov-quiz__loading p,
+.ov-quiz__fail p {
+  margin: 4px 0 0;
+  font-size: var(--text-meta);
+  color: var(--c-texSec);
+}
+
+.ov-quiz__fail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ov-skel {
+  height: 12px;
+  border-radius: var(--radius-control);
+  background: var(--c-bacTer);
+  animation: ov-breathe 1.4s ease-in-out infinite;
+}
+
+.ov-skel--short {
+  width: 60%;
+}

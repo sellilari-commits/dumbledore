@@ -1,0 +1,96 @@
+/*
+ * Overlay page base: a transparent, full-screen, click-through canvas. Only elements marked
+ * [data-hit] take the pointer; everything else shows the app underneath.
+ * Colours come from design-system/tokens.css; --ov-surface is the one local alias
+ * (orb and its small satellites: white in light, #202020 in dark).
+ */
+
+:root {
+  --ov-surface: var(--c-bacPri);
+  --ov-surfaceHover: var(--c-bacInt);
+  /* Tooltips stay dark in both themes (inverted text in light, a popover tone in dark). */
+  --ov-tipBg: var(--c-texPri);
+  --ov-tipText: var(--c-bacPri);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ov-surface: var(--c-bacSec);
+    --ov-tipBg: var(--c-popBac);
+    --ov-tipText: var(--c-texPri);
+  }
+}
+
+:root[data-theme="dark"] {
+  --ov-surface: var(--c-bacSec);
+  --ov-tipBg: var(--c-popBac);
+  --ov-tipText: var(--c-texPri);
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+  color: var(--c-texPri);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+
+.ov-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ov-root [data-hit] {
+  pointer-events: auto;
+}
+
+/* Satellites glide with the orb; while it is dragged they follow it exactly. */
+.ov-sat {
+  position: absolute;
+  transition:
+    left var(--dur-base) var(--ease-out),
+    right var(--dur-base) var(--ease-out),
+    top var(--dur-base) var(--ease-out),
+    bottom var(--dur-base) var(--ease-out);
+}
+
+.ov-root[data-moving] .ov-sat,
+.ov-root[data-moving] .ov-orb {
+  transition: none;
+}
+
+@keyframes ov-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ov-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes ov-breathe {
+  50% {
+    opacity: 0.35;
+  }
+}

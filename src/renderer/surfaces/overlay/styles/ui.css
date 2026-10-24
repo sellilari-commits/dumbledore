@@ -1,0 +1,152 @@
+/*
+ * Small Notion-style primitives shared by the overlay and the Ask bar: buttons, key caps,
+ * status tags and icon buttons. Values come from design-system/tokens.css.
+ */
+
+.ov-btn {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-control);
+  font-family: var(--font-sans);
+  font-size: var(--text-ui);
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--c-texPri);
+  box-shadow: var(--shadow-button);
+  cursor: default;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.ov-btn:hover {
+  background: var(--c-bacInt);
+}
+
+.ov-btn:active {
+  background: var(--c-bacTer);
+}
+
+.ov-btn:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+.ov-btn--primary {
+  color: var(--c-accentText);
+  background: var(--c-accent);
+  box-shadow: none;
+}
+
+.ov-btn--primary:hover {
+  background: var(--c-accentHover);
+}
+
+.ov-btn--primary:active {
+  background: var(--c-accentPressed);
+}
+
+.ov-btn:disabled,
+.ov-btn[aria-disabled="true"] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.ov-icon-btn {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: var(--radius-control);
+  color: var(--c-icoSec);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+
+.ov-icon-btn:hover {
+  background: var(--c-bacInt);
+  color: var(--c-icoPri);
+}
+
+.ov-icon-btn:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+.ov-key {
+  box-sizing: border-box;
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: var(--radius-control);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  color: var(--c-texSec);
+  background: var(--c-bacTer);
+}
+
+.ov-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-control);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  color: var(--c-gray-ink);
+  background: var(--c-gray-bg);
+}
+
+.ov-tag[data-color="green"] {
+  color: var(--c-green-ink);
+  background: var(--c-green-bg);
+}
+
+.ov-tag[data-color="yellow"] {
+  color: var(--c-yellow-ink);
+  background: var(--c-yellow-bg);
+}
+
+.ov-tag[data-color="red"] {
+  color: var(--c-red-ink);
+  background: var(--c-red-bg);
+}
+
+.ov-tag[data-color="blue"] {
+  color: var(--c-blue-ink);
+  background: var(--c-blue-bg);
+}
+
+.ov-spinner {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid var(--c-borPri);
+  border-top-color: var(--c-accent);
+  box-sizing: border-box;
+  animation: ov-spin 0.8s linear infinite;
+}
+
+@keyframes ov-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ov-spinner {
+    animation-duration: 2.4s;
+  }
+}

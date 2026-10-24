@@ -26,3 +26,17 @@ Behaviour the shell must respect:
 - `pause()`/`end()` park the roadmap as `'paused'`; a paused session is not restored after restart.
   Home "Continue" must list all non-done roadmaps, not only `listActive()`.
 - The checkpoint failure counter is in memory (resets on restart).
+
+## L7b Overlay + Ask bar (landed)
+
+- The overlay window is non-focusable: keys 1–4 / Esc reach the quiz card only if main forwards
+  them with `webContents.sendInputEvent`. Enter and right ⌥ go through `pressEnter('overlay')` (L7a).
+- Ask bar window: transparent; the card draws its own 12 px corners and wants the native shadow
+  (`hasShadow: true` + `invalidateShadow()` after resize). Reply links use `target=_blank` → add a
+  window-open handler calling `shell.openExternal`.
+- Ask bar streams `chat.delta` on thread `'ask'`.
+- Cross-display drag: the scene stays in the window owning the pointer until drop; `orbDrag` x/y are
+  in that window's coordinates and may fall outside its bounds.
+- Toasts hide while the quiz card is open and return with a fresh ttl.
+- Dev server for overlay/askbar: `src/renderer/surfaces/overlay/vite.config.mjs`, port 5181; the
+  mock driver loads lazily (`?mock=1` or no `window.dumbledore`).

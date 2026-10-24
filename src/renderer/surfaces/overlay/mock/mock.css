@@ -1,0 +1,217 @@
+/*
+ * Mock-only backdrop: a fake desktop and a ChatGPT-like window, so overlay states can be judged
+ * in context. Never loaded in Electron. Raw colours are fine here: this imitates other apps.
+ */
+
+:root {
+  --mk-desk: linear-gradient(160deg, #e9edf2 0%, #dfe5ec 45%, #e8e3dc 100%);
+  --mk-win: #ffffff;
+  --mk-win-ring: rgb(0 0 0 / 0.08);
+  --mk-win-shadow: rgb(0 0 0 / 0.14);
+  --mk-bar: #f7f7f7;
+  --mk-bar-line: #ececec;
+  --mk-url: #ececec;
+  --mk-url-text: #6b6b6b;
+  --mk-text: #0d0d0d;
+  --mk-bubble: #f1f1f1;
+  --mk-line: #ededed;
+  --mk-box: #ffffff;
+  --mk-box-ring: rgb(0 0 0 / 0.1);
+  --mk-box-ring-focus: rgb(0 0 0 / 0.2);
+  --mk-placeholder: #8f8f8f;
+  --mk-controls: rgb(255 255 255 / 0.85);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --mk-desk: linear-gradient(160deg, #1d2026 0%, #181a1f 50%, #211e1c 100%);
+    --mk-win: #212121;
+    --mk-win-ring: rgb(255 255 255 / 0.08);
+    --mk-win-shadow: rgb(0 0 0 / 0.5);
+    --mk-bar: #262626;
+    --mk-bar-line: #2f2f2f;
+    --mk-url: #333333;
+    --mk-url-text: #a0a0a0;
+    --mk-text: #ececec;
+    --mk-bubble: #303030;
+    --mk-line: #2e2e2e;
+    --mk-box: #303030;
+    --mk-box-ring: rgb(255 255 255 / 0.08);
+    --mk-box-ring-focus: rgb(255 255 255 / 0.2);
+    --mk-placeholder: #9b9b9b;
+    --mk-controls: rgb(40 40 40 / 0.85);
+  }
+}
+
+:root[data-theme="dark"] {
+  --mk-desk: linear-gradient(160deg, #1d2026 0%, #181a1f 50%, #211e1c 100%);
+  --mk-win: #212121;
+  --mk-win-ring: rgb(255 255 255 / 0.08);
+  --mk-win-shadow: rgb(0 0 0 / 0.5);
+  --mk-bar: #262626;
+  --mk-bar-line: #2f2f2f;
+  --mk-url: #333333;
+  --mk-url-text: #a0a0a0;
+  --mk-text: #ececec;
+  --mk-bubble: #303030;
+  --mk-line: #2e2e2e;
+  --mk-box: #303030;
+  --mk-box-ring: rgb(255 255 255 / 0.08);
+  --mk-box-ring-focus: rgb(255 255 255 / 0.2);
+  --mk-placeholder: #9b9b9b;
+  --mk-controls: rgb(40 40 40 / 0.85);
+}
+
+.mk-desktop {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--mk-desk);
+  font-family: -apple-system, system-ui, sans-serif;
+}
+
+.mk-window {
+  position: absolute;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--mk-win);
+  box-shadow:
+    0 0 0 1px var(--mk-win-ring),
+    0 18px 50px var(--mk-win-shadow);
+}
+
+.mk-titlebar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  border-bottom: 1px solid var(--mk-bar-line);
+  background: var(--mk-bar);
+}
+
+.mk-lights {
+  position: absolute;
+  left: 14px;
+  display: flex;
+  gap: 8px;
+}
+
+.mk-lights i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ff5f57;
+}
+
+.mk-lights i:nth-child(2) {
+  background: #febc2e;
+}
+
+.mk-lights i:nth-child(3) {
+  background: #28c840;
+}
+
+.mk-url {
+  padding: 3px 60px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--mk-url-text);
+  background: var(--mk-url);
+}
+
+.mk-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin: 40px auto 0;
+}
+
+.mk-bubble--me {
+  align-self: flex-end;
+  max-width: 70%;
+  padding: 10px 16px;
+  border-radius: 18px;
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--mk-text);
+  background: var(--mk-bubble);
+}
+
+.mk-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mk-lines i {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--mk-line);
+}
+
+.mk-chatbox {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  border-radius: 28px;
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--mk-text);
+  background: var(--mk-box);
+  box-shadow:
+    0 0 0 1px var(--mk-box-ring),
+    0 4px 16px rgb(0 0 0 / 0.06);
+}
+
+.mk-chatbox[data-focused] {
+  box-shadow:
+    0 0 0 1px var(--mk-box-ring-focus),
+    0 4px 16px rgb(0 0 0 / 0.08);
+}
+
+.mk-placeholder {
+  display: flex;
+  align-items: center;
+  color: var(--mk-placeholder);
+}
+
+.mk-caret {
+  display: inline-block;
+  width: 1.5px;
+  height: 20px;
+  margin: 0 1px;
+  vertical-align: middle;
+  background: var(--mk-text);
+}
+
+.mk-controls {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 60vw;
+  padding: 6px;
+  border-radius: 8px;
+  background: var(--mk-controls);
+  box-shadow: 0 0 0 1px var(--mk-win-ring);
+}
+
+.mk-controls button {
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--mk-text);
+  background: transparent;
+}
+
+.mk-controls button:hover {
+  background: var(--mk-line);
+}

@@ -1,0 +1,104 @@
+/* Quiz result: score, per-concept rows, gaps callout and the final actions. */
+
+.ov-score {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.ov-score__big {
+  font-size: var(--text-h1);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-h1);
+  font-variant-numeric: tabular-nums;
+}
+
+.ov-score__of {
+  color: var(--c-texTer);
+}
+
+.ov-score__pct {
+  font-size: var(--text-ui);
+  color: var(--c-texSec);
+}
+
+.ov-score__line,
+.ov-score__next {
+  margin: 2px 0 0;
+  font-size: var(--text-ui);
+  color: var(--c-texSec);
+}
+
+.ov-concepts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 14px 0 0;
+  padding: 8px 0 0;
+  list-style: none;
+  border-top: 1px solid var(--c-borPri);
+}
+
+.ov-concepts li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+  font-size: var(--text-ui);
+}
+
+.ov-concepts__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ov-concepts__n {
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-texSec);
+}
+
+.ov-gaps {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-menu);
+  font-size: var(--text-meta);
+  line-height: 19px;
+  background: var(--c-bacSec);
+}
+
+.ov-gaps__title {
+  font-weight: var(--weight-semibold);
+}
+
+.ov-gaps ul {
+  margin: 2px 0 0;
+  padding: 0 0 0 16px;
+  color: var(--c-texSec);
+}
+
+.ov-quiz__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.ov-quiz__sent {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: auto;
+  font-size: var(--text-meta);
+  color: var(--c-green-ink);
+}
+
+.ov-quiz__actions .ov-quiz__error {
+  margin: 0 auto 0 0;
+}

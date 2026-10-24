@@ -1,0 +1,163 @@
+/* Orb: circle, glyph and status glyphs (pause bars, thinking arc, progress ring, dot). */
+
+.ov-orb {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    width var(--dur-base) var(--ease-out),
+    height var(--dur-base) var(--ease-out);
+}
+
+.ov-orb__body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.ov-orb:hover .ov-orb__body {
+  transform: scale(1.05);
+}
+
+.ov-orb[data-pressed] .ov-orb__body {
+  transform: scale(0.96);
+}
+
+.ov-orb__face {
+  all: unset;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  color: var(--c-icoPri);
+  background: var(--ov-surface);
+  box-shadow: var(--shadow-md);
+  touch-action: none;
+}
+
+.ov-orb__face:focus-visible {
+  box-shadow: var(--shadow-md), var(--shadow-focus);
+}
+
+.ov-orb__glyph {
+  display: block;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.ov-orb[data-paused] .ov-orb__glyph {
+  opacity: 0.4;
+}
+
+.ov-orb__ring,
+.ov-orb__think {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.ov-orb__ring {
+  transform: rotate(-90deg);
+}
+
+.ov-orb__ring-value {
+  stroke: var(--c-accent);
+  transition:
+    stroke-dashoffset var(--dur-base) var(--ease-out),
+    opacity var(--dur-base) var(--ease-out);
+}
+
+/* While thinking during a session, the ring steps back so the moving arc reads clearly. */
+.ov-orb[data-thinking] .ov-orb__ring-value {
+  opacity: 0.3;
+}
+
+.ov-orb__think circle {
+  stroke: var(--c-accent);
+}
+
+.ov-orb__think {
+  animation: ov-spin 0.9s linear infinite;
+}
+
+.ov-orb__pause {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--ov-surface);
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+}
+
+.ov-orb__pause i {
+  width: 2px;
+  height: 7px;
+  border-radius: 1px;
+  background: var(--c-icoPri);
+}
+
+/* 8 pt dot at the orb's top-right (45° on the rim), ringed in the orb colour. */
+.ov-orb__dot {
+  position: absolute;
+  left: calc(85.4% - 4px);
+  top: calc(14.6% - 4px);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-orange-text);
+  box-shadow: 0 0 0 2px var(--ov-surface);
+  pointer-events: none;
+  animation: ov-pop var(--dur-base) var(--ease-out);
+}
+
+.ov-orb__dot[data-color="blue"] {
+  background: var(--c-accent);
+}
+
+/* Tooltip: "Dumbledore · right ⌥" — a dark Notion tooltip in both themes. */
+.ov-tip {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  border-radius: var(--radius-menu);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  color: var(--ov-tipText);
+  background: var(--ov-tipBg);
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  animation: ov-fade-in var(--dur-fast) var(--ease-out);
+}
+
+.ov-tip__key {
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ov-orb__think {
+    animation: ov-breathe 1.6s ease-in-out infinite;
+  }
+
+  .ov-orb:hover .ov-orb__body {
+    transform: none;
+  }
+}

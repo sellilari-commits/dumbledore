@@ -1,0 +1,103 @@
+/* Toast cards: 320 pt Notion cards that grow out of the orb and collapse back into its dot. */
+
+.ov-toasts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 320px;
+}
+
+/* Newest (last) nearest the orb: on top when growing down, at the bottom when growing up. */
+.ov-toasts[data-grow="down"] {
+  flex-direction: column-reverse;
+}
+
+.ov-toast {
+  box-sizing: border-box;
+  width: 320px;
+  padding: 12px 12px 14px 16px;
+  border-radius: var(--radius-panel);
+  color: var(--c-texPri);
+  background: var(--c-popBac);
+  box-shadow: var(--shadow-lg);
+  animation: ov-pop var(--dur-base) var(--ease-out);
+}
+
+.ov-toast[data-leaving="collapse"] {
+  animation: ov-collapse 180ms ease-in forwards;
+  pointer-events: none;
+}
+
+.ov-toast[data-leaving="fade"] {
+  animation: ov-fade-out var(--dur-fast) ease-out forwards;
+  pointer-events: none;
+}
+
+.ov-toast__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.ov-toast__icon {
+  margin-right: -2px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.ov-toast__title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-ui);
+  font-weight: var(--weight-semibold);
+  line-height: 20px;
+}
+
+.ov-toast .ov-toast__close {
+  margin: -1px -2px 0 0;
+  opacity: 0;
+}
+
+.ov-toast:hover .ov-toast__close,
+.ov-toast .ov-toast__close:focus-visible {
+  opacity: 1;
+}
+
+.ov-toast__body {
+  margin: 2px 16px 0 0;
+  font-size: var(--text-meta);
+  line-height: 19px;
+  color: var(--c-texSec);
+}
+
+.ov-toast[data-kind="error"] .ov-toast__title {
+  color: var(--c-red-ink);
+}
+
+.ov-toast__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+@keyframes ov-collapse {
+  to {
+    opacity: 0;
+    transform: scale(0.15);
+  }
+}
+
+@keyframes ov-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ov-toast[data-leaving] {
+    animation: none;
+    opacity: 0;
+  }
+}
