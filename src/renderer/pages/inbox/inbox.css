@@ -281,3 +281,79 @@
     flex-wrap: wrap;
   }
 }
+
+/* Loose notes: quiet rows with a dot (or a highlighter mark), the text and its source; the
+   File menu and the ✕ sit on the right, the ✕ only on hover or focus. */
+.ib-loose-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ib-loose {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0 -6px;
+  padding: 4px 6px;
+  border-radius: var(--radius-control);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.ib-loose:hover {
+  background: var(--c-hover);
+}
+
+.ib-loose__dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  margin-top: 9px;
+  border-radius: var(--radius-round);
+  background: var(--c-texTer);
+}
+
+.ib-loose__mark {
+  flex: none;
+  margin-top: 4px;
+  color: var(--c-orange-text);
+}
+
+.ib-loose__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ib-loose__text {
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+  color: var(--c-texPri);
+  overflow-wrap: anywhere;
+}
+
+.ib-loose__meta {
+  font-size: var(--text-small);
+  color: var(--c-texTer);
+}
+
+.ib-loose .ib-select {
+  flex: none;
+  align-self: center;
+}
+
+.ib-loose__del {
+  flex: none;
+  align-self: center;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.ib-loose:hover > .ib-loose__del,
+.ib-loose__del:focus-visible {
+  opacity: 1;
+}

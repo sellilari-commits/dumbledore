@@ -1,0 +1,997 @@
+diff --git a/src/renderer/pages/subject/ConceptsView.tsx b/src/renderer/pages/subject/ConceptsView.tsx
+index 7a37b36..3f7f848 100644
+--- a/src/renderer/pages/subject/ConceptsView.tsx
++++ b/src/renderer/pages/subject/ConceptsView.tsx
+@@ -1,175 +1,268 @@
+ /**
+- * Concepts view: every concept of the subject as a Notion table — name, status tag (+ "Due"),
+- * mastery bar, last seen, next review — sorted by the view's Sort menu (ConceptSortMenu, shown
+- * in the view-tab bar).
++ * Concepts view (docs/NOTES.md §7): the subject's memory as a topic tree. Each topic shows its
++ * status, a summary and the notes Dumbledore kept for it, with where each came from. Everything
++ * is the student's to correct: rename a topic or edit its summary inline, edit a note (it becomes
++ * pinned, so consolidation never rewrites it), delete a note with its ✕, delete a topic after a
++ * light confirm (its notes go, its subtopics move up). "Needs first" lines show prerequisite
++ * edges, read-only. Notes not placed on a topic yet are listed at the end.
+  */
+ import {
+   Button,
+-  type Column,
+-  DatabaseTable,
++  Dialog,
+   EmptyState,
+-  Menu,
+-  MenuItem,
+-  MenuLabel,
+-  MenuSeparator,
+-  ProgressBar,
++  ErrorState,
++  IconButton,
++  LoadingState,
+   Tag,
++  toast,
+ } from '@renderer/design-system'
+-import { daysUntil, formatDue, formatPercent, formatRelative } from '@renderer/lib/format'
+-import { DUE, MASTERY } from '@renderer/lib/status'
+-import type { Concept, MasteryStatus } from '@shared/domain'
+-import {
+-  ALargeSmall,
+-  ArrowDownWideNarrow,
+-  ArrowUpNarrowWide,
+-  CalendarClock,
+-  CircleChevronDown,
+-  Clock,
+-  Gauge,
+-  Puzzle,
+-} from 'lucide-react'
+-import {
+-  type ConceptSort,
+-  type ConceptSortKey,
+-  DEFAULT_DIR,
+-  isDue,
+-  SORT_LABEL,
+-  sortConcepts,
+-} from './subject-utils'
++import { formatPercent, formatRelative } from '@renderer/lib/format'
++import { useSubjectTree } from '@renderer/lib/memory-queries'
++import { useAction } from '@renderer/lib/queries'
++import { MASTERY } from '@renderer/lib/status'
++import type { ConceptEdge, Note } from '@shared/domain'
++import type { ConceptNode } from '@shared/state'
++import { Highlighter, Puzzle, Trash2, X } from 'lucide-react'
++import { type CSSProperties, type KeyboardEvent, useState } from 'react'
++import { EditableText } from './EditableText'
++import { depthsOf } from './subject-utils'
+ 
+-const HEAD = { size: 14, strokeWidth: 1.75 } as const
+-const SORT_KEYS = Object.keys(SORT_LABEL) as ConceptSortKey[]
+-/** Mastery bars take the status colour (PLAN §3.2: colour carries meaning). */
+-const BAR: Record<MasteryStatus, 'gray' | 'yellow' | 'red' | 'green'> = {
+-  new: 'gray',
+-  learning: 'yellow',
+-  struggling: 'red',
+-  mastered: 'green',
++const report = (err: Error) => toast(err.message, { tone: 'error' })
++
++function NoteRow({ note }: { note: Note }) {
++  const [draft, setDraft] = useState<string | null>(null)
++  const update = useAction('notes.update', { onError: report })
++  const remove = useAction('notes.delete', {
++    onSuccess: () => toast('Note deleted', { tone: 'info' }),
++    onError: report,
++  })
++  const save = () => {
++    const text = draft?.trim() ?? ''
++    setDraft(null)
++    if (text && text !== note.text) update.mutate({ id: note.id, text })
++  }
++  const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
++    if (e.key === 'Enter' && !e.shiftKey) {
++      e.preventDefault()
++      save()
++    } else if (e.key === 'Escape') setDraft(null)
++  }
++  const meta = [
++    note.source.title ?? note.source.app,
++    formatRelative(note.createdAt),
++    note.pinned ? 'edited' : null,
++  ]
++    .filter(Boolean)
++    .join(' · ')
++  return (
++    <li className="tt-note" data-kind={note.kind}>
++      {note.kind === 'highlight' ? (
++        <Highlighter
++          className="tt-note__mark"
++          size={13}
++          strokeWidth={1.75}
++          aria-label="Highlight"
++        />
++      ) : (
++        <span className="tt-note__dot" aria-hidden />
++      )}
++      <div className="tt-note__body">
++        {draft !== null ? (
++          <textarea
++            className="tt-note__input"
++            aria-label="Edit note"
++            value={draft}
++            maxLength={200}
++            rows={2}
++            // biome-ignore lint/a11y/noAutofocus: the student just clicked the note to edit it
++            autoFocus
++            onChange={(e) => setDraft(e.target.value)}
++            onKeyDown={onKey}
++            onBlur={save}
++          />
++        ) : (
++          <button
++            type="button"
++            className="tt-note__text"
++            aria-label={`Edit note: ${note.text}`}
++            onClick={() => setDraft(note.text)}
++          >
++            {note.text}
++          </button>
++        )}
++        <span className="tt-note__meta">{meta}</span>
++      </div>
++      <IconButton
++        label="Delete note"
++        size="sm"
++        className="tt-del"
++        onClick={() => remove.mutate(note.id)}
++      >
++        <X size={14} strokeWidth={1.75} />
++      </IconButton>
++    </li>
++  )
+ }
+ 
+-function NextReview({ concept }: { concept: Concept }) {
+-  if (!concept.nextReviewAt) return <span className="dd-table__muted">—</span>
+-  const days = daysUntil(concept.nextReviewAt)
+-  if (days <= 0) return <span className="sp-due">{days < 0 ? 'Overdue' : 'Today'}</span>
+-  return <span>{formatDue(concept.nextReviewAt)}</span>
++function NoteList({ notes }: { notes: Note[] }) {
++  if (notes.length === 0) return null
++  return (
++    <ul className="tt-notes">
++      {notes.map((n) => (
++        <NoteRow key={n.id} note={n} />
++      ))}
++    </ul>
++  )
+ }
+ 
+-const COLUMNS: Column<Concept>[] = [
+-  {
+-    key: 'name',
+-    header: 'Name',
+-    icon: <ALargeSmall {...HEAD} />,
+-    render: (c) => (
+-      <span className="dd-table__title-cell" title={c.summary}>
+-        <span>{c.name}</span>
+-      </span>
+-    ),
+-  },
+-  {
+-    key: 'status',
+-    header: 'Status',
+-    icon: <CircleChevronDown {...HEAD} />,
+-    width: 168,
+-    render: (c) => (
+-      <span className="sp-tags">
+-        <Tag color={MASTERY[c.status].color} dot>
+-          {MASTERY[c.status].label}
+-        </Tag>
+-        {isDue(c) ? <Tag color={DUE.color}>Due</Tag> : null}
+-      </span>
+-    ),
+-  },
+-  {
+-    key: 'mastery',
+-    header: 'Mastery',
+-    icon: <Gauge {...HEAD} />,
+-    width: 132,
+-    render: (c) => (
+-      <span className="sp-mastery">
+-        <ProgressBar
+-          value={c.mastery}
+-          width={56}
+-          color={BAR[c.status]}
+-          label={`${c.name} mastery`}
+-        />
+-        <span className="dd-table__num">{formatPercent(c.mastery)}</span>
+-      </span>
+-    ),
+-  },
+-  {
+-    key: 'lastSeen',
+-    header: 'Last seen',
+-    icon: <Clock {...HEAD} />,
+-    width: 116,
+-    render: (c) => <span className="dd-table__muted">{formatRelative(c.lastSeenAt)}</span>,
+-  },
+-  {
+-    key: 'nextReview',
+-    header: 'Next review',
+-    icon: <CalendarClock {...HEAD} />,
+-    width: 124,
+-    render: (c) => <NextReview concept={c} />,
+-  },
+-]
++function DeleteTopicDialog({ node, onClose }: { node: ConceptNode | null; onClose: () => void }) {
++  const remove = useAction('concepts.delete', {
++    onSuccess: () => {
++      toast(`${node?.concept.name ?? 'Topic'} is deleted.`, { tone: 'success' })
++      onClose()
++    },
++    onError: report,
++  })
++  const n = node?.notes.length ?? 0
++  return (
++    <Dialog
++      open={node !== null}
++      onOpenChange={(open) => !open && !remove.isPending && onClose()}
++      title={`Delete ${node?.concept.name ?? 'topic'}?`}
++      description={`${n === 0 ? 'It has no notes.' : n === 1 ? 'Its note goes too.' : `Its ${n} notes go too.`} Subtopics move up a level.`}
++      footer={
++        <>
++          <Button onClick={onClose} disabled={remove.isPending}>
++            Cancel
++          </Button>
++          <Button
++            variant="danger"
++            loading={remove.isPending}
++            onClick={() => node && remove.mutate(node.concept.id)}
++          >
++            Delete
++          </Button>
++        </>
++      }
++    >
++      {null}
++    </Dialog>
++  )
++}
+ 
+-/** Notion's "Sort" control for the view-tab bar: a property, then a direction. */
+-export function ConceptSortMenu({
+-  sort,
+-  onChange,
++function TopicBlock({
++  node,
++  depth,
++  needs,
++  onDelete,
+ }: {
+-  sort: ConceptSort
+-  onChange: (sort: ConceptSort) => void
++  node: ConceptNode
++  depth: number
++  needs: string[]
++  onDelete: () => void
+ }) {
+-  const Icon = sort.dir === 'asc' ? ArrowUpNarrowWide : ArrowDownWideNarrow
++  const { concept, notes } = node
++  const update = useAction('concepts.update', { onError: report })
++  const status = MASTERY[concept.status]
+   return (
+-    <Menu
+-      align="end"
+-      trigger={
+-        <Button
+-          size="sm"
+-          variant="ghost"
+-          icon={<Icon size={14} />}
+-          aria-label={`Sort concepts: ${SORT_LABEL[sort.key]}, ${sort.dir === 'asc' ? 'ascending' : 'descending'}`}
+-        >
+-          {SORT_LABEL[sort.key]}
+-        </Button>
+-      }
++    <section
++      className="tt-topic"
++      aria-label={concept.name}
++      style={{ '--tt-depth': depth } as CSSProperties}
+     >
+-      <MenuLabel>Sort by</MenuLabel>
+-      {SORT_KEYS.map((key) => (
+-        <MenuItem
+-          key={key}
+-          checked={sort.key === key}
+-          onSelect={() => onChange({ key, dir: sort.key === key ? sort.dir : DEFAULT_DIR[key] })}
++      <div className="tt-topic__head">
++        <EditableText
++          className="tt-topic__name"
++          label="Topic name"
++          value={concept.name}
++          onSave={(name) => name !== concept.name && update.mutate({ id: concept.id, name })}
++        />
++        <Tag color={status.color} dot>
++          {status.label}
++        </Tag>
++        {concept.mastery > 0 ? (
++          <span className="tt-muted">{formatPercent(concept.mastery)}</span>
++        ) : null}
++        <IconButton
++          label={`Delete topic ${concept.name}`}
++          size="sm"
++          className="tt-del"
++          onClick={onDelete}
+         >
+-          {SORT_LABEL[key]}
+-        </MenuItem>
+-      ))}
+-      <MenuSeparator />
+-      <MenuItem checked={sort.dir === 'asc'} onSelect={() => onChange({ ...sort, dir: 'asc' })}>
+-        Ascending
+-      </MenuItem>
+-      <MenuItem checked={sort.dir === 'desc'} onSelect={() => onChange({ ...sort, dir: 'desc' })}>
+-        Descending
+-      </MenuItem>
+-    </Menu>
++          <Trash2 size={14} strokeWidth={1.75} />
++        </IconButton>
++      </div>
++      <EditableText
++        className="tt-topic__summary"
++        label={`Summary of ${concept.name}`}
++        placeholder="Add a summary"
++        allowEmpty
++        value={concept.summary}
++        onSave={(summary) =>
++          summary !== concept.summary && update.mutate({ id: concept.id, summary })
++        }
++      />
++      {needs.length > 0 ? <p className="tt-needs">Needs first: {needs.join(', ')}</p> : null}
++      <NoteList notes={notes} />
++    </section>
+   )
+ }
+ 
+-export function ConceptsView({ concepts, sort }: { concepts: Concept[]; sort: ConceptSort }) {
+-  if (concepts.length === 0)
++/** Names of the topics that must come before each topic (edge from → to). */
++function needsOf(nodes: ConceptNode[], edges: ConceptEdge[]): Map<string, string[]> {
++  const names = new Map(nodes.map((n) => [n.concept.id, n.concept.name]))
++  const out = new Map<string, string[]>()
++  for (const e of edges) {
++    const name = names.get(e.fromId)
++    if (!name) continue
++    out.set(e.toId, [...(out.get(e.toId) ?? []), name])
++  }
++  return out
++}
++
++export function ConceptsView({ subjectId }: { subjectId: string }) {
++  const tree = useSubjectTree(subjectId)
++  const [deleting, setDeleting] = useState<ConceptNode | null>(null)
++
++  if (tree.isLoading) return <LoadingState caption="Loading topics and notes…" lines={5} />
++  if (tree.isError || !tree.data)
+     return (
+-      <EmptyState icon={<Puzzle size={28} strokeWidth={1.5} />} title="No concepts yet">
+-        Dumbledore adds concepts as you read, watch and chat about this subject — each with a
+-        mastery score and a review date.
++      <ErrorState
++        title="Couldn’t load the topics"
++        error={tree.error}
++        onRetry={() => void tree.refetch()}
++      />
++    )
++  const { concepts, unplaced, edges } = tree.data
++  if (concepts.length === 0 && unplaced.length === 0)
++    return (
++      <EmptyState icon={<Puzzle size={28} strokeWidth={1.5} />} title="No topics yet">
++        Dumbledore adds topics and notes as you read, highlight and chat about this subject. You can
++        edit or delete any of them here.
+       </EmptyState>
+     )
++  const depths = depthsOf(concepts.map((n) => n.concept))
++  const needs = needsOf(concepts, edges)
+   return (
+-    <DatabaseTable
+-      label="Concepts"
+-      columns={COLUMNS}
+-      rows={sortConcepts(concepts, sort)}
+-      rowKey={(c) => c.id}
+-    />
++    <div className="tt">
++      {concepts.map((node) => (
++        <TopicBlock
++          key={node.concept.id}
++          node={node}
++          depth={depths.get(node.concept.id) ?? 0}
++          needs={needs.get(node.concept.id) ?? []}
++          onDelete={() => setDeleting(node)}
++        />
++      ))}
++      {unplaced.length > 0 ? (
++        <section className="tt-topic tt-unplaced" aria-label="Not in a topic yet">
++          <div className="tt-topic__head">
++            <span className="tt-unplaced__title">Not in a topic yet</span>
++          </div>
++          <NoteList notes={unplaced} />
++        </section>
++      ) : null}
++      <DeleteTopicDialog node={deleting} onClose={() => setDeleting(null)} />
++    </div>
+   )
+ }
+diff --git a/src/renderer/pages/subject/SeenView.tsx b/src/renderer/pages/subject/SeenView.tsx
+index c5bbe7c..00a0605 100644
+--- a/src/renderer/pages/subject/SeenView.tsx
++++ b/src/renderer/pages/subject/SeenView.tsx
+@@ -1,13 +1,15 @@
+ /**
+  * Seen view: what Dumbledore saw for this subject, grouped by day. Each encounter shows its
+  * source (app, page, time, dwell) and the three parts from the brief — Seen, Big picture and
+- * Understanding (with the evidence) — plus open questions when there are any.
++ * Understanding (with the evidence) — plus open questions when there are any. The ✕ on an
++ * encounter removes it from memory with its notes (and its screen text unless shared).
+  */
+-import { EmptyState, Tag } from '@renderer/design-system'
++import { EmptyState, IconButton, Tag, toast } from '@renderer/design-system'
+ import { formatSeconds, formatTime, hostOf } from '@renderer/lib/format'
++import { useAction } from '@renderer/lib/queries'
+ import { UNDERSTANDING } from '@renderer/lib/status'
+ import type { Encounter } from '@shared/domain'
+-import { Eye, FileText, Globe, MessageSquare, Monitor, Play } from 'lucide-react'
++import { Eye, FileText, Globe, MessageSquare, Monitor, Play, X } from 'lucide-react'
+ import type { ReactNode } from 'react'
+ import { groupByDay } from './subject-utils'
+ 
+@@ -38,6 +40,10 @@ function EncounterBlock({ e }: { e: Encounter }) {
+   const host = hostOf(e.source.url)
+   const u = UNDERSTANDING[e.understanding]
+   const title = e.source.title ?? e.source.app
++  const remove = useAction('encounters.delete', {
++    onSuccess: () => toast('Removed from memory', { tone: 'info' }),
++    onError: (err) => toast(err.message, { tone: 'error' }),
++  })
+   return (
+     <article className="sp-enc" aria-label={title}>
+       <header className="sp-enc__head">
+@@ -51,6 +57,14 @@ function EncounterBlock({ e }: { e: Encounter }) {
+             ' · ',
+           )}
+         </span>
++        <IconButton
++          label={`Remove ${title} from memory`}
++          size="sm"
++          className="tt-del"
++          onClick={() => remove.mutate(e.id)}
++        >
++          <X size={14} strokeWidth={1.75} />
++        </IconButton>
+       </header>
+       <div className="sp-enc__body">
+         <Part label="Seen">
+diff --git a/src/renderer/pages/subject/SubjectPage.test.tsx b/src/renderer/pages/subject/SubjectPage.test.tsx
+index 28a335a..114b73f 100644
+--- a/src/renderer/pages/subject/SubjectPage.test.tsx
++++ b/src/renderer/pages/subject/SubjectPage.test.tsx
+@@ -150,27 +150,85 @@ describe('SubjectPage views', () => {
+     const r = renderSubject()
+     fireEvent.click(await screen.findByRole('tab', { name: /concepts/i }))
+     expect(r.history.at(-1)).toBe('/subjects/sub_orgo/concepts')
+-    expect(await screen.findByRole('table', { name: 'Concepts' })).toBeTruthy()
++    expect(await screen.findByRole('region', { name: 'Carbocation stability' })).toBeTruthy()
+   })
+ 
+-  it('lists concepts weakest first and re-sorts by name', async () => {
++  it('shows topics as a tree with their notes, sources and prerequisites', async () => {
+     renderSubject('/subjects/sub_orgo/concepts')
+-    const table = await screen.findByRole('table', { name: 'Concepts' })
+-    const firstCells = () =>
+-      within(table)
+-        .getAllByRole('row')
+-        .slice(1)
+-        .map((row) => row.querySelector('td')?.textContent)
+-    expect(firstCells().slice(0, 3)).toEqual([
+-      'Solvent effects',
+-      'Hyperconjugation',
+-      'Carbocation stability',
+-    ])
+-    expect(within(table).getAllByText('Due').length).toBe(2)
+-    fireEvent.keyDown(screen.getByRole('button', { name: /sort concepts/i }), { key: 'Enter' })
+-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Name' }))
+-    await waitFor(() => expect(firstCells()[0]).toBe('Carbocation stability'))
+-    expect(firstCells().at(-1)).toBe('Solvent effects')
++    const topic = await screen.findByRole('region', { name: 'SN1 mechanism' })
++    expect(
++      within(topic).getByText(
++        'SN1 goes through a carbocation, so its rate depends only on the substrate.',
++      ),
++    ).toBeTruthy()
++    expect(within(topic).getByText(/^ChatGPT · /)).toBeTruthy()
++    expect(within(topic).getByText('Needs first: Carbocation stability')).toBeTruthy()
++    const carbo = screen.getByRole('region', { name: 'Carbocation stability' })
++    expect(within(carbo).getByLabelText('Highlight')).toBeTruthy()
++    const loose = screen.getByRole('region', { name: 'Not in a topic yet' })
++    expect(within(loose).getByText('Polar protic solvents stabilise ions in solution.')).toBeTruthy()
++  })
++
++  it('edits a note inline (it becomes pinned) and deletes one with its ✕', async () => {
++    const r = renderSubject('/subjects/sub_orgo/concepts')
++    const topic = await screen.findByRole('region', { name: 'Leaving groups' })
++    fireEvent.click(within(topic).getByRole('button', { name: /^Edit note: Good leaving/ }))
++    const input = within(topic).getByRole('textbox', { name: 'Edit note' })
++    fireEvent.change(input, { target: { value: 'Weak bases make good leaving groups.' } })
++    fireEvent.keyDown(input, { key: 'Enter' })
++    await waitFor(() =>
++      expect(r.api.db.notes.find((n) => n.id === 'note_lg1')).toMatchObject({
++        text: 'Weak bases make good leaving groups.',
++        pinned: true,
++      }),
++    )
++    expect(await within(topic).findByText(/ · edited$/)).toBeTruthy()
++
++    const carbo = screen.getByRole('region', { name: 'Carbocation stability' })
++    fireEvent.click(within(carbo).getAllByRole('button', { name: 'Delete note' })[0] as HTMLElement)
++    await waitFor(() =>
++      expect(r.api.db.notes.find((n) => n.id === 'note_cc1')?.status).toBe('deleted'),
++    )
++    await waitFor(() =>
++      expect(
++        within(carbo).queryByText('Carbocation stability: tertiary > secondary > primary > methyl.'),
++      ).toBeNull(),
++    )
++    expect(toastTexts()).toContain('Note deleted')
++  })
++
++  it('renames a topic inline and deletes one after a confirm', async () => {
++    const r = renderSubject('/subjects/sub_orgo/concepts')
++    const topic = await screen.findByRole('region', { name: 'Hyperconjugation' })
++    fireEvent.click(within(topic).getByRole('button', { name: 'Topic name' }))
++    const name = within(topic).getByRole('textbox', { name: 'Topic name' })
++    fireEvent.change(name, { target: { value: 'Hyperconjugation effect' } })
++    fireEvent.keyDown(name, { key: 'Enter' })
++    await waitFor(() =>
++      expect(r.api.db.concepts.find((c) => c.id === 'con_hyperconj')?.name).toBe(
++        'Hyperconjugation effect',
++      ),
++    )
++
++    const carbo = screen.getByRole('region', { name: 'Carbocation stability' })
++    fireEvent.click(
++      within(carbo).getByRole('button', { name: 'Delete topic Carbocation stability' }),
++    )
++    const dialog = await screen.findByRole('dialog', { name: 'Delete Carbocation stability?' })
++    expect(within(dialog).getByText(/Its 2 notes go too/)).toBeTruthy()
++    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
++    await waitFor(() =>
++      expect(r.api.db.concepts.some((c) => c.id === 'con_carbocation')).toBe(false),
++    )
++    expect(r.api.db.notes.find((n) => n.id === 'note_cc2')?.status).toBe('deleted')
++    await waitFor(() =>
++      expect(screen.queryByRole('region', { name: 'Carbocation stability' })).toBeNull(),
++    )
++  })
++
++  it('says how topics appear when there are none', async () => {
++    renderSubject('/subjects/sub_geo/concepts')
++    expect(await screen.findByText('No topics yet')).toBeTruthy()
+   })
+ 
+   it('shows what was seen with the three parts and the source', async () => {
+@@ -184,6 +242,20 @@ describe('SubjectPage views', () => {
+     expect(screen.getByText('Today')).toBeTruthy()
+   })
+ 
++  it('removes an encounter from memory with its ✕', async () => {
++    const r = renderSubject('/subjects/sub_orgo/seen')
++    const block = await screen.findByRole('article', { name: 'SN1 reaction – Wikipedia' })
++    const before = r.api.db.encounters.length
++    fireEvent.click(
++      within(block).getByRole('button', { name: 'Remove SN1 reaction – Wikipedia from memory' }),
++    )
++    await waitFor(() => expect(r.api.db.encounters.length).toBe(before - 1))
++    await waitFor(() =>
++      expect(screen.queryByRole('article', { name: 'SN1 reaction – Wikipedia' })).toBeNull(),
++    )
++    expect(toastTexts()).toContain('Removed from memory')
++  })
++
+   it('lists this subject’s exams and opens one', async () => {
+     const r = renderSubject('/subjects/sub_orgo/exams')
+     const row = await screen.findByText('Weak-spots exam')
+diff --git a/src/renderer/pages/subject/SubjectPage.tsx b/src/renderer/pages/subject/SubjectPage.tsx
+index 76f29e4..d975212 100644
+--- a/src/renderer/pages/subject/SubjectPage.tsx
++++ b/src/renderer/pages/subject/SubjectPage.tsx
+@@ -14,23 +14,23 @@ import {
+ import { useSubject, useSubjects } from '@renderer/lib/queries'
+ import type { SubjectDetail } from '@shared/state'
+ import { Eye, FilePenLine, Route, Shapes } from 'lucide-react'
+-import { type ReactNode, useState } from 'react'
++import type { ReactNode } from 'react'
+ import { Redirect, useLocation, useParams } from 'wouter'
+ import { PageFrame } from '../PageFrame'
+-import { ConceptSortMenu, ConceptsView } from './ConceptsView'
++import { ConceptsView } from './ConceptsView'
+ import { ExamsView, NewExamButton } from './ExamsView'
+ import { RoadmapView } from './RoadmapView'
+ import { SeenView } from './SeenView'
+ import { DeleteSubjectButton, FocusToggle, GenerateExamButton } from './SubjectActions'
+ import { SubjectHeader } from './SubjectHeader'
+-import { type ConceptSort, DEFAULT_SORT, isView, type SubjectView } from './subject-utils'
++import { isView, type SubjectView } from './subject-utils'
+ import './subject.css'
+ 
+ const TAB_ICON = { size: 14, strokeWidth: 1.75 } as const
+ 
+ const LOADING_COPY: Record<SubjectView, string> = {
+   roadmap: 'Loading your roadmap…',
+-  concepts: 'Loading concepts and review dates…',
++  concepts: 'Loading topics and notes…',
+   seen: 'Loading what you’ve seen…',
+   exams: 'Loading exams…',
+ }
+@@ -86,20 +86,12 @@ function SubjectSkeleton({
+   )
+ }
+ 
+-function ViewBody({
+-  view,
+-  detail,
+-  sort,
+-}: {
+-  view: SubjectView
+-  detail: SubjectDetail
+-  sort: ConceptSort
+-}) {
++function ViewBody({ view, detail }: { view: SubjectView; detail: SubjectDetail }) {
+   switch (view) {
+     case 'roadmap':
+       return <RoadmapView detail={detail} />
+     case 'concepts':
+-      return <ConceptsView concepts={detail.concepts} sort={sort} />
++      return <ConceptsView subjectId={detail.subject.id} />
+     case 'seen':
+       return <SeenView encounters={detail.encounters} />
+     case 'exams':
+@@ -120,7 +112,6 @@ export function SubjectPage() {
+   const [, navigate] = useLocation()
+   const query = useSubject(id)
+   const known = useSubjects().data?.find((s) => s.id === id)
+-  const [sort, setSort] = useState<ConceptSort>(DEFAULT_SORT)
+ 
+   if (!isView(params.view)) return <Redirect to={`/subjects/${id}/roadmap`} replace />
+   const view = params.view
+@@ -149,9 +140,7 @@ export function SubjectPage() {
+     )
+   else {
+     const right =
+-      view === 'concepts' && detail.concepts.length > 1 ? (
+-        <ConceptSortMenu sort={sort} onChange={setSort} />
+-      ) : view === 'exams' && detail.exams.length > 0 && detail.subject.status === 'active' ? (
++      view === 'exams' && detail.exams.length > 0 && detail.subject.status === 'active' ? (
+         <NewExamButton subjectId={detail.subject.id} />
+       ) : null
+     const tabs = tabsFor(detail)
+@@ -171,7 +160,7 @@ export function SubjectPage() {
+           role="tabpanel"
+           aria-label={tabs.find((t) => t.value === view)?.label}
+         >
+-          <ViewBody view={view} detail={detail} sort={sort} />
++          <ViewBody view={view} detail={detail} />
+         </div>
+       </>
+     )
+diff --git a/src/renderer/pages/subject/subject-utils.test.ts b/src/renderer/pages/subject/subject-utils.test.ts
+index 74db0e8..3215abd 100644
+--- a/src/renderer/pages/subject/subject-utils.test.ts
++++ b/src/renderer/pages/subject/subject-utils.test.ts
+@@ -1,7 +1,7 @@
+-/** Subject page helpers: concept sorting, day grouping, the Status property, roadmap progress. */
++/** Subject page helpers: topic tree depth, day grouping, the Status property, roadmap progress. */
+ import type { Concept, Encounter, Roadmap, SubjectSummary } from '@shared/domain'
+ import { describe, expect, it } from 'vitest'
+-import { groupByDay, isView, roadmapProgress, sortConcepts, subjectStatus } from './subject-utils'
++import { depthsOf, groupByDay, isView, roadmapProgress, subjectStatus } from './subject-utils'
+ 
+ const NOW = new Date('2026-10-24T15:00:00').getTime()
+ const DAY = 86_400_000
+@@ -23,26 +23,21 @@ function concept(name: string, over: Partial<Concept> = {}): Concept {
+   }
+ }
+ 
+-describe('sortConcepts', () => {
+-  const list = [
+-    concept('b', { mastery: 0.9, lastSeenAt: new Date(NOW - DAY).toISOString() }),
+-    concept('a', { mastery: 0.2, status: 'struggling' }),
+-    concept('c', { mastery: 0.2, lastSeenAt: new Date(NOW).toISOString() }),
+-  ]
+-  const names = (sorted: Concept[]) => sorted.map((c) => c.name)
+-
+-  it('sorts by mastery with name as the tie-break', () => {
+-    expect(names(sortConcepts(list, { key: 'mastery', dir: 'asc' }))).toEqual(['a', 'c', 'b'])
+-    expect(names(sortConcepts(list, { key: 'mastery', dir: 'desc' }))).toEqual(['b', 'a', 'c'])
+-  })
+-
+-  it('keeps empty dates last in both directions', () => {
+-    expect(names(sortConcepts(list, { key: 'lastSeen', dir: 'desc' }))).toEqual(['c', 'b', 'a'])
+-    expect(names(sortConcepts(list, { key: 'lastSeen', dir: 'asc' }))).toEqual(['b', 'c', 'a'])
+-  })
+-
+-  it('puts struggling first when sorting by status', () => {
+-    expect(names(sortConcepts(list, { key: 'status', dir: 'asc' }))[0]).toBe('a')
++describe('depthsOf', () => {
++  it('counts levels under the root and treats missing parents and cycles as roots', () => {
++    const depths = depthsOf([
++      concept('leaf', { parentId: 'con_mid' }),
++      concept('mid', { parentId: 'con_top' }),
++      concept('top'),
++      concept('orphan', { parentId: 'con_gone' }),
++      concept('x', { parentId: 'con_y' }),
++      concept('y', { parentId: 'con_x' }),
++    ])
++    expect(depths.get('con_top')).toBe(0)
++    expect(depths.get('con_mid')).toBe(1)
++    expect(depths.get('con_leaf')).toBe(2)
++    expect(depths.get('con_orphan')).toBe(0)
++    expect([depths.get('con_x'), depths.get('con_y')].sort()).toEqual([0, 1])
+   })
+ })
+ 
+diff --git a/src/renderer/pages/subject/subject-utils.ts b/src/renderer/pages/subject/subject-utils.ts
+index 7afe2e1..3d89d1a 100644
+--- a/src/renderer/pages/subject/subject-utils.ts
++++ b/src/renderer/pages/subject/subject-utils.ts
+@@ -1,10 +1,10 @@
+ /**
+  * Pure helpers for the subject page: the four views, the Status property, roadmap progress,
+- * concept sorting (Concepts view) and grouping encounters by day (Seen view).
++ * topic tree depth (Concepts view) and grouping encounters by day (Seen view).
+  */
+ import { daysUntil } from '@renderer/lib/format'
+ import { MASTERY, type StatusLabel } from '@renderer/lib/status'
+-import type { Concept, Encounter, MasteryStatus, Roadmap, SubjectSummary } from '@shared/domain'
++import type { Concept, Encounter, Roadmap, SubjectSummary } from '@shared/domain'
+ 
+ export const VIEWS = ['roadmap', 'concepts', 'seen', 'exams'] as const
+ export type SubjectView = (typeof VIEWS)[number]
+@@ -40,74 +40,22 @@ export function roadmapProgress(r: Roadmap): RoadmapProgress {
+   return { done, total: r.items.length, step: current < 0 ? done + 1 : current + 1 }
+ }
+ 
+-// ─── Concepts: sorting ──────────────────────────────────────────────────────────────────────
+-
+-export type ConceptSortKey = 'name' | 'status' | 'mastery' | 'lastSeen' | 'nextReview'
+-export interface ConceptSort {
+-  key: ConceptSortKey
+-  dir: 'asc' | 'desc'
+-}
+-
+-export const SORT_LABEL: Record<ConceptSortKey, string> = {
+-  name: 'Name',
+-  status: 'Status',
+-  mastery: 'Mastery',
+-  lastSeen: 'Last seen',
+-  nextReview: 'Next review',
+-}
+-
+-/** Weakest first: the useful default for a student. */
+-export const DEFAULT_SORT: ConceptSort = { key: 'mastery', dir: 'asc' }
+-
+-/** Direction a key starts with when picked: newest "last seen" first, everything else ascending. */
+-export const DEFAULT_DIR: Record<ConceptSortKey, ConceptSort['dir']> = {
+-  name: 'asc',
+-  status: 'asc',
+-  mastery: 'asc',
+-  lastSeen: 'desc',
+-  nextReview: 'asc',
+-}
+-
+-/** Struggling → learning → new → mastered: what needs attention comes first. */
+-const STATUS_RANK: Record<MasteryStatus, number> = {
+-  struggling: 0,
+-  learning: 1,
+-  new: 2,
+-  mastered: 3,
+-}
+-
+-function dateValue(iso: string | null): number | null {
+-  return iso === null ? null : new Date(iso).getTime()
+-}
+-
+-function keyValue(c: Concept, key: ConceptSortKey): string | number | null {
+-  switch (key) {
+-    case 'name':
+-      return c.name.toLowerCase()
+-    case 'status':
+-      return STATUS_RANK[c.status]
+-    case 'mastery':
+-      return c.mastery
+-    case 'lastSeen':
+-      return dateValue(c.lastSeenAt)
+-    case 'nextReview':
+-      return dateValue(c.nextReviewAt)
++// ─── Concepts: tree depth ───────────────────────────────────────────────────────────────────
++
++/** Depth of each concept in the topic tree (a missing parent or a cycle counts as a root). */
++export function depthsOf(concepts: readonly Concept[]): Map<string, number> {
++  const byId = new Map(concepts.map((c) => [c.id, c]))
++  const depths = new Map<string, number>()
++  const depth = (c: Concept, path: Set<string>): number => {
++    const known = depths.get(c.id)
++    if (known !== undefined) return known
++    const parent = c.parentId ? byId.get(c.parentId) : undefined
++    const d = parent && !path.has(parent.id) ? depth(parent, path.add(c.id)) + 1 : 0
++    depths.set(c.id, d)
++    return d
+   }
+-}
+-
+-/** Sorted copy. Empty dates always sink to the bottom; ties fall back to the name. */
+-export function sortConcepts(list: readonly Concept[], sort: ConceptSort): Concept[] {
+-  const sign = sort.dir === 'asc' ? 1 : -1
+-  return [...list].sort((a, b) => {
+-    const va = keyValue(a, sort.key)
+-    const vb = keyValue(b, sort.key)
+-    if (va === null || vb === null) {
+-      if (va !== vb) return va === null ? 1 : -1
+-    } else if (va !== vb) {
+-      return (va < vb ? -1 : 1) * sign
+-    }
+-    return a.name.localeCompare(b.name)
+-  })
++  for (const c of concepts) depth(c, new Set())
++  return depths
+ }
+ 
+ // ─── Seen: grouping by day ──────────────────────────────────────────────────────────────────
+diff --git a/src/renderer/pages/subject/subject.css b/src/renderer/pages/subject/subject.css
+index 346c9ce..15a1b93 100644
+--- a/src/renderer/pages/subject/subject.css
++++ b/src/renderer/pages/subject/subject.css
+@@ -375,3 +375,147 @@ button.sp-edit:hover {
+   padding-left: 14px;
+   border-bottom: 1px solid var(--c-borPri);
+ }
++
++/* ── Concepts: topic tree with notes (docs/NOTES.md §7) ─────────────────── */
++
++.tt {
++  display: flex;
++  flex-direction: column;
++  gap: var(--space-5);
++  max-width: 760px;
++}
++
++.tt-topic {
++  display: flex;
++  flex-direction: column;
++  gap: 2px;
++  padding-left: calc(var(--tt-depth, 0) * 24px);
++}
++
++.tt-topic__head {
++  display: flex;
++  align-items: center;
++  gap: var(--space-2);
++  min-width: 0;
++}
++
++.tt-topic__name {
++  font-size: var(--text-body);
++  font-weight: var(--weight-semibold);
++  color: var(--c-texPri);
++}
++
++.tt-topic__summary {
++  font-size: var(--text-ui);
++  line-height: var(--leading-ui);
++  color: var(--c-texSec);
++}
++
++.tt-muted,
++.tt-needs,
++.tt-note__meta {
++  font-size: var(--text-small);
++  color: var(--c-texTer);
++}
++
++.tt-needs {
++  margin: 2px 0 0;
++}
++
++.tt-unplaced__title {
++  font-size: var(--text-ui);
++  font-weight: var(--weight-medium);
++  color: var(--c-texSec);
++}
++
++/* Delete buttons stay out of the way until the row is hovered or focused. */
++.tt-del {
++  flex: none;
++  opacity: 0;
++  transition: opacity var(--dur-fast) var(--ease-out);
++}
++
++.tt-topic__head > .tt-del {
++  margin-left: auto;
++}
++
++.tt-topic__head:hover > .tt-del,
++.tt-note:hover > .tt-del,
++.tt-del:focus-visible {
++  opacity: 1;
++}
++
++.tt-notes {
++  display: flex;
++  flex-direction: column;
++  gap: 2px;
++  margin: var(--space-1) 0 0;
++  padding: 0;
++  list-style: none;
++}
++
++.tt-note {
++  display: flex;
++  align-items: flex-start;
++  gap: var(--space-2);
++  padding: 4px 6px;
++  margin: 0 -6px;
++  border-radius: var(--radius-control);
++  transition: background var(--dur-fast) var(--ease-out);
++}
++
++.tt-note:hover {
++  background: var(--c-hover);
++}
++
++.tt-note__dot {
++  flex: none;
++  width: 5px;
++  height: 5px;
++  margin-top: 9px;
++  border-radius: var(--radius-round);
++  background: var(--c-texTer);
++}
++
++.tt-note__mark {
++  flex: none;
++  margin-top: 4px;
++  color: var(--c-orange-text);
++}
++
++.tt-note__body {
++  display: flex;
++  flex: 1;
++  flex-direction: column;
++  min-width: 0;
++}
++
++.tt-note__text {
++  padding: 0;
++  border: 0;
++  background: none;
++  font: inherit;
++  font-size: var(--text-ui);
++  line-height: var(--leading-ui);
++  color: var(--c-texPri);
++  text-align: left;
++  overflow-wrap: anywhere;
++  cursor: text;
++}
++
++.tt-note__input {
++  width: 100%;
++  padding: 0;
++  border: 0;
++  outline: none;
++  resize: none;
++  background: transparent;
++  font: inherit;
++  font-size: var(--text-ui);
++  line-height: var(--leading-ui);
++  color: var(--c-texPri);
++}
++
++.sp-enc:hover .sp-enc__head > .tt-del {
++  opacity: 1;
++}

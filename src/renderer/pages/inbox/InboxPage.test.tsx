@@ -1,7 +1,7 @@
 /**
  * Inbox against the mock API: rows with the three parts and the source, keep / ignore / restore /
- * file under a subject, suggested subjects (add, merge, dismiss), the state and subject filters,
- * and the first-day / loading / error states.
+ * file under a subject, suggested subjects (add, merge, dismiss), loose notes (file, delete), the
+ * state and subject filters, and the first-day / loading / error states.
  */
 import { useToasts } from '@renderer/design-system'
 import { renderWithApp } from '@renderer/lib/test-utils'
@@ -133,6 +133,30 @@ describe('InboxPage', () => {
       expect(r.api.db.subjects.find((s) => s.id === 'sub_geo')?.status).toBe('archived'),
     )
     expect(toasts()).toContain('Dismissed Geography')
+  })
+
+  it('lists loose notes newest first, files one under a subject and deletes another', async () => {
+    const r = render()
+    const list = await screen.findByRole('list', { name: 'Loose notes' })
+    const items = within(list).getAllByRole('listitem')
+    expect(items.map((li) => li.querySelector('.ib-loose__text')?.textContent)).toEqual([
+      'Tampere got full city rights on 1 October 1779.',
+      'James Finlayson founded a cotton mill in Tampere in 1820.',
+    ])
+    expect(within(items[1] as HTMLElement).getByText(/^Tampere – Wikipedia · /)).toBeTruthy()
+    await pick(
+      within(items[1] as HTMLElement).getByRole('button', { name: /under a subject/ }),
+      /Organic Chemistry/,
+    )
+    await waitFor(() =>
+      expect(r.api.db.notes.find((n) => n.id === 'note_loose1')?.subjectId).toBe('sub_orgo'),
+    )
+    expect(toasts()).toContain('Filed under 🧪 Organic Chemistry')
+    fireEvent.click(within(items[0] as HTMLElement).getByRole('button', { name: 'Delete note' }))
+    await waitFor(() =>
+      expect(r.api.db.notes.find((n) => n.id === 'note_loose2')?.status).toBe('deleted'),
+    )
+    await waitFor(() => expect(screen.queryByRole('list', { name: 'Loose notes' })).toBeNull())
   })
 
   it('explains capture on the first day', async () => {

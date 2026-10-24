@@ -1,7 +1,8 @@
 /**
  * Memory (/inbox) — what Dumbledore knows: new extractions with their three parts and source,
  * to keep, file under a subject or ignore (inbox.act); suggested subjects (suggested.act);
- * filters by state and subject; a capture line with today's count. Acted-on rows leave the
+ * loose notes from casual reading to file or delete (LooseNotes); filters by state and
+ * subject; a capture line with today's count. Acted-on rows leave the
  * view at once (optimistic) and come back with an error toast if the call fails.
  */
 import {
@@ -28,6 +29,7 @@ import {
   staysInView,
   UNFILED,
 } from './inbox-utils'
+import { LooseNotes } from './LooseNotes'
 import { SuggestedSubjects } from './SuggestedSubjects'
 import './inbox.css'
 
@@ -195,6 +197,7 @@ export function InboxPage() {
         <CaptureLine newItems={fresh.data} />
       </PageHeader>
       <SuggestedSubjects subjects={all} />
+      <LooseNotes subjects={all} />
       <div className="ib-section">
         <InboxFilters
           state={state}
