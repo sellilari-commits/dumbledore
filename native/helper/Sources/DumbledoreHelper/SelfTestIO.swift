@@ -220,7 +220,8 @@ enum SelfTestIO {
     expect(errorCode(call(#"{"jsonrpc":"2.0","id":6,"method":"shortcut.configure","params":\#(durations)}"#))
       == RPCCode.invalidParams, "shortcut durations validated")
     let protocolMethods = [
-      "app.activate", "ax.findChatInput", "ax.focused", "ax.readFocusedValue", "ax.selectedText", "frontmost",
+      "app.activate", "ax.findChatInput", "ax.focused", "ax.readFocusedValue", "ax.selectedText", "file.pdfText",
+      "frontmost",
       "input.click", "input.key", "input.write", "llm.onDevice.generate", "llm.onDevice.status", "perceive",
       "permissions.request", "permissions.status", "ping", "shortcut.configure", "system.displays", "system.idle",
     ]
