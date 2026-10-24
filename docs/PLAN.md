@@ -144,7 +144,7 @@ Every line of the brief maps to a feature, a module and a work package (WP, §8)
 - No telemetry.
 - Free LLMs instead of a paid backend.
 
-**Conflict on this Mac:** Goldfish already owns right ⌥ here and sits in the notch. Decision needed in §12.1.
+**Conflict on this Mac:** Goldfish already owns right ⌥ here and sits in the notch. Decision needed in §12.1. **Decided 2026-10-24:** Dumbledore takes right ⌥ and Goldfish's key is switched off.
 
 ### 3.2 Notion design (live tokens pulled from a public Notion page on 2026-10-24)
 
@@ -884,6 +884,7 @@ Milestone updates with screenshots. I ping you only when I need you: permission 
    - Remap Goldfish's key in its settings (it accepts any modifier or fn). My recommendation, since your brief wants right ⌥ for Dumbledore.
    - Give Dumbledore another key on this Mac.
    - Quit Goldfish while testing.
+   - **Decided 2026-10-24:** Dumbledore takes right ⌥. Ilari switches Goldfish's key off in Goldfish's own settings.
 
 ### 12.2 Assumptions
 macOS 15+ (developed and tested on 26.4.1, Apple Silicon) · English UI; prompts follow the language of the content (Finnish works) · single user, all data local, no accounts or backend · local self-signed build for now (public notarized distribution later) · "Dumbledore" is a working title.
