@@ -125,14 +125,15 @@ describe('ShortcutRouter', () => {
     expect(h.services.study.current()).toBeNull()
   })
 
-  it('a chip click and an orb click both rewrite typed text', async () => {
+  it('a chip click rewrites typed text; an orb click never writes a prompt', async () => {
     const h = await harness()
     await inChatGPT(h, 'what is osmosis')
     expect(await h.core.router.chipClick()).toEqual({ kind: 'improve', draft: 'what is osmosis' })
     expect(h.helper.state.fieldValue).toMatch(/what is osmosis/)
     h.helper.state.fieldValue = 'what is diffusion'
-    expect(await h.core.router.orbClick()).toEqual({ kind: 'improve', draft: 'what is diffusion' })
-    expect(h.helper.callsTo('input.write')).toHaveLength(2)
+    expect(await h.core.router.orbClick()).toEqual({ kind: 'togglePanel' })
+    expect(h.helper.callsTo('input.write')).toHaveLength(1)
+    expect(h.surfaces.isOpen('panel')).toBe(true)
   })
 
   it('(a) pastes the next roadmap step while a session runs in the chat', async () => {

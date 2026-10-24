@@ -1,7 +1,8 @@
 /**
  * The shortcut decision table (PLAN §4 D8, §5.3 F4, §5.6), as a pure function.
  *
- * Short press = the prompt (Ilari, 2026-10-24). Tap (and an orb click) resolves in order: ask bar
+ * Short press = the prompt (Ilari, 2026-10-24). A right-⌥ tap resolves in order (an orb click only
+ * toggles the mini panel, see ShortcutRouter.orbClick): ask bar
  * / quiz card open → Enter · password field → refuse · in the AI-chat box: `/d …` line →
  * instruction, the student's own text → rewrite it in place (also during a session), empty → the
  * next step of a running session, else study the subject worked on last · (a) session in an AI

@@ -107,8 +107,15 @@ export class ShortcutRouter {
     return decision
   }
 
-  orbClick(): Promise<Decision> {
-    return this.gesture('tap', { source: 'mouse' })
+  /**
+   * A click on the orb only opens or closes the mini panel; it never writes a prompt (Ilari,
+   * 2026-10-24). Right ⌥ keeps the smart tap.
+   */
+  async orbClick(): Promise<Decision> {
+    const decision: Decision = { kind: 'togglePanel' }
+    this.lastDecision = decision
+    await this.execute(decision, null)
+    return decision
   }
 
   /** Long-press on the orb: the chat window, like a double-tap (PLAN §5.6 mouse map). */
