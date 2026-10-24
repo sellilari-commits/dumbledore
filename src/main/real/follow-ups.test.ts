@@ -64,7 +64,7 @@ describe('composeReal: follow-ups', () => {
     const { services, screen, clock, comp } = rig
     const shell = startShell(rig)
     const nudges: Nudge[] = []
-    const toasts = new Map<string, number>() // nudge id → overlay toasts right after it was shown
+    const toasts = new Map<string, number>() // nudge id → overlay boxes right after it (none now)
     services.bus.on('nudge:ready', ({ nudge }) => {
       nudges.push(nudge)
       queueMicrotask(() => {
@@ -91,7 +91,7 @@ describe('composeReal: follow-ups', () => {
     const followUp = nudges.find((n) => n.kind === 'session_followup')
     expect(followUp).toBeDefined()
     expect(followUp?.action?.type).toBe('start_review')
-    expect(toasts.get(followUp?.id ?? '')).toBe(1)
+    expect(toasts.get(followUp?.id ?? '')).toBe(0)
     expect(services.repos.nudges.listSince(new Date(0).toISOString()).map((n) => n.kind)).toEqual([
       'session_followup',
     ])
@@ -123,7 +123,7 @@ describe('composeReal: follow-ups', () => {
     const review = nudges.at(-1)
     expect(review?.kind).toBe('review_due')
     expect(review?.action?.type).toBe('start_review')
-    expect(toasts.get(review?.id ?? '')).toBe(1)
+    expect(toasts.get(review?.id ?? '')).toBe(0)
 
     // …and accepting it builds a review quiz over the due concepts.
     const acted = comp.engine.followUps.act(review?.id ?? '', 'accept')

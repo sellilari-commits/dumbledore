@@ -17,8 +17,12 @@ export interface ToastActionSpec {
   run?: () => void | Promise<void>
 }
 
+/** Why a box is shown. Only answers to an explicit gesture are shown (OverlayController). */
+export type ToastPurpose = 'selection' | 'instruction-reply'
+
 export interface ToastSpec {
   kind: Toast['kind']
+  purpose?: ToastPurpose
   title: string
   body: string
   actions?: ToastActionSpec[]

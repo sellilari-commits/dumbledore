@@ -24,6 +24,7 @@ export function selectionToast(deps: Deps, text: string): void {
   const assistant = deps.perception.aiChat()?.assistant ?? 'ChatGPT'
   deps.overlay.showToast({
     kind: 'info',
+    purpose: 'selection',
     title: 'Selected text',
     body: preview(text),
     actions: [

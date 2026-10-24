@@ -310,7 +310,7 @@ describe('ShortcutRouter', () => {
     h.helper.state.focused = { ...chatInput(), isSecure: true }
     expect(await h.core.router.gesture('tap')).toEqual({ kind: 'refuseSecure' })
     expect(h.helper.callsTo('ax.readFocusedValue')).toHaveLength(0)
-    expect(titles(h)).toContain('Password field')
+    expect(titles(h)).not.toContain('Password field') // refused quietly, no box
   })
 
   it('Esc cancels a pending tap rewrite and nothing is written', async () => {
@@ -348,7 +348,8 @@ describe('ShortcutRouter', () => {
     h.surfaces.opened.clear()
     h.helper.emit('key.trigger', { gesture: 'tap', key: 'rightOption', secureInput: true })
     await flush()
-    expect(titles(h)).toContain('Password field')
+    expect(h.helper.callsTo('ax.readFocusedValue')).toHaveLength(0)
+    expect(titles(h)).not.toContain('Password field')
   })
 
   it('ignores helper key events until onboarding is done', async () => {
@@ -396,7 +397,7 @@ describe('Ask flow', () => {
 })
 
 describe('Nudges', () => {
-  it('accepting a nudge runs its action and records the outcome', async () => {
+  it('a nudge shows no box, only the orb dot', async () => {
     const h = await harness()
     const concept = h.services.repos.concepts.listStruggling(1)[0]
     const nudge = h.services.repos.nudges.add({
@@ -407,12 +408,8 @@ describe('Nudges', () => {
       dedupeKey: 'k1',
     })
     h.services.bus.emit('nudge:ready', { nudge })
-    const toast = h.core.overlay.state.toasts.find((t) => t.nudgeId === nudge.id)
-    await h.core.overlay.toasts.act(toast?.id ?? '', 'accept')
     await flush()
-    expect(h.core.overlay.state.quiz).not.toBeNull()
-    const stored = h.services.repos.nudges.listSince('1970-01-01T00:00:00.000Z')[0]
-    expect(stored?.outcome).toBe('accepted')
-    expect(stored?.shownAt).not.toBeNull()
+    expect(h.core.overlay.state.toasts).toEqual([])
+    expect(h.core.overlay.state.orb.dot).toBe('orange')
   })
 })

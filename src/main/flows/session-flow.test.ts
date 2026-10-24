@@ -48,18 +48,10 @@ describe('SessionFlow — failed pastes', () => {
     expect(second.write?.ok).toBe(true)
   })
 
-  it('"Try again" on the failure toast pastes the undelivered step', async () => {
+  it('a failed paste shows no box (the next tap retries it)', async () => {
     await h.core.sessions.start({ subjectId: orgoId(), goal: null, question: null })
-    const toast = failedToast()
-    expect(toast?.actions.map((a) => a.label)).toEqual(['Try again'])
-    await inChatGPT(h)
-    if (toast) await h.core.overlay.toasts.act(toast.id, 'retry')
-    expect(h.helper.callsTo('input.write').length).toBeGreaterThan(0)
-    expect(currentItem()?.promptSent).not.toBeNull()
-    expect(h.core.services.study.current()?.index).toBe(0)
-    // Once delivered, a stale "Try again" does nothing (no skip to the next step).
-    if (toast) await h.core.overlay.toasts.act(toast.id, 'retry')
-    expect(h.core.services.study.current()?.index).toBe(0)
+    expect(failedToast()).toBeUndefined()
+    expect(h.core.overlay.toasts.list()).toEqual([])
   })
 
   it('a cancelled paste does not count as delivered either', async () => {

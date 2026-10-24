@@ -133,7 +133,13 @@ export class AskFlow {
       actions: remaining,
     })
     if (pasted && reply) {
-      this.deps.overlay.showToast({ kind: 'tip', title: 'Dumbledore', body: reply, ttlMs: 12_000 })
+      this.deps.overlay.showToast({
+        kind: 'tip',
+        purpose: 'instruction-reply',
+        title: 'Dumbledore',
+        body: reply,
+        ttlMs: 12_000,
+      })
     }
     return { reply, actions: remaining, pasted }
   }
@@ -145,6 +151,7 @@ export class AskFlow {
       const runAction = this.deps.runAction
       this.deps.overlay.showToast({
         kind: 'tip',
+        purpose: 'instruction-reply',
         title: 'Dumbledore',
         body: result.reply || 'Done.',
         actions: result.actions.slice(0, 3).map((action, i) => ({

@@ -33,11 +33,13 @@ import {
 } from './geometry'
 import { chipPreview, coachActionLabel } from './labels'
 import { clampTimerMinutes, FocusTimer, type TimerNotice } from './timer'
-import { ToastCenter, type ToastSpec } from './toasts'
+import { ToastCenter, type ToastPurpose, type ToastSpec } from './toasts'
 
 export const RETURN_HOME_MS = 1500
 export const HIDE_INTO_EDGE_MS = 1200
 export const NUDGE_DOT_MS = 60 * 60 * 1000
+/** The only boxes shown beside the orb: answers to an explicit gesture. */
+const SHOWN_TOASTS: ReadonlySet<ToastPurpose> = new Set(['selection', 'instruction-reply'])
 
 export type NudgeChoice = 'accept' | 'dismiss' | 'snooze'
 
@@ -231,7 +233,20 @@ export class OverlayController {
   }
 
   showToast(spec: ToastSpec): string {
-    return this.toasts.show(spec)
+    return this.toast(spec)
+  }
+
+  /**
+   * No pop-up boxes beside the orb (Ilari, 2026-10-25), except the two that answer an explicit
+   * gesture: the menu for selected text and the reply to a `/d …` instruction. A nudge goes
+   * straight to the orb's attention dot (still reachable from the panel); errors are logged. The
+   * timer's macOS notification is separate and stays.
+   */
+  private toast(spec: ToastSpec): string {
+    if (spec.purpose && SHOWN_TOASTS.has(spec.purpose)) return this.toasts.show(spec)
+    if (spec.nudgeId) this.collapseNudge(spec.nudgeId)
+    else if (spec.kind === 'error') console.warn('[overlay]', spec.title, spec.body)
+    return ''
   }
 
   /** Removes a nudge from the toasts and the orange dot (after the user acted on it). */
@@ -369,7 +384,7 @@ export class OverlayController {
 
   private showNudge(nudge: Nudge): void {
     const onNudge = this.deps.onNudge
-    this.toasts.show({
+    this.toast({
       kind: 'nudge',
       title: nudge.title,
       body: nudge.body,
@@ -395,7 +410,7 @@ export class OverlayController {
   private showEngineToast(toast: Toast): void {
     const nudgeId = toast.nudgeId
     const onNudge = this.deps.onNudge
-    this.toasts.show({
+    this.toast({
       kind: toast.kind,
       title: toast.title,
       body: toast.body,

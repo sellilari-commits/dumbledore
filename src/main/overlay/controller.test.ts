@@ -207,7 +207,13 @@ describe('OverlayController', () => {
   })
 
   it('auto-hides toasts after their TTL, paused while hovered', async () => {
-    t.controller.showToast({ kind: 'info', title: 'Hi', body: 'there', ttlMs: 1000 })
+    t.controller.showToast({
+      kind: 'info',
+      purpose: 'selection',
+      title: 'Hi',
+      body: 'there',
+      ttlMs: 1000,
+    })
     expect(t.controller.state.toasts).toHaveLength(1)
     t.clock.advance(600)
     t.controller.hover(true)
@@ -224,6 +230,7 @@ describe('OverlayController', () => {
     let ran = 0
     const id = t.controller.showToast({
       kind: 'info',
+      purpose: 'selection',
       title: 'Copy?',
       body: '',
       actions: [{ id: 'copy', label: 'Copy', run: () => void ran++ }],
@@ -233,7 +240,7 @@ describe('OverlayController', () => {
     expect(t.controller.state.toasts).toHaveLength(0)
   })
 
-  it('collapses an ignored nudge into the orange dot for an hour', () => {
+  it('shows a nudge only as the orange dot, for an hour (no box)', () => {
     const nudge: Nudge = {
       id: 'ndg_1',
       kind: 'review_due',
@@ -246,10 +253,6 @@ describe('OverlayController', () => {
       outcome: 'pending',
     }
     t.bus.emit('nudge:ready', { nudge })
-    const toast = t.controller.state.toasts[0]
-    expect(toast).toMatchObject({ kind: 'nudge', nudgeId: 'ndg_1' })
-    expect(toast?.actions.map((a) => a.label)).toEqual(['Start review', 'Later'])
-    t.clock.advance(15_001)
     expect(t.controller.state.toasts).toHaveLength(0)
     expect(t.controller.state.orb).toMatchObject({ dot: 'orange', visual: 'attention' })
     t.clock.advance(NUDGE_DOT_MS)
@@ -268,7 +271,7 @@ describe('OverlayController', () => {
     t.controller.hover(false)
     t.clock.advance(HIDE_INTO_EDGE_MS + 1)
     expect(t.controller.state.orb.x).toBeGreaterThan(1512)
-    t.controller.showToast({ kind: 'info', title: 'Hi', body: '' })
+    t.controller.showToast({ kind: 'info', purpose: 'selection', title: 'Hi', body: '' })
     expect(t.controller.state.orb.x).toBe(RIGHT_X)
   })
 
@@ -285,6 +288,27 @@ describe('OverlayController', () => {
     t.controller.hover(false)
     t.bus.emit('thinking:changed', { busy: false, label: null })
     expect(t.states.length).toBe(before)
+  })
+
+  it('shows only the selection menu and the /d reply as boxes', () => {
+    const t = setup()
+    t.controller.showToast({ kind: 'info', title: 'Cancelled', body: 'Nothing was written.' })
+    t.controller.showToast({ kind: 'error', title: 'Paste failed', body: 'Try again' })
+    t.controller.showToast({ kind: 'info', title: 'Roadmap complete', body: 'Done' })
+    expect(t.controller.state.toasts).toHaveLength(0)
+    t.controller.showToast({
+      kind: 'info',
+      purpose: 'selection',
+      title: 'Selected text',
+      body: 'x',
+    })
+    t.controller.showToast({
+      kind: 'tip',
+      purpose: 'instruction-reply',
+      title: 'Dumbledore',
+      body: 'y',
+    })
+    expect(t.controller.state.toasts.map((x) => x.title)).toEqual(['Selected text', 'Dumbledore'])
   })
 
   it('shows no box when a highlight is caught (no "Noted" notification)', () => {

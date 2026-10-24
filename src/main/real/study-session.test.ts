@@ -161,7 +161,7 @@ describe('composeReal: study session in an AI chat', () => {
     const done = await shell.core.sessions.next()
     expect(done.instruction.kind).toBe('complete')
     expect(services.repos.roadmaps.get(roadmapId)?.status).toBe('done')
-    expect(shell.core.overlay.state.toasts.map((t) => t.title)).toContain('Roadmap complete')
+    expect(shell.core.overlay.state.toasts).toEqual([]) // no box: only the selection menu and /d reply pop up
     expect(followUps).toEqual([roadmapId])
     expect(helper.writes()).toHaveLength(3)
   })
