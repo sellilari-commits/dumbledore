@@ -18,6 +18,9 @@ export interface ChatView {
   sending: boolean
 }
 
+/** Stable while history is loading or failed, so effects that depend on it don't loop. */
+const NO_MESSAGES: ChatMessage[] = []
+
 export function useChat(thread: string): ChatView {
   const qc = useQueryClient()
   const history = useChatHistory(thread)
@@ -37,13 +40,16 @@ export function useChat(thread: string): ChatView {
     [thread],
   )
 
-  const stored = history.data ?? []
+  const stored = history.data ?? NO_MESSAGES
   // Drop the streaming bubble and optimistic messages once the stored history has them.
   useEffect(() => {
     if (stream?.id && stored.some((m) => m.id === stream.id)) setStream(null)
-    setPending((p) =>
-      p.filter((m) => !stored.some((s) => s.role === 'user' && s.content === m.content)),
-    )
+    setPending((p) => {
+      const left = p.filter(
+        (m) => !stored.some((s) => s.role === 'user' && s.content === m.content),
+      )
+      return left.length === p.length ? p : left
+    })
   }, [stored, stream?.id])
 
   const send = useCallback(

@@ -62,8 +62,8 @@ export function finishOverlay(win: BrowserWindow): void {
 }
 
 /**
- * Panel and ask bar: frameless, transparent corners (the page draws the card), focusable. The ask
- * bar wants the native shadow, which follows the card's shape (invalidateShadow after resizes).
+ * Panel and ask bar: frameless, transparent corners (the page draws the card), focusable. Both
+ * want the native shadow, which follows the card's shape (invalidateShadow after resizes).
  */
 export function typingOptions(
   size: { width: number; height: number },

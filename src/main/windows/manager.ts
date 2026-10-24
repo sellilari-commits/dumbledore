@@ -189,7 +189,7 @@ export class WindowManager implements SurfaceControl, EventSink {
     }
     const size = surface === 'panel' ? PANEL_SIZE : ASKBAR_SIZE
     const title = surface === 'panel' ? 'Dumbledore' : 'Ask Dumbledore'
-    const win = new BrowserWindow(typingOptions(size, this.prefs(), title, surface === 'askbar'))
+    const win = new BrowserWindow(typingOptions(size, this.prefs(), title, true))
     finishTyping(win)
     this.register(win, surface, null)
     win.on('blur', () => this.onTypingBlur(win))
