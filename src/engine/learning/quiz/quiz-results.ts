@@ -13,7 +13,8 @@ export interface AnsweredQuestion {
   correct: boolean
 }
 
-export const FIX_PROMPT_MAX_WORDS = 110
+/** Repair prompts quote the questions, so they may run longer than a step prompt. */
+export const FIX_PROMPT_MAX_WORDS = 170
 
 /** Answers joined to their questions, oldest first. Correctness is re-derived from the key. */
 export function answeredInOrder(quiz: Quiz): AnsweredQuestion[] {
@@ -84,18 +85,33 @@ export function gapInput(
   }
 }
 
-function repairPrompt(misses: readonly AnsweredQuestion[], subjectLabel: string): string {
+/** "Incorrect: The 18th dynasty is…" → "The 18th dynasty is…": the label is not the lesson. */
+export function stripVerdict(text: string): string {
+  return text
+    .replace(/^\s*(incorrect|wrong|not quite|correct|right|no|yes)\s*[:.!—–-]\s*/i, '')
+    .trim()
+}
+
+function repairPrompt(
+  misses: readonly AnsweredQuestion[],
+  subjectLabel: string,
+  ask: number,
+): string {
+  const subject = normalize(subjectLabel)
   const lines = misses.map(({ question, answer }, i) => {
-    const chosen = clampWords(question.options[answer.chosenIndex] ?? '', 5)
-    const right = clampWords(question.options[question.correctIndex] ?? '', 5)
-    return `${i + 1}. ${clampWords(question.conceptName, 4)}: I chose "${chosen}", but the answer is "${right}".`
+    const topic = normalize(question.conceptName) === subject ? '' : `${question.conceptName} — `
+    const stem = clampWords(question.stem, 22)
+    const chosen = clampWords(question.options[answer.chosenIndex] ?? '', 14)
+    const right = clampWords(question.options[question.correctIndex] ?? '', 14)
+    return `${i + 1}. ${topic}${stem} I answered "${chosen}"; the answer is "${right}".`
   })
+  const n = misses.length
   return [
-    `I'm studying ${clampWords(subjectLabel, 5)}. In a quiz I got ${misses.length > 1 ? 'these' : 'this'} wrong:`,
+    `I'm studying ${clampWords(subjectLabel, 5)}. In a quiz I got ${n === 1 ? 'this question' : `these ${n} questions`} wrong:`,
     ...lines,
-    'For each, contrast my wrong idea with the right one and give one concrete example.',
-    'No greetings or small talk; short structured bullets, max ~150 words, bold key terms.',
-    'Then quiz me with 2 new questions and wait for my answers.',
+    `For each: say in one line what I probably confused, explain the right idea in 2–3 bullets, and give one concrete example.`,
+    'No greetings or small talk; short structured bullets, bold key terms.',
+    `Then ask me ${ask} new ${ask === 1 ? 'question' : 'questions'} on the same ideas, one at a time, and wait for my answer.`,
   ].join('\n')
 }
 
@@ -106,21 +122,28 @@ export function fallbackGaps(
   nextTopic: string | null,
 ): GapOutput {
   const diagnoses = misses.map(({ question, answer }) => {
-    const rationale = question.rationales[answer.chosenIndex]?.trim()
+    const rationale = stripVerdict(question.rationales[answer.chosenIndex] ?? '')
     const chosen = question.options[answer.chosenIndex] ?? ''
     return {
       concept: question.conceptName,
-      misconception: clampWords(rationale || `Thought "${chosen}" was right`, 12),
+      misconception: clampWords(rationale || `Thought "${chosen}" was right`, 16),
     }
   })
-  const distinct = misses.filter(
-    (m, i) => misses.findIndex((x) => x.question.conceptName === m.question.conceptName) === i,
-  )
-  let take = Math.min(3, distinct.length)
-  let prompt = repairPrompt(distinct.slice(0, take), subjectLabel)
+  // Different topics first, then more misses of the same topic: every miss counts, not one per
+  // label (a subject-wide label would otherwise collapse a whole exam into one line).
+  const seen = new Set<string>()
+  const firstOfTopic = misses.filter((m) => {
+    const k = normalize(m.question.conceptName)
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
+  const ordered = [...firstOfTopic, ...misses.filter((m) => !firstOfTopic.includes(m))]
+  let take = Math.min(3, ordered.length)
+  let prompt = repairPrompt(ordered.slice(0, take), subjectLabel, Math.min(2, take))
   while (take > 1 && words(prompt).length > FIX_PROMPT_MAX_WORDS) {
     take--
-    prompt = repairPrompt(distinct.slice(0, take), subjectLabel)
+    prompt = repairPrompt(ordered.slice(0, take), subjectLabel, Math.min(2, take))
   }
   return {
     diagnoses,

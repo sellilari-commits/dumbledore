@@ -157,18 +157,19 @@ export function createQuizService(deps: QuizServiceDeps): QuizServiceImpl {
     if (stored.status === 'done') {
       const cached = results.get(quizId)
       if (cached) return cached
+      // Results live in memory: after a restart, ask P7 again (its answer is cached) rather than
+      // dropping to the template, which only stands in when the AI can't answer.
       const { correct, total, score } = scoreQuiz(stored)
-      const gaps = fallbackGaps(missesOf(stored), subjectLabel(stored), suggestNext(stored))
-      return {
+      const reopened: QuizResult = {
         quizId,
         score,
         correct,
         total,
         byConcept: breakdown(stored, statusOf),
-        gaps: gaps.diagnoses,
-        fixPrompt: missesOf(stored).length > 0 ? gaps.prompt : null,
-        nextTopic: gaps.nextTopic || null,
+        ...(await diagnose(stored)),
       }
+      results.set(quizId, reopened)
+      return reopened
     }
     if (stored.status === 'generating' || stored.status === 'failed') {
       throw new Error(`quiz ${quizId} is ${stored.status}`)

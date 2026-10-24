@@ -3,6 +3,7 @@ import type { QuizResult } from '@shared/domain'
 import { describe, expect, it, vi } from 'vitest'
 import { makeQuestion, quizWorld, saveQuiz } from './quiz-fixtures'
 import { FIX_PROMPT_MAX_WORDS } from './quiz-results'
+import { createQuizService } from './quiz-service'
 
 describe('QuizService.answer', () => {
   it('records the answer and returns the chosen option rationale', () => {
@@ -149,6 +150,31 @@ describe('QuizService.finish', () => {
     const cp2 = saveQuiz(w.repos, 'checkpoint', [makeQuestion(sn1)], [w.subject.id])
     await expect(w.quizzes.finish(cp2.id)).resolves.toMatchObject({ quizId: cp2.id })
     expect(failing).toHaveBeenCalledOnce()
+  })
+
+  it('after a restart, reopened results come from P7 again, not the template', async () => {
+    const w = quizWorld()
+    const sn1 = w.concept('SN1')
+    const q = makeQuestion(sn1)
+    const quiz = saveQuiz(w.repos, 'exam', [q], [w.subject.id])
+    w.quizzes.answer(quiz.id, q.id, 3) // wrong
+    const first = await w.quizzes.finish(quiz.id)
+    const masteryAfterFinish = w.repos.concepts.get(sn1.id)?.mastery
+    // A new service on the same data = the app restarted: no results in memory.
+    const restarted = createQuizService({
+      repos: w.repos,
+      brain: w.brain,
+      bus: w.bus,
+      clock: w.clock,
+      mastery: w.mastery,
+      localTime: w.localTime,
+      log: () => {},
+    })
+    const again = await restarted.finish(quiz.id)
+    expect(again.fixPrompt).toBe(first.fixPrompt)
+    expect((w.brain as FakeBrain).calls.filter((c) => c.method === 'fixGaps')).toHaveLength(2)
+    // Reopening reads results; it never applies the answers to mastery again.
+    expect(w.repos.concepts.get(sn1.id)?.mastery).toBe(masteryAfterFinish)
   })
 
   it('applies mastery once even when finish is called twice', async () => {
