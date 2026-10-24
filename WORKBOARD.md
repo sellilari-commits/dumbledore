@@ -19,7 +19,7 @@ Newest first; keep about the last 20 entries.
 | Finished (UTC) | Who / agent | Work | Commit |
 |---|---|---|---|
 | 2026-10-25 | Ilari / Claude | Panel: a topic opens its detail (roadmap steps with states, flags with ✕, lock) | 70ce9f9 |
-| 2026-10-25 | Ilari / Claude | Double-tap chat resizable by its edges; size remembered per display | 2cb66cd |
+| 2026-10-25 | Ilari / Claude | Double-tap chat resizable by its edges; size and place remembered across restarts | 2cb66cd, 09b901b |
 | 2026-10-25 | Ilari / Claude | Roadmap step done only once the AI's answer is in the chat; helper selftest expects file.pdfText | c2961c6, 664edaa, 278d4c2 |
 | 2026-10-25 | Ilari / Claude | QA sweep: quiz smoke test, lint leftovers, ask bar mock; SECRETS: redactor catches prefixed names, secret-file windows never read, highlights masked, stored secrets scrubbed at start | 3f999d4, 151929b, 45ad540, 96a79bc |
 | 2026-10-25 | Ilari / Claude | Checkpoint asks "Do you want to have a quiz or continue?" (Quiz / Continue) | 624b8a8 |
