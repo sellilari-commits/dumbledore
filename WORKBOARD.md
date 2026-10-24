@@ -9,7 +9,6 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
 | 2026-10-25 09:00 | Ilari / Claude | adjust_roadmap uses the structure: per-subject study preferences (focus/skip mapped onto the tree by the LLM), roadmap order + P3 follow them, replan keeps done steps | src/engine/store/ (schema-v3, migrations, repos/subjects.ts), src/engine/contracts.ts (additive), src/engine/testing/memory-repos.ts (additive), src/engine/brain-contract.ts, src/engine/brain/brain.ts, src/engine/brain/prompts/p14-preferences.ts (new), p03-roadmap.ts, src/engine/testing/fake-brain.ts, src/engine/learning/consolidate/order.ts, src/engine/learning/study/context.ts, src/main/flows/roadmap-adjust.ts (+ test), src/main/shell.ts (one line: brain for RoadmapAdjust) | main | |
-| 2026-10-25 08:00 | Ilari / Claude | Timer square under the orb (25 min, macOS notification when done) | src/shared/state.ts (additive), src/main/overlay/controller.ts, src/main/overlay/timer.ts (new), src/main/ipc/handlers.ts (one case), src/renderer/surfaces/overlay/OverlayApp.tsx, satellites/TimerButton.tsx (new) + satellites.css, overlay mock, tests/e2e-sim/overlay-screens.spec.ts + overlay screenshots | main | worktree ~/workshop/dumbledore-timer; coordinator deploys |
 | 2026-10-25 07:40 | Ilari / Claude | Fast memory: page → subject/topic in the panel in 5–30 s (early first checkpoint, short extraction debounce, subjects created active, no auto roadmaps) | src/engine/perception/episodes/builder.ts + open-episode.ts, src/engine/perception/extraction/worker.ts + apply.ts (+ tests), src/engine/brain/prompts/p01-extract.ts (rules only), subject status migration (src/engine/store/) | main | open-episode/worker handed over by coordinator (phase-2's d17c73e fix is pushed); worktree ~/workshop/dumbledore-fast; coordinator deploys |
 | 2026-10-24 22:20 | Olle / Claude | Empty home first steps; onboarding intro; white backgrounds + popovers above dialogs; one-page subject (description, goals, progress, gaps, what Dumbledore caught) | `src/renderer/pages/home/`, `src/renderer/pages/onboarding/`, `src/renderer/pages/subject/`, `src/renderer/design-system/tokens.css`, `docs/DESIGN.md`, `tests/e2e-sim/` (home, onboarding, subject specs + screenshots) | main | Renderer only; /subjects/:id/:view routes kept |
 
@@ -19,6 +18,7 @@ Newest first; keep about the last 20 entries.
 
 | Finished (UTC) | Who / agent | Work | Commit |
 |---|---|---|---|
+| 2026-10-25 | Ilari / Claude | Timer square under the orb: 25 min, macOS notification when done | 3099c8f |
 | 2026-10-25 | Ilari / Claude | Notes phase 2: LLM consolidation per subject, triggers, roadmap follows the study order; summaryPinned; coding-agent highlights not notes | c9f3f72, d17c73e, e2e7337, d9f1384, 5e544b3 |
 | 2026-10-25 | Ilari / Claude | Capture settings: "Every second" option | 95ce206 |
 | 2026-10-25 | Ilari / Claude | Mini panel v2: topic names only, Lock topic toggle (else follow latest), window fits its list, live refresh; tap studies the current topic | 8991fde |
