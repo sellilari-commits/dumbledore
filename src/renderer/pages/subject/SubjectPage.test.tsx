@@ -89,6 +89,19 @@ describe('SubjectPage', () => {
     await waitFor(() => expect(r.api.db.settings.focusSubjectId).toBeNull())
   })
 
+  it('shows exam results and strengths under Progress, and Test me opens a new exam', async () => {
+    const r = renderSubject()
+    const progress = await screen.findByRole('region', { name: 'Progress' })
+    const results = within(progress).getByRole('list', { name: 'Exam results' })
+    expect(within(results).getByText('Weak-spots exam')).toBeTruthy()
+    expect(within(results).getByText('7/10 · 70%')).toBeTruthy()
+    expect(within(progress).getByText(/Strong:/)).toBeTruthy()
+    fireEvent.click(within(progress).getByRole('button', { name: 'Test me' }))
+    expect(useShell.getState().newExam).toEqual({ open: true, subjectIds: ['sub_orgo'] })
+    fireEvent.click(within(results).getByRole('button', { name: /Weak-spots exam/ }))
+    expect(r.history.at(-1)).toBe('/exams/quiz_orgo_weak')
+  })
+
   it('Make a quiz opens the New exam dialog for this subject', async () => {
     renderSubject()
     fireEvent.click(await screen.findByRole('button', { name: /make a quiz/i }))

@@ -1,17 +1,19 @@
 /**
  * The subject page's two judgement sections. Progress: where the roadmap stands (step, bar,
- * the step you're on) and how many concepts are mastered; without a roadmap, a button that
- * starts one. Gaps: the concepts that keep not clicking, weakest first, each with "Study this"
+ * the step you're on), how many concepts are mastered and which are strong, and the latest exam
+ * results with "Test me"; without a roadmap, a button that starts one. Gaps: the concepts that keep not clicking, weakest first, each with "Study this"
  * (coach.runAction start_roadmap on that concept).
  */
 import { Button, ProgressBar, Section, toast } from '@renderer/design-system'
 import { errorToast } from '@renderer/lib/errors'
-import { formatMinutes } from '@renderer/lib/format'
+import { formatMinutes, formatRelative } from '@renderer/lib/format'
 import { keys, useAction } from '@renderer/lib/queries'
+import { useShell } from '@renderer/lib/shell'
 import type { Concept } from '@shared/domain'
 import type { SubjectDetail } from '@shared/state'
 import { useQueryClient } from '@tanstack/react-query'
-import { CircleAlert, Map as MapIcon, TrendingUp } from 'lucide-react'
+import { CircleAlert, FilePenLine, Map as MapIcon, TrendingUp } from 'lucide-react'
+import { useLocation } from 'wouter'
 import { roadmapProgress } from './subject-utils'
 
 const HEAD = { size: 14, strokeWidth: 1.75 } as const
@@ -47,6 +49,11 @@ function StartRoadmap({ detail }: { detail: SubjectDetail }) {
 export function ProgressSection({ detail }: { detail: SubjectDetail }) {
   const { roadmap, concepts } = detail
   const mastered = concepts.filter((c) => c.status === 'mastered').length
+  const strong = concepts
+    .filter((c) => c.status === 'mastered' || c.mastery >= 0.7)
+    .sort((a, b) => b.mastery - a.mastery)
+    .slice(0, 4)
+    .map((c) => c.name)
   const p = roadmap ? roadmapProgress(roadmap) : null
   const current = roadmap?.items.find((i) => i.status === 'current')
   return (
@@ -74,9 +81,72 @@ export function ProgressSection({ detail }: { detail: SubjectDetail }) {
       {concepts.length > 0 ? (
         <p className="sp-progress-mastery">
           {mastered} of {concepts.length} concepts mastered
+          {strong.length > 0 ? (
+            <>
+              {' · '}Strong: <span className="sp-strong">{strong.join(', ')}</span>
+            </>
+          ) : null}
         </p>
       ) : null}
+      <ExamResults detail={detail} />
     </Section>
+  )
+}
+
+/** "Egyptian History · weak spots · 10 questions" → "weak spots · 10 questions" on its own page. */
+function examLabel(title: string, subject: string): string {
+  const parts = title.split(' · ').filter((p) => p.trim().toLowerCase() !== subject.toLowerCase())
+  return parts.join(' · ') || title
+}
+
+/** The subject's finished exams, newest first, each opening its results; plus "Test me". */
+function ExamResults({ detail }: { detail: SubjectDetail }) {
+  const [, navigate] = useLocation()
+  const openNewExam = useShell((s) => s.openNewExam)
+  const done = detail.exams
+    .filter((e) => e.completedAt && e.score !== null)
+    .sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''))
+    .slice(0, 3)
+  const canTest = detail.subject.status === 'active'
+  return (
+    <div className="sp-exams">
+      {done.length > 0 ? (
+        <ul className="sp-exams__list" aria-label="Exam results">
+          {done.map((e) => {
+            const right = Math.round((e.score ?? 0) * e.questionCount)
+            return (
+              <li key={e.id}>
+                <button
+                  type="button"
+                  className="sp-exam"
+                  onClick={() => navigate(`/exams/${e.id}`)}
+                >
+                  <span className="sp-exam__title">{examLabel(e.title, detail.subject.name)}</span>
+                  <span className="sp-exam__score">
+                    {right}/{e.questionCount} · {Math.round((e.score ?? 0) * 100)}%
+                  </span>
+                  <span className="sp-muted">{formatRelative(e.completedAt ?? e.createdAt)}</span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      ) : (
+        <p className="sp-quiet">
+          No exams yet. A short exam shows what you know and what you miss — Dumbledore remembers it
+          for your next study session.
+        </p>
+      )}
+      {canTest ? (
+        <Button
+          size="sm"
+          icon={<FilePenLine size={14} strokeWidth={1.75} />}
+          onClick={() => openNewExam([detail.subject.id])}
+        >
+          Test me
+        </Button>
+      ) : null}
+    </div>
   )
 }
 
