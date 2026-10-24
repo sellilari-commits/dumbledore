@@ -24,6 +24,8 @@ interface CacheEntry {
   url: string | null
   title: string | null
   match: AssistantMatch | null
+  /** The window shows a coding agent session (see Detection.agentSession). */
+  agentSession: boolean
   composer: string
   lines: Lines
 }
@@ -67,12 +69,24 @@ export class AiChatTracker {
     const samePage = sameUrl && (win.url !== null || sameTitle || !hasLines)
     if (!match && !detection.coding && samePage) match = cached.match
     this.cache.delete(key)
-    this.cache.set(key, { url: win.url, title: win.title, match, composer: composerSig, lines })
+    this.cache.set(key, {
+      url: win.url,
+      title: win.title,
+      match,
+      agentSession: detection.agentSession,
+      composer: composerSig,
+      lines,
+    })
     if (this.cache.size > MAX_CACHE) {
       const oldest = this.cache.keys().next().value
       if (oldest !== undefined) this.cache.delete(oldest)
     }
     return match
+  }
+
+  /** Whether the window's last classification was a coding agent session (Code tab). */
+  isAgentSession(win: WindowLike): boolean {
+    return this.cache.get(windowKey(win))?.agentSession ?? false
   }
 
   /** The readable frontmost window, or null when nothing readable is in front (blocked/none). */

@@ -1,7 +1,8 @@
 /**
  * Extraction worker (docs/PLAN.md §5.3 F1 steps 4–6, §6.4 "Extraction queue", "Retention").
  *
- * Closed episodes pass the local prefilter or are marked done without an LLM call. Passing ones
+ * Closed episodes pass the local prefilter or are marked done without an LLM call (episodes that
+ * arrive already done, coding agent sessions, are skipped outright). Passing ones
  * queue up and go to `Brain.extract` in batches (≤ 3 episodes or a token cap), every 2 minutes,
  * or at once for AI-chat episodes during a study session. A daily budget caps calls and tokens.
  * Results are applied through Repos (./apply), episodes are marked extracted and
@@ -129,6 +130,8 @@ export class ExtractionWorker {
 
   /** Prefilters a closed episode; queues it or marks it done. */
   enqueue(episode: Episode): PrefilterResult {
+    // Closed as already done (a coding agent session): nothing to learn, no LLM call.
+    if (episode.extracted) return { pass: false, score: 0, cleanChars: 0, reasons: ['extracted'] }
     const result = prefilter(episode, this.opts.prefilter)
     if (!result.pass) {
       this.markExtracted(episode.id)

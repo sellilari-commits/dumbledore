@@ -51,6 +51,7 @@ export class Perception implements PerceptionService {
     this.tracker = new AiChatTracker((chat) => deps.bus.emit('perception:aiChat', { chat }))
     this.builder = new EpisodeBuilder({
       classify: (win) => this.tracker.classify(win),
+      isAgentSession: (win) => this.tracker.isAgentSession(win),
       redact: () => this.settings.privacy.redact,
       onClose: (episode, pageKey) => this.onEpisodeClosed(episode, pageKey),
       onFrame: (window) => deps.bus.emit('perception:window', { window }),

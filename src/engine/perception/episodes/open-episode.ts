@@ -63,6 +63,11 @@ export class OpenEpisode {
   aiProvider: string | null
   /** Opened when this window stopped being an AI chat (a coding session took over). */
   leftChat = false
+  /**
+   * A coding agent session was on screen (the Claude app's Code tab): the episode is kept for
+   * time and context but stored as already extracted, so no study memory comes from it.
+   */
+  agentSession = false
   userAlign: 'right' | null
   readonly visitStartedAt: number
   readonly revisitsToday: number
@@ -152,6 +157,7 @@ export class OpenEpisode {
 
   kindGuess(lines?: readonly MergedLine[]): EpisodeKind {
     if (this.aiProvider) return 'ai_chat'
+    if (this.agentSession) return 'other' // a coding agent's transcript is not reading
     if (isReadingApp(this.bundleId) || isPdf(this.url, this.title)) return 'reading'
     const count = lines ? lines.length : this.merged.size
     const words = lines ? lines.reduce((n, l) => n + wordCount(l.text), 0) : this.words
@@ -195,7 +201,7 @@ export class OpenEpisode {
         searches: env.searches.between(this.visitStartedAt - SEARCH_LOOKBACK_MS, endedAt),
         aiQuestions: kind === 'ai_chat' ? studentMessages(lines, this.userAlign) : [],
       },
-      extracted: false,
+      extracted: this.agentSession,
     }
   }
 

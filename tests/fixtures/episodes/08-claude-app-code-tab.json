@@ -1,6 +1,6 @@
 {
   "name": "claude-app-code-tab",
-  "description": "The Claude desktop app shows a Claude Code session in its Code tab for two minutes: tool runs, file paths, test output, a diff, permission buttons and the model picker. The code under work happens to be a chemistry fixture about leaving groups. It is a coding session, not a study chat: no AI chat is reported and nothing is learned from it (the real run saved 'studied leaving groups with Claude' from such a session).",
+  "description": "The Claude desktop app shows a Claude Code session in its Code tab for two minutes: tool runs, file paths, test output, a diff, permission buttons and the model picker. The code under work happens to be a chemistry fixture about leaving groups. It is a coding session, not a study chat: no AI chat is reported and nothing is learned from it, even though the extractor would call the text study material (the real run saved 'studied leaving groups with Claude' from such a session).",
   "windows": {
     "claude": {
       "pid": 640,
@@ -65,9 +65,11 @@
     { "at": 120, "front": null }
   ],
   "end": 150,
-  "learning": false,
+  "learning": true,
+  "brain": { "subject": "Organic Chemistry", "topicPath": ["Organic Chemistry", "Leaving groups"] },
   "expect": {
     "aiChat": null,
+    "extractCalls": 0,
     "encounters": 0,
     "main": { "kind": "other", "aiProvider": null, "textIncludes": ["Bash(", "leaving groups"] }
   }

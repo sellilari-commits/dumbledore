@@ -44,6 +44,11 @@ export interface Detection {
   match: AssistantMatch | null
   /** A coding agent is on screen: not a study chat, even in a chat app. */
   coding: boolean
+  /**
+   * The coding verdict came from the window itself (a chat app's Code tab, claude.ai/code), not
+   * from an editor/terminal bundle: an agent session, from which nothing is learned.
+   */
+  agentSession: boolean
 }
 
 type DetectWindow = Omit<WindowLike, 'pid' | 'windowId' | 'appName'>
@@ -63,17 +68,17 @@ export function detectAssistant(
 
 export function detectChat(win: DetectWindow, composer: ComposerHint | null = null): Detection {
   const lines = win.lines ?? []
+  if (isCodingApp(win.bundleId)) return { match: null, coding: true, agentSession: false }
   if (
-    isCodingApp(win.bundleId) ||
     isCodingSite(win.url) ||
     looksLikeCodingSession(
       lines.map((l) => l.text),
       win.title,
     )
   ) {
-    return { match: null, coding: true }
+    return { match: null, coding: true, agentSession: true }
   }
-  return { match: detectKnownOrUnknown(win, composer), coding: false }
+  return { match: detectKnownOrUnknown(win, composer), coding: false, agentSession: false }
 }
 
 function detectKnownOrUnknown(

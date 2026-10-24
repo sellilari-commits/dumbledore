@@ -77,6 +77,7 @@ describe('perception pipeline on recorded fixtures', () => {
       'password-manager',
       'incognito-window',
       'claude-app-code-tab',
+      'claude-code-tab-real',
     ])
   })
 
@@ -117,7 +118,8 @@ describe('perception pipeline on recorded fixtures', () => {
       })
     }
 
-    it(fx.learning ? 'turns what was learned into memory' : 'keeps nothing about it', () => {
+    const learns = fx.learning && ex.encounters > 0
+    it(learns ? 'turns what was learned into memory' : 'keeps nothing about it', () => {
       if (ex.extractCalls !== undefined) expect(extractCalls(r)).toBe(ex.extractCalls)
       const encounters = r.repos.encounters.list({})
       expect(encounters).toHaveLength(ex.encounters)

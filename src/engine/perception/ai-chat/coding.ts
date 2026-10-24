@@ -8,7 +8,13 @@
  * "Read src/app.ts"), diffs, permission prompts and agent controls ("Allow once", "Accept
  * edits"), plus file paths and shell commands. One kind alone never decides, and a study chat
  * that merely shows code (paths, a `pip install`) stays a chat: at least one agent-only kind
- * (tool run, diff, agent control, coding title) has to be present.
+ * (tool run, diff, agent control, coding title, plan checklist) has to be present.
+ *
+ * The real Claude app Code tab (helper samples, 2026-10-24) shows no "⏺ Bash(…)" glyphs: the
+ * transcript is one long AX line, tool runs collapse to "Ran 2 commands", and the window title is
+ * just "Claude". What is always there is the session chrome: a "Claude Code" header line, the
+ * workspace chip "Now working in this computer · <repo>" and, while the agent works, its
+ * checklist ("done" / "in progress" / "not done" status lines).
  */
 import { bundleEntryMatches } from '../../privacy/blocked-apps'
 import { hostMatches, parseUrl } from '../../privacy/url'
@@ -68,13 +74,18 @@ export function isCodingSite(url: string | null): boolean {
   )
 }
 
-type Kind = 'tool' | 'diff' | 'agent' | 'title' | 'path' | 'shell'
-const AGENT_ONLY: ReadonlySet<Kind> = new Set(['tool', 'diff', 'agent', 'title'])
+type Kind = 'tool' | 'diff' | 'agent' | 'title' | 'header' | 'plan' | 'path' | 'shell'
+const AGENT_ONLY: ReadonlySet<Kind> = new Set(['tool', 'diff', 'agent', 'title', 'header', 'plan'])
+/**
+ * Agent kinds that only confirm another agent kind: a "Claude Code" line can be a sidebar entry
+ * and "done" lines a study checklist, so with code on screen they alone never decide.
+ */
+const CONFIRM_ONLY: ReadonlySet<Kind> = new Set(['header', 'plan'])
 
 const TOOL_CALL =
   /^(?:[⏺●•✓✔⎿>-]\s*)?(?:Bash|Read|Edit|Write|MultiEdit|Update|Grep|Glob|LS|WebFetch|WebSearch|Task|TodoWrite|NotebookEdit|apply_patch|shell|exec)\s*\(/
 const TOOL_DONE =
-  /^(?:[⏺●•✓✔⎿]\s*)?(?:Ran|Edited|Read|Created|Deleted|Explored|Searched|Wrote|Updated)\s+(?:\d+\s+(?:files?|lines?|commands?)\b|`|[\w.-]*\/[\w./-]+|[\w-]+\.[a-z]{1,5}\b)/
+  /^(?:[⏺●•✓✔⎿]\s*)?(?:Ran|Edited|Read|Created|Deleted|Explored|Searched|Wrote|Updated)\s+(?:(?:\d+|an?)\s+(?:files?|lines?|commands?|patterns?|searches)\b|`|[\w.-]*\/[\w./-]+|[\w-]+\.[a-z]{1,5}\b)/
 const DIFF = /^(?:@@ .+ @@|diff --git |index [0-9a-f]{7,}|\+{3} [ab]\/|-{3} [ab]\/|\+\d+\s+-\d+$)/
 const AGENT_LINE =
   /^(?:Allow once|Always allow|Allow for this (?:session|chat)|Deny|Accept edits|Auto-accept edits|Accept all|Reject all|Plan mode|Bypass permissions|Review changes|Undo changes|Create PR|Open PR|Commit changes|Commit and push|Push to branch|New worktree|Run command\??|Allow this command\??)$/i
@@ -84,6 +95,13 @@ const PATH =
   /(?:^|[\s`'"(])(?:~|\.{1,2})?\/?(?:[\w.@-]+\/)+[\w.-]+\.(?:tsx?|jsx?|mjs|cjs|py|swift|go|rs|java|kt|rb|php|c|cc|cpp|h|hpp|cs|json|ya?ml|toml|md|css|scss|html|sh|sql|lock)\b/
 const SHELL =
   /^(?:\$|%|❯|➜)?\s*(?:npm|npx|pnpm|yarn|bun|git|python3?|pip3?|cargo|make|swift|xcodebuild|node|tsc|pytest|brew|docker|kubectl|gh|uv|go)\s+[\w-]/
+/** The Code tab's workspace chip: "Now working in this computer · dumbledore". */
+const WORKSPACE = /^Now working in .{1,60} · \S/
+/** A UI header line naming the coding agent (the Code tab's "Claude Code"). */
+const CODING_HEADER = /^Claude Code$/
+/** Agent checklist statuses ("done", "in progress"); two or more make a plan. */
+const PLAN_STATUS = /^(?:done|in progress|not done|pending|completed)$/i
+const MIN_PLAN_STATUSES = 2
 const CODING_TITLE = /\b(?:Claude Code|Codex|Cursor|Windsurf|Visual Studio Code)\b/i
 
 const MAX_LINE = 160
@@ -93,15 +111,19 @@ export function codingEvidence(lines: readonly string[], title: string | null): 
   const seen = new Map<Kind, number>()
   const add = (k: Kind) => seen.set(k, (seen.get(k) ?? 0) + 1)
   if (title && CODING_TITLE.test(title)) add('title')
+  let statuses = 0
   for (const raw of lines) {
     const line = raw.trim()
     if (!line || line.length > MAX_LINE) continue
+    if (CODING_HEADER.test(line)) add('header')
+    if (PLAN_STATUS.test(line)) statuses++
     if (TOOL_CALL.test(line) || TOOL_DONE.test(line)) add('tool')
     if (DIFF.test(line)) add('diff')
-    if (AGENT_LINE.test(line) || AGENT_TEXT.test(line)) add('agent')
+    if (AGENT_LINE.test(line) || AGENT_TEXT.test(line) || WORKSPACE.test(line)) add('agent')
     if (PATH.test(line)) add('path')
     if (SHELL.test(line)) add('shell')
   }
+  if (statuses >= MIN_PLAN_STATUSES) seen.set('plan', statuses)
   return seen
 }
 
@@ -112,6 +134,7 @@ export function looksLikeCodingSession(lines: readonly string[], title: string |
   const agentKinds = kinds.filter((k) => AGENT_ONLY.has(k)).length
   if (agentKinds === 0) return false
   if (agentKinds >= 2) return true
+  if (kinds.some((k) => CONFIRM_ONLY.has(k))) return false
   // A coding title ("Claude Code", "Cursor") weighs double.
   const hits = [...seen.values()].reduce((a, b) => a + b, 0) + (seen.has('title') ? 1 : 0)
   return kinds.length >= 2 && hits >= 3

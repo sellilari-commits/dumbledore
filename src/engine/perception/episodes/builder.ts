@@ -45,6 +45,8 @@ export interface PageSnapshot {
 
 export interface EpisodeBuilderDeps {
   classify: (win: WindowLike) => AssistantMatch | null
+  /** After classify: the window shows a coding agent session (the Claude app's Code tab). */
+  isAgentSession?: (win: WindowLike) => boolean
   /** Mask secrets/personal data at capture (settings.privacy.redact). */
   redact: () => boolean
   onClose: (episode: Episode, pageKey: string) => void
@@ -150,6 +152,7 @@ export class EpisodeBuilder {
     isFront: boolean,
   ): OpenEpisode {
     const match = this.deps.classify(win)
+    const agentSession = !match && (this.deps.isAgentSession?.(win) ?? false)
     const ids = episodeKeyOf(win)
     let ep = this.open.get(ids.key)
     if (!ep && match) {
@@ -168,13 +171,15 @@ export class EpisodeBuilder {
     const hasText = win.changed && win.lines.length > 0
     // The same window switched between a chat and a coding session (the Claude app's Chat and
     // Code tabs): close what was read so far, so neither side's text lands in the other.
-    if (ep && hasText && (ep.aiProvider ? !match : match && ep.leftChat)) {
+    if (ep && hasText && (ep.aiProvider ? !match : match && (ep.leftChat || ep.agentSession))) {
       const wasChat = ep.aiProvider !== null
       this.close(ep, at)
       ep = this.create(win, ids, match, at)
       ep.leftChat = wasChat
     }
     if (!ep) ep = this.create(win, ids, match, at)
+    // Nothing is learned from a coding agent's session (see OpenEpisode.agentSession).
+    if (agentSession && hasText) ep.agentSession = true
     if (match && !ep.aiProvider) {
       ep.aiProvider = match.assistant.key
       ep.userAlign = match.assistant.userAlign

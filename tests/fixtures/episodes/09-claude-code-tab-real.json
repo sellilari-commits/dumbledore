@@ -1,0 +1,647 @@
+{
+  "name": "claude-code-tab-real",
+  "description": "Real helper output (perceive, scope frontmost, 2026-10-24) of the Claude desktop app's Code tab while Claude Code works on Dumbledore, three samples a minute apart, long lines cut to 300 characters. Title is just 'Claude'; the transcript is one long AX line, tool runs collapse to 'Ran 2 commands', and the session chrome shows a 'Claude Code' header, 'Now working in this computer · dumbledore' and the agent's checklist. The preview pane shows Dumbledore's Organic Chemistry roadmap, so the text looks like study material. It is a coding session: no AI chat, no extraction call, no study memory.",
+  "windows": {
+    "claude": {
+      "pid": 517,
+      "bundleId": "com.anthropic.claudefordesktop",
+      "appName": "Claude",
+      "windowId": 252,
+      "title": "Claude",
+      "url": "file:///Applications/Claude.app/Contents/Resources/app.asar/.vite/renderer/main_window/index.html",
+      "source": "ax"
+    }
+  },
+  "timeline": [
+    {
+      "at": 0,
+      "front": "claude",
+      "lines": [
+        "Claude Code",
+        "Claude is responding",
+        "Use the up and down arrow keys to move between messages.Claude responded: Dumbledore isn't in that list at the moment, so there's nothing to switch on.Dumbledore isn’t in that list at the moment, so there’s nothing to switch on. Add it:Click+under the list (just below “claude”).Press⌘⇧G, paste/Ap…",
+        "Both work. Two quick checks: which app those chat sessions came from, and what the 3 failed AI calls were:",
+        "Ran 2 commands",
+        "Ran 2 commands",
+        "Live check shows OCR, text reader, and extraction all working, but found two issues: the installed app can’t locate the Gemini key on restart (falling back to slower OVHcloud) and coding sessions are still being miscategorized as study time. I’ll fix the key lookup myself while an agent tackles t…",
+        "Exclude real Claude Code window from studyrunning",
+        "Exclude real Claude Code window from study",
+        "Fix for the key: the app will also look for.env.local",
+        "in Dumbledore’s data folder, and I’ll put a one-line file there that only points to Hugo’s key file. No key gets copied.",
+        "Showing the remaining type error",
+        "running",
+        "Showing the remaining type error",
+        "Now working in this computer · dumbledore",
+        "Chat mode",
+        "Opus 5.5 High",
+        "Fast mode off",
+        "Arrow keys move the tile. Perpendicular arrows preview a split; press Enter to commit or Escape to cancel.",
+        "Dumbledore",
+        "Search ⌘K",
+        "Home",
+        "Inbox 6",
+        "Exams",
+        "Settings",
+        "Subjects",
+        "🧪 Organic Chemistry Focus",
+        "📐 Linear Algebra",
+        "🌍 Geography Suggested",
+        {
+          "text": "Subjects Organic Chemistry",
+          "align": "center"
+        },
+        "CHEM 2210 — reaction mechanisms, stereochemistry, substitution and elimination.",
+        "Deadline",
+        "Goal",
+        {
+          "text": "Status",
+          "align": "right"
+        },
+        {
+          "text": "Learning 2 reviewsdue",
+          "align": "right"
+        },
+        "1struggling",
+        "Progress 25%",
+        {
+          "text": "2of8",
+          "align": "right"
+        },
+        {
+          "text": "steps",
+          "align": "right"
+        },
+        {
+          "text": "This week 2 h 40 min",
+          "align": "right"
+        },
+        {
+          "text": "Next due",
+          "align": "right"
+        },
+        {
+          "text": "Lab report: SN1 hydrolysis ·",
+          "align": "right"
+        },
+        {
+          "text": "in 10 days",
+          "align": "right"
+        },
+        {
+          "text": "Concepts 8 Seen 4 Exams 2",
+          "align": "right"
+        },
+        {
+          "text": "SN1 vs SN2 Step 3 of 8 · about 48 min",
+          "align": "right"
+        },
+        {
+          "text": "Know when each substitution mechanism happens, and why",
+          "align": "right"
+        },
+        {
+          "text": "You already handle nucleophiles; you stumbled on carbocation stability twice, so we start there.",
+          "align": "right"
+        },
+        {
+          "text": "Current step",
+          "align": "center"
+        },
+        "Checkpoint 1",
+        "·",
+        {
+          "text": "4",
+          "align": "center"
+        },
+        {
+          "text": "questions",
+          "align": "center"
+        },
+        {
+          "text": "· carries 1 missed idea",
+          "align": "right"
+        },
+        "Re-tests",
+        {
+          "text": "Carbocation stability",
+          "align": "center"
+        },
+        {
+          "text": "with a new question.",
+          "align": "right"
+        },
+        "Final checkpoint",
+        "·",
+        "5",
+        "questions",
+        {
+          "text": "· carries 1 missed idea",
+          "align": "center"
+        },
+        "Re-tests",
+        {
+          "text": "Carbocation stability",
+          "align": "center"
+        },
+        {
+          "text": "with a new question.",
+          "align": "right"
+        },
+        "Next up after this roadmap:",
+        {
+          "text": "E1 vs E2 eliminations",
+          "align": "right"
+        },
+        "Step 5 of 5",
+        "Meet the Dumbledore key",
+        "Right ⌥ does the smart thing wherever you are. Tap it now: press and let go.",
+        "right ⌥·two keys right of the space bar",
+        "Waiting for right ⌥…",
+        {
+          "text": "Tap",
+          "align": "right"
+        },
+        {
+          "text": "Studies what you worked on last in ChatGPT or any AI chat, or pastes the next step.",
+          "align": "right"
+        },
+        {
+          "text": "— not yet",
+          "align": "right"
+        },
+        {
+          "text": "HoldRewrites the prompt you typed (⌘Z undoes it). With nothing typed, pick a subject.",
+          "align": "right"
+        },
+        {
+          "text": "— not yet",
+          "align": "right"
+        },
+        {
+          "text": "Double-tap",
+          "align": "right"
+        },
+        {
+          "text": "Chat with Dumbledore: ask anything, or tell it what to do next.",
+          "align": "right"
+        },
+        {
+          "text": "— not yet",
+          "align": "right"
+        }
+      ]
+    },
+    {
+      "at": 60,
+      "front": "claude",
+      "lines": [
+        "Claude Code",
+        "Claude finished the response",
+        "Use the up and down arrow keys to move between messages.Claude responded: Testing it live: OCR through the installed app's own helper, plus what the screen reader has saved since the restart.Testing it live: OCR through the installed app’s own helper, plus what the screen reader has saved since t…",
+        "The live check turned up two problems:",
+        "Fixed:",
+        {
+          "text": "whenever macOS restarted the installed app (at login, on “Quit & Reopen”), it couldn’t find the Gemini key and fell back to the slower OVHcloud. Now it finds the key itself, through a one-line pointer to Hugo’s file; no key is copied. Reinstalled, and Gemini is available again (c6a9c9f",
+          "align": "right"
+        },
+        {
+          "text": ", pushed). The certificate worked too: your permissions survived this update.",
+          "align": "center"
+        },
+        {
+          "text": "Being fixed:",
+          "align": "right"
+        },
+        {
+          "text": "this Claude Code session still counts as you “studying”, 29 sessions so far, with junk memory like “troubleshooting permission persistence”. An agent is working from real samples of this window to make the coding filter catch it. Once it lands, I’ll check it, push it and reinstall the app.",
+          "align": "right"
+        },
+        "Now working in this computer · dumbledore",
+        "done",
+        {
+          "text": "Installed app holds Accessibility + Screen Recording",
+          "align": "center"
+        },
+        "done",
+        "Verify OCR and text reading live",
+        "done",
+        "Installed app finds the Gemini key",
+        "in progress",
+        {
+          "text": "Stop counting Claude Code sessions as study (agent)",
+          "align": "right"
+        },
+        "not done",
+        {
+          "text": "Real loop in ChatGPT: tap, hold, double-tap",
+          "align": "center"
+        },
+        "How is Claude doing this session?",
+        "Chat mode",
+        "Opus 5.5 High",
+        "Fast mode off",
+        "Arrow keys move the tile. Perpendicular arrows preview a split; press Enter to commit or Escape to cancel.",
+        "Dumbledore",
+        "Search ⌘K",
+        "Home",
+        "Inbox 6",
+        "Exams",
+        "Settings",
+        "Subjects",
+        "🧪 Organic Chemistry Focus",
+        "📐 Linear Algebra",
+        "🌍 Geography Suggested",
+        {
+          "text": "Subjects Organic Chemistry",
+          "align": "center"
+        },
+        {
+          "text": "CHEM 2210 — reaction mechanisms, stereochemistry, substitution and elimination.",
+          "align": "right"
+        },
+        {
+          "text": "Deadline",
+          "align": "center"
+        },
+        "Goal",
+        {
+          "text": "Status",
+          "align": "right"
+        },
+        {
+          "text": "Learning 2 reviewsdue",
+          "align": "right"
+        },
+        {
+          "text": "1struggling",
+          "align": "right"
+        },
+        {
+          "text": "Progress 25%",
+          "align": "right"
+        },
+        {
+          "text": "2of8",
+          "align": "right"
+        },
+        {
+          "text": "steps",
+          "align": "right"
+        },
+        {
+          "text": "This week 2 h 40 min",
+          "align": "right"
+        },
+        "Next due",
+        "Lab report: SN1 hydrolysis ·",
+        {
+          "text": "in 10 days",
+          "align": "right"
+        },
+        {
+          "text": "Concepts 8 Seen 4 Exams 2",
+          "align": "right"
+        },
+        "SN1 vs SN2 Step 3 of 8 · about 48 min",
+        "Know when each substitution mechanism happens, and why",
+        {
+          "text": "You already handle nucleophiles; you stumbled on carbocation stability twice, so we start there.",
+          "align": "right"
+        },
+        {
+          "text": "Current step",
+          "align": "center"
+        },
+        "Checkpoint 1",
+        "·",
+        {
+          "text": "4",
+          "align": "center"
+        },
+        {
+          "text": "questions",
+          "align": "center"
+        },
+        {
+          "text": "· carries 1 missed idea",
+          "align": "right"
+        },
+        "Re-tests",
+        {
+          "text": "Carbocation stability",
+          "align": "center"
+        },
+        {
+          "text": "with a new question.",
+          "align": "right"
+        },
+        "Final checkpoint",
+        "·",
+        "5",
+        "questions",
+        {
+          "text": "· carries 1 missed idea",
+          "align": "center"
+        },
+        "Re-tests",
+        {
+          "text": "Carbocation stability",
+          "align": "center"
+        },
+        {
+          "text": "with a new question.",
+          "align": "right"
+        },
+        "Next up after this roadmap:",
+        {
+          "text": "E1 vs E2 eliminations",
+          "align": "right"
+        },
+        "Step 2 of 5",
+        {
+          "text": "Let Dumbledore see your screen",
+          "align": "center"
+        },
+        {
+          "text": "macOS asks once for each. Flip the switch for Dumbledore in System Settings — this page notices by itself.",
+          "align": "center"
+        },
+        "Accessibility Required",
+        {
+          "text": "Lets Dumbledore read the text on screen and paste prompts into chat boxes.",
+          "align": "center"
+        },
+        {
+          "text": "Granted",
+          "align": "right"
+        },
+        {
+          "text": "Screen Recording Required",
+          "align": "right"
+        },
+        {
+          "text": "So Dumbledore can read PDFs, slides and video.",
+          "align": "right"
+        },
+        {
+          "text": "Dumbledore needs both. Screen Recording stays on so it can read PDFs, slides and video; nothing leaves this Mac.",
+          "align": "right"
+        }
+      ]
+    },
+    {
+      "at": 120,
+      "front": "claude",
+      "lines": [
+        "Claude Code",
+        "Claude finished the response",
+        "Use the up and down arrow keys to move between messages.Claude responded: Testing it live: OCR through the installed app's own helper, plus what the screen reader has saved since the restart.Testing it live: OCR through the installed app’s own helper, plus what the screen reader has saved since t…",
+        "this Claude Code session still counts as you “studying”, 29 sessions so far, with junk memory like “troubleshooting permission persistence”. An agent is working from real samples of this window to make the coding filter catch it. Once it lands, I’ll check it, push it and reinstall the app.",
+        "Now working in this computer · dumbledore",
+        "done",
+        "Installed app holds Accessibility + Screen Recording",
+        "done",
+        {
+          "text": "Verify OCR and text reading live",
+          "align": "center"
+        },
+        "done",
+        {
+          "text": "Installed app finds the Gemini key",
+          "align": "center"
+        },
+        "in progress",
+        {
+          "text": "Stop counting Claude Code sessions as study (agent)",
+          "align": "center"
+        },
+        "not done",
+        {
+          "text": "Real loop in ChatGPT: tap, hold, double-tap",
+          "align": "right"
+        },
+        "How is Claude doing this session?",
+        "Chat mode",
+        "Opus 5.5 High",
+        "Fast mode off",
+        "Arrow keys move the tile. Perpendicular arrows preview a split; press Enter to commit or Escape to cancel.",
+        {
+          "text": "Dumbledore",
+          "align": "right"
+        },
+        {
+          "text": "Search ⌘K",
+          "align": "right"
+        },
+        {
+          "text": "Home",
+          "align": "center"
+        },
+        "Inbox 6",
+        "Exams",
+        "Settings",
+        "Subjects",
+        {
+          "text": "🧪 Organic Chemistry Focus",
+          "align": "center"
+        },
+        "📐 Linear Algebra",
+        "🌍 Geography Suggested",
+        {
+          "text": "Subjects Organic Chemistry",
+          "align": "right"
+        },
+        "CHEM 2210 — reaction mechanisms, stereochemistry, substitution and elimination.",
+        "Deadline",
+        {
+          "text": "Goal",
+          "align": "right"
+        },
+        {
+          "text": "Status",
+          "align": "right"
+        },
+        {
+          "text": "Learning 2 reviewsdue",
+          "align": "right"
+        },
+        {
+          "text": "1struggling",
+          "align": "right"
+        },
+        {
+          "text": "Progress 25%",
+          "align": "right"
+        },
+        {
+          "text": "2of8",
+          "align": "right"
+        },
+        {
+          "text": "steps",
+          "align": "right"
+        },
+        {
+          "text": "This week 2 h 40 min",
+          "align": "right"
+        },
+        {
+          "text": "Next due",
+          "align": "right"
+        },
+        {
+          "text": "Lab report: SN1 hydrolysis ·",
+          "align": "right"
+        },
+        {
+          "text": "in 10 days",
+          "align": "right"
+        },
+        "Concepts 8 Seen 4 Exams 2",
+        {
+          "text": "SN1 vs SN2 Step 3 of 8 · about 48 min",
+          "align": "right"
+        },
+        {
+          "text": "Know when each substitution mechanism happens, and why",
+          "align": "right"
+        },
+        {
+          "text": "You already handle nucleophiles; you stumbled on carbocation stability twice, so we start there.",
+          "align": "right"
+        },
+        {
+          "text": "Current step",
+          "align": "right"
+        },
+        {
+          "text": "Checkpoint 1",
+          "align": "right"
+        },
+        {
+          "text": "·",
+          "align": "right"
+        },
+        {
+          "text": "4",
+          "align": "right"
+        },
+        {
+          "text": "questions",
+          "align": "right"
+        },
+        {
+          "text": "· carries 1 missed idea",
+          "align": "right"
+        },
+        {
+          "text": "Re-tests",
+          "align": "right"
+        },
+        {
+          "text": "Carbocation stability",
+          "align": "right"
+        },
+        {
+          "text": "with a new question.",
+          "align": "right"
+        },
+        {
+          "text": "Final checkpoint",
+          "align": "right"
+        },
+        {
+          "text": "·",
+          "align": "right"
+        },
+        {
+          "text": "5",
+          "align": "right"
+        },
+        {
+          "text": "questions",
+          "align": "right"
+        },
+        {
+          "text": "· carries 1 missed idea",
+          "align": "right"
+        },
+        {
+          "text": "Re-tests",
+          "align": "right"
+        },
+        {
+          "text": "Carbocation stability",
+          "align": "right"
+        },
+        {
+          "text": "with a new question.",
+          "align": "right"
+        },
+        {
+          "text": "Next up after this roadmap:",
+          "align": "right"
+        },
+        {
+          "text": "E1 vs E2 eliminations",
+          "align": "right"
+        },
+        {
+          "text": "Step 5 of 5",
+          "align": "center"
+        },
+        "Meet the Dumbledore key",
+        {
+          "text": "Right ⌥ does the smart thing wherever you are. Tap it now: press and let go.",
+          "align": "center"
+        },
+        "right ⌥·two keys right of the space bar",
+        "That’s a hold — it rewrites your prompt or lets you pick a subject. First a quick tap: press right ⌥ and let go.",
+        "Tap",
+        "Studies what you worked on last in ChatGPT or any AI chat, or pastes the next step.",
+        "— not yet",
+        "Hold",
+        "Rewrites the prompt you typed (⌘Z undoes it). With nothing typed, pick a subject.",
+        {
+          "text": "— not yet",
+          "align": "right"
+        },
+        "Double-tap Chat with Dumbledore: ask anything, or tell it what to do next.",
+        {
+          "text": "— not yet",
+          "align": "right"
+        }
+      ]
+    },
+    {
+      "at": 180,
+      "front": null
+    }
+  ],
+  "end": 200,
+  "learning": true,
+  "brain": {
+    "subject": "Organic Chemistry",
+    "topicPath": [
+      "Organic Chemistry",
+      "Substitution",
+      "SN1 vs SN2"
+    ],
+    "keyTerms": [
+      "carbocation stability"
+    ]
+  },
+  "expect": {
+    "aiChat": null,
+    "extractCalls": 0,
+    "encounters": 0,
+    "main": {
+      "kind": "other",
+      "aiProvider": null,
+      "textIncludes": [
+        "Claude Code",
+        "Now working in this computer · dumbledore"
+      ]
+    }
+  }
+}
