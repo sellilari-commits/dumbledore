@@ -8,7 +8,7 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
-| _nothing in progress_ | | | | | |
+| 2026-10-24 | Ilari / Claude | Fresh install starts with empty memory; no mock data anywhere | src/renderer/surfaces/overlay/lib/**, src/renderer/lib/api.ts, build config | main | testing a fresh data folder |
 
 ## Done recently
 
