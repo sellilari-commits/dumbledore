@@ -33,4 +33,6 @@ export interface SurfaceControl {
   close(surface: WindowSurface): Promise<void>
   /** Delivers an Enter key press to the ask bar, or to the overlay (its quiz card). */
   pressEnter(surface: 'askbar' | 'overlay'): void
+  /** What the open ask bar shows: the double-tap chat or the study box; null when closed. */
+  askbarRoute?(): 'chat' | 'prompt' | null
 }

@@ -177,12 +177,18 @@ describe('decide — hold opens the prompt box, double-tap opens the chat plain'
     expect(decide('holdStart', ctx({ ...typed, quizOpen: true }))).toEqual({ kind: 'ignore' })
   })
 
-  it('double-tap opens the chat window anywhere, or focuses it; hold end does nothing', () => {
+  it('double-tap toggles the chat window; from the study box it switches to the chat', () => {
     expect(decide('doubleTap', ctx())).toEqual({ kind: 'askbar' })
     expect(decide('doubleTap', ctx({ ...typed, sessionActive: true }))).toEqual({
       kind: 'askbar',
     })
-    expect(decide('doubleTap', ctx({ askbarOpen: true }))).toEqual({ kind: 'focusAskbar' })
+    expect(decide('doubleTap', ctx({ askbarOpen: true, askbarRoute: 'chat' }))).toEqual({
+      kind: 'closeAskbar',
+    })
+    expect(decide('doubleTap', ctx({ askbarOpen: true }))).toEqual({ kind: 'closeAskbar' })
+    expect(decide('doubleTap', ctx({ askbarOpen: true, askbarRoute: 'prompt' }))).toEqual({
+      kind: 'focusAskbar',
+    })
     expect(decide('holdEnd', ctx(typed))).toEqual({ kind: 'ignore' })
   })
 })

@@ -237,7 +237,7 @@ describe('ShortcutRouter', () => {
     expect(h.surfaces.log).toEqual(['open:panel:/', 'close:panel'])
   })
 
-  it('double-tap opens the chat window over the focused field, then focuses it', async () => {
+  it('double-tap opens the chat window over the focused field; a second double-tap closes it', async () => {
     const h = await harness()
     await inChatGPT(h)
     expect(await h.core.router.gesture('doubleTap')).toEqual({ kind: 'askbar' })
@@ -245,8 +245,33 @@ describe('ShortcutRouter', () => {
     expect(await h.core.router.gesture('tap')).toEqual({ kind: 'enter', surface: 'askbar' })
     expect(h.surfaces.enters).toEqual(['askbar'])
     expect(await h.core.router.gesture('holdStart')).toEqual({ kind: 'focusAskbar' })
+    expect(await h.core.router.gesture('doubleTap')).toEqual({ kind: 'closeAskbar' })
+    expect(h.surfaces.isOpen('askbar')).toBe(false)
+    expect(h.surfaces.log).toEqual(['open:askbar', 'open:askbar', 'close:askbar'])
+  })
+
+  it('double-tap twice opens and then closes the chat; from the study box it switches', async () => {
+    const h = await harness()
+    expect(await h.core.router.gesture('doubleTap')).toEqual({ kind: 'askbar' })
+    expect(await h.core.router.gesture('doubleTap')).toEqual({ kind: 'closeAskbar' })
+    expect(h.surfaces.isOpen('askbar')).toBe(false)
+    expect(await h.core.router.gesture('holdStart')).toEqual({ kind: 'promptBox' })
     expect(await h.core.router.gesture('doubleTap')).toEqual({ kind: 'focusAskbar' })
-    expect(h.surfaces.log).toEqual(['open:askbar', 'open:askbar', 'open:askbar'])
+    expect(await h.core.router.gesture('doubleTap')).toEqual({ kind: 'closeAskbar' })
+    expect(h.surfaces.log).toEqual([
+      'open:askbar',
+      'close:askbar',
+      'open:askbar:prompt',
+      'open:askbar',
+      'close:askbar',
+    ])
+  })
+
+  it('a long press on the orb closes the open chat', async () => {
+    const h = await harness()
+    expect(await h.core.router.orbLongPress()).toEqual({ kind: 'askbar' })
+    expect(await h.core.router.orbLongPress()).toEqual({ kind: 'closeAskbar' })
+    expect(h.surfaces.isOpen('askbar')).toBe(false)
   })
 
   it('a long press on the orb opens the chat window', async () => {

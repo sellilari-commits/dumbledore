@@ -13,8 +13,9 @@
  *
  * Long press (holdStart) opens the prompt box: the ask bar with route 'prompt', where the student
  * says what they want and Dumbledore writes the prompt and pastes it into the AI chat (the
- * 'prompt.write' channel). Double-tap opens the chat with Dumbledore, plain. Both focus the ask
- * bar when it is already open. A quiz card swallows the hold. holdEnd → nothing.
+ * 'prompt.write' channel). Double-tap opens the chat with Dumbledore, plain, and closes it again
+ * when it is open (from the study box it switches to the chat). A hold focuses an open ask bar.
+ * A quiz card swallows the hold. holdEnd → nothing.
  *
  * The field value and the selection are read from the helper only on an explicit gesture, and
  * only when the table needs them: `decide` returns `need` until the caller supplies them.
@@ -23,6 +24,8 @@ import type { Gesture } from '@shared/helper-protocol'
 
 export interface RouteContext {
   askbarOpen: boolean
+  /** What the open ask bar shows: the double-tap chat or the study box (undefined = the chat). */
+  askbarRoute?: 'chat' | 'prompt' | null
   quizOpen: boolean
   /** A study session is running (phase step / checkpoint / planning). */
   sessionActive: boolean
@@ -47,6 +50,8 @@ export type Decision =
   | { kind: 'ignore' }
   | { kind: 'askbar' }
   | { kind: 'focusAskbar' }
+  /** Double-tap while the chat is open: it closes (a toggle). */
+  | { kind: 'closeAskbar' }
   /** The prompt box: the ask bar with route 'prompt' ("tell Dumbledore what you want"). */
   | { kind: 'promptBox' }
   /** Resume or start the subject worked on last (the router finds it). */
@@ -86,7 +91,9 @@ export function decide(input: RouteInput, ctx: RouteContext): Decision {
     case 'holdEnd':
       return { kind: 'ignore' }
     case 'doubleTap':
-      return ctx.askbarOpen ? { kind: 'focusAskbar' } : { kind: 'askbar' }
+      // A toggle: the open chat closes; the study box switches to the chat; else the chat opens.
+      if (!ctx.askbarOpen) return { kind: 'askbar' }
+      return ctx.askbarRoute === 'prompt' ? { kind: 'focusAskbar' } : { kind: 'closeAskbar' }
     case 'holdStart':
       return decideHold(ctx)
     default:

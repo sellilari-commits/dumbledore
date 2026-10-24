@@ -39,13 +39,20 @@ class TestPlatform implements ShellPlatform {
 
 class TestSurfaces implements SurfaceControl {
   readonly opened = new Set<WindowSurface>()
+  private askbarRouteOpened: string | null = null
 
   isOpen(surface: WindowSurface): boolean {
     return this.opened.has(surface)
   }
 
-  async open(surface: WindowSurface, _opts?: OpenOptions): Promise<void> {
+  askbarRoute(): 'chat' | 'prompt' | null {
+    if (!this.opened.has('askbar')) return null
+    return this.askbarRouteOpened === 'prompt' ? 'prompt' : 'chat'
+  }
+
+  async open(surface: WindowSurface, opts?: OpenOptions): Promise<void> {
     this.opened.add(surface)
+    if (surface === 'askbar') this.askbarRouteOpened = opts?.route ?? null
   }
 
   async close(surface: WindowSurface): Promise<void> {

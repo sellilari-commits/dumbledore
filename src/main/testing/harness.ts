@@ -89,14 +89,21 @@ export class FakeSurfaces implements SurfaceControl {
   readonly log: string[] = []
   readonly enters: string[] = []
   lastOptions: OpenOptions | null = null
+  private askbarRouteOpened: string | null = null
 
   isOpen(surface: WindowSurface): boolean {
     return this.opened.has(surface)
   }
 
+  askbarRoute(): 'chat' | 'prompt' | null {
+    if (!this.opened.has('askbar')) return null
+    return this.askbarRouteOpened === 'prompt' ? 'prompt' : 'chat'
+  }
+
   async open(surface: WindowSurface, opts: OpenOptions = {}): Promise<void> {
     this.opened.add(surface)
     this.lastOptions = opts
+    if (surface === 'askbar') this.askbarRouteOpened = opts.route ?? null
     this.log.push(`open:${surface}${opts.route ? `:${opts.route}` : ''}`)
   }
 

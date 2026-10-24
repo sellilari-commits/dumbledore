@@ -82,6 +82,7 @@ export class ShortcutRouter {
     const phase = study.current()?.phase
     const ctx: RouteContext = {
       askbarOpen: surfaces.isOpen('askbar'),
+      askbarRoute: surfaces.askbarRoute?.() ?? null,
       quizOpen: overlay.isQuizOpen(),
       sessionActive: phase === 'step' || phase === 'checkpoint' || phase === 'planning',
       aiChat: chat ? { pid: chat.pid } : null,
@@ -167,6 +168,9 @@ export class ShortcutRouter {
         return
       case 'focusAskbar':
         await surfaces.open('askbar')
+        return
+      case 'closeAskbar':
+        await surfaces.close('askbar')
         return
       case 'promptBox':
         await surfaces.open('askbar', { route: 'prompt' })

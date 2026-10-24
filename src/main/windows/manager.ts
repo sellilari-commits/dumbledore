@@ -58,6 +58,8 @@ export class WindowManager implements SurfaceControl, EventSink {
     askbar: null,
   }
   private appWin: BrowserWindow | null = null
+  /** Route the ask bar was last opened on (null = the double-tap chat). */
+  private askbarRouteOpened: string | null = null
   /** The mini panel's last content-fitted size; it reopens at it (null until it first fits). */
   private panelFitted: { width: number; height: number } | null = null
   private readonly senders = new Map<number, InvokeContext>()
@@ -100,8 +102,15 @@ export class WindowManager implements SurfaceControl, EventSink {
     return !!win && !win.isDestroyed() && win.isVisible()
   }
 
+  askbarRoute(): 'chat' | 'prompt' | null {
+    if (!this.isOpen('askbar')) return null
+    return isPromptRoute(this.askbarRouteOpened) ? 'prompt' : 'chat'
+  }
+
   async open(surface: WindowSurface, opts: OpenOptions = {}): Promise<void> {
     if (surface === 'app') return this.openApp(opts.route ?? null)
+    // The ask bar always hears its route on open (no route = the chat).
+    if (surface === 'askbar') this.askbarRouteOpened = opts.route ?? null
     const win = this.ensureTyping(surface, opts.route ?? null)
     win.setBounds(await this.placement(surface, opts))
     await this.showTyping(win)
