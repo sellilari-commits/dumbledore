@@ -88,6 +88,10 @@ export type Toast = z.infer<typeof Toast>
 /** One outlined passage: its box in global screen points, what to do with it and why. */
 export const OutlineMark = z.object({
   rect: Rect,
+  /** Each text line's own box, so the highlight sits on the words like a highlighter pen. */
+  lines: z.array(Rect).optional(),
+  /** Reading order of a passage to read (1, 2, 3 …); null for skim / skip. */
+  order: z.number().int().nullable().optional(),
   verdict: z.enum(['read', 'skim', 'skip']),
   why: z.string(),
 })
@@ -97,9 +101,13 @@ export type OutlineMark = z.infer<typeof OutlineMark>
 export const OutlineOverlay = z.object({
   /** The window the marks belong to; marks clear when it changes or scrolls. */
   windowId: z.number().int().nullable(),
+  /** The window's frame in global points: marks are clipped to it. */
+  frame: Rect.nullable().optional(),
   title: z.string().nullable(),
   subjectName: z.string(),
   summary: z.string(),
+  /** About how long the passages to read take (200 words a minute). */
+  minutes: z.number().int().optional(),
   marks: z.array(OutlineMark),
 })
 export type OutlineOverlay = z.infer<typeof OutlineOverlay>

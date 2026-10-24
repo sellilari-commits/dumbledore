@@ -5,7 +5,7 @@ import { createMemoryRepos } from '@engine/testing/memory-repos'
 import type { PerceivedWindow } from '@shared/helper-protocol'
 import type { OutlineOverlay } from '@shared/state'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { OutlineFlow, union } from './outline-flow'
+import { isCitation, OutlineFlow, pageLines, union } from './outline-flow'
 
 const TEXT = [
   'Carbocation – Wikipedia',
@@ -98,11 +98,14 @@ describe('OutlineFlow', () => {
     expect(inputs[0]?.known).toEqual(['SN2 mechanism'])
     expect(inputs[0]?.subject).toEqual({ name: 'Organic Chemistry', goal: 'Pass the midterm' })
     const marks = shown[0]?.marks ?? []
-    expect(marks[0]).toEqual({
+    expect(marks[0]).toMatchObject({
       rect: { x: 100, y: 160, width: 500, height: 80 },
       verdict: 'read',
       why: 'Your gap: carbocation stability',
+      order: 1,
     })
+    expect(marks[0]?.lines).toHaveLength(3)
+    expect(marks[1]?.order).toBeNull()
     expect(shown[0]?.windowId).toBe(7)
   })
 
@@ -121,5 +124,50 @@ describe('OutlineFlow', () => {
     expect(await flow({ frontWindow: async () => null }).run()).toEqual({ kind: 'unreadable' })
     expect(await flow({ subjectFor: () => null }).run()).toEqual({ kind: 'noSubject' })
     expect(shown).toEqual([])
+  })
+
+  it('follows a scroll: the marks move with their text, and clear when the window changes', async () => {
+    let tick: () => void = () => {}
+    let current: PerceivedWindow | null = page()
+    const f = flow({
+      frontWindow: async () => current,
+      every: (_ms, fn) => ((tick = fn), () => {}),
+    })
+    await f.run()
+    expect(shown.at(-1)?.marks[0]?.rect.y).toBe(160)
+
+    // Scrolled up by 50 points: every line moved.
+    const scrolled = page()
+    scrolled.lines = scrolled.lines.map((l) =>
+      l.box ? { ...l, box: { ...l.box, y: l.box.y - 50 } } : l,
+    )
+    current = scrolled
+    tick()
+    await new Promise((r) => setImmediate(r))
+    expect(shown.at(-1)?.marks[0]?.rect.y).toBe(110)
+    expect(shown.at(-1)?.marks[1]?.rect.y).toBe(200)
+
+    current = { ...page(), windowId: 99 }
+    tick()
+    await new Promise((r) => setImmediate(r))
+    expect(shown.at(-1)).toBeNull()
+  })
+})
+
+describe('pageLines', () => {
+  it('skips citation lines and starts near the first visible line', () => {
+    const win = page()
+    win.frame = { x: 0, y: 190, width: 800, height: 600 }
+    win.lines.push({
+      text: 'Smith, J. (2008). Egypt. ISBN 978-0-19-815034-3',
+      conf: 1,
+      box: { x: 100, y: 400, width: 500, height: 20 },
+      align: 'left',
+    })
+    const lines = pageLines(win)
+    expect(lines[0]?.text).toBe(TEXT[0])
+    expect(lines.some((l) => l.text.includes('ISBN'))).toBe(false)
+    expect(isCitation('^ Schneider, Thomas (27 August 2008). "Periodizing"')).toBe(true)
+    expect(isCitation('Ramesses II ruled for 66 years.')).toBe(false)
   })
 })

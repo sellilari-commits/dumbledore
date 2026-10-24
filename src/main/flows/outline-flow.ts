@@ -38,6 +38,8 @@ export interface OutlineFlowDeps {
   show: (outline: OutlineOverlay | null) => void
   /** Tells the windows that this subject's memory changed. */
   changed: (subjectId: Id) => void
+  /** Runs fn every ms until the returned stop is called (tests pass a manual clock). */
+  every?: (ms: number, fn: () => void) => () => void
 }
 
 /** Struggling first, then concepts still under half way: what the page should help with. */
@@ -63,19 +65,49 @@ export function union(boxes: readonly Rect[]): Rect | null {
   return { x, y, width: right - x, height: bottom - y }
 }
 
+/** Lines sent to P15: from just above the first visible line, about two screens' worth. */
+export const OUTLINE_LINES = 220
+/** How often the marks re-read the page to follow a scroll. */
+export const FOLLOW_MS = 1000
+
+/** Reference-list lines: never worth reading for a gap (and never saved as notes). */
+export function isCitation(text: string): boolean {
+  return /\bISBN\b|\bdoi\b|\bRetrieved\s+\d|Archived from|^\s*\^|\bpp?\.\s*\d|\(\d{4}\)\.\s|^\s*\[\d+\]\s*$/i.test(
+    text,
+  )
+}
+
+type Boxed = PerceivedWindow['lines'][number] & { box: Rect }
+
+/** The page's lines worth outlining: positioned, not citations, starting near the screen. */
+export function pageLines(win: PerceivedWindow): Boxed[] {
+  const lines = win.lines.filter(
+    (l): l is Boxed => l.box !== null && l.text.trim().length > 0 && !isCitation(l.text),
+  )
+  const top = win.frame?.y ?? Number.NEGATIVE_INFINITY
+  const first = Math.max(
+    0,
+    lines.findIndex((l) => l.box.y + l.box.height > top),
+  )
+  return lines.slice(Math.max(0, first - 3), Math.max(0, first - 3) + OUTLINE_LINES)
+}
+
 export class OutlineFlow {
+  private follow: { stop: () => void } | null = null
+
   constructor(private readonly deps: OutlineFlowDeps) {}
 
   clear(): void {
+    this.follow?.stop()
+    this.follow = null
     this.deps.show(null)
   }
 
   async run(signal?: AbortSignal): Promise<OutlineResult> {
     const { repos } = this.deps
+    if (this.follow) this.clear()
     const win = await this.deps.frontWindow()
-    const lines = (win?.lines ?? []).filter(
-      (l): l is typeof l & { box: Rect } => l.box !== null && l.text.trim().length > 0,
-    )
+    const lines = win ? pageLines(win) : []
     if (!win || lines.length < MIN_LINES) return { kind: 'unreadable' }
     const subjectId = this.deps.subjectFor(win)
     const subject = subjectId ? repos.subjects.get(subjectId) : null
@@ -98,20 +130,39 @@ export class OutlineFlow {
     if (signal?.aborted) return { kind: 'nothing', subjectId: subject.id }
 
     const marks: OutlineMark[] = []
+    let order = 0
     for (const r of out.ranges) {
-      const rect = union(lines.slice(r.from, r.to + 1).map((l) => l.box))
-      if (rect) marks.push({ rect, verdict: r.verdict, why: r.why })
+      const boxes = lines.slice(r.from, r.to + 1).map((l) => l.box)
+      const rect = union(boxes)
+      if (!rect) continue
+      marks.push({
+        rect,
+        lines: boxes,
+        verdict: r.verdict,
+        why: r.why,
+        order: r.verdict === 'read' ? ++order : null,
+      })
     }
     if (marks.length === 0) return { kind: 'nothing', subjectId: subject.id }
-    this.deps.show({
+    const readWords = out.ranges
+      .filter((r) => r.verdict === 'read')
+      .flatMap((r) => lines.slice(r.from, r.to + 1))
+      .reduce((n, l) => n + l.text.split(/\s+/).filter(Boolean).length, 0)
+    const outline: OutlineOverlay = {
       windowId: win.windowId,
+      frame: win.frame,
       title: win.title,
       subjectName: subject.name,
       summary: out.summary,
+      minutes: Math.max(1, Math.round(readWords / 200)),
       marks,
-    })
+    }
+    this.deps.show(outline)
+    const first = out.ranges[0]
+    const anchor = first ? lines[first.from] : undefined
+    if (anchor) this.startFollow(outline, anchor.text, anchor.box.y)
 
-    const reads = out.ranges.filter((r) => r.verdict === 'read')
+    const reads = out.ranges.filter((r) => r.verdict === 'read').slice(0, 5)
     for (const r of reads) {
       const text = lines
         .slice(r.from, r.to + 1)
@@ -130,4 +181,52 @@ export class OutlineFlow {
     if (reads.length > 0) this.deps.changed(subject.id)
     return { kind: 'shown', read: reads.length, marks: marks.length, subjectId: subject.id }
   }
+
+  /**
+   * Keeps the marks on their text: re-reads the page every FOLLOW_MS and moves the marks by how
+   * far the first marked line moved (a scroll). Another window in front, or the line gone (a new
+   * page), clears them.
+   */
+  private startFollow(outline: OutlineOverlay, anchorText: string, anchorY: number): void {
+    let shown = outline
+    let y = anchorY
+    let busy = false
+    const tick = async () => {
+      if (busy) return
+      busy = true
+      try {
+        const win = await this.deps.frontWindow()
+        if (this.follow !== handle) return
+        if (!win || win.windowId !== shown.windowId) return this.clear()
+        const candidates = win.lines.filter((l) => l.box && l.text === anchorText)
+        const next = candidates
+          .map((l) => l.box?.y ?? y)
+          .sort((a, b) => Math.abs(a - y) - Math.abs(b - y))[0]
+        if (next === undefined) return this.clear()
+        const dy = next - y
+        if (Math.abs(dy) < 1) return
+        y = next
+        shown = {
+          ...shown,
+          frame: win.frame,
+          marks: shown.marks.map((m) => ({
+            ...m,
+            rect: { ...m.rect, y: m.rect.y + dy },
+            lines: m.lines?.map((b) => ({ ...b, y: b.y + dy })),
+          })),
+        }
+        this.deps.show(shown)
+      } finally {
+        busy = false
+      }
+    }
+    const stop = (this.deps.every ?? every)(FOLLOW_MS, () => void tick())
+    const handle = { stop }
+    this.follow = handle
+  }
+}
+
+function every(ms: number, fn: () => void): () => void {
+  const timer = setInterval(fn, ms)
+  return () => clearInterval(timer)
 }

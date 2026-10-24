@@ -66,8 +66,10 @@ describe('outline wiring', () => {
     expect(shown?.marks).toEqual([
       {
         rect: { x: 80, y: 148, width: 600, height: 18 },
+        lines: [{ x: 80, y: 148, width: 600, height: 18 }],
         verdict: 'read',
         why: 'Your gap: Carbocation stability',
+        order: 1,
       },
     ])
     const notes = repos.notes.list({ subjectId: subject.id })

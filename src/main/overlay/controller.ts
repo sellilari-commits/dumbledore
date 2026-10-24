@@ -131,11 +131,6 @@ export class OverlayController {
       }),
       bus.on('quiz:open', ({ quizId }) => this.openQuiz(quizId)),
       bus.on('settings:changed', ({ settings }) => this.onSettings(settings)),
-      // Outline marks sit on a page: another window, or the same one scrolled, clears them.
-      bus.on('perception:window', ({ window }) => {
-        if (this.outline && (window.changed || window.windowId !== this.outline.windowId))
-          this.setOutline(null)
-      }),
     )
     this.update()
   }

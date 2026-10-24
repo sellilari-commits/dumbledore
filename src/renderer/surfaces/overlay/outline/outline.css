@@ -1,36 +1,98 @@
-/* Outline marks: drawn over other apps, so colours are fixed (not themed) and never take clicks. */
+/*
+ * Outline marks: drawn over other apps, so colours are fixed (not themed) and nothing takes
+ * clicks. The highlighter is a warm yellow with uneven ends, like a real marker stroke.
+ */
 .ov-outline {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 1;
+  font-family: -apple-system, system-ui, sans-serif;
 }
 
-.ov-mark {
+.ov-outline__clip {
   position: absolute;
-  border-radius: 4px;
+  inset: 0;
+  overflow: hidden;
 }
 
-.ov-mark[data-verdict="read"] {
-  background: rgba(255, 214, 10, 0.3);
-  box-shadow: inset 3px 0 0 rgba(214, 160, 0, 0.9);
-}
-
-.ov-mark[data-verdict="skim"] {
-  box-shadow: inset 3px 0 0 rgba(120, 120, 120, 0.45);
-}
-
-.ov-mark[data-verdict="skip"] {
-  background: rgba(255, 255, 255, 0.62);
-  backdrop-filter: grayscale(1);
-}
-
-.ov-mark__why {
+/* Spotlight: a soft wash everywhere except the passages to read. */
+.ov-spot {
   position: absolute;
-  right: 100%;
-  top: 0;
-  margin-right: 8px;
-  max-width: 180px;
+  inset: 0;
+  animation: ov-fade-in 260ms ease-out both;
+}
+
+.ov-spot__wash {
+  fill: rgba(250, 249, 246, 0.42);
+}
+
+/* Highlighter stroke on one line of text, sweeping in left to right. */
+.ov-hl {
+  position: absolute;
+  border-radius: 3px 7px 4px 8px / 7px 3px 8px 4px;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 226, 64, 0.5) 0%,
+    rgba(255, 214, 10, 0.44) 50%,
+    rgba(255, 226, 64, 0.5) 100%
+  );
+  clip-path: inset(0 100% 0 0);
+  animation: ov-sweep 340ms cubic-bezier(0.3, 0.7, 0.2, 1) var(--sweep-delay, 0ms) forwards;
+}
+
+@keyframes ov-sweep {
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes ov-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Margin: the reason, then the reading-order number, left of the passage's first line. */
+.ov-margin {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: -10px;
+  transform: translate(-100%, -50%);
+  opacity: 0;
+  animation: ov-appear 240ms ease-out var(--sweep-delay, 0ms) forwards;
+}
+
+@keyframes ov-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ov-margin__num {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font:
+    700 12px / 1 -apple-system,
+    system-ui,
+    sans-serif;
+  color: #2c2c2b;
+  background: #ffd60a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.ov-margin__why {
+  max-width: 190px;
   padding: 3px 8px;
   border-radius: 6px;
   font:
@@ -41,28 +103,60 @@
   overflow: hidden;
   text-overflow: ellipsis;
   color: #2c2c2b;
-  background: #fff8d6;
+  background: #fffbe6;
   box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.18),
-    0 0 0 1px rgba(214, 160, 0, 0.35);
+    0 1px 3px rgba(0, 0, 0, 0.16),
+    0 0 0 1px rgba(214, 160, 0, 0.3);
 }
 
-.ov-mark[data-verdict="skip"] .ov-mark__why {
+/* Skim: a quiet bar in the margin. */
+.ov-skim {
+  position: absolute;
+  width: 3px;
+  border-radius: 2px;
+  background: rgba(120, 120, 120, 0.45);
+  animation: ov-fade-in 260ms ease-out both;
+}
+
+/* Skip: faded further than the spotlight, with the reason. */
+.ov-skip {
+  position: absolute;
+  border-radius: 6px;
+  background: rgba(250, 249, 246, 0.55);
+  animation: ov-fade-in 260ms ease-out both;
+}
+
+.ov-skip__why {
+  position: absolute;
+  right: 100%;
+  top: 4px;
+  margin-right: 10px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font:
+    500 11px / 15px -apple-system,
+    system-ui,
+    sans-serif;
+  white-space: nowrap;
   color: #5f5e5b;
   background: #f4f3f1;
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.12),
-    0 0 0 1px rgba(0, 0, 0, 0.08);
+    0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
+/* The guide card, out of the reading area. */
 .ov-outline__card {
   position: absolute;
   left: 50%;
   bottom: 28px;
   transform: translateX(-50%);
-  max-width: 520px;
-  padding: 8px 12px;
-  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 560px;
+  padding: 9px 14px 9px 10px;
+  border-radius: 12px;
   font:
     400 12px / 17px -apple-system,
     system-ui,
@@ -70,13 +164,46 @@
   color: #ffffff;
   background: rgba(30, 30, 30, 0.92);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  animation: ov-fade-in 260ms ease-out both;
+}
+
+.ov-outline__badge {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #2c2c2b;
+  background: #ffd60a;
 }
 
 .ov-outline__summary {
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .ov-outline__hint {
-  margin-left: 8px;
+  flex: none;
   color: rgba(255, 255, 255, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ov-hl {
+    animation: none;
+    clip-path: none;
+  }
+
+  .ov-margin {
+    animation: none;
+    opacity: 1;
+  }
+
+  .ov-spot,
+  .ov-skim,
+  .ov-skip,
+  .ov-outline__card {
+    animation: none;
+  }
 }

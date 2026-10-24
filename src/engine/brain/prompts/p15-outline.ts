@@ -25,6 +25,7 @@ Mark passages as line ranges ("from" and "to" are the numbers in <page>, inclusi
 - skim: useful background or examples for the goal, but not where their gaps are.
 - skip: what they already know (<known>), or off their goal (navigation, references, unrelated sections).
 Leave a line out of every range when it needs no mark.
+Never mark as read or skim: the page title, navigation, menus, tabs, a table of contents, settings or appearance panels, buttons, image captions, references, citations, footnotes, "See also" or "External links". Mark only the article's own text.
 Ranges are in page order and never overlap. Each "why" is at most 8 words and concrete ("Your gap: carbocation stability", "You know SN2 already", "Off topic: history of the method").
 "summary": one sentence on what this page gives the student for their goal.
 Write "why" and "summary" in ${languageName(lang)}.`
@@ -78,7 +79,7 @@ export function cleanRanges(out: OutlineOutput, input: OutlineInput): OutlineOut
 export const outlinePrompt: PromptSpec<OutlineInput, OutlineOutput, OutlineOutput> = {
   id: 'P15',
   task: 'outline',
-  version: 1,
+  version: 2,
   tier: 'extract',
   temperature: 0.2,
   maxOutputTokens: 1500,
