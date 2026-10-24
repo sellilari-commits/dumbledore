@@ -18,6 +18,7 @@ import type { Composition } from '../compose'
 import { runHandler } from '../ipc/register'
 import type { Handlers } from '../ipc/types'
 import type { ShellCore } from '../shell'
+import type { QuizKey } from '../shortcuts'
 import type { TestControlApi } from './server'
 
 export interface TestControlDeps {
@@ -25,6 +26,8 @@ export interface TestControlDeps {
   handlers: Handlers
   fakes: Composition['fakes']
   windows: () => unknown
+  /** What the global quiz-card keys do: inject the key into the overlay pages. */
+  forwardKey: (key: QuizKey) => void
 }
 
 const GestureBody = z.object({ gesture: Gesture, secureInput: z.boolean().optional() })
@@ -33,6 +36,7 @@ const ActionBody = z.object({
   displayId: z.number().int().nullable().optional(),
 })
 const InvokeBody = z.object({ channel: z.string(), payload: z.unknown().optional() })
+const KeyBody = z.object({ key: z.enum(['1', '2', '3', '4', 'Return', 'Escape']) })
 const HelperEventBody = z.object({
   event: z.enum(Object.keys(helperEvents) as [HelperEvent, ...HelperEvent[]]),
   payload: z.unknown(),
@@ -97,6 +101,11 @@ export function createTestControlApi(d: TestControlDeps): TestControlApi {
       return { result: result ?? null }
     },
     cancel: () => ({ cancelled: core.router.cancel() }),
+    key(body) {
+      const b = KeyBody.parse(body)
+      d.forwardKey(b.key)
+      return { ok: true }
+    },
     fakeHelperEvent: helper
       ? (body) => {
           const b = HelperEventBody.parse(body)

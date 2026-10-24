@@ -13,6 +13,7 @@ export const EVENT_ROUTES: Record<EventChannel, readonly Surface[]> = {
   'session.changed': ['overlay', 'panel', 'askbar', 'app'],
   'chat.delta': ['panel', 'askbar', 'app'],
   navigate: [],
+  'key.gesture': ['app'],
 }
 
 /** Delivers a raw message to every live window of the given surfaces. */

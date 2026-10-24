@@ -6,7 +6,7 @@
  * loopback Host header (blocks DNS rebinding). Endpoints:
  *   GET  /health · /state/overlay · /state/session · /state/app · /state/frontmost · /state/windows
  *   POST /gesture {gesture, secureInput?} · /overlay/action {action, displayId?}
- *        /invoke {channel, payload} · /cancel
+ *        /invoke {channel, payload} · /cancel · /key {key} (a quiz-card key, as forwarded)
  *        /fake/helper/event {event, payload} · /fake/helper/state {…} · /fake/perception {…}
  */
 import { randomBytes, timingSafeEqual } from 'node:crypto'
@@ -24,6 +24,7 @@ export interface TestControlApi {
   overlayAction(body: unknown): Promise<unknown>
   invoke(body: unknown): Promise<unknown>
   cancel(): unknown
+  key(body: unknown): unknown
   /** Present only while the fake helper / perception are in use. */
   fakeHelperEvent?: (body: unknown) => unknown
   fakeHelperState?: (body: unknown) => unknown
@@ -155,6 +156,8 @@ export class TestControlServer {
         return api.invoke(body)
       case 'POST /cancel':
         return api.cancel()
+      case 'POST /key':
+        return api.key(body)
       case 'POST /fake/helper/event':
         return optional(api.fakeHelperEvent)
       case 'POST /fake/helper/state':

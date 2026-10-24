@@ -22,19 +22,34 @@ const BOTTOM_Y = 982 - EDGE_INSET - R
 
 describe('defaultHome', () => {
   it('sits on the right edge of the work area, vertically centred', () => {
-    expect(defaultHome(DISPLAY)).toEqual({ displayId: 1, x: RIGHT_X, y: 33 + 949 / 2, edge: 'right' })
+    expect(defaultHome(DISPLAY)).toEqual({
+      displayId: 1,
+      x: RIGHT_X,
+      y: 33 + 949 / 2,
+      edge: 'right',
+    })
   })
 })
 
 describe('snapToEdge', () => {
   it('latches to the nearest side edge and keeps the height', () => {
     expect(snapToEdge(DISPLAY, 40, 500)).toEqual({ displayId: 1, x: LEFT_X, y: 500, edge: 'left' })
-    expect(snapToEdge(DISPLAY, 1400, 400)).toEqual({ displayId: 1, x: RIGHT_X, y: 400, edge: 'right' })
+    expect(snapToEdge(DISPLAY, 1400, 400)).toEqual({
+      displayId: 1,
+      x: RIGHT_X,
+      y: 400,
+      edge: 'right',
+    })
   })
 
   it('latches to top and bottom when those are nearer', () => {
     expect(snapToEdge(DISPLAY, 700, 60)).toEqual({ displayId: 1, x: 700, y: TOP_Y, edge: 'top' })
-    expect(snapToEdge(DISPLAY, 700, 960)).toEqual({ displayId: 1, x: 700, y: BOTTOM_Y, edge: 'bottom' })
+    expect(snapToEdge(DISPLAY, 700, 960)).toEqual({
+      displayId: 1,
+      x: 700,
+      y: BOTTOM_Y,
+      edge: 'bottom',
+    })
   })
 
   it('goes into a corner when close to two edges', () => {
@@ -45,11 +60,21 @@ describe('snapToEdge', () => {
       y: TOP_Y,
       edge: 'right',
     })
-    expect(snapToEdge(DISPLAY, 5, 980)).toEqual({ displayId: 1, x: LEFT_X, y: BOTTOM_Y, edge: 'left' })
+    expect(snapToEdge(DISPLAY, 5, 980)).toEqual({
+      displayId: 1,
+      x: LEFT_X,
+      y: BOTTOM_Y,
+      edge: 'left',
+    })
   })
 
   it('clamps points dropped outside the work area', () => {
-    expect(snapToEdge(DISPLAY, -300, 10)).toEqual({ displayId: 1, x: LEFT_X, y: TOP_Y, edge: 'left' })
+    expect(snapToEdge(DISPLAY, -300, 10)).toEqual({
+      displayId: 1,
+      x: LEFT_X,
+      y: TOP_Y,
+      edge: 'left',
+    })
   })
 })
 
@@ -83,7 +108,10 @@ describe('hiddenSpot', () => {
   })
 
   it('does not hide into the top edge (menu bar)', () => {
-    expect(hiddenSpot(DISPLAY, { displayId: 1, x: 500, y: TOP_Y, edge: 'top' })).toEqual({ x: 500, y: TOP_Y })
+    expect(hiddenSpot(DISPLAY, { displayId: 1, x: 500, y: TOP_Y, edge: 'top' })).toEqual({
+      x: 500,
+      y: TOP_Y,
+    })
   })
 })
 

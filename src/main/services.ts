@@ -21,7 +21,7 @@ import type {
 import type { EngineBus } from '@engine/events'
 import type { ProviderId } from '@shared/llm'
 
-export type SecretKey = 'groq' | 'mistral'
+export type SecretKey = 'gemini' | 'groq' | 'mistral'
 
 /** API keys, encrypted at rest (Electron safeStorage in production). Values never cross IPC. */
 export interface SecretStore {

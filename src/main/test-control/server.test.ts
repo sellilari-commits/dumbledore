@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createHandlers } from '../ipc/handlers'
-import { createHarness, flush } from '../testing/harness'
+import { createHarness, fakeExtras, flush } from '../testing/harness'
 import { createTestControlApi } from './api'
 import { type TestControlInfo, TestControlServer } from './server'
 
@@ -22,13 +22,20 @@ function http(
         port: info.port,
         method,
         path,
-        headers: { Authorization: `Bearer ${info.token}`, 'Content-Type': 'application/json', ...headers },
+        headers: {
+          Authorization: `Bearer ${info.token}`,
+          'Content-Type': 'application/json',
+          ...headers,
+        },
       },
       (res) => {
         const chunks: Buffer[] = []
         res.on('data', (c: Buffer) => chunks.push(c))
         res.on('end', () =>
-          resolve({ status: res.statusCode ?? 0, json: JSON.parse(Buffer.concat(chunks).toString('utf8')) }),
+          resolve({
+            status: res.statusCode ?? 0,
+            json: JSON.parse(Buffer.concat(chunks).toString('utf8')),
+          }),
         )
       },
     )
@@ -48,17 +55,14 @@ describe('TestControlServer', () => {
 
   async function start() {
     const h = await createHarness()
-    const handlers = createHandlers(h.core, {
-      openSystemSettings: async () => undefined,
-      setOverlayInteractive: () => undefined,
-      showOrbMenu: () => undefined,
-      setWindowSize: () => undefined,
-    })
+    const handlers = createHandlers(h.core, fakeExtras(join(tmpdir(), 'dd-tc-unused')).extras)
+    const keys: string[] = []
     const api = createTestControlApi({
       core: h.core,
       handlers,
       fakes: { helper: h.helper, perception: h.perception },
       windows: () => ({ panel: h.surfaces.isOpen('panel') }),
+      forwardKey: (key) => void keys.push(key),
     })
     const dir = mkdtempSync(join(tmpdir(), 'dd-tc-'))
     dirs.push(dir)
@@ -66,7 +70,7 @@ describe('TestControlServer', () => {
     const server = new TestControlServer(api, file)
     servers.push(server)
     const info = await server.start()
-    return { h, info, file }
+    return { h, info, file, keys }
   }
 
   it('writes port and token to an owner-only file', async () => {
@@ -78,14 +82,20 @@ describe('TestControlServer', () => {
 
   it('refuses requests without the token or with a foreign Host header', async () => {
     const { info } = await start()
-    expect((await http(info, 'GET', '/health', undefined, { Authorization: 'Bearer nope' })).status).toBe(401)
-    expect((await http(info, 'GET', '/health', undefined, { Host: 'evil.example:80' })).status).toBe(401)
+    expect(
+      (await http(info, 'GET', '/health', undefined, { Authorization: 'Bearer nope' })).status,
+    ).toBe(401)
+    expect(
+      (await http(info, 'GET', '/health', undefined, { Host: 'evil.example:80' })).status,
+    ).toBe(401)
     expect((await http(info, 'GET', '/health')).json).toMatchObject({ ok: true })
   })
 
   it('reads overlay, session and app state', async () => {
     const { info } = await start()
-    expect(((await http(info, 'GET', '/state/overlay')).json as { displayId: number }).displayId).toBe(1)
+    expect(
+      ((await http(info, 'GET', '/state/overlay')).json as { displayId: number }).displayId,
+    ).toBe(1)
     expect((await http(info, 'GET', '/state/session')).json).toBeNull()
     expect((await http(info, 'GET', '/state/app')).json).toMatchObject({ helper: 'connected' })
     expect((await http(info, 'GET', '/state/windows')).json).toEqual({ panel: false })
@@ -138,7 +148,9 @@ describe('TestControlServer', () => {
     const res = await http(info, 'POST', '/invoke', { channel: 'settings.get' })
     expect((res.json as { result: { theme: string } }).result.theme).toBe('system')
     expect((await http(info, 'POST', '/invoke', { channel: 'nope' })).status).toBe(400)
-    expect((await http(info, 'POST', '/invoke', { channel: 'subjects.get', payload: '' })).status).toBe(400)
+    expect(
+      (await http(info, 'POST', '/invoke', { channel: 'subjects.get', payload: '' })).status,
+    ).toBe(400)
     expect((await http(info, 'POST', '/gesture', { gesture: 'wiggle' })).status).toBe(400)
     expect((await http(info, 'GET', '/nowhere')).status).toBe(404)
   })
@@ -154,6 +166,14 @@ describe('TestControlServer', () => {
     })
     await flush()
     expect(h.surfaces.enters).toEqual(['askbar'])
+  })
+
+  it('forwards quiz-card keys and rejects others', async () => {
+    const { info, keys } = await start()
+    expect((await http(info, 'POST', '/key', { key: '3' })).json).toEqual({ ok: true })
+    expect((await http(info, 'POST', '/key', { key: 'Escape' })).status).toBe(200)
+    expect((await http(info, 'POST', '/key', { key: 'q' })).status).toBe(400)
+    expect(keys).toEqual(['3', 'Escape'])
   })
 
   it('removes its file when stopped', async () => {

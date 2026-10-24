@@ -1,6 +1,7 @@
 /**
- * Engine bus → window events: session and memory changes go out as they happen; AppState is
- * rebuilt and sent once per tick however many things changed in it.
+ * Engine bus → window events: session and memory changes and trigger-key gestures (for the
+ * onboarding page) go out as they happen; AppState is rebuilt and sent once per tick however
+ * many things changed in it.
  */
 import type { EngineBus } from '@engine/events'
 import type { AppState } from '@shared/state'
@@ -10,6 +11,7 @@ export function wireBroadcasts(bus: EngineBus, out: Broadcaster): () => void {
   const offs = [
     bus.on('session:changed', ({ session }) => out.emit('session.changed', session)),
     bus.on('memory:changed', (change) => out.emit('memory.changed', change)),
+    bus.on('helper:key', ({ gesture, key }) => out.emit('key.gesture', { gesture, key })),
   ]
   return () => {
     for (const off of offs) off()

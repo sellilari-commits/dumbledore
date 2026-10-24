@@ -4,9 +4,18 @@
  * wiring turns those into window events. Overlay actions that start work (clicks) return at once
  * and run in the background, so the overlay never waits on the LLM.
  */
+import type { Settings } from '@shared/domain'
 import type { MemoryScope, OverlayAction } from '@shared/state'
+import { buildExport, writeExport } from '../data/export'
+import type { SecretKey } from '../services'
 import type { ShellCore } from '../shell'
 import type { Handlers, InvokeContext } from './types'
+
+const KEY_FLAGS = {
+  gemini: 'geminiKeySet',
+  groq: 'groqKeySet',
+  mistral: 'mistralKeySet',
+} as const satisfies Record<SecretKey, keyof Settings['ai']>
 
 export interface HandlerExtras {
   /** Opens System Settings directly when the helper cannot (e.g. it is not running). */
@@ -16,6 +25,12 @@ export interface HandlerExtras {
   /** The orb's right-click menu. */
   showOrbMenu: () => void
   setWindowSize: (surface: 'panel' | 'askbar', width: number, height: number) => void
+  /** Folder for "Export everything" files (<data dir>/exports). */
+  exportDir: string
+  /** Shows a file in Finder. */
+  revealFile: (path: string) => void
+  /** "Delete everything": wipes the store, memory files and keys, then relaunches the app. */
+  deleteAllData: () => Promise<void>
 }
 
 export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers {
@@ -93,11 +108,24 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
     'secrets.set': ({ key, value }) => {
       services.secrets.set(key, value)
       const ai = repos.settings.get().ai
-      const flag = key === 'groq' ? 'groqKeySet' : 'mistralKeySet'
-      repos.settings.update({ ai: { ...ai, [flag]: services.secrets.has(key) } })
+      repos.settings.update({ ai: { ...ai, [KEY_FLAGS[key]]: services.secrets.has(key) } })
       memory('settings', ['ai'])
       settingsChanged()
     },
+    'profile.get': () => repos.profile.get(),
+    'profile.update': (patch) => {
+      const profile = repos.profile.update(patch)
+      memory('profile', Object.keys(patch))
+      return profile
+    },
+    'data.export': () => {
+      const exportedAt = services.clock.nowIso()
+      const data = buildExport(repos, { appVersion: hooks.version, exportedAt })
+      const path = writeExport(extras.exportDir, data)
+      extras.revealFile(path)
+      return { path }
+    },
+    'data.deleteAll': () => extras.deleteAllData(),
     'capture.setEnabled': (enabled) => {
       repos.settings.update({ captureEnabled: enabled })
       services.perception.setEnabled(enabled)

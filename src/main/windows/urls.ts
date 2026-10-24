@@ -36,6 +36,16 @@ export function isOwnUrl(url: string, devUrl: string | null): boolean {
   }
 }
 
+/** Links handed to the default browser or mail app (target=_blank, links in replies). */
+export function isExternalLink(url: string): boolean {
+  try {
+    const { protocol } = new URL(url)
+    return protocol === 'https:' || protocol === 'http:' || protocol === 'mailto:'
+  } catch {
+    return false
+  }
+}
+
 /** Production CSP: our own scripts only, no remote content, no plugins, no framing. */
 export const PROD_CSP = [
   "default-src 'none'",

@@ -7,6 +7,7 @@
  *   activate Dumbledore so typing works (#52915), hide on blur, and hand focus back on close.
  * - The app window is created on demand and destroyed on close; the Dock icon shows only while
  *   it is open (accessory activation policy otherwise).
+ * - The overlay never has focus, so quiz-card keys are injected into it (`forwardKey`).
  */
 import type { HelperClient } from '@engine/contracts'
 import type { Surface } from '@shared/constants'
@@ -19,6 +20,7 @@ import type { InvokeContext } from '../ipc/types'
 import type { OverlayController } from '../overlay/controller'
 import { type DisplayInfo, displayAt, primaryDisplay } from '../overlay/geometry'
 import type { OpenOptions, SurfaceControl, WindowSurface } from '../platform'
+import { refreshShadow, sendKey } from './native'
 import { appOptions, finishTyping, typingOptions, webPreferences } from './options'
 import { OverlayWindows } from './overlays'
 import { ASKBAR_SIZE, askbarBounds, PANEL_SIZE, panelBounds, resizeKeepingTop } from './placement'
@@ -109,11 +111,12 @@ export class WindowManager implements SurfaceControl, EventSink {
 
   pressEnter(surface: 'askbar' | 'overlay'): void {
     const targets = surface === 'askbar' ? [this.typing.askbar] : this.overlays.all()
-    for (const win of targets) {
-      if (!win || win.isDestroyed()) continue
-      win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Return' })
-      win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Return' })
-    }
+    for (const win of targets) if (win) sendKey(win, 'Return')
+  }
+
+  /** Quiz-card keys (1–4, Return, Escape) for the overlays; only the card's page reacts. */
+  forwardKey(keyCode: string): void {
+    for (const win of this.overlays.all()) sendKey(win, keyCode)
   }
 
   // ─── Shell helpers ──────────────────────────────────────────────────────────────────────
@@ -131,6 +134,7 @@ export class WindowManager implements SurfaceControl, EventSink {
     const current = win.getBounds()
     const area = displayAt(this.displays(), rectCenter(current))?.workArea ?? current
     win.setBounds(resizeKeepingTop(current, w, h, area))
+    refreshShadow(win)
   }
 
   displays(): DisplayInfo[] {
@@ -185,7 +189,7 @@ export class WindowManager implements SurfaceControl, EventSink {
     }
     const size = surface === 'panel' ? PANEL_SIZE : ASKBAR_SIZE
     const title = surface === 'panel' ? 'Dumbledore' : 'Ask Dumbledore'
-    const win = new BrowserWindow(typingOptions(size, this.prefs(), title))
+    const win = new BrowserWindow(typingOptions(size, this.prefs(), title, surface === 'askbar'))
     finishTyping(win)
     this.register(win, surface, null)
     win.on('blur', () => this.onTypingBlur(win))
@@ -241,6 +245,7 @@ export class WindowManager implements SurfaceControl, EventSink {
       app.focus({ steal: true })
       win.show()
       win.focus()
+      refreshShadow(win)
     }
     if (this.ready.has(win)) show()
     else win.once('ready-to-show', show)

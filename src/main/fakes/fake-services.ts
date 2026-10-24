@@ -173,7 +173,7 @@ export class FakeProviderService implements ProviderService {
     if (id === 'apple') {
       return { ok: false, latencyMs: null, error: 'The on-device model is not available here' }
     }
-    if ((id === 'groq' || id === 'mistral') && !this.secrets.has(id)) {
+    if ((id === 'gemini' || id === 'groq' || id === 'mistral') && !this.secrets.has(id)) {
       return { ok: false, latencyMs: null, error: 'No API key set' }
     }
     return { ok: true, latencyMs: 180, error: null }
@@ -184,6 +184,7 @@ export class FakeProviderService implements ProviderService {
       ready: true,
       onDevice: false,
       providers: [
+        { id: 'gemini', ok: this.secrets.has('gemini') },
         { id: 'apple', ok: false },
         { id: 'groq', ok: this.secrets.has('groq') },
         { id: 'ovh', ok: true },

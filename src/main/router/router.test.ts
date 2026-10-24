@@ -22,8 +22,13 @@ describe('ShortcutRouter', () => {
   it('(c) improves typed text in place', async () => {
     const h = await createHarness()
     await inChatGPT(h, 'what is osmosis')
-    expect(await h.core.router.gesture('tap')).toEqual({ kind: 'improve', draft: 'what is osmosis' })
-    expect(h.helper.state.fieldValue).toMatch(/^I'm a student learning this topic\. what is osmosis/)
+    expect(await h.core.router.gesture('tap')).toEqual({
+      kind: 'improve',
+      draft: 'what is osmosis',
+    })
+    expect(h.helper.state.fieldValue).toMatch(
+      /^I'm a student learning this topic\. what is osmosis/,
+    )
     const write = h.helper.callsTo('input.write')[0] as { mode: string; expectPid: number }
     expect(write).toMatchObject({ mode: 'replaceAll', expectPid: 501 })
     expect(h.core.overlay.state.toasts[0]?.title).toBe('Prompt improved')
@@ -53,7 +58,11 @@ describe('ShortcutRouter', () => {
     const h = await createHarness()
     await inChatGPT(h, '/d I want to understand recursion')
     const decision = await h.core.router.gesture('tap')
-    expect(decision).toEqual({ kind: 'instruction', text: 'I want to understand recursion', wholeField: true })
+    expect(decision).toEqual({
+      kind: 'instruction',
+      text: 'I want to understand recursion',
+      wholeField: true,
+    })
     expect(h.services.study.current()?.title).toMatch(/I want to understand recursion/)
     expect(h.helper.state.fieldValue).not.toContain('/d')
     expect(h.helper.state.fieldValue).toMatch(/Explain/)
@@ -93,7 +102,10 @@ describe('ShortcutRouter', () => {
   it('(e) opens the picker in an AI chat without a session', async () => {
     const h = await createHarness()
     await inChatGPT(h)
-    h.helper.state.focused = makeFocused(h.helper.state.frontmost ?? NOTES, { role: 'AXWebArea', editable: false })
+    h.helper.state.focused = makeFocused(h.helper.state.frontmost ?? NOTES, {
+      role: 'AXWebArea',
+      editable: false,
+    })
     expect(await h.core.router.gesture('tap')).toEqual({ kind: 'picker' })
     expect(h.surfaces.log).toEqual(['open:panel:/picker'])
   })
@@ -187,7 +199,10 @@ describe('Ask flow', () => {
     expect(h.surfaces.log).toContain('close:askbar')
     expect(h.services.study.current()?.phase).toBe('step')
     expect(h.helper.state.fieldValue).toMatch(/Calvin cycle/)
-    expect(h.services.repos.chat.history('ask', 10).map((m) => m.role)).toEqual(['user', 'assistant'])
+    expect(h.services.repos.chat.history('ask', 10).map((m) => m.role)).toEqual([
+      'user',
+      'assistant',
+    ])
   })
 
   it('without an AI chat it returns the roadmap action as a chip', async () => {

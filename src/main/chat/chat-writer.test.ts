@@ -100,7 +100,12 @@ describe('ChatWriter', () => {
   it('writes nothing when the focused field changed meanwhile', async () => {
     const expect_ = snapshotOf(chatInput())
     t.helper.state.focused = { ...chatInput(), ref: 'ax-other-field', role: 'AXTextField' }
-    const out = await t.writer.write({ text: 'x', mode: 'insert', target: 'focused', expect: expect_ })
+    const out = await t.writer.write({
+      text: 'x',
+      mode: 'insert',
+      target: 'focused',
+      expect: expect_,
+    })
     expect(out.reason).toBe('The text field changed')
     expect(t.helper.callsTo('input.write')).toHaveLength(0)
   })
@@ -121,12 +126,21 @@ describe('ChatWriter', () => {
   it('falls back to the clipboard when the chat input cannot be found', async () => {
     t.helper.state.focused = null
     const out = await t.writer.write({ text: 'Prompt', mode: 'insert', target: 'chat' })
-    expect(out).toMatchObject({ ok: false, method: 'clipboard', reason: 'Could not find the chat box' })
+    expect(out).toMatchObject({
+      ok: false,
+      method: 'clipboard',
+      reason: 'Could not find the chat box',
+    })
     expect(t.platform.clipboard).toBe('Prompt')
   })
 
   it('falls back to the clipboard when the helper cannot write', async () => {
-    t.helper.state.writeResult = { ok: false, method: null, verified: false, reason: 'secure input' }
+    t.helper.state.writeResult = {
+      ok: false,
+      method: null,
+      verified: false,
+      reason: 'secure input',
+    }
     const out = await t.writer.write({ text: 'Prompt', mode: 'insert', target: 'chat' })
     expect(out).toMatchObject({ ok: false, method: 'clipboard', reason: 'secure input' })
   })
@@ -141,7 +155,12 @@ describe('ChatWriter', () => {
   it('stops before writing when cancelled', async () => {
     const controller = new AbortController()
     controller.abort()
-    const out = await t.writer.write({ text: 'x', mode: 'insert', target: 'chat', signal: controller.signal })
+    const out = await t.writer.write({
+      text: 'x',
+      mode: 'insert',
+      target: 'chat',
+      signal: controller.signal,
+    })
     expect(out.reason).toBe('cancelled')
     expect(t.helper.calls).toHaveLength(0)
   })
@@ -190,7 +209,9 @@ describe('sameField', () => {
     expect(sameField({ ...chatInput(), pid: 1 }, snap)).toBe(false)
     const noRef = { ...snap, ref: null }
     expect(sameField({ ...chatInput(), ref: null }, noRef)).toBe(true)
-    expect(sameField({ ...chatInput(), ref: null, frame: { x: 0, y: 0, width: 1, height: 1 } }, noRef)).toBe(false)
+    expect(
+      sameField({ ...chatInput(), ref: null, frame: { x: 0, y: 0, width: 1, height: 1 } }, noRef),
+    ).toBe(false)
     expect(sameField(null, snap)).toBe(false)
   })
 })

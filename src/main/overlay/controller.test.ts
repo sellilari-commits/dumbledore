@@ -60,7 +60,8 @@ function setup() {
     },
     perception: { aiChat: () => chat },
     onChange: (s) => states.push(s),
-    suggestionPreview: async () => 'Explain carbocation stability in 3 numbered points with an example',
+    suggestionPreview: async () =>
+      'Explain carbocation stability in 3 numbered points with an example',
     onNudge: (id, choice) => nudgeChoices.push(`${id}:${choice}`),
   })
   controller.setDisplays([DISPLAY])
@@ -97,7 +98,11 @@ describe('OverlayController', () => {
     const s = t.controller.state
     expect(s.orb).toMatchObject({ x: EDGE_INSET + ORB_SIZE / 2, y: 420 })
     expect(s.edge).toBe('left')
-    expect(t.repos.settings.get().orb.home).toEqual({ displayId: 1, x: EDGE_INSET + ORB_SIZE / 2, y: 420 })
+    expect(t.repos.settings.get().orb.home).toEqual({
+      displayId: 1,
+      x: EDGE_INSET + ORB_SIZE / 2,
+      y: 420,
+    })
   })
 
   it('moves the orb to another display when dropped there, and restores the saved home', () => {

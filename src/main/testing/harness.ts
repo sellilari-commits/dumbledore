@@ -12,6 +12,7 @@ import type { OverlayState } from '@shared/state'
 import { compose } from '../compose'
 import { FakeHelperClient, makeFocused, makeFrontmost } from '../fakes/fake-helper'
 import type { FakePerceptionService } from '../fakes/fake-perception'
+import type { HandlerExtras } from '../ipc/handlers'
 import type { DisplayInfo } from '../overlay/geometry'
 import type { OpenOptions, ShellPlatform, SurfaceControl, WindowSurface } from '../platform'
 import { createShellCore, type ShellCore } from '../shell'
@@ -107,6 +108,21 @@ export class FakeSurfaces implements SurfaceControl {
   pressEnter(surface: 'askbar' | 'overlay'): void {
     this.enters.push(surface)
   }
+}
+
+/** Handler extras that record what they were asked to do; exports go to `exportDir`. */
+export function fakeExtras(exportDir: string): { extras: HandlerExtras; calls: string[] } {
+  const calls: string[] = []
+  const extras: HandlerExtras = {
+    openSystemSettings: async (kind) => void calls.push(`settings:${kind}`),
+    setOverlayInteractive: (id, on) => void calls.push(`interactive:${id}:${on}`),
+    showOrbMenu: () => void calls.push('menu'),
+    setWindowSize: (s, w, h) => void calls.push(`size:${s}:${w}x${h}`),
+    exportDir,
+    revealFile: (path) => void calls.push(`reveal:${path}`),
+    deleteAllData: async () => void calls.push('deleteAll'),
+  }
+  return { extras, calls }
 }
 
 export async function flush(times = 3): Promise<void> {

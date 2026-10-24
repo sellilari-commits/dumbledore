@@ -3,11 +3,16 @@
  * the window manager, the shell core, IPC, tray, global shortcuts and (in tests) the
  * test-control channel. Dumbledore is an agent app: no Dock icon unless the full app is open,
  * and closing every window never quits it.
+ *
+ * The services come from `compose()` (compose.ts, fakes today); swapping in the real engine
+ * means replacing that one call in `start()`.
  */
 import { join } from 'node:path'
 import { APP_NAME } from '@shared/constants'
-import { app, clipboard, ipcMain, session, shell, type WebContents } from 'electron'
+import { app, clipboard, ipcMain, shell } from 'electron'
 import { compose } from './compose'
+import { deleteEverything } from './data/delete-all'
+import { watchRenderer } from './diagnostics'
 import { Broadcaster } from './ipc/broadcast'
 import { StateBroadcast, wireBroadcasts } from './ipc/events'
 import { createHandlers } from './ipc/handlers'
@@ -15,17 +20,17 @@ import { registerIpc } from './ipc/register'
 import { type AppPaths, ensureDirs, resolvePaths } from './paths'
 import type { ShellPlatform } from './platform'
 import { SafeStorageSecretStore } from './secrets'
+import { configureSession, harden } from './security'
 import { createShellCore, type ShellCore } from './shell'
 import { GlobalShortcuts } from './shortcuts'
 import { createTestControlApi } from './test-control/api'
 import { TestControlServer } from './test-control/server'
 import { AppTray } from './tray'
 import { WindowManager } from './windows/manager'
-import { registerSchemePrivileges, serveRenderer } from './windows/protocol'
-import { devCsp, isOwnUrl, rendererBase } from './windows/urls'
+import { registerSchemePrivileges } from './windows/protocol'
 
 const isTest = process.env.DUMBLEDORE_TEST === '1'
-const devUrl = app.isPackaged ? null : (process.env.ELECTRON_RENDERER_URL ?? null)
+const devUrl = app.isPackaged ? null : process.env.ELECTRON_RENDERER_URL || null
 
 const SYSTEM_SETTINGS = {
   accessibility: 'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility',
@@ -51,7 +56,10 @@ export function bootstrap(): void {
   app.on('window-all-closed', () => {
     // Agent app: keep running with the orb and the menu-bar icon.
   })
-  app.on('web-contents-created', (_event, contents) => harden(contents))
+  app.on('web-contents-created', (_event, contents) => {
+    harden(contents, devUrl)
+    if (!app.isPackaged) watchRenderer(contents)
+  })
   app
     .whenReady()
     .then(() => start(paths))
@@ -61,41 +69,9 @@ export function bootstrap(): void {
     })
 }
 
-/** No new windows, no navigation away from our pages, no webviews; https links open outside. */
-function harden(contents: WebContents): void {
-  const openOutside = (url: string) => {
-    if (/^https:\/\//i.test(url)) void shell.openExternal(url)
-  }
-  contents.setWindowOpenHandler(({ url }) => {
-    openOutside(url)
-    return { action: 'deny' }
-  })
-  contents.on('will-navigate', (event, url) => {
-    if (isOwnUrl(url, devUrl)) return
-    event.preventDefault()
-    openOutside(url)
-  })
-  contents.on('will-attach-webview', (event) => event.preventDefault())
-}
-
-function configureSession(): void {
-  const ses = session.defaultSession
-  const allowed = new Set(['clipboard-sanitized-write'])
-  ses.setPermissionRequestHandler((_wc, permission, callback) => callback(allowed.has(permission)))
-  ses.setPermissionCheckHandler((_wc, permission) => allowed.has(permission))
-  if (devUrl) {
-    const csp = devCsp(devUrl)
-    ses.webRequest.onHeadersReceived({ urls: [`${rendererBase(devUrl)}/*`] }, (details, done) => {
-      done({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [csp] } })
-    })
-  } else {
-    serveRenderer(join(__dirname, '../renderer'))
-  }
-}
-
 async function start(paths: AppPaths): Promise<void> {
   if (process.platform === 'darwin') app.setActivationPolicy('accessory')
-  configureSession()
+  configureSession(devUrl, join(__dirname, '../renderer'))
 
   const composition = compose({
     ownPid: process.pid,
@@ -113,7 +89,10 @@ async function start(paths: AppPaths): Promise<void> {
   let tray: AppTray | null = null
   const ref: { core: ShellCore | null } = { core: null }
   const shortcuts = new GlobalShortcuts({
-    tap: () => void ref.core?.router.gesture('tap'),
+    tap: () => {
+      broadcaster.emit('key.gesture', { gesture: 'tap', key: 'fallbackChord' })
+      void ref.core?.router.gesture('tap')
+    },
     toggleCapture: () => toggleCapture(),
     openApp: () => void windows.open('app'),
   })
@@ -133,7 +112,11 @@ async function start(paths: AppPaths): Promise<void> {
     platform,
     surfaces: windows,
     version: app.getVersion(),
-    onOverlayChange: (state) => broadcaster.emit('overlay.changed', state),
+    onOverlayChange: (state) => {
+      broadcaster.emit('overlay.changed', state)
+      // Tests send quiz keys through test-control instead of grabbing the real keyboard.
+      if (!isTest) shortcuts.setQuizKeys(state.quiz !== null, (key) => windows.forwardKey(key))
+    },
     onChatDelta: (delta) => broadcaster.emit('chat.delta', delta),
     onBusy: (busy) => shortcuts.setEscape(busy, () => core.router.cancel()),
     onAppStateChange: () => {
@@ -149,6 +132,10 @@ async function start(paths: AppPaths): Promise<void> {
     setOverlayInteractive: (displayId, on) => windows.overlays.setInteractive(displayId, on),
     showOrbMenu: () => tray?.popupOrbMenu(),
     setWindowSize: (surface, width, height) => windows.setSize(surface, width, height),
+    exportDir: paths.exportsDir,
+    revealFile: (path) => shell.showItemInFolder(path),
+    deleteAllData: () =>
+      deleteEverything({ paths, stopServices: () => services.stop(), relaunch: !isTest }),
   })
   const unregister = registerIpc(ipcMain, handlers, {
     identify: windows.identify,
@@ -184,6 +171,10 @@ async function start(paths: AppPaths): Promise<void> {
     isOrbVisible: () => services.repos.settings.get().orb.visible,
   })
   shortcuts.start(settings.shortcut.fallbackChord)
+  console.log(
+    `[dumbledore] ready: ${windows.overlays.all().length} overlay window(s), tray icon, ` +
+      `helper ${services.helper.status}, data in ${paths.dataDir}`,
+  )
 
   let testControl: TestControlServer | null = null
   if (isTest) {
@@ -192,7 +183,8 @@ async function start(paths: AppPaths): Promise<void> {
         core,
         handlers,
         fakes: composition.fakes,
-        windows: () => windows.summary(),
+        windows: () => ({ ...windows.summary(), tray: tray !== null }),
+        forwardKey: (key) => windows.forwardKey(key),
       }),
       join(paths.runDir, 'test-control.json'),
     )

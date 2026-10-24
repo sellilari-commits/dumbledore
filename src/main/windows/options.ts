@@ -61,11 +61,15 @@ export function finishOverlay(win: BrowserWindow): void {
   win.setContentProtection(true)
 }
 
-/** Panel and ask bar: frameless, transparent corners (the page draws the card), focusable. */
+/**
+ * Panel and ask bar: frameless, transparent corners (the page draws the card), focusable. The ask
+ * bar wants the native shadow, which follows the card's shape (invalidateShadow after resizes).
+ */
 export function typingOptions(
   size: { width: number; height: number },
   prefs: BrowserWindowConstructorOptions['webPreferences'],
   title: string,
+  shadow = false,
 ): BrowserWindowConstructorOptions {
   return {
     type: 'panel',
@@ -75,7 +79,7 @@ export function typingOptions(
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
-    hasShadow: false,
+    hasShadow: shadow,
     roundedCorners: false,
     resizable: false,
     minimizable: false,

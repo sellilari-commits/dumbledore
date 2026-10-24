@@ -91,3 +91,15 @@ brain.spend() // { eur, capEur }; not in the Brain contract
   Flash p90 is 2.4 s, so some steps will use the draft; consider flash-lite for `write` if that
   shows up in dogfooding.
 - `gemini-3.5-flash` is no longer on Google's pricing page and may be retired; 3.6 Flash is listed.
+
+## L7a Shell (landed)
+
+- Startup: `start()` in `src/main/app.ts` calls `compose()` (fakes). To run the real engine,
+  replace that one call with `composeReal()` from `src/main/real`; it must return
+  `{ services, fakes: { helper: null, perception: null } }`.
+- `Services.stop()` must release the SQLite store: `data.deleteAll` calls it before deleting the
+  database, `memory/`, `exports/` and `secrets.json`, then relaunches the app.
+- `data.export` includes only the chat threads `ask`, `panel`, `app` and `subject:<id>`, because
+  ChatRepo can't list threads.
+- Electron 45 is installed. `npm run dev` starts the orb and the tray. The smoke spec
+  (`tests/e2e-sim/shell-smoke.spec.ts`) needs `npx electron-vite build` first.

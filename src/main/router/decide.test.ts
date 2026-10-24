@@ -29,9 +29,9 @@ describe('decide — the F4 tap table', () => {
 
   it('refuses password fields and secure input', () => {
     expect(decide('tap', ctx({ secureInput: true }))).toEqual({ kind: 'refuseSecure' })
-    expect(
-      decide('tap', ctx({ focused: { ...chatBox(), secure: true }, aiChat: CHAT })),
-    ).toEqual({ kind: 'refuseSecure' })
+    expect(decide('tap', ctx({ focused: { ...chatBox(), secure: true }, aiChat: CHAT }))).toEqual({
+      kind: 'refuseSecure',
+    })
   })
 
   it('(a) pastes the next step when a session runs in an AI chat — before reading anything', () => {
@@ -52,12 +52,16 @@ describe('decide — the F4 tap table', () => {
   })
 
   it('(b) runs a `/d …` line as an instruction, in any field', () => {
-    expect(decide('tap', ctx({ focused: notesField, fieldText: 'notes\n/d quiz me on chapter 3' }))).toEqual({
+    expect(
+      decide('tap', ctx({ focused: notesField, fieldText: 'notes\n/d quiz me on chapter 3' })),
+    ).toEqual({
       kind: 'instruction',
       text: 'quiz me on chapter 3',
       wholeField: false,
     })
-    expect(decide('tap', ctx({ aiChat: CHAT, focused: chatBox(13), fieldText: '/d make it simpler' }))).toEqual({
+    expect(
+      decide('tap', ctx({ aiChat: CHAT, focused: chatBox(13), fieldText: '/d make it simpler' })),
+    ).toEqual({
       kind: 'instruction',
       text: 'make it simpler',
       wholeField: true,
@@ -68,7 +72,9 @@ describe('decide — the F4 tap table', () => {
     expect(decide('tap', ctx({ aiChat: CHAT, focused: chatBox(), fieldText: '' }))).toEqual({
       kind: 'suggest',
     })
-    expect(decide('tap', ctx({ aiChat: CHAT, focused: chatBox(15), fieldText: ' what is osmosis ' }))).toEqual({
+    expect(
+      decide('tap', ctx({ aiChat: CHAT, focused: chatBox(15), fieldText: ' what is osmosis ' })),
+    ).toEqual({
       kind: 'improve',
       draft: 'what is osmosis',
     })
@@ -86,7 +92,10 @@ describe('decide — the F4 tap table', () => {
       what: 'selection',
     })
     expect(
-      decide('tap', ctx({ focused: notesField, fieldText: 'plain text', selection: ' SN1 is unimolecular ' })),
+      decide(
+        'tap',
+        ctx({ focused: notesField, fieldText: 'plain text', selection: ' SN1 is unimolecular ' }),
+      ),
     ).toEqual({ kind: 'selection', text: 'SN1 is unimolecular' })
   })
 
@@ -103,7 +112,9 @@ describe('decide — the F4 tap table', () => {
 
   it('hold and double-tap open the ask bar; hold end does nothing', () => {
     expect(decide('holdStart', ctx())).toEqual({ kind: 'askbar' })
-    expect(decide('doubleTap', ctx({ sessionActive: true, aiChat: CHAT }))).toEqual({ kind: 'askbar' })
+    expect(decide('doubleTap', ctx({ sessionActive: true, aiChat: CHAT }))).toEqual({
+      kind: 'askbar',
+    })
     expect(decide('doubleTap', ctx({ askbarOpen: true }))).toEqual({ kind: 'ignore' })
     expect(decide('holdEnd', ctx())).toEqual({ kind: 'ignore' })
   })

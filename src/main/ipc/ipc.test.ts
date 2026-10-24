@@ -1,24 +1,27 @@
+import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { type InvokeChannel, ipcInvoke } from '@shared/ipc'
-import { beforeEach, describe, expect, it } from 'vitest'
-import { createHarness, flush, type Harness } from '../testing/harness'
+import { afterAll, beforeEach, describe, expect, it } from 'vitest'
+import { createHarness, flush, type Harness, fakeExtras as harnessExtras } from '../testing/harness'
 import { Broadcaster, EVENT_ROUTES } from './broadcast'
-import { createHandlers, type HandlerExtras } from './handlers'
-import { INVOKE_CHANNELS, type IpcMainLike, IpcValidationError, registerIpc, runHandler } from './register'
+import { wireBroadcasts } from './events'
+import { createHandlers } from './handlers'
+import {
+  INVOKE_CHANNELS,
+  type IpcMainLike,
+  IpcValidationError,
+  registerIpc,
+  runHandler,
+} from './register'
 import type { Handlers, InvokeContext } from './types'
 
 const APP: InvokeContext = { surface: 'app', displayId: null }
 const OVERLAY: InvokeContext = { surface: 'overlay', displayId: 1 }
+const exportRoot = mkdtempSync(join(tmpdir(), 'dd-ipc-'))
+const fakeExtras = () => harnessExtras(join(exportRoot, 'exports'))
 
-function fakeExtras() {
-  const calls: string[] = []
-  const extras: HandlerExtras = {
-    openSystemSettings: async (kind) => void calls.push(`settings:${kind}`),
-    setOverlayInteractive: (id, on) => void calls.push(`interactive:${id}:${on}`),
-    showOrbMenu: () => void calls.push('menu'),
-    setWindowSize: (s, w, h) => void calls.push(`size:${s}:${w}x${h}`),
-  }
-  return { extras, calls }
-}
+afterAll(() => rmSync(exportRoot, { recursive: true, force: true }))
 
 describe('IPC handlers', () => {
   let h: Harness
@@ -53,6 +56,17 @@ describe('IPC handlers', () => {
     expect((await call('settings.update', { theme: 'dark' })).theme).toBe('dark')
     await call('secrets.set', { key: 'groq', value: 'gsk_test' })
     expect(repos.settings.get().ai.groqKeySet).toBe(true)
+    expect((await call('providers.test', 'gemini')).ok).toBe(false)
+    await call('secrets.set', { key: 'gemini', value: 'AIza-test' })
+    expect(repos.settings.get().ai).toMatchObject({ geminiKeySet: true, groqKeySet: true })
+    expect(h.services.secrets.get('gemini')).toBe('AIza-test')
+    expect((await call('profile.get')).promptLanguage).toBe('auto')
+    const profile = await call('profile.update', {
+      aboutMe: 'Second-year chemistry student',
+      level: 'BSc',
+    })
+    expect(profile).toMatchObject({ aboutMe: 'Second-year chemistry student', level: 'BSc' })
+    expect(repos.profile.get().aboutMe).toBe('Second-year chemistry student')
     await call('capture.setEnabled', false)
     expect(h.core.appState().capture).toEqual({ enabled: false, active: false })
     await call('capture.setEnabled', true)
@@ -68,13 +82,20 @@ describe('IPC handlers', () => {
     expect(await call('exams.list')).toEqual([])
     expect((await call('search.query', 'carbocation')).length).toBeGreaterThan(0)
 
-    const physics = await call('subjects.create', { name: 'Physics', emoji: '⚛️', goal: null, deadline: null })
-    expect((await call('subjects.update', { id: physics.id, patch: { goal: 'Pass' } })).goal).toBe('Pass')
+    const physics = await call('subjects.create', {
+      name: 'Physics',
+      emoji: '⚛️',
+      goal: null,
+      deadline: null,
+    })
+    expect((await call('subjects.update', { id: physics.id, patch: { goal: 'Pass' } })).goal).toBe(
+      'Pass',
+    )
     await call('suggested.act', { subjectId: suggested.id, action: 'accept', intoId: null })
     await call('inbox.act', { encounterId: encounter.id, action: 'accept', subjectId: null })
-    expect((await call('assignments.add', { title: 'Lab report', subjectId: null, dueAt: null })).title).toBe(
-      'Lab report',
-    )
+    expect(
+      (await call('assignments.add', { title: 'Lab report', subjectId: null, dueAt: null })).title,
+    ).toBe('Lab report')
 
     expect(await call('session.get')).toBeNull()
     expect((await call('session.picker')).subjects.length).toBeGreaterThan(0)
@@ -88,13 +109,21 @@ describe('IPC handlers', () => {
     const quiz = await call('quiz.get', quizId)
     const first = quiz.questions[0]
     if (!first) throw new Error('empty quiz')
-    expect((await call('quiz.answer', { quizId, questionId: first.id, chosenIndex: first.correctIndex })).correct).toBe(
-      true,
-    )
+    expect(
+      (await call('quiz.answer', { quizId, questionId: first.id, chosenIndex: first.correctIndex }))
+        .correct,
+    ).toBe(true)
     expect((await call('quiz.finish', quizId)).total).toBe(quiz.questions.length)
-    expect((await call('exams.create', { subjectIds: [orgo.id], count: 5, focus: 'weak', difficulty: 'mixed' })).status).toBe(
-      'generating',
-    )
+    expect(
+      (
+        await call('exams.create', {
+          subjectIds: [orgo.id],
+          count: 5,
+          focus: 'weak',
+          difficulty: 'mixed',
+        })
+      ).status,
+    ).toBe('generating')
 
     expect(await call('chat.history', 'panel')).toEqual([])
     const reply = await call('chat.send', { thread: 'panel', text: 'What should I focus on?' })
@@ -128,15 +157,39 @@ describe('IPC handlers', () => {
     await call('session.end')
     expect(await call('session.get')).toBeNull()
 
+    const { path } = await call('data.export')
+    expect(calls).toContain(`reveal:${path}`)
+    expect(statSync(path).mode & 0o777).toBe(0o600)
+    const dump = JSON.parse(readFileSync(path, 'utf8'))
+    expect(dump).toMatchObject({
+      format: 'dumbledore-export',
+      version: 1,
+      appVersion: '0.0.0-test',
+    })
+    expect(dump.subjects.map((s: { name: string }) => s.name)).toContain('Physics')
+    expect(dump.profile.aboutMe).toBe('Second-year chemistry student')
+    expect(dump.chat.panel.length).toBe(2)
+    expect(JSON.stringify(dump)).not.toContain('AIza-test')
+    await call('data.deleteAll', { confirm: true })
+    expect(calls).toContain('deleteAll')
+
     expect([...seen].sort()).toEqual([...INVOKE_CHANNELS].sort())
+  })
+
+  it('refuses data.deleteAll without the explicit confirmation', async () => {
+    await expect(call('data.deleteAll', {})).rejects.toThrow(IpcValidationError)
+    await expect(call('data.deleteAll', { confirm: false })).rejects.toThrow(IpcValidationError)
+    expect(calls).not.toContain('deleteAll')
   })
 
   it('rejects payloads that do not match the contract', async () => {
     await expect(call('subjects.get', '')).rejects.toBeInstanceOf(IpcValidationError)
-    await expect(call('quiz.answer', { quizId: 'q', questionId: 'x', chosenIndex: 7 })).rejects.toThrow(
-      /Invalid payload for "quiz.answer"/,
+    await expect(
+      call('quiz.answer', { quizId: 'q', questionId: 'x', chosenIndex: 7 }),
+    ).rejects.toThrow(/Invalid payload for "quiz.answer"/)
+    await expect(call('overlay.action', { type: 'explode' }, OVERLAY)).rejects.toThrow(
+      IpcValidationError,
     )
-    await expect(call('overlay.action', { type: 'explode' }, OVERLAY)).rejects.toThrow(IpcValidationError)
     await expect(call('settings.update', { theme: 'neon' })).rejects.toThrow(IpcValidationError)
   })
 
@@ -176,7 +229,9 @@ describe('registerIpc', () => {
     const off = registerIpc(ipc, createHandlers(h.core, fakeExtras().extras), {
       identify: (event) => (event.sender === 'trusted' ? APP : null),
     })
-    expect([...listeners.keys()].sort()).toEqual(INVOKE_CHANNELS.map((c) => `dd:invoke:${c}`).sort())
+    expect([...listeners.keys()].sort()).toEqual(
+      INVOKE_CHANNELS.map((c) => `dd:invoke:${c}`).sort(),
+    )
     const getSettings = listeners.get('dd:invoke:settings.get')
     await expect(getSettings?.({ sender: 'trusted' })).resolves.toMatchObject({ theme: 'system' })
     await expect(getSettings?.({ sender: 'evil' })).rejects.toThrow(/unknown sender/)
@@ -195,10 +250,12 @@ describe('registerIpc', () => {
       validateResponses: true,
       onError: (channel) => void errors.push(channel),
     })
-    await expect(listeners.get('dd:invoke:settings.get')?.({ sender: 1 })).rejects.toThrow(/invalid response/)
-    await expect(listeners.get('dd:invoke:subjects.get')?.({ sender: 1 }, 'sub_missing')).rejects.toThrow(
-      /not found/,
+    await expect(listeners.get('dd:invoke:settings.get')?.({ sender: 1 })).rejects.toThrow(
+      /invalid response/,
     )
+    await expect(
+      listeners.get('dd:invoke:subjects.get')?.({ sender: 1 }, 'sub_missing'),
+    ).rejects.toThrow(/not found/)
     expect(errors).toEqual(['settings.get', 'subjects.get'])
   })
 })
@@ -206,12 +263,37 @@ describe('registerIpc', () => {
 describe('Broadcaster', () => {
   it('routes events to their surfaces and validates payloads', () => {
     const sent: string[] = []
-    const out = new Broadcaster({ send: (surfaces, channel) => void sent.push(`${surfaces.join(',')}|${channel}`) }, true)
+    const out = new Broadcaster(
+      { send: (surfaces, channel) => void sent.push(`${surfaces.join(',')}|${channel}`) },
+      true,
+    )
     out.emit('memory.changed', { scope: 'subjects', ids: ['sub_1'] })
     out.emit('navigate', { route: '/home' }, ['app'])
     out.emit('navigate', { route: '/home' })
     out.emit('memory.changed', { scope: 'nonsense', ids: [] } as never)
     expect(sent).toEqual(['panel,askbar,app|dd:event:memory.changed', 'app|dd:event:navigate'])
     expect(EVENT_ROUTES['overlay.changed']).toEqual(['overlay'])
+    expect(EVENT_ROUTES['key.gesture']).toEqual(['app'])
+  })
+
+  it('forwards trigger-key gestures from the helper to the app window', async () => {
+    const h = await createHarness()
+    const sent: { surfaces: string; channel: string; payload: unknown }[] = []
+    const out = new Broadcaster(
+      {
+        send: (surfaces, channel, payload) =>
+          void sent.push({ surfaces: surfaces.join(','), channel, payload }),
+      },
+      true,
+    )
+    const off = wireBroadcasts(h.services.bus, out)
+    h.helper.emit('key.trigger', { gesture: 'holdStart', key: 'rightOption', secureInput: false })
+    await flush()
+    expect(sent).toContainEqual({
+      surfaces: 'app',
+      channel: 'dd:event:key.gesture',
+      payload: { gesture: 'holdStart', key: 'rightOption' },
+    })
+    off()
   })
 })
