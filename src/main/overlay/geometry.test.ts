@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DISPLAY, SECOND_DISPLAY } from '../testing/harness'
 import {
-  CORNER_SNAP,
-  clearOfReserved,
   DOCKED_SIZE,
   defaultHome,
   displayAt,
@@ -11,10 +9,7 @@ import {
   fitSpot,
   hiddenSpot,
   ORB_SIZE,
-  ORB_STACK_EXTENT,
   PEEK,
-  RESERVED_CLEARANCE,
-  RIGHT_EDGE_RESERVED_HALF,
   snapToEdge,
 } from './geometry'
 
@@ -24,46 +19,40 @@ const LEFT_X = EDGE_INSET + R
 const RIGHT_X = 1512 - EDGE_INSET - R
 const TOP_Y = 33 + EDGE_INSET + R
 const BOTTOM_Y = 982 - EDGE_INSET - R
-// Reserved middle of the right edge (Wispr Flow's bar), with the orb's reach around its centre.
 const CENTRE = 33 + 949 / 2
-const REACH = R + ORB_STACK_EXTENT + RESERVED_CLEARANCE
-const ABOVE = CENTRE - RIGHT_EDGE_RESERVED_HALF - REACH
-const BELOW = CENTRE + RIGHT_EDGE_RESERVED_HALF + REACH
-
-/** The orb with its timer square overlaps the band (plus clearance) when this is true. */
-const overlapsBand = (y: number) =>
-  y + R + ORB_STACK_EXTENT + RESERVED_CLEARANCE > CENTRE - RIGHT_EDGE_RESERVED_HALF &&
-  y - R - ORB_STACK_EXTENT - RESERVED_CLEARANCE < CENTRE + RIGHT_EDGE_RESERVED_HALF
 
 describe('defaultHome', () => {
-  it('sits on the right edge, above the reserved middle (Wispr Flow bar)', () => {
-    const home = defaultHome(DISPLAY)
-    expect(home).toEqual({ displayId: 1, x: RIGHT_X, y: ABOVE, edge: 'right' })
-    expect(overlapsBand(home.y)).toBe(false)
+  it('sits on the right edge, a third of the way down, on a first run', () => {
+    expect(defaultHome(DISPLAY)).toEqual({
+      displayId: 1,
+      x: RIGHT_X,
+      y: 33 + 949 / 3,
+      edge: 'right',
+    })
   })
 })
 
-describe('reserved band on the right edge', () => {
-  it('moves a height inside the band to the nearer side, above on a tie', () => {
-    expect(clearOfReserved(DISPLAY, CENTRE)).toBe(ABOVE)
-    expect(clearOfReserved(DISPLAY, CENTRE - 10)).toBe(ABOVE)
-    expect(clearOfReserved(DISPLAY, CENTRE + 10)).toBe(BELOW)
-    expect(clearOfReserved(DISPLAY, ABOVE - 50)).toBe(ABOVE - 50)
-    expect(clearOfReserved(DISPLAY, BELOW + 50)).toBe(BELOW + 50)
+describe('placement anywhere on the edge', () => {
+  it('keeps a drop in the middle of the right edge exactly there', () => {
+    expect(snapToEdge(DISPLAY, 1000, CENTRE)).toEqual({
+      displayId: 1,
+      x: RIGHT_X,
+      y: CENTRE,
+      edge: 'right',
+    })
   })
 
-  it('never overlaps the band and stays on screen, wherever the orb is dropped', () => {
+  it('keeps a saved home in the middle when it is re-fitted', () => {
+    const saved = { displayId: 1, x: RIGHT_X, y: CENTRE, edge: 'right' as const }
+    expect(fitSpot(DISPLAY, saved)).toEqual(saved)
+  })
+
+  it('stays on screen wherever the orb is dropped', () => {
     for (let y = -100; y <= 1100; y += 7) {
       const spot = snapToEdge(DISPLAY, 1000, y)
-      expect(overlapsBand(spot.y)).toBe(false)
       expect(spot.y).toBeGreaterThanOrEqual(TOP_Y)
       expect(spot.y).toBeLessThanOrEqual(BOTTOM_Y)
     }
-  })
-
-  it('moves an older saved home out of the band when it is re-fitted', () => {
-    const old = { displayId: 1, x: RIGHT_X, y: CENTRE, edge: 'right' as const }
-    expect(fitSpot(DISPLAY, old).y).toBe(ABOVE)
   })
 })
 
