@@ -3,7 +3,8 @@
  *
  * start → build (or resume) the roadmap and paste step 1; next → mark the current item done and
  * paste the next step, or open the checkpoint quiz; when the quiz is finished the session moves
- * past the checkpoint. Enough behaviour for the demo and for the shell's end-to-end tests.
+ * past the checkpoint. A step whose paste failed (pasteFailed) is pasted again by the next `next`.
+ * Enough behaviour for the demo and for the shell's end-to-end tests.
  */
 import type { Brain } from '@engine/brain-contract'
 import type { Clock } from '@engine/clock'
@@ -94,8 +95,21 @@ export class FakeStudyService implements StudyService {
       const quiz = item.quizId ? this.deps.repos.quizzes.get(item.quizId) : null
       if (quiz && quiz.status !== 'done') return { kind: 'quiz', quizId: quiz.id, itemId: item.id }
     }
+    // Its paste failed: hand out the same step again instead of advancing.
+    if (item?.kind === 'learn' && item.status === 'current' && item.promptSent === null) {
+      return this.enter(roadmap, this.index, ctx)
+    }
     if (item) this.setItem(roadmap, this.index, { status: 'done' })
     return this.enter(roadmap, this.index + 1, ctx)
+  }
+
+  /** The shell couldn't paste step `itemId`: it no longer counts as delivered. */
+  pasteFailed(itemId: Id): void {
+    const roadmap = this.roadmapId ? this.deps.repos.roadmaps.get(this.roadmapId) : null
+    const item = roadmap?.items[this.index]
+    if (!roadmap || item?.kind !== 'learn' || item.id !== itemId || item.promptSent === null) return
+    this.setItem(roadmap, this.index, { promptSent: null })
+    this.emit()
   }
 
   pause(): void {

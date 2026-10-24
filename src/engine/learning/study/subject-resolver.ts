@@ -1,10 +1,13 @@
 /**
  * Cold start (F5, PLAN R40): turns free text like "I don't get the Calvin cycle" into a subject.
  * Order: exact subject name → a known subject named in the text → a known concept named in the
- * text (its subject) → a new active subject named after the topic.
+ * text (its subject) → the student's subject for the field the text is about (subject-naming.ts)
+ * → a new active subject named after that field ("Organic Chemistry" 🧪), else after the topic
+ * ("SN1 and SN2 reactions"). The study service refines a topic-named subject from the plan.
  */
 import type { Subject } from '@shared/domain'
 import type { Repos } from '../../contracts'
+import { detectField, findFieldSubject, newSubjectName } from './subject-naming'
 import { norm } from './text'
 
 const LEAD_INS: RegExp[] = [
@@ -13,12 +16,15 @@ const LEAD_INS: RegExp[] = [
   /^i\s+(want|need|would like|'?d like)\s+to\s+(learn|understand|study|know|review|master|get better at|figure out)\s+((more\s+)?about\s+)?/i,
   /^i'?m\s+(confused|stuck|struggling|lost)\s+(about|with|on|by)\s+/i,
   /^(can you\s+|could you\s+)?(help me|teach me|explain|walk me through|quiz me on|show me)\s+((to\s+)?(learn|understand|study|with|about|on)\s+)?/i,
+  /^(how|why|what|when|where|who)('s|’s)\s+/i,
   /^(how|why|what|when|where)\s+(do|does|did|is|are|was|were|can|should)\s+/i,
+  /^(the\s+)?(main\s+|key\s+)?differences?\s+(between|of)\s+/i,
   /^(learn|study|understand|review|explain)(ing)?\s+((more\s+)?about\s+)?/i,
 ]
 const TAIL_CUTS =
   /\s+(for|because|so that|so i|before|by|in order to|since|which|that i)\s+.*$|[,;:(—–].*$/i
-const TRAILING = /\s+(work|works|working|happen|happens|mean|means|function|functions)$/i
+const TRAILING =
+  /\s+(work|works|working|happen|happens|mean|means|function|functions|differ|differs|compare|compares|relate|relates|interact|interacts|occur|occurs|matter|matters|vary|varies)$/i
 const ARTICLE = /^(the|a|an|my|our|this|these|those)\s+/i
 
 /** "I don't get the Calvin cycle?" → "Calvin cycle". Falls back to the trimmed text. */
@@ -52,6 +58,8 @@ function mentions(haystack: string, name: string): boolean {
 export interface ResolvedSubject {
   subject: Subject
   created: boolean
+  /** A new subject named after a topic, not a field: worth renaming once the plan is in. */
+  topicNamed: boolean
 }
 
 export function resolveSubject(repos: Repos, text: string): ResolvedSubject {
@@ -74,13 +82,23 @@ export function resolveSubject(repos: Repos, text: string): ResolvedSubject {
       (m) => m.name,
     )?.subject ??
     null
-  if (found) {
+  const field = found ? null : detectField([text])
+  const existing = found ?? (field ? findFieldSubject(repos, field) : null)
+  if (existing) {
     const subject =
-      found.status === 'active' ? found : repos.subjects.update(found.id, { status: 'active' })
-    return { subject, created: false }
+      existing.status === 'active'
+        ? existing
+        : repos.subjects.update(existing.id, { status: 'active' })
+    return { subject, created: false, topicNamed: false }
   }
-  const subject = repos.subjects.create({ name, status: 'active', goal: text.trim().slice(0, 200) })
-  return { subject, created: true }
+  const named = newSubjectName(text, name)
+  const subject = repos.subjects.create({
+    name: named.name,
+    emoji: named.emoji,
+    status: 'active',
+    goal: text.trim().slice(0, 200),
+  })
+  return { subject, created: true, topicNamed: field === null }
 }
 
 function longest<T>(items: T[], key: (item: T) => string): T | null {

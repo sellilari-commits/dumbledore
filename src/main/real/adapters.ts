@@ -27,6 +27,7 @@ export function withoutSessionEcho(study: StudyService): StudyService {
     picker: () => study.picker(),
     start: (input, ctx) => study.start(input, ctx),
     next: (ctx) => study.next(ctx),
+    pasteFailed: (itemId) => study.pasteFailed(itemId),
     pause: () => study.pause(),
     end: () => study.end(),
     onChange: () => () => {},

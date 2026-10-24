@@ -15,6 +15,8 @@ export interface SessionTarget {
   goal: string | null
   question: string | null
   coldStart: boolean
+  /** This start created the subject under a topic name; the plan may name its field. */
+  topicNamed: boolean
 }
 
 const clean = (s: string | null | undefined): string | null => {
@@ -31,16 +33,17 @@ export function resolveTarget(repos: Repos, input: StartSessionInput): SessionTa
     // Picking a suggested (or archived) subject means the student is studying it now.
     const subject =
       found.status === 'active' ? found : repos.subjects.update(found.id, { status: 'active' })
-    return { subject, goal: goal ?? question, question, coldStart: false }
+    return { subject, goal: goal ?? question, question, coldStart: false, topicNamed: false }
   }
   const text = goal ?? question
   if (text) {
-    const { subject } = resolveSubject(repos, text)
-    return { subject, goal: text, question, coldStart: true }
+    const { subject, topicNamed } = resolveSubject(repos, text)
+    return { subject, goal: text, question, coldStart: true, topicNamed }
   }
   const focusId = repos.settings.get().focusSubjectId
   const focus = focusId ? repos.subjects.get(focusId) : null
-  if (focus) return { subject: focus, goal: null, question: null, coldStart: false }
+  if (focus)
+    return { subject: focus, goal: null, question: null, coldStart: false, topicNamed: false }
   throw new StudyError('Pick a subject or type what you want to learn.')
 }
 

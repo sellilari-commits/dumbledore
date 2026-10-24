@@ -41,6 +41,20 @@ const SYSTEM_SETTINGS = {
 
 let windowsRef: WindowManager | null = null
 
+/**
+ * The clipboard the shell writes to: the system one, or (test mode) an in-memory stand-in, so
+ * test runs never overwrite the user's real clipboard.
+ */
+function shellClipboard(test: boolean): (text: string) => void {
+  if (!test) return (text) => clipboard.writeText(text)
+  return (text) => {
+    testClipboard.text = text
+  }
+}
+
+/** Test mode only: what the shell last "copied". */
+export const testClipboard: { text: string | null } = { text: null }
+
 /** Runs synchronously at import time of the main entry, before the app is ready. */
 export function bootstrap(): void {
   app.setName(APP_NAME)
@@ -73,6 +87,8 @@ export function bootstrap(): void {
 
 async function start(paths: AppPaths): Promise<void> {
   if (process.platform === 'darwin') app.setActivationPolicy('accessory')
+  // The installed app is always on: it starts at login (capture keeps its own on/off switch).
+  if (app.isPackaged && !isTest) app.setLoginItemSettings({ openAtLogin: true })
   configureSession(devUrl, join(__dirname, '../renderer'))
 
   const secrets = isTest ? undefined : new SafeStorageSecretStore(paths.secretsFile)
@@ -87,8 +103,6 @@ async function start(paths: AppPaths): Promise<void> {
       })
   const composition = real ?? compose({ ownPid: process.pid, secrets })
   const { services } = composition
-  // The installed app is always on: it starts at login (capture keeps its own on/off switch).
-  if (app.isPackaged && !isTest) app.setLoginItemSettings({ openAtLogin: true })
   /** Stops the services; the real engine also closes its database. */
   const shutdown = () => (real ? real.close() : services.stop())
   const windows = new WindowManager({
@@ -114,7 +128,7 @@ async function start(paths: AppPaths): Promise<void> {
     isAppActive: () => windows.ownWindowFocused(),
     hideApp: () => app.hide(),
     restoreOverlays: () => windows.overlays.restore(),
-    writeClipboard: (text) => clipboard.writeText(text),
+    writeClipboard: shellClipboard(isTest),
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   }
   const stateBroadcast = new StateBroadcast(

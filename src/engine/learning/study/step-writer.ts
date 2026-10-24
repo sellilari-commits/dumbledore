@@ -1,7 +1,8 @@
 /**
  * Step writer wrapper (P4): adapts a learn item's draft to the live chat within 2.5 s, or falls
  * back to the draft itself with a static coach tip for its teaching move (PLAN §6.5 `write`).
- * `deliverLearnStep` also records the prompt as sent and applies the chat's memory updates.
+ * `deliverLearnStep` also records the prompt as sent and applies the chat's memory updates;
+ * `redeliverStep` hands out a step again after the shell reported a failed paste.
  */
 import type { LearnItem, Probe, Roadmap, TeachingMove } from '@shared/domain'
 import type { StepInstruction } from '@shared/state'
@@ -88,9 +89,40 @@ export async function writeStep(
   }
 }
 
+export type PasteInstruction = Extract<StepInstruction, { kind: 'paste' }>
+
 export interface LearnDelivery {
   roadmap: Roadmap
-  instruction: StepInstruction
+  instruction: PasteInstruction
+}
+
+/** Stores `promptSent` (and 'current') for a learn item on the freshest copy of the roadmap. */
+function markSent(
+  repos: MemoryDeps['repos'],
+  roadmap: Roadmap,
+  item: LearnItem,
+  prompt: string,
+  nowIso: string,
+): Roadmap {
+  const fresh = repos.roadmaps.get(roadmap.id) ?? roadmap
+  const current = fresh.items.find((i) => i.id === item.id)
+  const base = isLearn(current) ? current : item
+  const updated = withItem(fresh, { ...base, status: 'current', promptSent: prompt }, nowIso)
+  repos.roadmaps.save(updated)
+  return updated
+}
+
+/**
+ * Hands out a step whose paste failed once more, word for word: no new brain call, and the chat's
+ * memory updates are not applied twice.
+ */
+export function redeliverStep(
+  deps: Pick<MemoryDeps, 'repos' | 'clock'>,
+  req: { roadmap: Roadmap; item: LearnItem; instruction: PasteInstruction },
+): LearnDelivery {
+  const { roadmap, item, instruction } = req
+  const updated = markSent(deps.repos, roadmap, item, instruction.text, deps.clock.nowIso())
+  return { roadmap: updated, instruction }
 }
 
 /**
@@ -125,15 +157,7 @@ export async function deliverLearnStep(
     { timeoutMs: opts.writeStepTimeoutMs, excerptChars: opts.stepExcerptChars },
   )
   if (!req.isCurrent()) return null
-  const fresh = repos.roadmaps.get(roadmap.id) ?? roadmap
-  const current = fresh.items.find((i) => i.id === item.id)
-  const base = isLearn(current) ? current : item
-  const updated = withItem(
-    fresh,
-    { ...base, status: 'current', promptSent: written.prompt },
-    clock.nowIso(),
-  )
-  repos.roadmaps.save(updated)
+  const updated = markSent(repos, roadmap, item, written.prompt, clock.nowIso())
   rememberStep(deps, updated, item, assistant, written.memoryUpdates)
   return {
     roadmap: updated,

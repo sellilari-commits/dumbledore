@@ -3,7 +3,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type InvokeChannel, ipcInvoke } from '@shared/ipc'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
-import { createHarness, flush, type Harness, fakeExtras as harnessExtras } from '../testing/harness'
+import {
+  createHarness,
+  flush,
+  type Harness,
+  fakeExtras as harnessExtras,
+  inChatGPT,
+} from '../testing/harness'
 import { Broadcaster, EVENT_ROUTES } from './broadcast'
 import { wireBroadcasts } from './events'
 import { createHandlers } from './handlers'
@@ -99,6 +105,8 @@ describe('IPC handlers', () => {
 
     expect(await call('session.get')).toBeNull()
     expect((await call('session.picker')).subjects.length).toBeGreaterThan(0)
+    // A step counts as delivered only once it is pasted: give the paste a chat to land in.
+    await inChatGPT(h)
     const started = await call('session.start', { subjectId: orgo.id, goal: null, question: null })
     expect(started).toMatchObject({ subjectId: orgo.id, phase: 'step', index: 0 })
     expect((await call('session.next'))?.index).toBe(1)
@@ -144,7 +152,7 @@ describe('IPC handlers', () => {
 
     await call('prompt.copy', 'copied text')
     expect(h.platform.clipboard).toBe('copied text')
-    expect(await call('prompt.sendToChat', 'hello chat')).toMatchObject({ ok: false })
+    expect(await call('prompt.sendToChat', 'hello chat')).toMatchObject({ ok: true })
 
     expect((await call('overlay.getState')).displayId).toBe(1)
     await call('overlay.action', { type: 'hover', inside: true }, OVERLAY)

@@ -18,12 +18,13 @@ describe('StudyService — cold start from free text', () => {
       { subjectId: null, goal: null, question: "I don't get the Calvin cycle" },
       chat({ assistant: null, chatExcerpt: '' }),
     )
-    const subject = h.repos.subjects.findByName('Calvin cycle')
-    expect(subject).toMatchObject({ status: 'active' })
+    // Named after the field, not the topic (real-run fix): "Biology" 🧬.
+    const subject = h.repos.subjects.findByName('Biology')
+    expect(subject).toMatchObject({ status: 'active', emoji: '🧬' })
     const [input] = roadmapInputs(h)
     expect(input).toMatchObject({
       goal: "I don't get the Calvin cycle",
-      subject: { id: subject?.id, name: 'Calvin cycle' },
+      subject: { id: subject?.id, name: 'Biology' },
       assistant: 'ChatGPT',
       mastery: [],
       encounters: [],

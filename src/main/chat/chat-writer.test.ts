@@ -68,15 +68,83 @@ describe('ChatWriter', () => {
     expect(t.helper.state.frontmost?.pid).toBe(CHATGPT.pid)
   })
 
-  it('copies with a "Copied — press ⌘V" toast when focus cannot be handed back', async () => {
+  it('copies with a "Couldn\'t paste" toast when focus cannot be handed back', async () => {
     t.platform.active = true
     t.helper.respond('app.activate', () => ({ ok: false }))
     t.helper.state.frontmost = NOTES
     const out = await t.writer.write({ text: 'Next step', mode: 'insert', target: 'chat' })
     expect(out).toMatchObject({ ok: false, method: 'clipboard' })
     expect(t.platform.clipboard).toBe('Next step')
-    expect(t.toasts[0]?.title).toBe('Copied — press ⌘V')
+    expect(t.toasts[0]?.title).toBe("Couldn't paste into ChatGPT — copied, press ⌘V")
+    expect(t.toasts[0]?.actions?.map((a) => a.label)).toEqual(['Try again'])
     expect(t.helper.callsTo('input.write')).toHaveLength(0)
+  })
+
+  it('"Try again" runs the caller\'s retry, else the same write once more', async () => {
+    t.helper.state.writeResult = { ok: false, method: null, verified: false, reason: 'busy' }
+    let retried = 0
+    await t.writer.write({
+      text: 'Step 2',
+      mode: 'insert',
+      target: 'chat',
+      retry: async () => {
+        retried++
+      },
+    })
+    await t.toasts[0]?.actions?.[0]?.run?.()
+    expect(retried).toBe(1)
+    expect(t.helper.callsTo('input.write')).toHaveLength(1)
+
+    await t.writer.write({ text: 'Step 2', mode: 'insert', target: 'chat' })
+    t.helper.state.writeResult = { ok: true, method: 'paste', verified: true, reason: null }
+    await t.toasts[1]?.actions?.[0]?.run?.()
+    expect(t.helper.callsTo('input.write')).toHaveLength(3)
+    expect(t.helper.state.fieldValue).toBe('Step 2')
+  })
+
+  it('a chat prompt still reaches the clipboard when the app changed meanwhile', async () => {
+    const expect_ = snapshotOf(chatInput())
+    t.helper.activateApp(NOTES)
+    const out = await t.writer.write({
+      text: 'Step 3',
+      mode: 'insert',
+      target: 'chat',
+      expect: expect_,
+    })
+    expect(out).toMatchObject({ ok: false, method: 'clipboard' })
+    expect(t.platform.clipboard).toBe('Step 3')
+    expect(t.helper.callsTo('input.write')).toHaveLength(0)
+  })
+
+  it('hands focus back instead of giving up when Dumbledore itself is frontmost', async () => {
+    const expect_ = snapshotOf(chatInput())
+    t.helper.state.frontmost = {
+      ...CHATGPT,
+      pid: t.platform.ownPid,
+      bundleId: 'org.stuhi.dumbledore',
+    }
+    const out = await t.writer.write({
+      text: 'Step 4',
+      mode: 'insert',
+      target: 'chat',
+      expect: expect_,
+    })
+    expect(out.ok).toBe(true)
+    expect(t.helper.callsTo('app.activate')).toEqual([{ pid: CHATGPT.pid }])
+    expect(t.helper.state.fieldValue).toBe('Step 4')
+  })
+
+  it("copies again after a helper timeout, past the helper's clipboard restore", async () => {
+    t.helper.respond('input.write', () => {
+      throw new Error('helper call input.write timed out')
+    })
+    ;(t.platform as { sleep: (ms: number) => Promise<void> }).sleep = (ms: number) =>
+      new Promise<void>((resolve) => setTimeout(resolve, ms > 500 ? 5 : 0))
+    const out = await t.writer.write({ text: 'Step 5', mode: 'insert', target: 'chat' })
+    expect(out.method).toBe('clipboard')
+    t.platform.clipboard = 'restored by the helper'
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(t.platform.clipboard).toBe('Step 5')
   })
 
   it('writes nothing when the user switched apps meanwhile', async () => {

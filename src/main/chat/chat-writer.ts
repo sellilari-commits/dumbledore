@@ -6,7 +6,11 @@
  * 2. Refuse to write when the frontmost app or the focused field changed since the user asked.
  * 3. Find the chat input (helper ax.findChatInput with the AI-chat placeholders).
  * 4. Write with helper input.write (expectPid), which verifies and restores the clipboard.
- * On failure the text goes to the clipboard with a "Copied — press ⌘V" toast.
+ * On failure the text goes to the clipboard with a "Couldn't paste into ChatGPT — copied, press
+ * ⌘V" toast and a "Try again" action. For the AI chat that holds for every failure but a cancel,
+ * also when the app changed meanwhile (a study step must never be lost); a changed field elsewhere
+ * (improve, suggest) writes nothing and only offers to copy. Dumbledore itself being frontmost is
+ * not "the user switched apps": focus is handed back first.
  */
 import type { HelperClient, PerceptionService } from '@engine/contracts'
 import { type Rect, rectCenter } from '@shared/geometry'
@@ -35,6 +39,8 @@ export interface WriteRequest {
   signal?: AbortSignal
   /** Copy + toast when writing fails (default true). */
   fallbackToClipboard?: boolean
+  /** The toast's "Try again" (default: the same write once more, without the field check). */
+  retry?: () => Promise<unknown>
 }
 
 export interface WriteOutcome {
@@ -65,6 +71,8 @@ export function sameField(el: FocusedElement | null, snap: FieldSnapshot): boole
 }
 
 const CANCELLED: WriteOutcome = { ok: false, method: null, reason: 'cancelled' }
+/** The helper restores the user's clipboard ~400 ms after its own paste attempt. */
+const RESTORE_GUARD_MS = 700
 
 export class ChatWriter {
   constructor(private readonly deps: ChatWriterDeps) {}
@@ -79,10 +87,11 @@ export class ChatWriter {
       focus.previousPid()
     if (pid == null) return this.fallback(req, 'No chat to write into')
 
-    if (req.expect && !platform.isAppActive()) {
-      const front = await this.frontmostPid()
-      if (front !== pid) return this.changed(req, 'You switched to another app')
-    } else if (!(await focus.handBack(pid))) {
+    const front = req.expect && !platform.isAppActive() ? await this.frontmostPid() : null
+    if (req.expect && front !== null && front !== pid && front !== platform.ownPid) {
+      return this.changed(req, 'You switched to another app')
+    }
+    if (!(req.expect && front === pid) && !(await focus.handBack(pid))) {
       return this.fallback(req, 'Could not switch back to the chat')
     }
     if (req.signal?.aborted) return CANCELLED
@@ -123,29 +132,58 @@ export class ChatWriter {
       if (res.ok) return { ok: true, method: res.method, reason: null }
       return this.fallback(req, res.reason ?? 'Writing failed')
     } catch (error) {
-      return this.fallback(req, error instanceof Error ? error.message : 'Writing failed')
+      // A timed-out helper may still paste and then restore the old clipboard: copy again after.
+      const out = this.fallback(req, error instanceof Error ? error.message : 'Writing failed')
+      if (out.method === 'clipboard') this.recopyLater(req.text)
+      return out
     }
   }
 
-  /** Copies `text` and tells the user to paste it themselves. */
-  copyWithHint(text: string): void {
+  /** Copies `text` and tells the user to paste it themselves, with an optional "Try again". */
+  copyWithHint(text: string, retry?: () => Promise<unknown>): void {
     this.deps.platform.writeClipboard(text)
+    const app = this.deps.perception.aiChat()?.assistant ?? 'the chat'
     this.deps.notify({
       kind: 'info',
-      title: 'Copied — press ⌘V',
+      title: `Couldn't paste into ${app} — copied, press ⌘V`,
       body: 'The prompt is on your clipboard. Click into the chat box and paste it.',
-      ttlMs: 8000,
+      actions: retry
+        ? [
+            {
+              id: 'retry',
+              label: 'Try again',
+              primary: true,
+              run: async () => {
+                await retry()
+              },
+            },
+          ]
+        : [],
+      ttlMs: 12_000,
     })
   }
 
   private fallback(req: WriteRequest, reason: string): WriteOutcome {
     if (req.fallbackToClipboard === false) return { ok: false, method: null, reason }
-    this.copyWithHint(req.text)
+    const retry =
+      req.retry ?? (() => this.write({ ...req, expect: null, signal: undefined, retry: undefined }))
+    this.copyWithHint(req.text, retry)
     return { ok: false, method: 'clipboard', reason }
   }
 
-  /** The context changed while we worked: nothing is written, copying is offered. */
+  private recopyLater(text: string): void {
+    void this.deps.platform
+      .sleep(RESTORE_GUARD_MS)
+      .then(() => this.deps.platform.writeClipboard(text))
+      .catch(() => {})
+  }
+
+  /**
+   * The context changed while we worked: nothing is written. A prompt for the AI chat still goes
+   * to the clipboard (with "Try again"); elsewhere copying is only offered.
+   */
   private changed(req: WriteRequest, reason: string): WriteOutcome {
+    if (req.target === 'chat') return this.fallback(req, reason)
     this.deps.notify({
       kind: 'info',
       title: 'Nothing written',

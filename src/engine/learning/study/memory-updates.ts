@@ -1,6 +1,7 @@
 /**
  * The step writer's `memory_updates` channel (PLAN R37/R39): what the chat showed about the
  * student becomes encounters (one per concept and step) and concept updates via MasteryModel.
+ * Their text reads like perception's (memory-text.ts): no echoed context labels, no log lines.
  */
 import {
   type Id,
@@ -12,8 +13,9 @@ import {
 import type { MemoryUpdate } from '../../brain-contract'
 import type { MasteryModel, Repos } from '../../contracts'
 import type { StudyDeps } from './deps'
+import { bigPictureText, evidenceText, seenText, topicPathOf } from './memory-text'
 import { isLearn } from './roadmap-ops'
-import { head, norm } from './text'
+import { norm } from './text'
 
 export type MemoryDeps = Pick<StudyDeps, 'repos' | 'mastery' | 'clock' | 'bus'>
 
@@ -75,20 +77,16 @@ export function applyMemoryUpdates(
   for (const g of group(updates)) {
     try {
       const concept = repos.concepts.upsert({ subjectId: subject.id, name: g.concept })
+      const topicPath = topicPathOf([subject.name, concept.name])
       const encounter = repos.encounters.add({
         subjectId: subject.id,
         conceptId: concept.id,
         episodeId: null,
-        seen: head(
-          g.notes.length > 0
-            ? g.notes.join(' ')
-            : `Studied ${concept.name} with ${scope.assistant} (step: ${scope.stepTitle}).`,
-          400,
-        ),
-        bigPicture: head(`${roadmap.title} — goal: ${roadmap.goal}`, 240),
-        topicPath: [subject.name, concept.name],
+        seen: seenText(g.notes, concept.name, scope.stepTitle, scope.assistant),
+        bigPicture: bigPictureText(topicPathOf([subject.name, roadmap.title, concept.name])),
+        topicPath,
         understanding: g.understanding ?? 'unknown',
-        evidence: head(g.evidence.join(' · '), 400),
+        evidence: evidenceText(g.evidence, concept.name, g.understanding),
         openQuestions: g.questions.slice(0, 3),
         keyTerms: [concept.name],
         source: { app: scope.assistant, bundleId: null, url: null, title: roadmap.title },

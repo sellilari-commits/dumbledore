@@ -281,6 +281,12 @@ export interface StudyService {
   start(input: StartSessionInput, ctx: ChatContext): Promise<StepInstruction>
   /** Reads what happened in the chat, updates memory, and returns the next instruction. */
   next(ctx: ChatContext): Promise<StepInstruction>
+  /**
+   * The shell could not paste the prompt of step `itemId` (the AI chat wasn't frontmost, the
+   * write failed or was cancelled). The step stops counting as delivered, so the next `next()`
+   * hands out the same prompt again instead of advancing. Unknown or finished items are ignored.
+   */
+  pasteFailed(itemId: Id): void
   pause(): void
   end(): void
   onChange(listener: (session: SessionState | null) => void): () => void

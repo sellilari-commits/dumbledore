@@ -1,7 +1,9 @@
 /**
  * Study-session flow (F2): asks StudyService for the next StepInstruction and carries it out —
  * paste the prompt into the AI chat (ChatWriter) with a coach-tip toast, open the checkpoint quiz
- * card, or finish the roadmap and schedule the follow-up.
+ * card, or finish the roadmap and schedule the follow-up. A step counts as delivered only once the
+ * paste is confirmed: a failed, cancelled or skipped paste is reported back (`pasteFailed`), so the
+ * next tap pastes the same step again; the failure toast's "Try again" does that at once.
  */
 import type {
   ChatContext,
@@ -73,17 +75,25 @@ export class SessionFlow {
   async perform(instruction: StepInstruction, opts: StepOptions = {}): Promise<StepResult> {
     const { overlay, writer, surfaces, study } = this.deps
     let write: WriteOutcome | null = null
-    if (opts.signal?.aborted) return { session: study.current(), instruction, write }
+    if (opts.signal?.aborted) {
+      if (instruction.kind === 'paste') study.pasteFailed(instruction.itemId)
+      return { session: study.current(), instruction, write }
+    }
     switch (instruction.kind) {
       case 'paste': {
-        await this.closeTypingSurfaces()
-        write = await writer.write({
-          text: instruction.text,
-          mode: opts.mode ?? 'insert',
-          target: 'chat',
-          expect: opts.expect,
-          signal: opts.signal,
-        })
+        try {
+          await this.closeTypingSurfaces()
+          write = await writer.write({
+            text: instruction.text,
+            mode: opts.mode ?? 'insert',
+            target: 'chat',
+            expect: opts.expect,
+            signal: opts.signal,
+            retry: () => this.retryStep(instruction.itemId),
+          })
+        } finally {
+          if (!write?.ok) study.pasteFailed(instruction.itemId)
+        }
         if (write.ok && instruction.coachTip) {
           overlay.showToast({
             kind: 'tip',
@@ -111,6 +121,17 @@ export class SessionFlow {
         break
     }
     return { session: study.current(), instruction, write }
+  }
+
+  /**
+   * "Try again" on a failed paste: pastes the step again while it is still the undelivered
+   * current step (a later tap may already have pasted it, or the session moved on).
+   */
+  async retryStep(itemId: string): Promise<StepResult | null> {
+    const session = this.deps.study.current()
+    const item = session?.items[session.index]
+    if (item?.id !== itemId || item.kind !== 'learn' || item.promptSent !== null) return null
+    return this.next()
   }
 
   private complete(summary: string): void {

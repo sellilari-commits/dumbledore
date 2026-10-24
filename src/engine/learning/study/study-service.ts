@@ -35,13 +35,16 @@ import {
   waitFor,
 } from './session-state'
 import { openRoadmap, resolveTarget, type SessionTarget, shouldResume } from './session-target'
-import { deliverLearnStep } from './step-writer'
+import { deliverLearnStep, redeliverStep } from './step-writer'
+import { refineNewSubject } from './subject-naming'
+import { UnpastedSteps } from './unpasted'
 
 export class StudyServiceImpl implements StudyService {
   private readonly opts: StudyOptions
   private readonly quizzes: CheckpointQuizzes
   private readonly gate = new SessionGate()
   private readonly listeners = new SessionListeners()
+  private readonly unpasted = new UnpastedSteps()
   private meta: SessionMeta | null = null
 
   constructor(private readonly deps: StudyDeps) {
@@ -107,6 +110,15 @@ export class StudyServiceImpl implements StudyService {
     } finally {
       this.gate.finish(seq)
     }
+  }
+
+  pasteFailed(itemId: Id): void {
+    const meta = this.meta
+    const roadmap = meta ? this.deps.repos.roadmaps.get(meta.roadmapId) : null
+    if (!roadmap || !this.unpasted.fail(this.deps.repos, roadmap, itemId, this.deps.clock.nowIso()))
+      return
+    this.deps.bus.emit('memory:changed', { scope: 'roadmaps', ids: [roadmap.id] })
+    this.emitChange()
   }
 
   pause(): void {
@@ -183,6 +195,7 @@ export class StudyServiceImpl implements StudyService {
       throw error
     }
     if (epoch !== this.gate.epoch) return waitFor('Cancelled.')
+    if (target.topicNamed) roadmap = refineNewSubject(this.deps, subject, roadmap)
     commitRoadmap(this.deps.repos, roadmap)
     if (previous) parkRoadmap(this.deps.repos, previous.roadmapId, this.deps.clock.nowIso())
     this.deps.bus.emit('memory:changed', { scope: 'roadmaps', ids: [roadmap.id] })
@@ -207,14 +220,19 @@ export class StudyServiceImpl implements StudyService {
     item: LearnItem,
     ctx: ChatContext,
   ): Promise<StepInstruction> {
-    const delivered = await deliverLearnStep(this.deps, this.opts, {
-      roadmap,
-      item,
-      chatExcerpt: ctx.chatExcerpt,
-      assistant: ctx.assistant ?? this.meta?.assistant ?? this.opts.defaultAssistant,
-      isCurrent: () => this.meta?.roadmapId === roadmap.id,
-    })
+    // A step whose paste failed is handed out again word for word.
+    const again = this.unpasted.retry(item.id)
+    const delivered = again
+      ? redeliverStep(this.deps, { roadmap, item, instruction: again })
+      : await deliverLearnStep(this.deps, this.opts, {
+          roadmap,
+          item,
+          chatExcerpt: ctx.chatExcerpt,
+          assistant: ctx.assistant ?? this.meta?.assistant ?? this.opts.defaultAssistant,
+          isCurrent: () => this.meta?.roadmapId === roadmap.id,
+        })
     if (!delivered) return waitFor('The study session ended.')
+    this.unpasted.handedOut(delivered.instruction)
     this.settle()
     this.emitChange()
     // D11: the checkpoint after this step is generated while the student reads it.
