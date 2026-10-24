@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "app-ui",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--config", "src/renderer/surfaces/app/vite.preview.config.mjs", "--port", "5190"],
+      "port": 5190
+    },
+    {
+      "name": "overlay-ui",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--config", "src/renderer/surfaces/overlay/vite.config.mjs", "--port", "5191"],
+      "port": 5191
+    }
+  ]
+}

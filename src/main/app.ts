@@ -187,7 +187,8 @@ async function start(paths: AppPaths): Promise<void> {
   )
 
   let testControl: TestControlServer | null = null
-  if (isTest) {
+  // DUMBLEDORE_CONTROL=1 also opens it on the real engine, to drive dev runs from scripts.
+  if (isTest || process.env.DUMBLEDORE_CONTROL === '1') {
     testControl = new TestControlServer(
       createTestControlApi({
         core,
