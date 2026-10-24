@@ -135,6 +135,22 @@ describe('Perception', () => {
     expect(repos.episodes.get(closed[0]?.id ?? '')?.signals.highlights).toHaveLength(2)
   })
 
+  it('masks secrets in a highlight and drops one that is only a secret', async () => {
+    const noted: string[] = []
+    bus.on('perception:highlight', ({ text }) => noted.push(text))
+    helper.front = wiki
+    perception.start()
+    await runFor(clock, 3000)
+    helper.selection = 'OPENAI_API_KEY=abcd1234efgh5678 is in the notes'
+    await runFor(clock, 1000)
+    expect(noted).toEqual(['OPENAI_API_KEY=[secret] is in the notes'])
+    helper.selection = null
+    await runFor(clock, 1000)
+    helper.selection = 'AIzaSyD0123456789abcdefghijklmnopqrstuv'
+    await runFor(clock, 1000)
+    expect(noted).toHaveLength(1)
+  })
+
   it('ignores selections in text fields and in blocked apps', async () => {
     const noted: string[] = []
     bus.on('perception:highlight', ({ text }) => noted.push(text))

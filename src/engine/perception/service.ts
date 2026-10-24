@@ -12,6 +12,7 @@ import type { NowContext } from '@shared/state'
 import { type Cancel, type Clock, systemClock } from '../clock'
 import type { AiChatInfo, HelperClient, PerceptionService, Repos } from '../contracts'
 import type { EngineBus } from '../events'
+import { REDACTION_PLACEHOLDER, redact } from '../privacy/redact'
 import { assistantByKey } from './ai-chat/assistants'
 import { AiChatTracker } from './ai-chat/tracker'
 import { EpisodeBuilder, type EpisodeOptions } from './episodes/builder'
@@ -186,7 +187,10 @@ export class Perception implements PerceptionService {
   }
 
   /** Saves a highlight on the page in front and closes its segment soon after the last one. */
-  private onHighlight(text: string): void {
+  private onHighlight(selected: string): void {
+    // Highlights are stored and sent to the extractor like page text, so they are masked the same way.
+    const text = this.settings.privacy.redact ? redact(selected) : selected
+    if (text.replaceAll(REDACTION_PLACEHOLDER.secret, '').trim().length < 3) return
     const ep = this.builder.addHighlight(text)
     if (!ep) return
     this.deps.bus.emit('perception:highlight', { text, app: ep.app, title: ep.title })
