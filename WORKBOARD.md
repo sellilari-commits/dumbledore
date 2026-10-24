@@ -8,7 +8,6 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
-| 2026-10-25 09:45 | Ilari / Claude | Orb keeps clear of Wispr Flow's bar on the right edge (reserved centre band) | src/main/overlay/geometry.ts (+ geometry.test.ts) | main | deploys after |
 | 2026-10-25 10:00 | Ilari / Claude | Double-tap chat: tall vertical panel beside the orb (prompt box stays compact) | src/renderer/surfaces/askbar/ (AskBar, useWindowAutoSize, askbar.css, tests), src/main/windows/placement.ts + manager.ts (askbar sizing/placement), new src/shared/chat-panel.ts, tests/e2e-sim/askbar-*.spec.ts + askbar screenshots | main | deploys live |
 | 2026-10-25 09:50 | Ilari / Claude | Timer length: chooser (5/15/25/45/60/custom) on the timer square, remembered in settings | src/main/overlay/timer.ts (+ test), src/main/overlay/controller.ts (timer lines only), src/main/ipc/handlers.ts (timer case), src/shared/state.ts (timer state/action), src/shared/domain.ts (settings.timerMinutes, additive), src/renderer/surfaces/overlay/satellites/ (TimerButton, TimerChooser, satellites.css), src/renderer/surfaces/overlay/OverlayApp.tsx (timer bits) + test, overlay mock, src/renderer/lib/mock/handlers-core.ts (timer field), src/renderer/pages/settings/OrbSection.tsx (Timer length), tests/e2e-sim/overlay-screens.spec.ts + overlay screenshots | main | deploys after |
 | 2026-10-24 22:20 | Olle / Claude | Empty home first steps; onboarding intro; white backgrounds + popovers above dialogs; one-page subject (description, goals, progress, gaps, what Dumbledore caught) | `src/renderer/pages/home/`, `src/renderer/pages/onboarding/`, `src/renderer/pages/subject/`, `src/renderer/design-system/tokens.css`, `docs/DESIGN.md`, `tests/e2e-sim/` (home, onboarding, subject specs + screenshots) | main | Renderer only; /subjects/:id/:view routes kept |
@@ -19,6 +18,7 @@ Newest first; keep about the last 20 entries.
 
 | Finished (UTC) | Who / agent | Work | Commit |
 |---|---|---|---|
+| 2026-10-25 | Ilari / Claude | Orb keeps clear of Wispr Flow's bar (reserved middle of the right edge) | 49e7e64 |
 | 2026-10-25 | Ilari / Claude | adjust_roadmap: chat wishes become study preferences on the topic tree (P14, schema v3), roadmap order follows them | 7380aca |
 | 2026-10-25 | Ilari / Claude | Fast memory: page → subject/topic in the panel in ~18 s (early checkpoint, 5 s debounce, subjects active, no auto roadmaps) | d6cde58 |
 | 2026-10-25 | Ilari / Claude | No hover text on the orb | 9c66d0c |
