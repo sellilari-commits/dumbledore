@@ -2,7 +2,7 @@
 //
 // `.accurate`, en-US + sv-SE, language correction and auto-detect off (they misread small grey UI
 // labels). One recognition at a time: a Retina window peaks at ~260 MB for under a second.
-// Vision returns Romanian "Ă" for "Å"; it is corrected here.
+// Vision returns Romanian "Ă" (and on macOS 15 Vietnamese "ả") for "Å"/"å"; corrected here.
 import CoreGraphics
 import Foundation
 import Vision
@@ -35,10 +35,13 @@ enum OCR {
     }
   }
 
-  /// Post-corrections for known Vision confusions in our languages.
+  /// Post-corrections for known Vision confusions in our languages: Romanian "Ă" and, on macOS 15
+  /// (whose recognizer has no Swedish or Finnish), Vietnamese "ả" for "å" — neither letter occurs
+  /// in Swedish or Finnish text.
   static func fix(_ s: String) -> String {
-    guard s.contains("Ă") || s.contains("ă") else { return s }
+    guard s.contains(where: { "ĂăẢả".contains($0) }) else { return s }
     return s.replacingOccurrences(of: "Ă", with: "Å").replacingOccurrences(of: "ă", with: "å")
+      .replacingOccurrences(of: "Ả", with: "Å").replacingOccurrences(of: "ả", with: "å")
   }
 
   /// Converts OCR lines to protocol lines in reading order. `frame` is where the image sits on

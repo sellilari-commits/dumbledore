@@ -6,7 +6,9 @@
  * hints, chat reading order, the dHash and the command's error exits. Skips when the helper is not
  * built (bash native/helper/build.sh). DUMBLEDORE_PERF=1 also enforces the 450 ms latency budget.
  */
+
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { release } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { beforeAll, describe, expect, it } from 'vitest'
@@ -21,6 +23,8 @@ import {
   type Score,
   score,
 } from '../../native/helper/tools/ocr-score'
+
+const DARWIN = Number(release().split('.')[0])
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const HELPER = join(ROOT, 'native/helper/build/dumbledore-helper')
@@ -82,21 +86,18 @@ describe.skipIf(!built)('helper OCR on fixture screenshots', () => {
     expect(scores.get(name)?.accuracy).toBeGreaterThanOrEqual(MIN_ACCURACY)
   })
 
-  it('keeps Finnish and Swedish letters (ä, ö, å, Å — no Romanian Ă)', () => {
+  it('keeps Finnish and Swedish letters (ä, ö, å, Å — no Romanian Ă, no Vietnamese ả)', () => {
     const text = (name: string) => (outs.get(name)?.lines ?? []).map((l) => l.text).join('\n')
     const doc = text('document')
-    for (const word of [
-      'käyttävät',
-      'Ahvenanmaalla',
-      'Åland',
-      'Långvikissa',
-      'yöt',
-      'använder',
-      'växterna',
-    ])
+    for (const word of ['käyttävät', 'Ahvenanmaalla', 'yöt', 'använder', 'växterna'])
       expect(doc).toContain(word)
-    expect(text('chat-light')).toContain('Åland')
-    expect(names.map(text).join('\n')).not.toMatch(/[Ăă]/)
+    // macOS 15's recognizer has no Swedish or Finnish (they arrived in macOS 26 / Darwin 25), so
+    // å is only reliable there; everywhere, the letters Vision confuses it with are corrected.
+    if (DARWIN >= 25) {
+      for (const word of ['Åland', 'Långvikissa']) expect(doc).toContain(word)
+      expect(text('chat-light')).toContain('Åland')
+    }
+    expect(names.map(text).join('\n')).not.toMatch(/[ĂăẢả]/)
   })
 
   /** Ground-truth lines with an expected alignment vs the helper's `align` on their OCR lines. */
