@@ -8,7 +8,6 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
-| 2026-10-24 21:45 | Ilari / Claude | Remove the ▸ Next square under the orb (no squares left) | src/renderer/surfaces/overlay/OverlayApp.tsx (+ test), satellites/SideStack.tsx (deleted), one line in tests/e2e-sim/overlay-screens.spec.ts (Olle's claim: side-next lines only) | main | |
 | 2026-10-24 21:50 | Ilari / Claude | Notes phase 1 (docs/NOTES.md): notes + concept_edges storage, extractor notes, highlight/loose notes, dedupe | docs/NOTES.md, src/shared/domain.ts, src/engine/contracts.ts, src/engine/store/ (schema-v2, migrations, repos/notes.ts, repos/edges.ts, repos/subjects.ts, sqlite-repos, search-index, conformance/), src/engine/testing/memory-repos.ts, src/engine/brain-contract.ts, src/engine/brain/prompts/p01-extract.ts (+ brain parse/fixtures), src/engine/perception/extraction/apply.ts, src/engine/subjects/memory-format.ts, src/engine/subjects/subject-service.ts, src/engine/store/repos/concepts.ts + concept-rows.ts, src/main/data/ (export, wipe); also capture cadence default (src/engine/perception/cadence.ts, scheduler.test.ts) | main | no deploy (coordinator deploys after) |
 | 2026-10-24 21:05 | Olle / Claude | Ink & paper look: ink accents, parchment backgrounds, ink line icons instead of interface emojis, Inbox → Memory | `src/renderer/design-system/` (tokens.css, base.css, Callout/EmptyState), `src/renderer/pages/` (icons and wording only), `src/renderer/surfaces/app/`, `src/renderer/surfaces/panel/`, `src/renderer/surfaces/askbar/askbar.css`, `src/renderer/surfaces/overlay/` (toast, quiz result, suggestion chip icons only), `docs/DESIGN.md`, `tests/e2e-sim/` | main | Visual and wording only; routes, data and behaviour unchanged |
 
@@ -18,6 +17,7 @@ Newest first; keep about the last 20 entries.
 
 | Finished (UTC) | Who / agent | Work | Commit |
 |---|---|---|---|
+| 2026-10-24 | Ilari / Claude | Removed the ▸ Next square under the orb (no squares left) | 7e61d26 |
 | 2026-10-24 | Ilari / Claude | Design doc: structured notes for the roadmap (docs/NOTES.md) | f4cab28 |
 | 2026-10-24 | Ilari / Claude | Removed the Quiz square under the orb (▸ Next stays) | 0bb8c08 |
 | 2026-10-24 | Ilari / Claude | Region trimming: keep a page's main content, drop nav/sidebars/header/footer (AX landmarks) | b59a293 |
