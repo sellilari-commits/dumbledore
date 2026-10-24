@@ -216,3 +216,12 @@ for (const theme of ['light', 'dark'] as const) {
     })
   })
 }
+
+test('the new-subject icon picker opens above the dialog', async ({ page }) => {
+  await page.goto(url('/home', 'light', 'empty'))
+  await page.getByRole('button', { name: 'Add a subject' }).click()
+  await page.getByRole('button', { name: /^Icon .*, change$/ }).click()
+  // A real click: it fails if the dialog's backdrop covers the picker.
+  await page.getByRole('button', { name: 'Use 🧪' }).click()
+  await expect(page.getByRole('button', { name: 'Icon 🧪, change' })).toBeVisible()
+})

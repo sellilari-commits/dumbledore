@@ -1,7 +1,7 @@
 # Dumbledore design system — as built
 
-Notion's structure (PLAN §3.2, §5.5) in Dumbledore's ink & parchment: warm parchment backgrounds,
-one font, grey hierarchy, ink for every accent, colour only for meaning.
+Notion's structure (PLAN §3.2, §5.5) in Dumbledore's ink on white: white pages, neutral greys,
+one font, ink for every accent, colour only for meaning.
 Code: `src/renderer/design-system/` (tokens, base, components, styles). Screens:
 `npx playwright test tests/e2e-sim/ui-screens.spec.ts` → `tests/e2e-sim/__screenshots__/route-*.png`
 (every route, light and dark) and `ui-exams-*.png`; page lanes keep their own `ui-<page>-*.png`.
