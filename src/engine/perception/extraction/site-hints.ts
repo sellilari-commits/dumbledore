@@ -1,7 +1,8 @@
 /**
  * App and domain hints for the prefilter: study sites (LMS such as Moodle/MyCourses/Canvas,
- * Wikipedia, docs, papers/arXiv, PDFs, reading apps) push an episode up; entertainment, social,
- * news and shopping push it down. Weights are added to the prefilter score.
+ * Wikipedia, docs, papers/arXiv, PDFs, reading apps) push an episode up; entertainment, social
+ * and shopping push it down. News is neutral: an article with real facts is learnable content, so
+ * its text decides. Weights are added to the prefilter score.
  */
 import { hostMatches, parseUrl } from '../../privacy/url'
 import { isPdf, isReadingApp } from '../episodes/keys'
@@ -174,7 +175,7 @@ const HOSTS: readonly { kind: HintKind; weight: number; patterns: readonly strin
   },
   {
     kind: 'news',
-    weight: -0.3,
+    weight: 0,
     patterns: [
       'yle.fi',
       'hs.fi',

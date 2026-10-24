@@ -45,17 +45,17 @@ export const LlmExtract = z.object({
 })
 export type LlmExtract = z.infer<typeof LlmExtract>
 
-const LEARNING = `LEARNING: course material, textbooks, lecture slides or notes, papers, documentation or tutorials being studied, explanations in AI chats, practice problems, flashcards, educational videos (captions/slides), assignments, exam or deadline information.
-NOT LEARNING: social media, news, shopping, entertainment, messaging small talk, email triage, settings screens, routine work where nothing new is being learned, UI noise (menus, buttons, ads, cookie banners).`
+const LEARNING = `LEARNABLE CONTENT (isLearning=true): facts, explanations, definitions, worked examples, formulas, arguments or ideas that a student could know, understand or be tested on afterwards. For example textbook or course material, lecture slides or notes, papers, encyclopedia and history pages, news and articles with real facts, documentation or tutorials, an AI explaining something, practice problems, flashcards, educational videos (captions/slides), assignments, exam or deadline information.
+NOTHING TO LEARN FROM (isLearning=false): social media feeds, shopping, entertainment, messaging small talk, email triage, settings and sign-in screens, search result lists, just navigating, routine work where nothing new is being learned, UI noise (menus, buttons, ads, cookie banners).`
 
 /** On-device (4K context) keeps the short form; the cloud prompt spells out the real traps. */
-const RULES_COMPACT = `${LEARNING} Coding-agent work on one's own project and Dumbledore's own screens (its sidebar, subject pages, "Step 3 of 8") are not learning. When unsure, isLearning=false. Never invent anything the text does not support.`
+const RULES_COMPACT = `${LEARNING} Coding-agent work on one's own project and Dumbledore's own screens (its sidebar, subject pages, "Step 3 of 8") are not learning. Judge the content, not the intent: real learnable content on screen means isLearning=true; little or nothing to learn from means false. Never invent anything the text does not support.`
 
-const RULES = `${LEARNING.slice(0, -1)} Also NOT LEARNING:
+const RULES = `${LEARNING.slice(0, -1)} Also nothing to learn from:
 - an AI chat's empty start page (greeting, sign-in, terms and cookie text, no question or answer);
 - building or fixing one's own software with a coding agent or AI assistant (edits, builds, signing, permissions, installs, commits, test runs, "Ran a command", task lists) — that is work, even when the AI explains steps, unless the student explicitly asks to understand a concept;
 - the screens of Dumbledore, this study coach, shown in any window (a sidebar "Dumbledore · Search ⌘K · Inbox · Exams · Settings · Subjects", subject pages with goals and progress, "Step 3 of 8", "reviews due", "Struggling with", "Prompting habits", deadlines it lists): these are the coach's own records or demo data, never new evidence, never an assignment.
-Judge an episode by what the student reads, asks or writes, not by subject names that appear in menus or sidebars. When unsure, isLearning=false. Never invent anything the text does not support.`
+Judge an episode by what the student reads, asks or writes, not by subject names that appear in menus or sidebars. Judge the content, not the intent: if the episode has real learnable content the student read, watched or discussed, isLearning=true even when you can't tell whether they meant to study; if there is little or nothing to learn from, isLearning=false. Never invent anything the text does not support.`
 
 const ITEM_RULES = `For each learning episode give one item per distinct topic (usually 1, at most 3):
 - topicPath: broad → specific, 2–4 levels, e.g. ["Organic Chemistry","Nucleophilic substitution","SN1"].
@@ -105,7 +105,7 @@ Example input:
 Example output:
 {"results":[{"episodeId":"x3","reason":"Asking ChatGPT what a derivative is","isLearning":true,"confidence":0.95,"items":[{"topicPath":["Mathematics","Calculus","Derivatives"],"seen":"The AI explained a derivative as the instantaneous rate of change (slope of the tangent line), with position and speed as the analogy: f'(t) is the speed.","bigPicture":"Getting an intuitive grasp of what a derivative means, probably early in a calculus course.","evidence":"Asked 'explain it simpler pls' right after the first explanation.","understanding":"unclear","openQuestions":["How do I actually calculate a derivative?"],"keyTerms":["derivative","rate of change","tangent line","slope"],"subjectMatchId":null,"subjectNewName":"Calculus","assignment":null}],"studentPrompts":[{"text":"what is a derivative","hasContext":false,"hasStructure":false,"asksToBeQuizzed":false,"asksForExamples":false},{"text":"explain it simpler pls","hasContext":false,"hasStructure":false,"asksToBeQuizzed":false,"asksForExamples":false}]}]}`
 
-const SYSTEM_FULL = `You are the perception module of a study coach running on a student's Mac. You receive text read from the student's screen during one or more episodes (a continuous stretch in one app or page) plus behaviour signals. For each episode decide whether the student was trying to learn or understand something; if so, record it so precisely that a tutor could pick up exactly where the student is.
+const SYSTEM_FULL = `You are the perception module of a study coach running on a student's Mac. You receive text read from the student's screen during one or more episodes (a continuous stretch in one app or page) plus behaviour signals. For each episode, ask one question: does it contain learnable content? If yes, write down exactly what was there, precisely enough that a tutor could continue from that point.
 
 ${RULES}
 
@@ -119,7 +119,7 @@ ${OUTPUT_RULES}
 
 ${EXAMPLES}`
 
-const SYSTEM_COMPACT = `You are the perception module of a study coach. From screen text of one episode plus behaviour signals, decide whether the student was trying to learn something, and if so record it precisely.
+const SYSTEM_COMPACT = `You are the perception module of a study coach. From screen text of one episode plus behaviour signals, ask: does it contain learnable content? If yes, write down exactly what was there.
 
 ${RULES_COMPACT}
 
