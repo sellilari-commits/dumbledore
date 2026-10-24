@@ -127,3 +127,14 @@ describe('SessionFlow — checkpoint: "Do you want to have a quiz or continue?"'
     expect(h.core.overlay.state.quiz).toBeNull()
   })
 })
+
+describe('SessionFlow — an early tap while the AI has not answered', () => {
+  it('shows exactly one "waiting for the answer" box (it answers the tap)', async () => {
+    const h = await createHarness()
+    const reason = "Waiting for ChatGPT's answer to this step. Press again to move on anyway."
+    await h.core.sessions.perform({ kind: 'wait', reason })
+    const toasts = h.core.overlay.toasts.list()
+    expect(toasts).toHaveLength(1)
+    expect(toasts[0]?.body).toBe(reason)
+  })
+})

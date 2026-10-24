@@ -115,11 +115,13 @@ export class SessionFlow {
         this.complete(instruction.summary)
         break
       case 'wait':
+        // Answers the student's own tap (e.g. the AI hasn't answered this step yet).
         overlay.showToast({
           kind: 'info',
+          purpose: 'step-waiting',
           title: 'One moment',
           body: instruction.reason,
-          ttlMs: 6000,
+          ttlMs: 4000,
         })
         break
     }

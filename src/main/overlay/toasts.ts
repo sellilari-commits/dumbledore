@@ -18,7 +18,7 @@ export interface ToastActionSpec {
 }
 
 /** Why a box is shown. Only answers to an explicit gesture are shown (OverlayController). */
-export type ToastPurpose = 'selection' | 'instruction-reply' | 'checkpoint-choice'
+export type ToastPurpose = 'selection' | 'instruction-reply' | 'checkpoint-choice' | 'step-waiting'
 
 export interface ToastSpec {
   kind: Toast['kind']

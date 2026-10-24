@@ -43,6 +43,7 @@ const SHOWN_TOASTS: ReadonlySet<ToastPurpose> = new Set([
   'selection',
   'instruction-reply',
   'checkpoint-choice',
+  'step-waiting',
 ])
 
 export type NudgeChoice = 'accept' | 'dismiss' | 'snooze'
