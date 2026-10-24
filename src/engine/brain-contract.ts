@@ -527,4 +527,6 @@ export interface Brain {
   coach(input: CoachInput, opts?: CallOptions): AsyncIterable<CoachEvent>
   writeNudge(input: NudgeInput, opts?: CallOptions): Promise<NudgeOutput>
   buildProfile(input: ProfileInput, opts?: CallOptions): Promise<ProfileOutput>
+  /** P15: which passages of the page being read to read / skim / skip for the student's gaps. */
+  outline(input: OutlineInput, opts?: CallOptions): Promise<OutlineOutput>
 }

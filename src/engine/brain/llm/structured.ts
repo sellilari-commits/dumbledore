@@ -29,6 +29,7 @@ export const DEFAULT_TIMEOUTS: Record<string, number> = {
   suggestPrompt: 6_000,
   writeNudge: 8_000,
   buildProfile: 30_000,
+  outline: 25_000,
   coach: 45_000,
 }
 

@@ -3,6 +3,8 @@
  * flows and the shortcut router, wired to the engine bus. app.ts supplies the Electron platform,
  * the window manager (SurfaceControl) and the broadcast hooks; tests supply fakes.
  */
+
+import { blockReason, excludedBundleIds } from '@engine/privacy'
 import type { EventPayload } from '@shared/ipc'
 import type { AppState, OverlayState } from '@shared/state'
 import { ChatWriter } from './chat/chat-writer'
@@ -13,6 +15,7 @@ import { CoachActions } from './flows/coach-actions'
 import { CoachChat } from './flows/coach-chat'
 import { chatContext, coachContextText } from './flows/context'
 import { NudgeActions } from './flows/nudges'
+import { OutlineFlow } from './flows/outline-flow'
 import { PromptWriter } from './flows/prompt-writer'
 import { RoadmapAdjust } from './flows/roadmap-adjust'
 import { SessionFlow } from './flows/session-flow'
@@ -20,6 +23,7 @@ import { Thinking } from './flows/thinking'
 import { TypedNotes } from './flows/typed-notes'
 import { OverlayController } from './overlay/controller'
 import type { ShellPlatform, SurfaceControl } from './platform'
+import { tapTarget } from './router/last-subject'
 import { PendingWork } from './router/pending'
 import { ShortcutRouter } from './router/shortcut-router'
 import { SuggestionCache } from './router/suggestions'
@@ -167,6 +171,25 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     contextText,
     emitDelta: hooks.onChatDelta,
   })
+  // Outline (right ⌥ on a page being read): the page's lines with their boxes, read fresh and
+  // never from an excluded app or site, marked for the page's subject and saved to it.
+  const outlineFlow = new OutlineFlow({
+    repos,
+    frontWindow: async () => {
+      const settings = repos.settings.get()
+      const res = await helper.call('perceive', {
+        scope: 'frontmost',
+        fresh: true,
+        excludeBundleIds: excludedBundleIds(settings),
+      })
+      const win = res.windows[0] ?? null
+      return win && !blockReason(win, win.url, win.title, settings) ? win : null
+    },
+    subjectFor: () => perception.now()?.subjectId ?? tapTarget(repos)?.subjectId ?? null,
+    outline: (input, opts) => services.brain.outline(input, opts),
+    show: (outline) => overlay.setOutline(outline),
+    changed: (subjectId) => bus.emit('memory:changed', { scope: 'subjects', ids: [subjectId] }),
+  })
   const router = new ShortcutRouter({
     helper,
     ownPid: platform.ownPid,
@@ -183,6 +206,12 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     writer,
     thinking,
     pending,
+    outline: {
+      reading: () => perception.now()?.kind === 'reading',
+      shown: () => overlay.outlineShown,
+      run: (signal) => outlineFlow.run(signal),
+      clear: () => outlineFlow.clear(),
+    },
   })
   const permissions = new PermissionsCache(helper, clock, hooks.onAppStateChange)
   const offs: (() => void)[] = []

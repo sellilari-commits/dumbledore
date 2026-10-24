@@ -22,6 +22,8 @@ import type {
   ImproveInput,
   NudgeInput,
   NudgeOutput,
+  OutlineInput,
+  OutlineOutput,
   PreferencesInput,
   PreferencesOutput,
   ProfileInput,
@@ -307,6 +309,24 @@ export class FakeBrain implements Brain {
     this.record('writeNudge', input)
     if (this.overrides.writeNudge) return this.overrides.writeNudge(input, opts)
     return { title: 'Quick check?', body: input.facts.slice(0, 80) }
+  }
+
+  /** Lines that name one of the gaps are to read, the rest is left unmarked. */
+  async outline(input: OutlineInput, opts?: CallOptions): Promise<OutlineOutput> {
+    this.record('outline', input)
+    if (this.overrides.outline) return this.overrides.outline(input, opts)
+    const gaps = input.gaps.map((g) => g.name.toLowerCase())
+    const hits = input.lines.filter((l) => gaps.some((g) => l.text.toLowerCase().includes(g)))
+    return {
+      summary:
+        hits.length > 0 ? 'This page covers one of your gaps.' : 'Nothing here for your gaps.',
+      ranges: hits.map((l) => ({
+        from: l.i,
+        to: l.i,
+        verdict: 'read' as const,
+        why: `Your gap: ${input.gaps.find((g) => l.text.toLowerCase().includes(g.name.toLowerCase()))?.name ?? ''}`,
+      })),
+    }
   }
 
   async buildProfile(input: ProfileInput, opts?: CallOptions): Promise<ProfileOutput> {

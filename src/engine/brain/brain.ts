@@ -20,6 +20,8 @@ import {
   ImproveInput,
   NudgeInput,
   type NudgeOutput,
+  OutlineInput,
+  type OutlineOutput,
   PreferencesInput,
   type PreferencesOutput,
   ProfileInput,
@@ -66,6 +68,7 @@ import { nudgePrompt } from './prompts/p11-nudge'
 import { profilePrompt } from './prompts/p12-profile'
 import { consolidatePrompt } from './prompts/p13-consolidate'
 import { preferencesPrompt } from './prompts/p14-preferences'
+import { outlinePrompt } from './prompts/p15-outline'
 import { withFeedback } from './prompts/shared'
 
 export interface BrainDeps {
@@ -288,6 +291,9 @@ export function createBrain(deps: BrainDeps = {}): BrainHandle {
       if (input.misses.length === 0) return { diagnoses: [], prompt: '', nextTopic: '' }
       return runStructured(runner, gapsPrompt, input, opts)
     },
+
+    outline: (raw: OutlineInput, opts?: CallOptions): Promise<OutlineOutput> =>
+      runStructured(runner, outlinePrompt, OutlineInput.parse(raw), opts),
 
     improvePrompt: (raw: ImproveInput, opts?: CallOptions): Promise<PromptWithTip> =>
       runStructured(
