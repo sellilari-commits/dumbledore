@@ -230,7 +230,7 @@ export class ShortcutRouter {
             this.deps.prompts.improve(d.draft, chatContext(this.deps.perception)),
           )
           if (signal.aborted) return
-          const out = await writer.write({
+          await writer.write({
             text: r.prompt,
             mode: 'replaceAll',
             target: 'focused',

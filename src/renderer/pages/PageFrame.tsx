@@ -3,14 +3,7 @@
  * "open sidebar" button and traffic-light inset when the sidebar is hidden) and the scrolling
  * page column.
  */
-import {
-  Breadcrumbs,
-  type Crumb,
-  IconButton,
-  Page,
-  Tooltip,
-  TopBar,
-} from '@renderer/design-system'
+import { Breadcrumbs, type Crumb, IconButton, Page, Tooltip, TopBar } from '@renderer/design-system'
 import { useShell } from '@renderer/lib/shell'
 import { PanelLeftOpen } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -38,7 +31,11 @@ export function PageFrame({ crumbs, actions, children, width = 'default' }: Page
             </Tooltip>
           ) : null
         }
-        right={actions ? <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>{actions}</div> : null}
+        right={
+          actions ? (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>{actions}</div>
+          ) : null
+        }
       >
         <Breadcrumbs items={crumbs} />
       </TopBar>

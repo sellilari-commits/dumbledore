@@ -62,7 +62,9 @@ export class FakeClock implements Clock {
   advance(ms: number): void {
     const target = this.current + ms
     for (;;) {
-      const due = this.timers.filter((t) => t.at <= target).sort((a, b) => a.at - b.at || a.id - b.id)[0]
+      const due = this.timers
+        .filter((t) => t.at <= target)
+        .sort((a, b) => a.at - b.at || a.id - b.id)[0]
       if (!due) break
       this.current = due.at
       if (due.every === null) {

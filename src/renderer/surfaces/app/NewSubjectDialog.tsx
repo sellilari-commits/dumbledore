@@ -9,8 +9,30 @@ import { type FormEvent, useState } from 'react'
 import { useLocation } from 'wouter'
 
 export const SUBJECT_EMOJI = [
-  '📘', '🧪', '📐', '🌍', '🧬', '⚛️', '🧮', '📊', '💻', '🏛️', '📜', '🎨',
-  '🎵', '🗣️', '🇫🇮', '🇪🇸', '⚖️', '💼', '🩺', '🧠', '🌱', '🔭', '✍️', '📈',
+  '📘',
+  '🧪',
+  '📐',
+  '🌍',
+  '🧬',
+  '⚛️',
+  '🧮',
+  '📊',
+  '💻',
+  '🏛️',
+  '📜',
+  '🎨',
+  '🎵',
+  '🗣️',
+  '🇫🇮',
+  '🇪🇸',
+  '⚖️',
+  '💼',
+  '🩺',
+  '🧠',
+  '🌱',
+  '🔭',
+  '✍️',
+  '📈',
 ]
 
 export function EmojiPicker({ value, onChange }: { value: string; onChange: (e: string) => void }) {
@@ -18,7 +40,12 @@ export function EmojiPicker({ value, onChange }: { value: string; onChange: (e: 
     <Popover
       label="Pick an icon"
       trigger={
-        <button type="button" className="dd-btn dd-btn--secondary" aria-label={`Icon ${value}, change`} style={{ width: 40, padding: 0, fontSize: 18 }}>
+        <button
+          type="button"
+          className="dd-btn dd-btn--secondary"
+          aria-label={`Icon ${value}, change`}
+          style={{ width: 40, padding: 0, fontSize: 18 }}
+        >
           {value}
         </button>
       }
@@ -92,7 +119,12 @@ export function NewSubjectDialog() {
           <Button variant="ghost" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={() => submit()} disabled={!name.trim()} loading={create.isPending}>
+          <Button
+            variant="primary"
+            onClick={() => submit()}
+            disabled={!name.trim()}
+            loading={create.isPending}
+          >
             Create subject
           </Button>
         </>
@@ -115,11 +147,23 @@ export function NewSubjectDialog() {
         </Field>
         <Field label="Goal" hint="Optional — what does “done” look like?">
           {(id) => (
-            <Input id={id} placeholder="Pass the midterm" value={goal} onChange={(e) => setGoal(e.target.value)} />
+            <Input
+              id={id}
+              placeholder="Pass the midterm"
+              value={goal}
+              onChange={(e) => setGoal(e.target.value)}
+            />
           )}
         </Field>
         <Field label="Deadline" hint="Optional — reviews ramp up before it.">
-          {(id) => <Input id={id} type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />}
+          {(id) => (
+            <Input
+              id={id}
+              type="date"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+            />
+          )}
         </Field>
         <button type="submit" hidden aria-hidden tabIndex={-1} />
       </form>

@@ -57,7 +57,9 @@ function Shell() {
             <Route path="/inbox" component={InboxPage} />
             <Route path="/exams" component={ExamsPage} />
             <Route path="/exams/:id" component={ExamPage} />
-            <Route path="/subjects/:id">{(p) => <Redirect to={`/subjects/${p.id}/roadmap`} replace />}</Route>
+            <Route path="/subjects/:id">
+              {(p) => <Redirect to={`/subjects/${p.id}/roadmap`} replace />}
+            </Route>
             <Route path="/subjects/:id/:view" component={SubjectPage} />
             <Route path="/settings">
               <Redirect to="/settings/general" replace />
@@ -80,7 +82,9 @@ function Routes() {
   return (
     <Switch>
       <Route path="/">
-        {settings.data ? <Redirect to={settings.data.onboardingDone ? '/home' : '/onboarding'} replace /> : null}
+        {settings.data ? (
+          <Redirect to={settings.data.onboardingDone ? '/home' : '/onboarding'} replace />
+        ) : null}
       </Route>
       <Route path="/onboarding" component={OnboardingPage} />
       <Route>
