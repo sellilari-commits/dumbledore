@@ -65,19 +65,10 @@ describe('ShortcutRouter', () => {
     expect(h.core.overlay.state.toasts.map((t) => t.title)).toContain('Why this prompt works')
   })
 
-  it('(c) a tap on typed text only hints at the hold; nothing is written', async () => {
+  it('(c) a tap rewrites typed text in place', async () => {
     const h = await harness()
     await inChatGPT(h, 'what is osmosis')
-    expect(await h.core.router.gesture('tap')).toEqual({ kind: 'hint', hint: 'holdToRewrite' })
-    expect(h.helper.callsTo('input.write')).toHaveLength(0)
-    expect(h.helper.state.fieldValue).toBe('what is osmosis')
-    expect(titles(h)).toContain('Hold ⌥ to rewrite your prompt')
-  })
-
-  it('hold rewrites typed text in place', async () => {
-    const h = await harness()
-    await inChatGPT(h, 'what is osmosis')
-    expect(await h.core.router.gesture('holdStart')).toEqual({
+    expect(await h.core.router.gesture('tap')).toEqual({
       kind: 'improve',
       draft: 'what is osmosis',
     })
@@ -89,29 +80,27 @@ describe('ShortcutRouter', () => {
     expect(titles(h)).toContain('Prompt rewritten')
   })
 
-  it('hold starts thinking at once, and letting go early does not cancel the rewrite', async () => {
+  it('a rewriting tap shows the thinking state until the rewrite lands', async () => {
     const { brain, gate } = slowImprove()
     const h = await harness({ brain })
     await inChatGPT(h, 'draft')
-    const hold = h.core.router.gesture('holdStart')
+    const tap = h.core.router.gesture('tap')
     await flush()
     expect(h.core.thinking.busy).toBe(true)
     expect(h.core.pending.busy).toBe(true)
-    expect(await h.core.router.gesture('holdEnd')).toEqual({ kind: 'ignore' })
-    expect(h.core.pending.busy).toBe(true)
     gate.release()
-    await hold
+    await tap
     expect(h.helper.state.fieldValue).toBe('Better')
     expect(h.core.thinking.busy).toBe(false)
   })
 
-  it('hold rewrites during a study session too', async () => {
+  it('a tap rewrites during a study session too', async () => {
     const h = await harness()
     await inChatGPT(h)
     const orgo = h.services.repos.subjects.findByName('Organic Chemistry')
     await h.core.sessions.start({ subjectId: orgo?.id ?? null, goal: null, question: null })
     h.helper.state.fieldValue = 'why is it unimolecular'
-    expect(await h.core.router.gesture('holdStart')).toEqual({
+    expect(await h.core.router.gesture('tap')).toEqual({
       kind: 'improve',
       draft: 'why is it unimolecular',
     })
@@ -119,27 +108,31 @@ describe('ShortcutRouter', () => {
     expect(h.helper.state.fieldValue).toMatch(/why is it unimolecular/)
   })
 
-  it('hold on an empty chat box, or outside an AI chat, opens the chat with subject choices', async () => {
+  it('hold opens the chat with subject choices, in or outside an AI chat, and writes nothing', async () => {
     const h = await harness()
-    await inChatGPT(h)
+    await inChatGPT(h, 'typed text stays as it is')
     expect(await h.core.router.gesture('holdStart')).toEqual({ kind: 'chooseSubject' })
     expect(h.surfaces.log).toEqual(['open:askbar:choose'])
+    expect(h.helper.callsTo('ax.readFocusedValue')).toHaveLength(0)
+    expect(await h.core.router.gesture('holdEnd')).toEqual({ kind: 'ignore' })
     await h.surfaces.close('askbar')
     h.helper.activateApp(NOTES)
     await flush()
     h.helper.state.focused = makeFocused(NOTES, { role: 'AXWebArea', editable: false })
     expect(await h.core.router.gesture('holdStart')).toEqual({ kind: 'chooseSubject' })
     expect(h.helper.callsTo('input.write')).toHaveLength(0)
+    expect(h.helper.state.fieldValue).toBe('typed text stays as it is')
     expect(h.services.study.current()).toBeNull()
   })
 
-  it('a chip click rewrites typed text; the orb click only hints', async () => {
+  it('a chip click and an orb click both rewrite typed text', async () => {
     const h = await harness()
     await inChatGPT(h, 'what is osmosis')
-    expect(await h.core.router.orbClick()).toEqual({ kind: 'hint', hint: 'holdToRewrite' })
     expect(await h.core.router.chipClick()).toEqual({ kind: 'improve', draft: 'what is osmosis' })
     expect(h.helper.state.fieldValue).toMatch(/what is osmosis/)
-    expect(h.helper.callsTo('input.write')).toHaveLength(1)
+    h.helper.state.fieldValue = 'what is diffusion'
+    expect(await h.core.router.orbClick()).toEqual({ kind: 'improve', draft: 'what is diffusion' })
+    expect(h.helper.callsTo('input.write')).toHaveLength(2)
   })
 
   it('(a) pastes the next roadmap step while a session runs in the chat', async () => {
@@ -152,9 +145,12 @@ describe('ShortcutRouter', () => {
     expect(await h.core.router.gesture('tap')).toEqual({ kind: 'sessionNext' })
     expect(h.services.study.current()?.index).toBe(1)
     expect(h.helper.state.fieldValue).toMatch(/Pass the midterm mechanism/)
-    expect(h.helper.callsTo('ax.readFocusedValue')).toHaveLength(0)
+    // In the chat box the field is read once, to tell an empty box from typed text.
+    expect(h.helper.callsTo('ax.readFocusedValue')).toHaveLength(1)
     // The next item is a checkpoint: the side stack shows Quiz, and a tap opens the quiz card.
     expect(h.core.overlay.state.side).toEqual({ next: null, quiz: true })
+    // The student sent the pasted step, so the box is empty again (text in it would be rewritten).
+    h.helper.state.fieldValue = ''
     await h.core.router.gesture('tap')
     expect(h.core.overlay.state.quiz).not.toBeNull()
     // With the quiz card open, a tap acts as Enter on the overlay.
@@ -233,9 +229,9 @@ describe('ShortcutRouter', () => {
     expect(h.surfaces.lastOptions?.nearField).toEqual(CHAT_FRAME)
     expect(await h.core.router.gesture('tap')).toEqual({ kind: 'enter', surface: 'askbar' })
     expect(h.surfaces.enters).toEqual(['askbar'])
-    expect(await h.core.router.gesture('holdStart')).toEqual({ kind: 'ignore' })
+    expect(await h.core.router.gesture('holdStart')).toEqual({ kind: 'focusAskbar' })
     expect(await h.core.router.gesture('doubleTap')).toEqual({ kind: 'focusAskbar' })
-    expect(h.surfaces.log).toEqual(['open:askbar', 'open:askbar'])
+    expect(h.surfaces.log).toEqual(['open:askbar', 'open:askbar', 'open:askbar'])
   })
 
   it('a long press on the orb opens the chat window', async () => {
@@ -277,11 +273,11 @@ describe('ShortcutRouter', () => {
     expect(titles(h)).toContain('Password field')
   })
 
-  it('Esc cancels pending work and nothing is written', async () => {
+  it('Esc cancels a pending tap rewrite and nothing is written', async () => {
     const { brain, gate } = slowImprove()
     const h = await harness({ brain })
     await inChatGPT(h, 'draft')
-    const pending = h.core.router.gesture('holdStart')
+    const pending = h.core.router.gesture('tap')
     await flush()
     expect(h.core.pending.busy).toBe(true)
     expect(h.core.router.cancel()).toBe(true)
@@ -292,13 +288,13 @@ describe('ShortcutRouter', () => {
     expect(h.core.pending.busy).toBe(false)
   })
 
-  it('ignores a second hold while work is pending', async () => {
+  it('ignores a second rewriting tap while work is pending', async () => {
     const { brain, gate } = slowImprove()
     const h = await harness({ brain })
     await inChatGPT(h, 'draft')
-    const first = h.core.router.gesture('holdStart')
+    const first = h.core.router.gesture('tap')
     await flush()
-    await h.core.router.gesture('holdStart')
+    await h.core.router.gesture('tap')
     gate.release()
     await first
     expect(h.helper.callsTo('input.write')).toHaveLength(1)

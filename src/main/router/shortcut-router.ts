@@ -7,7 +7,8 @@
  * is written if the app or field changed meanwhile (ChatWriter checks the snapshot).
  *
  * A key tap waits out the double-tap window first (TapGuard), so a double-tap only opens the
- * chat window. A hold starts the rewrite at once (orb thinking); its release cancels nothing.
+ * chat window. A tap that rewrites shows the orb thinking while the rewrite runs. A hold only
+ * opens the chat window (with subject choices); its release does nothing.
  */
 import type {
   HelperClient,
@@ -26,7 +27,7 @@ import type { Thinking } from '../flows/thinking'
 import type { ToastSpec } from '../overlay/toasts'
 import type { SurfaceControl } from '../platform'
 import { type Decision, decide, type RouteContext, type RouteInput } from './decide'
-import { hintToast, REFUSE_SECURE, unreadableToast } from './hints'
+import { REFUSE_SECURE, unreadableToast } from './hints'
 import { lastStudiedSubject } from './last-subject'
 import type { PendingWork } from './pending'
 import { selectionToast } from './selection-actions'
@@ -182,9 +183,6 @@ export class ShortcutRouter {
         return
       case 'unreadable':
         overlay.showToast(unreadableToast(this.key()))
-        return
-      case 'hint':
-        overlay.showToast(hintToast(d.hint, this.key()))
         return
       case 'sessionNext':
         await pending.run((signal) =>

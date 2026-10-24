@@ -135,9 +135,9 @@ describe('satellites', () => {
     expect(sentTypes(local)).toEqual(['chipClick'])
   })
 
-  it('improve chip reads "Improve prompt · ⌥"', async () => {
+  it('improve chip reads "Rewrite prompt · ⌥"', async () => {
     await mount('improve')
-    expect(screen.getByTestId('suggestion-chip').textContent).toBe('Improve prompt·⌥')
+    expect(screen.getByTestId('suggestion-chip').textContent).toBe('Rewrite prompt·⌥')
   })
 
   it('side stack: Next and Quiz, long press opens the Ask bar', async () => {
@@ -214,7 +214,7 @@ describe('orb tooltip', () => {
     expect(screen.queryByRole('tooltip')).toBeNull()
     act(() => vi.advanceTimersByTime(500))
     expect(screen.getByRole('tooltip').textContent).toBe(
-      'Dumbledore· right ⌥ · hold: rewrite or pick · double-tap: chat',
+      'Dumbledore· right ⌥ · tap: prompt · hold or double-tap: chat',
     )
     fireEvent.pointerLeave(screen.getByTestId('orb'))
     expect(screen.queryByRole('tooltip')).toBeNull()

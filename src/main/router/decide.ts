@@ -1,18 +1,18 @@
 /**
  * The shortcut decision table (PLAN §4 D8, §5.3 F4, §5.6), as a pure function.
  *
- * Tap (and an orb click) resolves in order: ask bar / quiz card open → Enter · password field →
- * refuse · (a) session in an AI chat → next step · (b) `/d …` line in the field → instruction ·
- * (c) AI-chat box: the student's own text → hint "hold to rewrite", empty → study the subject
- * worked on last · (d) selection → actions toast · (e) AI chat open → study the subject worked on
- * last · (f) else → toggle the mini panel. A click on the suggestion chip is a tap, except that it
- * inserts the suggested prompt into an empty box and rewrites typed text (what the chip offers).
+ * Short press = the prompt (Ilari, 2026-10-24). Tap (and an orb click) resolves in order: ask bar
+ * / quiz card open → Enter · password field → refuse · in the AI-chat box: `/d …` line →
+ * instruction, the student's own text → rewrite it in place (also during a session), empty → the
+ * next step of a running session, else study the subject worked on last · (a) session in an AI
+ * chat → next step · (b) `/d …` line in another field → instruction · (c) selection → actions
+ * toast · (d) AI chat open → study the subject worked on last · (e) else → toggle the mini panel.
+ * A click on the suggestion chip is a tap, except that it inserts the suggested prompt into an
+ * empty box.
  *
- * Hold (holdStart): ask bar / quiz open → nothing · password field → refuse · `/d …` line →
- * instruction · AI-chat box with text → rewrite it in place (also during a session) · anything
- * else (empty box, not in an AI chat) → the chat window with subject choices on top. holdEnd →
- * nothing, so letting go early never cancels the rewrite. Double-tap → the chat window (ask bar);
- * focus it when it is already open.
+ * Long press (holdStart) and double-tap open the chat window: the hold with subject choices on
+ * top, the double-tap plain; both focus it when it is already open. A quiz card swallows the
+ * hold. holdEnd → nothing.
  *
  * The field value and the selection are read from the helper only on an explicit gesture, and
  * only when the table needs them: `decide` returns `need` until the caller supplies them.
@@ -41,9 +41,6 @@ export interface RouteContext {
 /** What the student did: a trigger-key gesture, or a click on the suggestion chip. */
 export type RouteInput = Gesture | 'chip'
 
-/** holdToRewrite: a tap on the student's own text in an AI-chat box. */
-export type Hint = 'holdToRewrite'
-
 export type Decision =
   | { kind: 'ignore' }
   | { kind: 'askbar' }
@@ -58,7 +55,6 @@ export type Decision =
   | { kind: 'instruction'; text: string; wholeField: boolean }
   | { kind: 'suggest' }
   | { kind: 'improve'; draft: string }
-  | { kind: 'hint'; hint: Hint }
   | { kind: 'unreadable' }
   | { kind: 'selection'; text: string }
   | { kind: 'togglePanel' }
@@ -110,19 +106,8 @@ function draftOf(ctx: RouteContext): { draft: string } | 'unreadable' | 'empty' 
 }
 
 function decideHold(ctx: RouteContext): Decision {
-  if (ctx.askbarOpen || ctx.quizOpen) return { kind: 'ignore' }
-  if (isSecure(ctx)) return { kind: 'refuseSecure' }
-  if (ctx.focused?.editable) {
-    if (ctx.fieldText === undefined) return { kind: 'need', what: 'fieldText' }
-    const line = instructionLine(ctx.fieldText)
-    if (line) return { kind: 'instruction', text: line.text, wholeField: line.wholeField }
-    if (inChatBox(ctx)) {
-      const d = draftOf(ctx)
-      if (d === 'unreadable') return { kind: 'unreadable' }
-      if (d !== 'empty') return { kind: 'improve', draft: d.draft }
-    }
-  }
-  return { kind: 'chooseSubject' }
+  if (ctx.quizOpen) return { kind: 'ignore' }
+  return ctx.askbarOpen ? { kind: 'focusAskbar' } : { kind: 'chooseSubject' }
 }
 
 function decideTap(input: 'tap' | 'chip', ctx: RouteContext): Decision {
@@ -131,20 +116,23 @@ function decideTap(input: 'tap' | 'chip', ctx: RouteContext): Decision {
   if (isSecure(ctx)) return { kind: 'refuseSecure' }
 
   const chat = ctx.aiChat
+  if (ctx.focused?.editable && inChatBox(ctx)) {
+    if (ctx.fieldText === undefined) return { kind: 'need', what: 'fieldText' }
+    const line = instructionLine(ctx.fieldText)
+    if (line) return { kind: 'instruction', text: line.text, wholeField: line.wholeField }
+    const d = draftOf(ctx)
+    if (d === 'unreadable') return { kind: 'unreadable' }
+    if (d !== 'empty') return { kind: 'improve', draft: d.draft }
+    if (ctx.sessionActive) return { kind: 'sessionNext' }
+    return input === 'chip' ? { kind: 'suggest' } : { kind: 'studyLast' }
+  }
+
   if (ctx.sessionActive && chat) return { kind: 'sessionNext' }
 
   if (ctx.focused?.editable) {
     if (ctx.fieldText === undefined) return { kind: 'need', what: 'fieldText' }
     const line = instructionLine(ctx.fieldText)
     if (line) return { kind: 'instruction', text: line.text, wholeField: line.wholeField }
-    if (inChatBox(ctx)) {
-      const d = draftOf(ctx)
-      if (d === 'unreadable') return { kind: 'unreadable' }
-      if (d === 'empty') return input === 'chip' ? { kind: 'suggest' } : { kind: 'studyLast' }
-      return input === 'chip'
-        ? { kind: 'improve', draft: d.draft }
-        : { kind: 'hint', hint: 'holdToRewrite' }
-    }
   }
 
   if (ctx.selection === undefined) return { kind: 'need', what: 'selection' }

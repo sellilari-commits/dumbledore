@@ -284,7 +284,7 @@ Machine: macOS 26.4.1, Apple M1 Pro, 16 GB · Node 24.20 / npm 11.19 · Swift 6.
 | D5 | **Free AI in three layers:** Apple's on-device model for extraction; Groq's free tier for roadmaps, quizzes and prompts; keyless OVHcloud (EU) as the fallback. All sit behind one router with budgets and a local prefilter. | Free tiers shrank in 2026 (§3.3). On-device extraction removes the biggest token load and keeps most screen text on the Mac. |
 | D6 | **Paste, never auto-send** (setting, off by default). | The student stays in control and reads every prompt before sending. |
 | D7 | **The orb never takes keyboard focus** (verified in 14 of 14 runs). Surfaces you type into (Ask bar, panel chat, picker search) briefly activate Dumbledore. They then hand focus back to the exact chat box, checked, before anything is pasted. | Otherwise pasting into ChatGPT breaks. Electron can't yet take typing without activating the app. If the hand-back proves flaky, the Ask bar moves into the helper as a native panel. |
-| D8 | **Right ⌥: tap = "do the smart thing", hold = rewrite the prompt in the AI chat box, double-tap = chat window** (changed 2026-10-24 at Ilari's request; it was hold or double-tap = Ask bar). Only a clean tap counts. Detected by polling the modifier state, as Goldfish does. | ⌥ is a character modifier on many layouts (Finnish: ⌥2 = @), so a press combined with another key is ignored. Polling avoids the extra Input Monitoring permission. The key is remappable and has a fallback chord. |
+| D8 | **Right ⌥: tap = the prompt (empty box: write one for what you studied last; in a session: the next step; your text: rewrite it in place, ⌘Z restores), hold = chat window with your subjects on top, double-tap = chat window.** Changed 2026-10-24 at Ilari's request (final): the rewrite moved from hold to tap, and hold now opens the chat; earlier, hold or double-tap = Ask bar. Only a clean tap counts. Detected by polling the modifier state, as Goldfish does. | ⌥ is a character modifier on many layouts (Finnish: ⌥2 = @), so a press combined with another key is ignored. Polling avoids the extra Input Monitoring permission. The key is remappable and has a fallback chord. |
 | D9 | **Dumbledore quizzes; the student's AI teaches.** Checkpoints run in Dumbledore's own quiz card. | Reliable scoring, instant feedback, clean carry-over. Teaching happens in the student's tool of choice, which is the skill we want to build. |
 | D10 | **Own Notion-clone design system**: Radix primitives for behaviour, our CSS for looks. No UI kit. | A UI kit would fight the Notion look. |
 | D11 | **Quizzes are generated just in time** (one step ahead), not when the roadmap is made. | Questions then match what the AI actually explained and include the latest misses. |
@@ -472,12 +472,12 @@ Exam results:
 |---|---|---|
 | Tap | Study session running in an AI chat | Paste the next step, or open the quiz when a checkpoint is next |
 | Tap | Line in a text field starts with `/d ` | Run the rest as an instruction to Dumbledore ("/d quiz me on chapter 3", "/d make it simpler"); Goldfish's `/g` idea |
-| Tap | AI chat box focused, empty | Insert the suggested prompt |
-| Tap | AI chat box focused, with your text | A hint: hold ⌥ to rewrite it |
+| Tap | AI chat box focused, empty | Write and paste a prompt for what you studied last |
+| Tap | AI chat box focused, with your text (also during a session) | Rewrite your prompt in place; ⌘Z restores it |
 | Tap | Text selected anywhere | Attach the selection: "Explain this with ChatGPT · Add to a roadmap · Quiz me on this" |
 | Tap | AI chat open, no session | Open the subject picker |
 | Tap | Anywhere else | Open the mini panel; tap again to close it |
-| Hold ≥ 500 ms | AI chat box with your text (also during a session) | Rewrite your prompt in place; ⌘Z restores it |
+| Hold ≥ 500 ms | Anywhere | Chat window with Dumbledore, your subjects on top to pick from |
 | Double-tap | Anywhere | Chat window: a multi-turn chat with Dumbledore |
 | Tap | Ask bar or quiz card open | Acts as Enter: send / next question |
 | Esc | Any Dumbledore surface or pending action | Cancel or close; nothing is written |

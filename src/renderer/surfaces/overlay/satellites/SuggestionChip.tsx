@@ -1,6 +1,6 @@
 /**
  * Suggestion chip beside the docked orb. Empty chat box: "✨ <first ~50 chars of the suggested
- * prompt> ⌥". Typed text: "Improve prompt · ⌥". Click (or right ⌥) inserts / rewrites.
+ * prompt> ⌥". Typed text: "Rewrite prompt · ⌥". Click (or a tap of right ⌥) inserts / rewrites.
  */
 import type { OverlayState } from '@shared/state'
 import { type Anchor, anchorStyle } from '../lib/layout'
@@ -26,7 +26,7 @@ export function previewText(text: string, max = CHIP_CHARS): string {
 
 export function SuggestionChip({ chip, anchor, onClick }: Props) {
   const improve = chip.kind === 'improve'
-  const text = improve ? 'Improve prompt' : previewText(chip.text)
+  const text = improve ? 'Rewrite prompt' : previewText(chip.text)
   return (
     <button
       type="button"
@@ -35,7 +35,7 @@ export function SuggestionChip({ chip, anchor, onClick }: Props) {
       data-kind={chip.kind}
       data-testid="suggestion-chip"
       title={improve ? undefined : chip.text}
-      aria-label={improve ? 'Improve prompt (right Option)' : `Insert prompt: ${chip.text}`}
+      aria-label={improve ? 'Rewrite prompt (tap right Option)' : `Insert prompt: ${chip.text}`}
       style={anchorStyle(anchor)}
       onClick={onClick}
     >

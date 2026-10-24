@@ -1,9 +1,8 @@
 /**
  * The "learn the key" lesson as a small state machine over trigger-key gestures: a clean tap
  * of the configured key passes; a wrong key ("That’s left ⌥ — tap right ⌥ instead") or a hold
- * before the first tap get a coaching line instead. After the tap, the hold (rewrite your prompt,
- * or pick a subject) and the double-tap (chat with Dumbledore) are explained and recognised. `react` is exported
- * for tests.
+ * before the first tap get a coaching line instead. After the tap, the hold (the chat, subjects on
+ * top) and the double-tap (the chat) are explained and recognised. `react` is exported for tests.
  */
 import { type KeyGesture, useKeyGestures } from '@renderer/lib/gestures'
 import type { Settings, TriggerKey } from '@shared/domain'
@@ -55,6 +54,8 @@ export function initialLesson(key: TriggerKey): LessonState {
   }
 }
 
+const HOLD = 'it opens the chat with Dumbledore, your subjects on top'
+
 /** The next lesson state after one gesture. Pure, so it is easy to test. */
 export function react(state: LessonState, g: KeyGesture, key: TriggerKey): LessonState {
   const want = keyName(key)
@@ -76,7 +77,7 @@ export function react(state: LessonState, g: KeyGesture, key: TriggerKey): Lesso
         verdict: !state.tapped
           ? {
               tone: 'good',
-              text: `That’s it — tap ${want} in an AI chat to study what you worked on last.`,
+              text: `That’s it — tap ${want} in an AI chat for a prompt on what you studied last.`,
             }
           : { tone: 'good', text: `That’s a tap. ${nextMove(state)}` },
       }
@@ -99,11 +100,11 @@ export function react(state: LessonState, g: KeyGesture, key: TriggerKey): Lesso
         verdict: state.tapped
           ? {
               tone: 'good',
-              text: 'Holding… this rewrites the prompt you typed, or lets you pick a subject.',
+              text: 'Holding… this opens the chat with Dumbledore, your subjects on top.',
             }
           : {
               tone: 'warn',
-              text: `That’s a hold — it rewrites your prompt or lets you pick a subject. First a quick tap: press ${want} and let go.`,
+              text: `That’s a hold — ${HOLD}. First a quick tap: press ${want} and let go.`,
             },
       }
     case 'holdEnd': {
@@ -114,7 +115,7 @@ export function react(state: LessonState, g: KeyGesture, key: TriggerKey): Lesso
         down: false,
         verdict: {
           tone: 'good',
-          text: `That’s a hold: it rewrites the prompt you typed, or lets you pick a subject. ${nextMove(next)}`,
+          text: `That’s a hold: ${HOLD}. ${nextMove(next)}`,
         },
       }
     }

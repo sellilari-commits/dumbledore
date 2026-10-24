@@ -1,9 +1,9 @@
 /**
  * Onboarding 5/5 — learn the Dumbledore key by pressing it. A big keycap mirrors the key
  * (pressed while held, a press animation on every tap), a live line coaches ("That’s left ⌥ —
- * tap right ⌥…"), and a checklist explains tap (study what you worked on last / next step), hold
- * (rewrite your prompt, or pick a subject) and double-tap (chat with Dumbledore). Continue unlocks after the
- * first clean tap. If right ⌥ is taken (Goldfish, Claude Desktop), the conflict note offers
+ * tap right ⌥…"), and a checklist explains tap (the prompt: written for what you studied last, the
+ * next step, or yours rewritten), hold (the chat, subjects on top) and double-tap (the chat).
+ * Continue unlocks after the first clean tap. If right ⌥ is taken (Goldfish, Claude Desktop), the conflict note offers
  * right ⌘ instead.
  */
 import { Button } from '@renderer/design-system'
@@ -114,13 +114,14 @@ export function KeyStep({
       </div>
       <ul className="dd-onb__lessons">
         <Lesson done={lesson.tapped} title="Tap">
-          Studies what you worked on last in ChatGPT or any AI chat, or pastes the next step.
+          Writes the prompt in ChatGPT or any AI chat: for what you studied last, or the next step.
+          Typed your own? It rewrites it (⌘Z undoes).
         </Lesson>
         <Lesson done={lesson.held} title="Hold">
-          Rewrites the prompt you typed (⌘Z undoes it). With nothing typed, pick a subject.
+          Opens the chat with Dumbledore, your subjects on top to pick from.
         </Lesson>
         <Lesson done={lesson.doubled} title="Double-tap">
-          Chat with Dumbledore: ask anything, or tell it what to do next.
+          Opens the chat with Dumbledore.
         </Lesson>
       </ul>
       {shortcut.key === 'rightOption' ? (

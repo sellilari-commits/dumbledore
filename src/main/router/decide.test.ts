@@ -34,10 +34,20 @@ describe('decide — the F4 tap table', () => {
     })
   })
 
-  it('(a) pastes the next step when a session runs in an AI chat — before reading anything', () => {
-    expect(decide('tap', ctx({ sessionActive: true, aiChat: CHAT, focused: chatBox(5) }))).toEqual({
+  it('(a) pastes the next step when a session runs in an AI chat — outside the box, before reading anything', () => {
+    const page = { pid: 501, editable: false, secure: false, valueLength: null }
+    expect(decide('tap', ctx({ sessionActive: true, aiChat: CHAT, focused: page }))).toEqual({
       kind: 'sessionNext',
     })
+    expect(decide('tap', ctx({ sessionActive: true, aiChat: CHAT }))).toEqual({
+      kind: 'sessionNext',
+    })
+  })
+
+  it('(a) in the AI-chat box, a session reads the field first; empty → the next step', () => {
+    const session = { sessionActive: true, aiChat: CHAT, focused: chatBox() }
+    expect(decide('tap', ctx(session))).toEqual({ kind: 'need', what: 'fieldText' })
+    expect(decide('tap', ctx({ ...session, fieldText: '  ' }))).toEqual({ kind: 'sessionNext' })
   })
 
   it('does not treat a session without an AI chat as (a)', () => {
@@ -68,13 +78,33 @@ describe('decide — the F4 tap table', () => {
     })
   })
 
-  it('(c) studies the last subject from an empty AI-chat box; typed text gets the hint', () => {
+  it('(c) studies the last subject from an empty AI-chat box; typed text is rewritten in place', () => {
     expect(decide('tap', ctx({ aiChat: CHAT, focused: chatBox(), fieldText: '' }))).toEqual({
       kind: 'studyLast',
     })
     expect(
       decide('tap', ctx({ aiChat: CHAT, focused: chatBox(15), fieldText: ' what is osmosis ' })),
-    ).toEqual({ kind: 'hint', hint: 'holdToRewrite' })
+    ).toEqual({ kind: 'improve', draft: 'what is osmosis' })
+  })
+
+  it('(c) a tap rewrites typed text during a session too', () => {
+    expect(
+      decide(
+        'tap',
+        ctx({
+          sessionActive: true,
+          aiChat: CHAT,
+          focused: chatBox(15),
+          fieldText: 'what is osmosis',
+        }),
+      ),
+    ).toEqual({ kind: 'improve', draft: 'what is osmosis' })
+  })
+
+  it('a tap never rewrites a field outside the AI-chat box', () => {
+    expect(
+      decide('tap', ctx({ aiChat: CHAT, focused: notesField, fieldText: 'x', selection: '' })),
+    ).toEqual({ kind: 'studyLast' })
   })
 
   it('a chip click is a tap that rewrites typed text', () => {
@@ -117,66 +147,33 @@ describe('decide — the F4 tap table', () => {
   })
 })
 
-describe('decide — hold rewrites, double-tap opens the chat window', () => {
+describe('decide — hold opens the chat with choices, double-tap opens it plain', () => {
   const typed = { aiChat: CHAT, focused: chatBox(15), fieldText: 'what is osmosis' }
 
-  it('hold reads the field, then rewrites typed text in an AI-chat box', () => {
+  it('hold opens the chat window with subject choices, without reading anything', () => {
+    expect(decide('holdStart', ctx())).toEqual({ kind: 'chooseSubject' })
     expect(decide('holdStart', ctx({ aiChat: CHAT, focused: chatBox(15) }))).toEqual({
-      kind: 'need',
-      what: 'fieldText',
+      kind: 'chooseSubject',
     })
-    expect(decide('holdStart', ctx(typed))).toEqual({ kind: 'improve', draft: 'what is osmosis' })
+    expect(decide('holdStart', ctx({ focused: notesField }))).toEqual({ kind: 'chooseSubject' })
   })
 
-  it('hold rewrites during a session too', () => {
+  it('hold never rewrites, runs instructions or pastes the next step', () => {
     expect(decide('holdStart', ctx({ ...typed, sessionActive: true }))).toEqual({
-      kind: 'improve',
-      draft: 'what is osmosis',
+      kind: 'chooseSubject',
     })
-  })
-
-  it('hold runs a `/d …` line as an instruction', () => {
     expect(
       decide('holdStart', ctx({ aiChat: CHAT, focused: chatBox(9), fieldText: '/d simpler' })),
-    ).toEqual({ kind: 'instruction', text: 'simpler', wholeField: true })
-    expect(decide('holdStart', ctx({ focused: notesField, fieldText: '/d quiz me' }))).toEqual({
-      kind: 'instruction',
-      text: 'quiz me',
-      wholeField: true,
-    })
-  })
-
-  it('hold on an empty AI-chat box, or the chat outside its box, offers the subjects', () => {
-    expect(decide('holdStart', ctx({ aiChat: CHAT, focused: chatBox(), fieldText: ' ' }))).toEqual({
-      kind: 'chooseSubject',
-    })
-    const page = { pid: 501, editable: false, secure: false, valueLength: null }
-    expect(decide('holdStart', ctx({ aiChat: CHAT, focused: page, sessionActive: true }))).toEqual({
-      kind: 'chooseSubject',
-    })
-  })
-
-  it('hold reports an unreadable chat box that has text', () => {
-    expect(
-      decide('holdStart', ctx({ aiChat: CHAT, focused: chatBox(12), fieldText: null })),
-    ).toEqual({ kind: 'unreadable' })
-  })
-
-  it('hold outside an AI chat offers the subjects and never rewrites other fields', () => {
-    expect(decide('holdStart', ctx())).toEqual({ kind: 'chooseSubject' })
-    expect(decide('holdStart', ctx({ focused: notesField, fieldText: 'hello' }))).toEqual({
-      kind: 'chooseSubject',
-    })
-    expect(decide('holdStart', ctx({ aiChat: CHAT, focused: notesField, fieldText: 'x' }))).toEqual(
-      { kind: 'chooseSubject' },
-    )
-  })
-
-  it('hold refuses password fields and is ignored over the ask bar or quiz card', () => {
+    ).toEqual({ kind: 'chooseSubject' })
     expect(decide('holdStart', ctx({ ...typed, secureInput: true }))).toEqual({
-      kind: 'refuseSecure',
+      kind: 'chooseSubject',
     })
-    expect(decide('holdStart', ctx({ ...typed, askbarOpen: true }))).toEqual({ kind: 'ignore' })
+  })
+
+  it('hold focuses the chat window when it is already open; a quiz card swallows it', () => {
+    expect(decide('holdStart', ctx({ ...typed, askbarOpen: true }))).toEqual({
+      kind: 'focusAskbar',
+    })
     expect(decide('holdStart', ctx({ ...typed, quizOpen: true }))).toEqual({ kind: 'ignore' })
   })
 
