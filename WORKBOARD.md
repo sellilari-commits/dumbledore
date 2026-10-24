@@ -9,7 +9,6 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
 | 2026-10-25 14:40 | Olle / Claude | Overnight QA: fresh install works from a clean clone (helper builds on the macOS 15 SDK, npm ci fetches Electron, one install-app script, README), repo-wide lint clean, then fixes in unclaimed areas from a full audit | `native/helper/Sources/DumbledoreHelper/{OnDevice,JSONSchema,SelfTest}.swift`, `native/helper/build.sh`, `package.json` (allowScripts, scripts), `tools/install-app.sh` (new), `README.md` (new), `biome.json` (lint scope), `resources/brand/*.svg` + `tools/brand/build-icons.ts` + `src/shared/brand-mark.ts` (svg title), `docs/progress/QA-overnight.md` (new); OCR (`native/helper/.../OCR.swift`, `tests/integration/helper-ocr.test.ts`); surfaces audit fixes: `src/main/router/{decide,shortcut-router,hints}.ts` (+ tests), `src/main/chat/chat-writer.ts` (toast purpose), `src/main/overlay/{toasts,controller}.ts`, `src/main/flows/outline-flow.ts`, `src/main/app.ts` (chord source, quiz keys), `src/main/tray.ts`, `src/renderer/surfaces/overlay/` (OverlayApp, outline, styles/base.css, main.tsx theme) | main | Nothing in Ilari's claimed files; findings there go to the QA report. Pushed: fresh install fixes |
-| 2026-10-25 15:20 | Ilari / Claude | Memory page: each topic ends with an "All extracted text" link that opens a text file with everything captured about it (screen text by source, extracted records, notes) | `src/main/data/topic-text.ts` (+ test, new), `src/shared/ipc.ts` (concepts.openText, additive), `src/main/ipc/handlers.ts` (that handler), `src/renderer/pages/inbox/ByTopicView.tsx` + `memory.css` + `InboxPage.test.tsx`, `src/renderer/lib/mock/` (that channel), `ui-inbox-*` / `route-inbox-*` screenshots | main | Course/Memory redesign and inline chat dropped (Ilari) |
 
 ## Done recently
 
@@ -17,6 +16,7 @@ Newest first; keep about the last 20 entries.
 
 | Finished (UTC) | Who / agent | Work | Commit |
 |---|---|---|---|
+| 2026-10-25 | Ilari / Claude | Memory page: each topic ends with "All extracted text", a text file of everything captured about it (screen text by source, extracted records, notes) | b65129c |
 | 2026-10-25 | Ilari / Claude | Double-tap chat takes no notes: Note toggle, "note:" saving and note Undo removed; hint "Ask anything or give feedback on your study plan." (stored notes, Memory page, highlight notes untouched) | 95d67ed |
 | 2026-10-25 | Ilari / Claude | Memory cleanup, cut down to ingestion (no second cleaning pass, episode text kept): highlight fragments trimmed/dropped at capture, P1 leaves out glued page controls; topics unite their sources (P13 v2 unite + big picture, ~30 s after a new page, moves a concept to another subject), sources in subjects.tree and the roadmap input | f59f222, c20d040 |
 | 2026-10-25 | Olle / Claude | Outline: right ⌥ on a page being read marks what to read for the subject's gaps (highlighter + reading order + spotlight), follows the scroll, saves passages to the subject | see log (eb4f458…) |
