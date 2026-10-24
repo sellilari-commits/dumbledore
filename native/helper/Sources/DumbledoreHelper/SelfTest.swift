@@ -84,6 +84,13 @@ enum SelfTest {
     chatWithSidebar()
     expect(Layout.analyze([CGRect(x: 0, y: 0, width: 10, height: 10)]).order == [0], "single box")
     expect(Layout.analyze([]).order.isEmpty, "no boxes")
+    // Real-screen shapes that overflowed the perceive thread's stack: a header group that is
+    // the whole input (near-zero-height frames), and a very long row of separate items.
+    let flat = [CGRect(x: 0, y: 0, width: 300, height: 10), CGRect(x: 0, y: 12, width: 300, height: 10.9),
+                CGRect(x: 400, y: 22.5, width: 50, height: 0.5), CGRect(x: 400, y: 22.5, width: 50, height: 0.5)]
+    expect(Layout.analyze(flat).order.count == flat.count, "whole-group header terminates")
+    let toolbar = (0..<600).map { CGRect(x: CGFloat($0 * $0) / 10, y: 0, width: 4, height: 10) }
+    expect(Layout.analyze(toolbar).order.count == toolbar.count, "long row stays under the depth cap")
   }
 
   /// ChatGPT-like window: sidebar, model name, bubbles, composer and a centred footer.

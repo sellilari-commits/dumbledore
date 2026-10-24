@@ -12,9 +12,14 @@
 // (text-weighted clusters of left / right edges), so a short header further out does not move
 // them. A tight block that sits right in its column (a user bubble) is `right` as a whole, even
 // when its text is left-aligned inside the bubble.
+// Every split must shrink its group, and depth is capped: real screens (wide toolbars, tables,
+// near-zero-height accessibility frames) otherwise overflow the perceive thread's stack. Past
+// the cap a group is read top to bottom, left to right.
 import CoreGraphics
 
 enum Layout {
+  private static let maxDepth = 40
+
   struct Result {
     /// Indices of the input boxes in reading order.
     let order: [Int]
@@ -51,10 +56,16 @@ enum Layout {
       for i in idx { align[i] = forced ?? alignment(of: boxes[i], in: column) }
     }
 
-    func recurse(_ idx: [Int], column: (CGFloat, CGFloat), forced: LineAlign? = nil) {
+    func recurse(_ idx: [Int], column: (CGFloat, CGFloat), forced: LineAlign? = nil, depth: Int = 0) {
       if idx.count <= 1 {
         assign(idx, column: column, forced: forced)
         order += idx
+        return
+      }
+      if depth >= Layout.maxDepth {
+        let rows = idx.sorted { (boxes[$0].minY, boxes[$0].minX) < (boxes[$1].minY, boxes[$1].minX) }
+        assign(rows, column: column, forced: forced)
+        order += rows
         return
       }
       if let cols = splitColumns(idx, minGap: lineHeight) {
@@ -62,23 +73,24 @@ enum Layout {
         let narrow = extent(cols[0]).1 - extent(cols[0]).0 <= extent(cols[1]).1 - extent(cols[1]).0 ? cols[0] : cols[1]
         let top = narrow.map { boxes[$0].minY }.min() ?? 0
         let header = idx.filter { boxes[$0].maxY <= top + 1 }
-        if !header.isEmpty {
+        // A header that is the whole group (near-zero-height frames) would recurse forever.
+        if !header.isEmpty, header.count < idx.count {
           let headerSet = Set(header)
-          recurse(header.sorted { boxes[$0].minY < boxes[$1].minY }, column: column, forced: forced)
-          recurse(idx.filter { !headerSet.contains($0) }, column: column, forced: forced)
+          recurse(header.sorted { boxes[$0].minY < boxes[$1].minY }, column: column, forced: forced, depth: depth + 1)
+          recurse(idx.filter { !headerSet.contains($0) }, column: column, forced: forced, depth: depth + 1)
           return
         }
-        for c in cols { recurse(c, column: Layout.columnEdges(c.map { boxes[$0] })) }
+        for c in cols { recurse(c, column: Layout.columnEdges(c.map { boxes[$0] }), depth: depth + 1) }
         return
       }
       if let bands = splitRows(idx, minGap: lineHeight, tolerance: 0) {
-        for b in bands { recurse(b, column: column, forced: forced) }
+        for b in bands { recurse(b, column: column, forced: forced, depth: depth + 1) }
         return
       }
       // A tight block: a bubble sitting right in its column is right-aligned as a whole.
       let blockAlign = forced ?? (alignment(of: block(idx), in: column) == .right ? .right : nil)
       if let bands = splitRows(idx, minGap: 0.01, tolerance: 0.1) {
-        for b in bands { recurse(b, column: column, forced: blockAlign) }
+        for b in bands { recurse(b, column: column, forced: blockAlign, depth: depth + 1) }
         return
       }
       let row = idx.sorted { boxes[$0].minX < boxes[$1].minX }
