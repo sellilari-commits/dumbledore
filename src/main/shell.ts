@@ -14,11 +14,11 @@ import { CoachChat } from './flows/coach-chat'
 import { chatContext, coachContextText } from './flows/context'
 import { NudgeActions } from './flows/nudges'
 import { PromptWriter } from './flows/prompt-writer'
+import { RoadmapAdjust } from './flows/roadmap-adjust'
 import { SessionFlow } from './flows/session-flow'
 import { Thinking } from './flows/thinking'
 import { OverlayController } from './overlay/controller'
 import type { ShellPlatform, SurfaceControl } from './platform'
-import { lastStudiedSubject } from './router/last-subject'
 import { PendingWork } from './router/pending'
 import { ShortcutRouter } from './router/shortcut-router'
 import { SuggestionCache } from './router/suggestions'
@@ -119,6 +119,7 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     writer,
     surfaces,
     overlay,
+    roadmapAdjust: new RoadmapAdjust({ study, repos, perception, thinking, bus }),
   })
   const runAction = (action: Parameters<CoachActions['run']>[0]) => actions.run(action)
   sessions.bindActions(runAction)
@@ -141,18 +142,7 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     runAction,
     emitDelta: hooks.onChatDelta,
   })
-  const promptWriter = new PromptWriter({
-    prompts: services.prompts,
-    perception,
-    writer,
-    surfaces,
-    thinking,
-    overlay,
-    subjectName: () => {
-      const id = lastStudiedSubject(repos)
-      return id ? (repos.subjects.get(id)?.name ?? null) : null
-    },
-  })
+  const promptWriter = new PromptWriter({ sessions, study, perception, surfaces, thinking })
   const chat = new CoachChat({
     brain: services.brain,
     repos,

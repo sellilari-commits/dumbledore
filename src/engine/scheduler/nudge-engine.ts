@@ -75,6 +75,7 @@ const ACCEPT_LABEL: Record<CoachAction['type'], string> = {
   open_subject: 'Open',
   insert_prompt: 'Use prompt',
   set_focus: 'Focus',
+  adjust_roadmap: 'Update',
 }
 
 export function nudgeToast(nudge: Nudge): Toast {

@@ -322,20 +322,30 @@ describe('ShortcutRouter', () => {
 })
 
 describe('Ask flow', () => {
-  it('"I don\'t get X" in an AI chat builds a roadmap and pastes step 1', async () => {
+  it('the double-tap chat never pastes: "I don\'t get X" comes back as a roadmap chip', async () => {
     const h = await harness()
     await inChatGPT(h)
     h.surfaces.opened.add('askbar')
     const result = await h.core.ask.submit("I don't get the Calvin cycle")
-    expect(result.pasted).toBe(true)
-    expect(result.actions).toEqual([])
-    expect(h.surfaces.log).toContain('close:askbar')
-    expect(h.services.study.current()?.phase).toBe('step')
-    expect(h.helper.state.fieldValue).toMatch(/Calvin cycle/)
+    expect(result.pasted).toBe(false)
+    expect(result.actions[0]?.type).toBe('start_roadmap')
+    expect(h.helper.callsTo('input.write')).toHaveLength(0)
+    expect(h.services.study.current()).toBeNull()
     expect(h.services.repos.chat.history('ask', 10).map((m) => m.role)).toEqual([
       'user',
       'assistant',
     ])
+  })
+
+  it('long press: the study box makes the subject and roadmap, then pastes step 1', async () => {
+    const h = await harness()
+    await inChatGPT(h)
+    h.surfaces.opened.add('askbar')
+    const out = await h.core.promptWriter.write('the Calvin cycle')
+    expect(out.pasted).toBe(true)
+    expect(h.surfaces.log).toContain('close:askbar')
+    expect(h.services.study.current()?.phase).toBe('step')
+    expect(h.helper.state.fieldValue).toMatch(/Calvin cycle/)
   })
 
   it('without an AI chat it returns the roadmap action as a chip', async () => {

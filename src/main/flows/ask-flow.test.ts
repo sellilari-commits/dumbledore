@@ -75,7 +75,18 @@ function setup(opts: Setup = {}) {
       })
     }
   }
-  return { flow: new AskFlow(deps), messages, inputs, deltas, writer, toasts, seed, at: () => now }
+  const sessions = deps.sessions
+  return {
+    flow: new AskFlow(deps),
+    messages,
+    inputs,
+    deltas,
+    writer,
+    toasts,
+    sessions,
+    seed,
+    at: () => now,
+  }
 }
 
 const CHEM = {
@@ -187,7 +198,40 @@ describe('AskFlow.submit', () => {
     })
   })
 
-  it('pastes an insert_prompt into an open AI chat and keeps the rest as chips', async () => {
+  it('is a chat: never pastes, even with an AI chat open, and drops insert_prompt', async () => {
+    const exam: CoachAction = {
+      type: 'create_exam',
+      spec: { subjectIds: ['s'], count: 5, focus: 'weak', difficulty: 'mixed' },
+    }
+    const roadmap: CoachAction = { type: 'start_roadmap', subjectId: null, goal: 'Moles' }
+    const s = setup({
+      aiChat: true,
+      actions: [{ type: 'insert_prompt', text: 'Explain moles simply' }, roadmap, exam],
+    })
+    const result = await s.flow.submit('moles?')
+    expect(s.writer.write).not.toHaveBeenCalled()
+    expect(s.sessions.start).not.toHaveBeenCalled()
+    expect(s.toasts.showToast).not.toHaveBeenCalled()
+    expect(result).toEqual({ reply: 'Hello there.', actions: [roadmap, exam], pasted: false })
+    expect(s.messages.at(-1)?.actions).toEqual([roadmap, exam])
+  })
+
+  it('offers adjust_roadmap as a chip and tells the coach it is a chat', async () => {
+    const adjust: CoachAction = {
+      type: 'adjust_roadmap',
+      subjectId: CHEM.id,
+      instruction: 'SN1, not SN2',
+    }
+    const s = setup({ aiChat: true, actions: [adjust] })
+    const result = await s.flow.submit('on chemistry I want SN1 not SN2')
+    expect(result.actions).toEqual([adjust])
+    expect(s.inputs[0]?.context.split('\n')[0]).toMatch(/^Mode: chat\b/)
+    expect(s.writer.write).not.toHaveBeenCalled()
+  })
+})
+
+describe('AskFlow.instruction (/d in the AI chat box)', () => {
+  it('still pastes an insert_prompt in place and keeps the rest as toast buttons', async () => {
     const exam: CoachAction = {
       type: 'create_exam',
       spec: { subjectIds: ['s'], count: 5, focus: 'weak', difficulty: 'mixed' },
@@ -196,23 +240,12 @@ describe('AskFlow.submit', () => {
       aiChat: true,
       actions: [{ type: 'insert_prompt', text: 'Explain moles simply' }, exam],
     })
-    const result = await s.flow.submit('moles?')
+    const result = await s.flow.instruction('moles?')
     expect(s.writer.write).toHaveBeenCalledWith(
       expect.objectContaining({ text: 'Explain moles simply', mode: 'insert', target: 'chat' }),
     )
     expect(result).toEqual({ reply: 'Hello there.', actions: [exam], pasted: true })
-    expect(s.messages.at(-1)?.actions).toEqual([exam])
-    expect(s.toasts.showToast).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: 'tip', body: 'Hello there.' }),
-    )
-  })
-
-  it('without an AI chat every action comes back as a chip', async () => {
-    const prompt: CoachAction = { type: 'insert_prompt', text: 'Explain moles simply' }
-    const s = setup({ actions: [prompt] })
-    const result = await s.flow.submit('moles?')
-    expect(s.writer.write).not.toHaveBeenCalled()
-    expect(result).toEqual({ reply: 'Hello there.', actions: [prompt], pasted: false })
+    expect(s.inputs[0]?.context.startsWith('Mode: chat')).toBe(false)
   })
 })
 
@@ -221,7 +254,8 @@ describe('AskFlow.submit with a topic (subjectId)', () => {
     const s = setup()
     await s.flow.submit('Why grams?', { subjectId: CHEM.id })
     const context = s.inputs[0]?.context ?? ''
-    expect(context.split('\n')[0]).toMatch(/^Topic: Chemistry\b/)
+    expect(context.split('\n')[0]).toMatch(/^Mode: chat\b/)
+    expect(context.split('\n\n')[1]?.split('\n')[0]).toMatch(/^Topic: Chemistry\b/)
     expect(context).toContain('Goal: Pass the midterm')
     expect(context).toContain('Deadline: 2026-11-03')
     expect(context).toContain('Roadmap: Moles from scratch (1/3 done; now: Molar mass)')
@@ -236,7 +270,8 @@ describe('AskFlow.submit with a topic (subjectId)', () => {
     const s = setup()
     await s.flow.submit('one')
     await s.flow.submit('two', { subjectId: 'sub_gone' })
-    expect(s.inputs.map((i) => i.context)).toEqual(['Studying chemistry', 'Studying chemistry'])
+    const withoutMode = s.inputs.map((i) => i.context.split('\n\n').slice(1).join('\n\n'))
+    expect(withoutMode).toEqual(['Studying chemistry', 'Studying chemistry'])
   })
 
   it('topicContext skips empty fields and a subject without a roadmap', () => {

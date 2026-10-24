@@ -26,7 +26,7 @@ function promptApi(extra: InvokeHandlers = {}, aiChat: string | null = 'ChatGPT'
 }
 
 const box = () =>
-  screen.getByRole('textbox', { name: 'What should the prompt ask?' }) as HTMLTextAreaElement
+  screen.getByRole('textbox', { name: 'What do you want to study?' }) as HTMLTextAreaElement
 const flush = () => act(async () => {})
 const callsTo = (local: ReturnType<typeof promptApi>, channel: InvokeChannel) =>
   local.calls.filter((c) => c.channel === channel).map((c) => c.payload)
@@ -79,8 +79,8 @@ describe('Ask bar prompt box (route prompt, right ⌥ hold)', () => {
       { context: 'explain SN1 simply, I have an exam Friday' },
     ])
     expect(callsTo(local, 'ask.submit')).toEqual([])
-    expect(screen.getByRole('status', { name: 'Writing your prompt' })).toBeTruthy()
-    expect(screen.getByText('Writing your prompt…')).toBeTruthy()
+    expect(screen.getByRole('status', { name: 'Building your roadmap' })).toBeTruthy()
+    expect(screen.getByText('Building your roadmap…')).toBeTruthy()
     expect(box().readOnly).toBe(true)
     fireEvent.keyDown(box(), { key: 'Enter' })
     expect(callsTo(local, 'prompt.write')).toHaveLength(1)

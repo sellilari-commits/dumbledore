@@ -1,8 +1,8 @@
 /**
- * The Ask bar's prompt mode (right ⌥ hold): main opens the bar with route 'prompt' (`#/prompt` on
- * the first load, a 'navigate' event after that). The student says what the prompt should ask
- * for; ↵ sends it as `prompt.write`, main writes the prompt (the bar shows its thinking state),
- * closes the bar and pastes the prompt into the AI chat. A failure keeps the text and shows an
+ * The Ask bar's study mode (right ⌥ hold): main opens the bar with route 'prompt' (`#/prompt` on
+ * the first load, a 'navigate' event after that). The student says what they want to study; ↵
+ * sends it as `prompt.write`, main picks or makes the subject, builds its roadmap (the bar shows
+ * its thinking state), closes the bar and pastes the first step's prompt into the AI chat. A failure keeps the text and shows an
  * error line. The mode ends when the bar loses focus (unless a prompt is being written), so a later
  * plain open (double-tap) shows the chat with Dumbledore.
  */
@@ -29,8 +29,8 @@ export function isPromptRoute(route: string | null | undefined): boolean {
 /** The one-line hint under the input: where the prompt will go. */
 export function promptHint(assistant: string | null): string {
   return assistant
-    ? `Dumbledore writes the prompt and pastes it into ${assistant}.`
-    : 'No AI chat is open: Dumbledore writes the prompt and copies it for you.'
+    ? `Dumbledore builds a roadmap and pastes its first prompt into ${assistant}.`
+    : 'No AI chat is open: Dumbledore builds the roadmap and opens it for you.'
 }
 
 export function usePromptBox(api: DumbledoreApi): PromptBoxController {

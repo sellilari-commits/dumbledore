@@ -139,10 +139,10 @@ test.describe('ask bar chat interactions', () => {
 
   test('prompt box: Enter sends the wish as prompt.write', async ({ page }) => {
     await page.goto(`${base}/askbar.html#/prompt`)
-    const box = page.getByRole('textbox', { name: 'What should the prompt ask?' })
+    const box = page.getByRole('textbox', { name: 'What do you want to study?' })
     await box.pressSequentially('explain SN1 simply, I have an exam Friday')
     await page.keyboard.press('Enter')
-    await expect(page.getByText('Writing your prompt…')).toBeVisible()
+    await expect(page.getByText('Building your roadmap…')).toBeVisible()
     expect(await calls(page, 'prompt.write')).toEqual([
       { context: 'explain SN1 simply, I have an exam Friday' },
     ])

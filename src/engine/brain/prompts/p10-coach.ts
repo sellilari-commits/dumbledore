@@ -1,6 +1,7 @@
 /**
- * P10 Coach (tier `chat`, tools): the panel / Ask-bar chat persona plus the six action tools
- * (start_roadmap, create_exam, start_review, insert_prompt, set_focus, open_subject) and the
+ * P10 Coach (tier `chat`, tools): the panel / Ask-bar chat persona plus the seven action tools
+ * (start_roadmap, create_exam, start_review, insert_prompt, set_focus, open_subject,
+ * adjust_roadmap) and the
  * mapping from a model tool call to a validated CoachAction. Text only — no schema — because
  * Groq cannot combine tools with a response schema.
  */
@@ -36,6 +37,12 @@ const ToolInputs = {
     subjectId: z.string().nullable().describe('Subject id to focus on, or null to clear'),
   }),
   open_subject: z.object({ subjectId: z.string() }),
+  adjust_roadmap: z.object({
+    subjectId: z.string().describe('Id of the subject from the context'),
+    instruction: z
+      .string()
+      .describe('What the roadmap should cover or skip, in the student’s words'),
+  }),
 } as const
 
 type ToolName = keyof typeof ToolInputs
@@ -50,6 +57,8 @@ const DESCRIPTIONS: Record<ToolName, string> = {
     "Paste a prompt into the student's open AI chat box (it is not sent; they review it first).",
   set_focus: 'Set (or clear) the subject Dumbledore should focus on.',
   open_subject: "Open a subject's page in the app.",
+  adjust_roadmap:
+    "Change what a subject's roadmap covers: focus on or skip topics, go deeper or lighter, in the student's words. The roadmap is planned again; nothing is pasted.",
 }
 
 export const COACH_TOOLS: ToolDef[] = (Object.keys(ToolInputs) as ToolName[]).map((name) => ({
@@ -95,6 +104,9 @@ export function toCoachAction(name: string, input: unknown): CoachAction | null 
     case 'open_subject':
       action = { type: tool, subjectId: v.subjectId }
       break
+    case 'adjust_roadmap':
+      action = { type: tool, subjectId: v.subjectId, instruction: v.instruction }
+      break
   }
   const ok = CoachAction.safeParse(action)
   return ok.success ? ok.data : null
@@ -107,6 +119,8 @@ You know the learner profile, their subjects with mastery and deadlines, due rev
 
 - "What should I focus on?" → rank by deadline proximity, then struggling concepts, then due reviews, then momentum; give the top 1–3 with a one-line reason each and offer the matching action.
 - When they want to understand or learn something — even something you have no record of — call start_roadmap first (one short sentence, then the tool call).
+- When they say what to focus on or skip in a subject ("on chemistry I want SN1, not SN2", "skip the history part"), call adjust_roadmap with that subject's id and their wish in their words.
+- If the context says "Mode: chat", this is a conversation with you: nothing is pasted into their AI chat, so never call insert_prompt; offer the other actions instead.
 - Act through the tools. Use ids exactly as written in the context. Call a tool only when the student asked for it or clearly agreed, except start_roadmap for learning requests.
 - A prompt you insert is written as the student, in first person: one line of their context, a short numbered ask, the sentence "${brevityRule('en')}" (in the student's language), ≤ 110 words.
 - Plain text; short bullet lists are fine; no markdown headings. Answer in the student's language.

@@ -1,7 +1,11 @@
 /**
- * Ask flow (F5) and `/d` instructions: one coach turn on the cheap LLM. "I want to understand X"
- * comes back as a start_roadmap action, which runs at once when an AI chat is open (the first
- * prompt is pasted); other actions are returned as chips (ask bar) or toast buttons (`/d`).
+ * Ask flow (F5) and `/d` instructions: one coach turn on the cheap LLM.
+ *
+ * The Ask bar (double tap) is a conversation with Dumbledore: it never pastes into the AI chat.
+ * Its actions come back as chips the student can press (insert_prompt is dropped there), e.g.
+ * adjust_roadmap when they say what a subject should cover. A `/d …` line typed in the AI chat
+ * box still acts in place: "I want to understand X" starts a roadmap whose first prompt is pasted,
+ * and other actions become toast buttons.
  * Turns live in thread 'ask'; the context is its last 10 messages after the latest "New chat"
  * (`since`), and the reply streams as 'chat.delta' on that thread when `emitDelta` is wired.
  * A topic selected in the Ask bar (`subjectId`) leads the coach context: "Topic: <name>" plus that
@@ -49,6 +53,10 @@ export interface AskOptions {
 
 const STRUGGLE_LIMIT = 5
 
+/** Leads the coach context in the Ask bar: a conversation, so nothing is pasted (P10 knows it). */
+const CHAT_MODE =
+  'Mode: chat (the student is talking with you in your own window; nothing is pasted into their AI chat)'
+
 /** "Topic: <name>" and that subject's own context, or null for an unknown subject. */
 export function topicContext(
   repos: Pick<Repos, 'subjects' | 'roadmaps' | 'concepts'>,
@@ -89,8 +97,22 @@ export class AskFlow {
 
   constructor(private readonly deps: AskFlowDeps) {}
 
-  /** Ask bar: reply + remaining actions as chips; `pasted` when a prompt went into the chat. */
+  /** Ask bar (double tap): reply + actions as chips. Chat only: nothing is ever pasted. */
   async submit(text: string, opts: AskOptions = {}): Promise<AskResult> {
+    this.noteReset(opts.since)
+    const { reply, actions } = await this.converse(text, opts.signal, opts.subjectId, CHAT_MODE)
+    const remaining = actions.filter((a) => a.type !== 'insert_prompt')
+    this.deps.repos.chat.append({
+      thread: ASK_THREAD,
+      role: 'assistant',
+      content: reply,
+      actions: remaining,
+    })
+    return { reply, actions: remaining, pasted: false }
+  }
+
+  /** `/d …` turn: a roadmap or prompt the coach proposes is pasted into the chat box at once. */
+  private async act(text: string, opts: AskOptions): Promise<AskResult> {
     this.noteReset(opts.since)
     const { reply, actions } = await this.converse(text, opts.signal, opts.subjectId)
     const remaining: CoachAction[] = []
@@ -118,7 +140,7 @@ export class AskFlow {
 
   /** `/d …` typed in a field: same turn, answered with a toast and action buttons. */
   async instruction(text: string, opts: AskOptions = {}): Promise<AskResult> {
-    const result = await this.submit(text, opts)
+    const result = await this.act(text, opts)
     if (!result.pasted && !opts.signal?.aborted) {
       const runAction = this.deps.runAction
       this.deps.overlay.showToast({
@@ -145,6 +167,7 @@ export class AskFlow {
     text: string,
     signal?: AbortSignal,
     subjectId?: string,
+    mode?: string,
   ): Promise<{ reply: string; actions: CoachAction[] }> {
     const { repos, brain, thinking, emitDelta } = this.deps
     const history = afterReset(repos.chat.history(ASK_THREAD, HISTORY_LIMIT), this.since).map(
@@ -152,7 +175,7 @@ export class AskFlow {
     )
     repos.chat.append({ thread: ASK_THREAD, role: 'user', content: text, actions: [] })
     const topic = subjectId ? topicContext(repos, subjectId) : null
-    const context = topic ? `${topic}\n\n${this.deps.contextText()}` : this.deps.contextText()
+    const context = [mode, topic, this.deps.contextText()].filter(Boolean).join('\n\n')
     const messageId = `ask_pending_${++this.seq}`
     let reply = ''
     const actions: CoachAction[] = []

@@ -59,6 +59,7 @@ describe('Brain.coach', () => {
       'insert_prompt',
       'set_focus',
       'open_subject',
+      'adjust_roadmap',
     ])
     expect(req?.output).toEqual({ kind: 'text' })
     expect(req?.messages.map((m) => m.role)).toEqual(['user', 'assistant', 'user'])

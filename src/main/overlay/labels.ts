@@ -15,6 +15,8 @@ export function coachActionLabel(action: CoachAction): string {
       return 'Focus on it'
     case 'open_subject':
       return 'Open subject'
+    case 'adjust_roadmap':
+      return 'Update roadmap'
   }
 }
 

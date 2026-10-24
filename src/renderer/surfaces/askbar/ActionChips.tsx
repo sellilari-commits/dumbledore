@@ -7,6 +7,7 @@ import {
   type LucideIcon,
   Map as MapIcon,
   RotateCcw,
+  Route,
   Target,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -33,6 +34,8 @@ export function describeAction(action: CoachAction): { label: string; Icon: Luci
       return { label: action.subjectId ? 'Focus on this subject' : 'Clear focus', Icon: Target }
     case 'open_subject':
       return { label: 'Open subject', Icon: LibraryBig }
+    case 'adjust_roadmap':
+      return { label: `Update roadmap: ${short(action.instruction)}`, Icon: Route }
   }
 }
 

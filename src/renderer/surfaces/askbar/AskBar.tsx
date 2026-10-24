@@ -3,8 +3,9 @@
  * with Dumbledore (thread 'ask'). The conversation sits above the input; the window grows with it
  * up to 600 pt, then the conversation scrolls. Enter sends, Shift+Enter adds a line, Esc closes
  * and hands focus back, ⌘N (or the pen icon) starts a new chat. Opened with route 'prompt' (right
- * ⌥ hold), it is the prompt box instead: the student says what they want, Dumbledore writes the
- * prompt and pastes it into the AI chat (see usePromptBox).
+ * ⌥ hold), it is the study box instead: the student says what they want to study, Dumbledore
+ * builds the subject's roadmap and pastes its first prompt into the AI chat (see usePromptBox).
+ * The chat itself never pastes anything.
  * In chat mode a row of recent topics sits on top of the input (TopicCarousel): a selected topic
  * goes with every question as context, ↵ on an empty input studies it, ←/→ move the selection
  * while the input is empty.
@@ -23,7 +24,7 @@ import './askbar.css'
 
 export const PLACEHOLDER = 'Ask Dumbledore — e.g. ‘I don’t get recursion’'
 export const FOLLOW_UP = 'Reply to Dumbledore…'
-export const PROMPT_PLACEHOLDER = 'What should the prompt ask? Dumbledore writes it'
+export const PROMPT_PLACEHOLDER = 'What do you want to study?'
 
 /** The input's placeholder while a topic is selected. */
 export const topicPlaceholder = (name: string, open: boolean) =>
@@ -147,7 +148,7 @@ export function AskBar({ api }: { api: DumbledoreApi }) {
           rows={1}
           value={text}
           placeholder={placeholder}
-          aria-label={prompting ? 'What should the prompt ask?' : 'Ask Dumbledore'}
+          aria-label={prompting ? 'What do you want to study?' : 'Ask Dumbledore'}
           aria-description={
             topic ? `Topic: ${topic.name}. Enter with no text studies it.` : undefined
           }
@@ -169,7 +170,7 @@ export function AskBar({ api }: { api: DumbledoreApi }) {
             className="ov-spinner ask__busy"
             role="status"
             aria-label={
-              prompting ? 'Writing your prompt' : topics.starting ? 'Starting' : 'Thinking'
+              prompting ? 'Building your roadmap' : topics.starting ? 'Starting' : 'Thinking'
             }
           />
         ) : text.trim() ? (
@@ -212,7 +213,7 @@ export function AskBar({ api }: { api: DumbledoreApi }) {
           </p>
         ) : (
           <p className="ask__prompt-note">
-            {busy ? 'Writing your prompt…' : promptHint(promptBox.assistant)}
+            {busy ? 'Building your roadmap…' : promptHint(promptBox.assistant)}
           </p>
         ))}
     </div>

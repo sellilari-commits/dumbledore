@@ -356,6 +356,8 @@ export const CoachAction = z.discriminatedUnion('type', [
   z.object({ type: z.literal('insert_prompt'), text: z.string() }),
   z.object({ type: z.literal('set_focus'), subjectId: Id.nullable() }),
   z.object({ type: z.literal('open_subject'), subjectId: Id }),
+  /** The student's own words on what a subject's roadmap should cover ("SN1, not SN2"). */
+  z.object({ type: z.literal('adjust_roadmap'), subjectId: Id, instruction: z.string() }),
 ])
 export type CoachAction = z.infer<typeof CoachAction>
 
