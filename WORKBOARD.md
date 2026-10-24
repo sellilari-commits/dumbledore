@@ -10,7 +10,6 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 |---|---|---|---|---|---|
 | 2026-10-25 11:30 | Ilari / Claude | Timer square: white progress edge (elapsed) around the running square | src/main/overlay/timer.ts (+ test), src/shared/state.ts (timer.startedAt), src/renderer/surfaces/overlay/satellites/TimerButton.tsx (+ test), satellites.css, overlay mock (mockApi.ts, scenes.ts), tests/e2e-sim/overlay-screens.spec.ts + overlay-timer screenshots | main | deploys live after |
 | 2026-10-25 11:10 | Ilari / Claude | QA sweep: shell-smoke quiz test, lint/format leftovers, askbar mock paste chip | tests/e2e-sim/shell-smoke.spec.ts, src/main/router/shortcut-router.ts (unused var), src/engine/clock.ts, src/renderer/surfaces/app/App.tsx + NewSubjectDialog.tsx, src/renderer/pages/PageFrame.tsx (format only), src/renderer/surfaces/askbar/mock/ | main | |
-| 2026-10-25 11:20 | Ilari / Claude | Move the double-tap chat box by its header; position remembered per display | src/main/windows/placement.ts, manager.ts, chat-spots.ts (new), windows.test.ts, src/main/app.ts (one option), src/renderer/surfaces/askbar/askbar.css (+ AskBar test), tests/e2e-sim/askbar-*.spec.ts + askbar screenshots | main | deploys live after |
 | 2026-10-25 10:30 | Olle / Claude | Study material upload: add PDFs, Word/RTF/HTML, text and Markdown to a subject; Dumbledore reads them into Memory through the existing extraction | `native/helper/Sources/DumbledoreHelper/FileText.swift` (new), `Handlers.swift` (one register line), `native/helper/build.sh` (PDFKit), `src/shared/helper-protocol.ts` (file.pdfText), `src/shared/ipc.ts` (materials.add), `src/main/ipc/handlers.ts` (materials case only), `src/main/app.ts` (file picker extra), `src/main/flows/materials.ts` (+ test, new), `src/main/fakes/` (extras), `src/renderer/lib/mock-api.ts` + `mock/handlers-materials.ts` (new), `src/renderer/pages/subject/` | main | Reuses applyExtraction/brain.extract without editing them |
 | 2026-10-24 22:20 | Olle / Claude | Empty home first steps; onboarding intro; white backgrounds + popovers above dialogs; one-page subject (description, goals, progress, gaps, what Dumbledore caught) | `src/renderer/pages/home/`, `src/renderer/pages/onboarding/`, `src/renderer/pages/subject/`, `src/renderer/design-system/tokens.css`, `docs/DESIGN.md`, `tests/e2e-sim/` (home, onboarding, subject specs + screenshots) | main | Renderer only; /subjects/:id/:view routes kept |
 
@@ -20,6 +19,7 @@ Newest first; keep about the last 20 entries.
 
 | Finished (UTC) | Who / agent | Work | Commit |
 |---|---|---|---|
+| 2026-10-25 | Ilari / Claude | Chat box can be moved by its header; position remembered per display | 5411676 |
 | 2026-10-25 | Ilari / Claude | Double-tap (or orb long press) closes the open chat | e317da2 |
 | 2026-10-25 | Ilari / Claude | No pop-up boxes except the selection menu and the /d reply; timer notification stays | 6364d96 |
 | 2026-10-25 | Ilari / Claude | Timer: change the time while it runs (−5/−1/+1/+5, Stop) | 52edb77 |
