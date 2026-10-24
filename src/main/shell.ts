@@ -164,6 +164,28 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
   const permissions = new PermissionsCache(helper, clock, hooks.onAppStateChange)
   const offs: (() => void)[] = []
 
+  // Screen Recording must stay on (OCR of PDFs, slides, video): remind once per launch.
+  let screenRecordingReminded = false
+  const remindScreenRecording = (screenRecording: boolean) => {
+    if (screenRecording || screenRecordingReminded || helper.status !== 'connected') return
+    screenRecordingReminded = true
+    overlay.showToast({
+      kind: 'info',
+      title: 'Screen Recording is off',
+      body: "Dumbledore can't read PDFs, slides or video until you allow it.",
+      actions: [
+        {
+          id: 'allow',
+          label: 'Turn on',
+          primary: true,
+          run: () => surfaces.open('app', { route: '/settings/capture' }),
+        },
+        { id: 'later', label: 'Later' },
+      ],
+      ttlMs: 30_000,
+    })
+  }
+
   const configureShortcut = () => {
     if (helper.status !== 'connected') return
     const { fallbackChord: _chord, ...timing } = repos.settings.get().shortcut
@@ -219,7 +241,7 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
         bus.on('helper:status', ({ status }) => {
           if (status === 'connected') {
             configureShortcut()
-            void permissions.refresh()
+            void permissions.refresh().then((p) => remindScreenRecording(p.screenRecording))
           }
           hooks.onAppStateChange()
         }),

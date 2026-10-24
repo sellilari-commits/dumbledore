@@ -6,7 +6,8 @@
   "main": "out/main/index.js",
   "author": "Ilari",
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "node tools/dev.mjs",
+    "dev:app-helper": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc -p tsconfig.node.json --noEmit --composite false && tsc -p tsconfig.web.json --noEmit --composite false",
