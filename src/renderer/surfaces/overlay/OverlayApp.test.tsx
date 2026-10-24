@@ -121,10 +121,10 @@ describe('orb gestures', () => {
 })
 
 describe('satellites', () => {
-  it('Study pill → pillClick', async () => {
-    const { local } = await mount('pill')
-    fireEvent.click(screen.getByRole('button', { name: /Study, 4 open study questions/ }))
-    expect(sentTypes(local)).toEqual(['pillClick'])
+  it('only the orb on the screen edge: no Study pill when an AI chat is open', async () => {
+    await mount('pill')
+    expect(screen.queryByTestId('study-pill')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Study/ })).toBeNull()
   })
 
   it('suggestion chip → chipClick, with the prompt preview', async () => {
@@ -147,25 +147,14 @@ describe('satellites', () => {
     expect(screen.queryByTestId('side-quiz')).toBeNull()
   })
 
-  it('hides the pill while docked', async () => {
-    const { local } = await mount('docked')
-    act(() =>
-      local.emit('overlay.changed', {
-        ...state('docked'),
-        pill: { label: 'Study', count: 2 },
-        side: { next: { label: '1/3' }, quiz: false },
-      }),
-    )
-    expect(screen.queryByTestId('study-pill')).toBeNull()
-  })
 })
 
 describe('hit areas', () => {
   it('reports hover only when entering and leaving the hit areas', async () => {
-    const { local } = await mount('pill')
+    const { local } = await mount('improve')
     fireEvent.pointerMove(document.body)
     fireEvent.pointerMove(face())
-    fireEvent.pointerMove(screen.getByTestId('study-pill'))
+    fireEvent.pointerMove(screen.getByTestId('suggestion-chip'))
     fireEvent.pointerMove(document.body)
     const hovers = sent(local).filter((a) => a.type === 'hover')
     expect(hovers).toEqual([
@@ -177,8 +166,8 @@ describe('hit areas', () => {
 
 describe('hit areas when shapes change', () => {
   it('hands clicks back when the hovered shape disappears under a still pointer', async () => {
-    const { local } = await mount('pill')
-    fireEvent.pointerMove(screen.getByTestId('study-pill'), { clientX: 5, clientY: 5 })
+    const { local } = await mount('improve')
+    fireEvent.pointerMove(screen.getByTestId('suggestion-chip'), { clientX: 5, clientY: 5 })
     // jsdom has no layout: stand in for hit testing at the pointer.
     Object.defineProperty(document, 'elementFromPoint', {
       configurable: true,

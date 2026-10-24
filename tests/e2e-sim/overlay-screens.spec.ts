@@ -219,7 +219,8 @@ test.describe('overlay interactions', () => {
       await page.getByTestId(testId).click()
       expect(await actions(page)).toContain(action)
     }
-    await clickSends('pill', 'study-pill', 'pillClick')
+    await overlay(page, 'pill')
+    await expect(page.getByTestId('study-pill')).toHaveCount(0)
     await clickSends('docked', 'suggestion-chip', 'chipClick')
     await overlay(page, 'checkpoint')
     await expect(page.getByTestId('side-quiz')).toHaveCount(0)

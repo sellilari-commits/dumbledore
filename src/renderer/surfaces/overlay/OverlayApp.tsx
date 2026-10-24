@@ -1,6 +1,7 @@
 /**
- * The overlay page: renders OverlayState on a transparent full-screen canvas — orb, side stack,
- * Study pill, suggestion chip, toasts and the quiz card — and sends OverlayActions back. Renders
+ * The overlay page: renders OverlayState on a transparent full-screen canvas — the orb (the only
+ * button on the screen edge), suggestion chip, toasts and the quiz card — and sends OverlayActions
+ * back. Renders
  * nothing when the state belongs to another display. Hit areas report hover for click-through.
  */
 import type { DumbledoreApi } from '@shared/ipc'
@@ -8,12 +9,10 @@ import type { OverlayAction, OverlayState } from '@shared/state'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { report } from './lib/bridge'
 import {
-  besideAnchor,
   cardAnchor,
   chipAnchor,
   type OrbBox,
   type Size,
-  sideToward,
   tooltipAnchor,
 } from './lib/layout'
 import { useHitAreaHover } from './lib/useHitAreaHover'
@@ -24,7 +23,6 @@ import { Orb } from './orb/Orb'
 import { orbLook } from './orb/orbLook'
 import { QUIZ_WIDTH, QuizCard } from './quiz/QuizCard'
 import { OrbTooltip, TOOLTIP_ID } from './satellites/OrbTooltip'
-import { StudyPill } from './satellites/StudyPill'
 import { SuggestionChip } from './satellites/SuggestionChip'
 import { TOAST_WIDTH, ToastStack } from './toast/ToastStack'
 import './styles/base.css'
@@ -114,9 +112,7 @@ function OverlayScene({ api, state, viewport, send, onDragging }: SceneProps) {
   const moving = gesture.dragPos !== null
   useEffect(() => onDragging(moving), [moving, onDragging])
 
-  const showPill = !look.docked && state.pill !== null
-  const cardOpts = { clearPill: showPill, dock: look.docked ? state.dockTarget : null }
-  const side = sideToward(orb, state.edge, viewport)
+  const cardOpts = { dock: look.docked ? state.dockTarget : null }
 
   return (
     <div className="ov-root" data-moving={moving || undefined} data-edge={state.edge}>
@@ -133,13 +129,6 @@ function OverlayScene({ api, state, viewport, send, onDragging }: SceneProps) {
         <OrbTooltip anchor={tooltipAnchor(orb, viewport)} />
       )}
 
-      {showPill && state.pill && (
-        <StudyPill
-          pill={state.pill}
-          anchor={besideAnchor(orb, side, viewport)}
-          onClick={() => send({ type: 'pillClick' })}
-        />
-      )}
       {state.chip && (
         <SuggestionChip
           chip={state.chip}
