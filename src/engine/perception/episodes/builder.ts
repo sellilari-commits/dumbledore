@@ -16,6 +16,7 @@ import { BoilerplateStripper } from './boilerplate'
 import { continuesChat, episodeKeyOf } from './keys'
 import { type EpisodeEnv, OpenEpisode } from './open-episode'
 import { parseSearchQuery, ReadingBaseline, SearchLog, VisitLog } from './signals'
+import { StoredLines } from './stored-lines'
 
 export interface EpisodeOptions {
   switchCloseMs: number
@@ -57,6 +58,7 @@ export interface EpisodeBuilderDeps {
   visits?: VisitLog
   searches?: SearchLog
   boilerplate?: BoilerplateStripper
+  stored?: StoredLines
   options?: Partial<EpisodeOptions>
 }
 
@@ -75,6 +77,7 @@ export class EpisodeBuilder {
     this.visits = deps.visits ?? new VisitLog()
     this.env = {
       boilerplate: deps.boilerplate ?? new BoilerplateStripper(),
+      stored: deps.stored ?? new StoredLines(),
       baseline: deps.baseline ?? new ReadingBaseline(),
       searches: deps.searches ?? new SearchLog(),
       minPersistDwellS: this.opts.minPersistDwellS,

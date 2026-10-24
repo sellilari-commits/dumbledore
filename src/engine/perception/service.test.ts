@@ -162,6 +162,28 @@ describe('Perception', () => {
     expect(noted).toEqual([])
   })
 
+  it('seeds stored lines from saved episodes: a revisit with nothing new needs no LLM call', async () => {
+    repos.episodes.save(
+      makeEpisode({
+        bundleId: wiki.bundleId,
+        app: wiki.appName,
+        url: wiki.url,
+        title: wiki.title,
+        startedAt: '2026-10-24T08:00:00.000Z',
+        endedAt: '2026-10-24T08:05:00.000Z',
+        text: (wiki.lines as string[]).join('\n'),
+      }),
+    )
+    helper.front = wiki
+    perception.start()
+    await runFor(clock, 30_000)
+    helper.front = chatgpt
+    await runFor(clock, 10_000)
+    expect(closed).toHaveLength(1)
+    expect(closed[0]?.extracted).toBe(true)
+    expect(closed[0]?.text.split('\n').length).toBeLessThanOrEqual(3)
+  })
+
   it('stops immediately when switched off, closing what was open', async () => {
     helper.front = wiki
     perception.start()

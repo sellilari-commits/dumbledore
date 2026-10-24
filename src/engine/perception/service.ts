@@ -209,7 +209,10 @@ export class Perception implements PerceptionService {
     this.deps.bus.emit('perception:episodeClosed', { episode })
   }
 
-  /** Seeds the reading baseline (14 days) and today's visits from stored episodes. */
+  /**
+   * Seeds the reading baseline (14 days), the lines already stored per page (14 days) and today's
+   * visits from stored episodes.
+   */
   private seedHistory(): void {
     try {
       const now = this.clock.now()
@@ -219,6 +222,11 @@ export class Perception implements PerceptionService {
       })
       this.builder.env.baseline.seed(
         recent.map((e) => e.signals.readingWpm).filter((w): w is number => w !== null),
+      )
+      this.builder.env.stored.seed(
+        [...recent]
+          .sort((a, b) => a.endedAt.localeCompare(b.endedAt))
+          .map((e) => ({ pageKey: pageKeyOf(e), text: e.text })),
       )
       const midnight = new Date(now)
       midnight.setHours(0, 0, 0, 0)

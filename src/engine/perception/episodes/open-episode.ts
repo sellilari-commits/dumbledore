@@ -13,10 +13,13 @@ import { BoilerplateStripper } from './boilerplate'
 import { isPdf, isReadingApp } from './keys'
 import { type FrameLine, type MergedLine, MergedText } from './merged-text'
 import { type ReadingBaseline, ScrollTracker, type SearchLog, studentMessages } from './signals'
+import { pickNewLines, type StoredLines } from './stored-lines'
 import { cleanLine, isUiNoise, lineKey, wordCount } from './text'
 
 export interface EpisodeEnv {
   boilerplate: BoilerplateStripper
+  /** Lines already stored per page. */
+  stored: StoredLines
   baseline: ReadingBaseline
   searches: SearchLog
   minPersistDwellS: number
@@ -180,14 +183,31 @@ export class OpenEpisode {
     const lines = this.contentLines(env, true)
     const kind = this.kindGuess(lines)
     const tagged = kind === 'ai_chat'
-    let text = lines.map((l) => (tagged && l.align ? TAG[l.align] : '') + l.text).join('\n')
-    if (text.length > env.maxTextChars) text = text.slice(0, env.maxTextChars)
+    const highlights = [...this.highlights]
+    // Only lines not yet stored for this page (plus a little context): a short scroll, a
+    // checkpoint or a revisit does not store the same text again (stored-lines.ts).
+    const picked = pickNewLines(
+      lines,
+      env.stored.get(this.pageKey),
+      highlights,
+      tagged ? this.userAlign : null,
+    )
+    let text = ''
+    const saved: string[] = []
+    for (const l of picked.kept) {
+      const line = (tagged && l.align ? TAG[l.align] : '') + l.text
+      if (text && text.length + 1 + line.length > env.maxTextChars) break
+      text = text ? `${text}\n${line}` : line.slice(0, env.maxTextChars)
+      saved.push(l.key)
+    }
     const dwellSeconds = Math.round(this.dwellMs / SECOND)
     // A highlight is a note the student chose to keep: it is stored however short the visit.
-    const highlights = [...this.highlights]
     if (highlights.length === 0 && (dwellSeconds < env.minPersistDwellS || !text.trim()))
       return null
     if (!text.trim()) text = highlights.join('\n')
+    env.stored.add(this.pageKey, saved)
+    // Nothing new on a revisit: kept for dwell and visit history, but no LLM call is spent on it.
+    const nothingNew = picked.fresh === 0 && highlights.length === 0
 
     const words = lines.reduce((n, l) => n + wordCount(l.text), 0)
     const readingWpm =
@@ -217,7 +237,7 @@ export class OpenEpisode {
         aiQuestions: kind === 'ai_chat' ? studentMessages(lines, this.userAlign) : [],
         highlights,
       },
-      extracted: this.agentSession && highlights.length === 0,
+      extracted: (this.agentSession && highlights.length === 0) || nothingNew,
     }
   }
 
