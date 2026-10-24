@@ -1,6 +1,7 @@
 /**
- * Menu-bar icon (template image) and its menu: Open Dumbledore · Pause capture ⌃⌥⌘P ·
- * Hide orb · Settings · Quit. The same items back the orb's right-click menu.
+ * Menu-bar icon (template image) and its menu: Open Dumbledore ⌃⌥⌘D · End study session (while
+ * one runs) · Pause capture ⌃⌥⌘P · Hide orb · Settings · Quit. The same items back the orb's
+ * right-click menu. The chords are registered globally (shortcuts.ts); the menu only shows them.
  */
 import { Menu, type MenuItemConstructorOptions, nativeImage, Tray } from 'electron'
 import { trayIconPngs } from './tray-icon'
@@ -13,11 +14,22 @@ export interface TrayActions {
   quit: () => void
   isCapturing: () => boolean
   isOrbVisible: () => boolean
+  /** Ends the running study session; the item shows only while isStudying(). */
+  endSession?: () => void
+  isStudying?: () => boolean
 }
 
 export function menuTemplate(a: TrayActions): MenuItemConstructorOptions[] {
   return [
-    { label: 'Open Dumbledore', click: a.openApp },
+    {
+      label: 'Open Dumbledore',
+      accelerator: 'Control+Alt+Command+D',
+      registerAccelerator: false,
+      click: a.openApp,
+    },
+    ...(a.endSession && a.isStudying?.()
+      ? [{ label: 'End study session', click: a.endSession }]
+      : []),
     {
       label: a.isCapturing() ? 'Pause capture' : 'Resume capture',
       accelerator: 'Control+Alt+Command+P',

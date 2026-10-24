@@ -1,5 +1,5 @@
 /**
- * Outline (right ⌥ on a page being read, or "Outline it" on the orb's offer): Dumbledore marks
+ * Outline (a right-⌥ tap on a page being read): Dumbledore marks
  * what the student needs to read on the PDF or article in front of them, for the subject the
  * page belongs to.
  *
@@ -25,6 +25,8 @@ export type OutlineResult =
   | { kind: 'unreadable' }
   | { kind: 'noSubject' }
   | { kind: 'nothing'; subjectId: Id }
+  /** Esc while the AI was answering: nothing to say, the router already said "Cancelled". */
+  | { kind: 'cancelled' }
 
 export interface OutlineFlowDeps {
   repos: Repos
@@ -127,7 +129,7 @@ export class OutlineFlow {
       language: repos.profile.get().promptLanguage,
     }
     const out = await this.deps.outline(input, { signal })
-    if (signal?.aborted) return { kind: 'nothing', subjectId: subject.id }
+    if (signal?.aborted) return { kind: 'cancelled' }
 
     const marks: OutlineMark[] = []
     let order = 0

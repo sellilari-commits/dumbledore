@@ -17,6 +17,7 @@ import {
   verticalToward,
 } from './lib/layout'
 import { useHitAreaHover } from './lib/useHitAreaHover'
+import { useOverlaySettings } from './lib/useOverlaySettings'
 import { useOverlayState } from './lib/useOverlayState'
 import { type Point, usePointerGesture } from './lib/usePointerGesture'
 import { useViewport } from './lib/useViewport'
@@ -41,6 +42,7 @@ interface Props {
 
 export function OverlayApp({ api, displayId }: Props) {
   const state = useOverlayState(api)
+  const settings = useOverlaySettings(api)
   const viewport = useViewport()
   const send = useCallback(
     (action: OverlayAction) => {
@@ -57,7 +59,9 @@ export function OverlayApp({ api, displayId }: Props) {
 
   const mine = state !== null && (displayId === null || state.displayId === displayId)
   // Outline marks belong to the page, not the orb: every display draws the ones it covers.
-  const marks = state?.outline ? <OutlineMarks outline={state.outline} /> : null
+  const marks = state?.outline ? (
+    <OutlineMarks outline={state.outline} triggerKey={settings?.triggerKey} />
+  ) : null
   if (!state || (!mine && !dragging)) return marks
   return (
     <>

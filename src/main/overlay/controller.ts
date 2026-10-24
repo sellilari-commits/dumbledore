@@ -44,6 +44,7 @@ const SHOWN_TOASTS: ReadonlySet<ToastPurpose> = new Set([
   'instruction-reply',
   'checkpoint-choice',
   'step-waiting',
+  'outline-result',
 ])
 
 export type NudgeChoice = 'accept' | 'dismiss' | 'snooze'
@@ -254,8 +255,9 @@ export class OverlayController {
 
   /**
    * No pop-up boxes beside the orb (Ilari, 2026-10-25), except the ones that answer an explicit
-   * gesture: the menu for selected text, the reply to a `/d …` instruction and the checkpoint's
-   * "quiz or continue?" question. A nudge goes
+   * gesture: the menu for selected text, the reply to a `/d …` instruction, the checkpoint's
+   * "quiz or continue?" question, and why a tap on a page drew no outline (it shows nothing
+   * else). A nudge goes
    * straight to the orb's attention dot (still reachable from the panel); errors are logged. The
    * timer's macOS notification is separate and stays.
    */

@@ -51,6 +51,8 @@ body {
   position: fixed;
   inset: 0;
   pointer-events: none;
+  /* Above the outline marks (z-index 1), so the wash never dims the orb or its cards. */
+  z-index: 2;
 }
 
 .ov-root [data-hit] {

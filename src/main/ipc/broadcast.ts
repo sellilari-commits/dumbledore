@@ -9,7 +9,8 @@ import { type EventChannel, type EventPayload, IPC_EVENT_PREFIX, ipcEvents } fro
 export const EVENT_ROUTES: Record<EventChannel, readonly Surface[]> = {
   'state.changed': ['overlay', 'panel', 'askbar', 'app'],
   'overlay.changed': ['overlay'],
-  'memory.changed': ['panel', 'askbar', 'app'],
+  // The overlay only listens for scope 'settings' (theme, key name).
+  'memory.changed': ['overlay', 'panel', 'askbar', 'app'],
   'session.changed': ['overlay', 'panel', 'askbar', 'app'],
   'chat.delta': ['panel', 'askbar', 'app'],
   navigate: [],

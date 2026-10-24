@@ -118,10 +118,20 @@ async function start(paths: AppPaths): Promise<void> {
   const broadcaster = new Broadcaster(windows, !app.isPackaged)
   let tray: AppTray | null = null
   const ref: { core: ShellCore | null } = { core: null }
+  // 1–4, Enter and Esc go to the quiz card only while it is on screen: never while the orb (and
+  // with it the card) is hidden. Tests send quiz keys through test-control instead.
+  let quizOpen = false
+  const syncQuizKeys = () => {
+    if (isTest) return
+    const visible = services.repos.settings.get().orb.visible
+    shortcuts.setQuizKeys(quizOpen && visible, (key) => windows.forwardKey(key))
+  }
   const shortcuts = new GlobalShortcuts({
     tap: () => {
       broadcaster.emit('key.gesture', { gesture: 'tap', key: 'fallbackChord' })
-      if (services.repos.settings.get().onboardingDone) void ref.core?.router.gesture('tap')
+      // A chord can't double-tap: act at once, without waiting out the double-tap window.
+      if (services.repos.settings.get().onboardingDone)
+        void ref.core?.router.gesture('tap', { source: 'chord' })
     },
     toggleCapture: () => toggleCapture(),
     openApp: () => void windows.open('app'),
@@ -144,8 +154,8 @@ async function start(paths: AppPaths): Promise<void> {
     version: app.getVersion(),
     onOverlayChange: (state) => {
       broadcaster.emit('overlay.changed', state)
-      // Tests send quiz keys through test-control instead of grabbing the real keyboard.
-      if (!isTest) shortcuts.setQuizKeys(state.quiz !== null, (key) => windows.forwardKey(key))
+      quizOpen = state.quiz !== null
+      syncQuizKeys()
     },
     onChatDelta: (delta) => broadcaster.emit('chat.delta', delta),
     onBusy: (busy) => shortcuts.setEscape(busy, () => core.router.cancel()),
@@ -195,6 +205,7 @@ async function start(paths: AppPaths): Promise<void> {
   services.bus.on('settings:changed', ({ settings }) => {
     windows.overlays.setVisible(settings.orb.visible)
     shortcuts.setFallback(settings.shortcut.fallbackChord)
+    syncQuizKeys()
     tray?.refresh()
   })
 
@@ -211,7 +222,10 @@ async function start(paths: AppPaths): Promise<void> {
     quit: () => app.quit(),
     isCapturing: () => services.repos.settings.get().captureEnabled,
     isOrbVisible: () => services.repos.settings.get().orb.visible,
+    endSession: () => services.study.end(),
+    isStudying: () => services.study.current() !== null,
   })
+  services.bus.on('session:changed', () => tray?.refresh())
   shortcuts.start(settings.shortcut.fallbackChord)
   console.log(
     `[dumbledore] ready: ${windows.overlays.all().length} overlay window(s), tray icon, ` +

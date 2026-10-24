@@ -5,10 +5,11 @@
  * toggles the mini panel, see ShortcutRouter.orbClick): ask bar
  * / quiz card open → Enter · password field → refuse · in the AI-chat box: `/d …` line →
  * instruction, the student's own text → rewrite it in place (also during a session), empty → the
- * next step of a running session, else study the subject worked on last · (a) session in an AI
- * chat → next step · (b) `/d …` line in another field → instruction · (c) selection → actions
- * toast · (d) outline showing → clear it · (e) reading a page (PDF, article) → outline what to
- * read · (f) AI chat open → study the subject worked on last · (g) else → toggle the mini panel.
+ * next step of a running session, else study the subject worked on last · outline marks showing
+ * → clear them · session in an AI chat → next step · `/d …` line in another field → instruction
+ * · selection → actions toast · mini panel open → close it · reading a page (PDF, article) →
+ * outline what to read · AI chat open → study the subject worked on last · else → toggle the
+ * mini panel.
  * A click on the suggestion chip is a tap, except that it inserts the suggested prompt into an
  * empty box.
  *
@@ -39,6 +40,8 @@ export interface RouteContext {
   } | null
   /** The helper reported secure keyboard input (e.g. a password prompt). */
   secureInput: boolean
+  /** The mini panel is open: a tap outside a chat box closes it again. */
+  panelOpen?: boolean
   /** The front window is a page being read (PDF, article), not an AI chat. */
   reading?: boolean
   /** Outline marks are showing over the page. */
@@ -143,6 +146,8 @@ function decideTap(input: 'tap' | 'chip', ctx: RouteContext): Decision {
     return input === 'chip' ? { kind: 'suggest' } : { kind: 'studyLast' }
   }
 
+  // Outside the chat box, a tap on showing marks clears them, even during a study session.
+  if (ctx.outlineShown) return { kind: 'clearOutline' }
   if (ctx.sessionActive && chat) return { kind: 'sessionNext' }
 
   if (ctx.focused?.editable) {
@@ -154,7 +159,7 @@ function decideTap(input: 'tap' | 'chip', ctx: RouteContext): Decision {
   if (ctx.selection === undefined) return { kind: 'need', what: 'selection' }
   const selection = ctx.selection?.trim()
   if (selection) return { kind: 'selection', text: selection }
-  if (ctx.outlineShown) return { kind: 'clearOutline' }
+  if (ctx.panelOpen) return { kind: 'togglePanel' }
   if (ctx.reading) return { kind: 'outline' }
   if (chat) return { kind: 'studyLast' }
   return { kind: 'togglePanel' }

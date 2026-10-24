@@ -103,6 +103,7 @@ export class ShortcutRouter {
           }
         : null,
       secureInput: opts.secureInput ?? false,
+      panelOpen: surfaces.isOpen('panel'),
       reading: this.deps.outline?.reading() ?? false,
       outlineShown: this.deps.outline?.shown() ?? false,
     }
@@ -177,6 +178,7 @@ export class ShortcutRouter {
         await surfaces.open('askbar', { nearField: focused?.editable ? focused.frame : null })
         return
       case 'focusAskbar':
+        // From the study box a double-tap switches to the chat (opened without its route).
         await surfaces.open('askbar')
         return
       case 'closeAskbar':
@@ -277,18 +279,21 @@ export class ShortcutRouter {
     if (r.kind === 'unreadable')
       overlay.showToast({
         kind: 'info',
+        purpose: 'outline-result',
         title: 'Can’t read this page yet',
         body: 'Scroll to the text you’re studying, or allow Screen Recording for PDFs, and try again.',
       })
     else if (r.kind === 'noSubject')
       overlay.showToast({
         kind: 'info',
+        purpose: 'outline-result',
         title: 'Which subject is this for?',
         body: 'Add the subject in Dumbledore first, or read a little longer so it can tell.',
       })
     else if (r.kind === 'nothing')
       overlay.showToast({
         kind: 'info',
+        purpose: 'outline-result',
         title: 'Nothing to mark here',
         body: 'This page doesn’t touch your goal or your gaps for this subject.',
       })

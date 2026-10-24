@@ -4,10 +4,13 @@
  *     line after another, with a numbered badge (reading order) and the reason in the margin;
  *   · everything else is softly dimmed (a spotlight), and SKIP passages fade further;
  *   · SKIM passages get a quiet bar in the margin;
- *   · a small card at the bottom says how many passages, for which subject, about how long.
+ *   · a small card at the bottom says how many passages, for which subject, about how long, on
+ *     the display showing the page (a tap of the Dumbledore key clears it all).
  * Marks come in global screen points, clipped to the page's window; each overlay window (one per
  * display) draws them relative to its own origin. Never takes clicks.
  */
+import { TRIGGER_KEYS } from '@renderer/pages/settings/keys'
+import type { TriggerKey } from '@shared/domain'
 import type { OutlineMark, OutlineOverlay } from '@shared/state'
 import { type CSSProperties, useId } from 'react'
 import './outline.css'
@@ -121,12 +124,27 @@ function Spotlight({
   )
 }
 
+/** Whether the page's centre is on this window's display (the card shows there only). */
+function showsPage(frame: OutlineOverlay['frame'], origin: Origin): boolean {
+  if (!frame) return true
+  const cx = frame.x + frame.width / 2
+  const cy = frame.y + frame.height / 2
+  return (
+    cx >= origin.x &&
+    cx < origin.x + window.innerWidth &&
+    cy >= origin.y &&
+    cy < origin.y + window.innerHeight
+  )
+}
+
 export function OutlineMarks({
   outline,
   origin = windowOrigin(),
+  triggerKey = 'rightOption',
 }: {
   outline: OutlineOverlay
   origin?: Origin
+  triggerKey?: TriggerKey
 }) {
   const frame = outline.frame ?? null
   const clip: CSSProperties | undefined = frame
@@ -155,7 +173,7 @@ export function OutlineMarks({
           return <ReadMark key={key} mark={m} origin={inner} start={start} />
         })}
       </div>
-      {reads.length > 0 ? (
+      {reads.length > 0 && showsPage(frame, origin) ? (
         <div className="ov-outline__card" role="status">
           <span className="ov-outline__badge">{reads.length}</span>
           <span>
@@ -170,7 +188,7 @@ export function OutlineMarks({
               <span className="ov-outline__summary"> {outline.summary}</span>
             ) : null}
           </span>
-          <span className="ov-outline__hint">esc clears</span>
+          <span className="ov-outline__hint">tap {TRIGGER_KEYS[triggerKey].short} to clear</span>
         </div>
       ) : null}
     </section>

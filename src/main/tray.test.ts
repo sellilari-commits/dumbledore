@@ -118,11 +118,30 @@ describe('tray menu', () => {
     expect(off).toContain('Show orb')
   })
 
-  it('shows the capture chord without registering it twice', () => {
-    const capture = menuTemplate(actions(true, true).a)[1]
+  it('shows the open and capture chords without registering them twice', () => {
+    const [open, capture] = menuTemplate(actions(true, true).a)
+    expect(open).toMatchObject({
+      accelerator: 'Control+Alt+Command+D',
+      registerAccelerator: false,
+    })
     expect(capture).toMatchObject({
       accelerator: 'Control+Alt+Command+P',
       registerAccelerator: false,
     })
+  })
+
+  it('offers to end the study session only while one runs', () => {
+    const { a, calls } = actions(true, true)
+    let studying = false
+    const withSession: TrayActions = {
+      ...a,
+      endSession: () => void calls.push('end'),
+      isStudying: () => studying,
+    }
+    expect(menuTemplate(withSession).map((i) => i.label)).not.toContain('End study session')
+    studying = true
+    const end = menuTemplate(withSession).find((i) => i.label === 'End study session')
+    end?.click?.({} as never, undefined, {} as never)
+    expect(calls).toEqual(['end'])
   })
 })

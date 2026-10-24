@@ -34,7 +34,7 @@ describe('decide — the F4 tap table', () => {
     })
   })
 
-  it('(a) pastes the next step when a session runs in an AI chat — outside the box, before reading anything', () => {
+  it('pastes the next step when a session runs in an AI chat — outside the box, before reading anything', () => {
     const page = { pid: 501, editable: false, secure: false, valueLength: null }
     expect(decide('tap', ctx({ sessionActive: true, aiChat: CHAT, focused: page }))).toEqual({
       kind: 'sessionNext',
@@ -44,7 +44,7 @@ describe('decide — the F4 tap table', () => {
     })
   })
 
-  it('(a) in the AI-chat box, a session reads the field first; empty → the next step', () => {
+  it('in the AI-chat box, a session reads the field first; empty → the next step', () => {
     const session = { sessionActive: true, aiChat: CHAT, focused: chatBox() }
     expect(decide('tap', ctx(session))).toEqual({ kind: 'need', what: 'fieldText' })
     expect(decide('tap', ctx({ ...session, fieldText: '  ' }))).toEqual({ kind: 'sessionNext' })
@@ -61,7 +61,7 @@ describe('decide — the F4 tap table', () => {
     })
   })
 
-  it('(b) runs a `/d …` line as an instruction, in any field', () => {
+  it('runs a `/d …` line as an instruction, in any field', () => {
     expect(
       decide('tap', ctx({ focused: notesField, fieldText: 'notes\n/d quiz me on chapter 3' })),
     ).toEqual({
@@ -78,7 +78,7 @@ describe('decide — the F4 tap table', () => {
     })
   })
 
-  it('(c) studies the last subject from an empty AI-chat box; typed text is rewritten in place', () => {
+  it('studies the last subject from an empty AI-chat box; typed text is rewritten in place', () => {
     expect(decide('tap', ctx({ aiChat: CHAT, focused: chatBox(), fieldText: '' }))).toEqual({
       kind: 'studyLast',
     })
@@ -87,7 +87,7 @@ describe('decide — the F4 tap table', () => {
     ).toEqual({ kind: 'improve', draft: 'what is osmosis' })
   })
 
-  it('(c) a tap rewrites typed text during a session too', () => {
+  it('a tap rewrites typed text during a session too', () => {
     expect(
       decide(
         'tap',
@@ -116,13 +116,13 @@ describe('decide — the F4 tap table', () => {
     })
   })
 
-  it('(c) reports an unreadable chat box that has text', () => {
+  it('reports an unreadable chat box that has text', () => {
     expect(decide('tap', ctx({ aiChat: CHAT, focused: chatBox(12), fieldText: null }))).toEqual({
       kind: 'unreadable',
     })
   })
 
-  it('(d) offers actions for a selection (after the field checks)', () => {
+  it('offers actions for a selection (after the field checks)', () => {
     expect(decide('tap', ctx({ focused: notesField, fieldText: 'plain text' }))).toEqual({
       kind: 'need',
       what: 'selection',
@@ -135,7 +135,7 @@ describe('decide — the F4 tap table', () => {
     ).toEqual({ kind: 'selection', text: 'SN1 is unimolecular' })
   })
 
-  it('(e) studies the last subject when an AI chat is open without a session', () => {
+  it('studies the last subject when an AI chat is open without a session', () => {
     expect(decide('tap', ctx({ aiChat: CHAT, selection: '' }))).toEqual({ kind: 'studyLast' })
   })
 
@@ -154,7 +154,22 @@ describe('decide — the F4 tap table', () => {
     })
   })
 
-  it('(f) toggles the mini panel anywhere else', () => {
+  it('a tap closes the open panel instead of studying or outlining', () => {
+    expect(decide('tap', ctx({ panelOpen: true, aiChat: CHAT, selection: '' }))).toEqual({
+      kind: 'togglePanel',
+    })
+    expect(decide('tap', ctx({ panelOpen: true, reading: true, selection: '' }))).toEqual({
+      kind: 'togglePanel',
+    })
+  })
+
+  it('a tap clears showing marks even while a session runs in a visible chat', () => {
+    expect(
+      decide('tap', ctx({ outlineShown: true, sessionActive: true, aiChat: CHAT, selection: '' })),
+    ).toEqual({ kind: 'clearOutline' })
+  })
+
+  it('toggles the mini panel anywhere else', () => {
     expect(decide('tap', ctx({ selection: null }))).toEqual({ kind: 'togglePanel' })
     expect(decide('tap', ctx({ focused: notesField, fieldText: 'hello', selection: '' }))).toEqual({
       kind: 'togglePanel',

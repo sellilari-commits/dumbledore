@@ -388,9 +388,28 @@ describe('Broadcaster', () => {
     out.emit('navigate', { route: '/home' }, ['app'])
     out.emit('navigate', { route: '/home' })
     out.emit('memory.changed', { scope: 'nonsense', ids: [] } as never)
-    expect(sent).toEqual(['panel,askbar,app|dd:event:memory.changed', 'app|dd:event:navigate'])
+    expect(sent).toEqual([
+      'overlay,panel,askbar,app|dd:event:memory.changed',
+      'app|dd:event:navigate',
+    ])
     expect(EVENT_ROUTES['overlay.changed']).toEqual(['overlay'])
     expect(EVENT_ROUTES['key.gesture']).toEqual(['app'])
+  })
+
+  it('tells every window when settings change, so a theme or key change shows everywhere', async () => {
+    const h = await createHarness()
+    const sent: { channel: string; payload: unknown }[] = []
+    const out = new Broadcaster(
+      { send: (_s, channel, payload) => void sent.push({ channel, payload }) },
+      true,
+    )
+    const off = wireBroadcasts(h.services.bus, out)
+    h.services.bus.emit('settings:changed', { settings: h.services.repos.settings.get() })
+    expect(sent).toContainEqual({
+      channel: 'dd:event:memory.changed',
+      payload: { scope: 'settings', ids: [] },
+    })
+    off()
   })
 
   it('forwards trigger-key gestures from the helper to the app window', async () => {
