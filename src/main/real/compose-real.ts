@@ -15,6 +15,8 @@
  *   4. `npm run dev` (the shell uses composeReal unless DUMBLEDORE_FAKES=1). better-sqlite3's
  *      Node-API prebuild loads in Electron 45 as is (checked); keep it external in the bundle.
  */
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { type BrainDeps, type BrainHandle, createBrain, createKeyGetter } from '@engine/brain'
 import { capFromEnv } from '@engine/brain/llm/spend'
 import type { Brain } from '@engine/brain-contract'
@@ -56,7 +58,10 @@ export function composeReal(opts: RealComposeOptions = {}): RealComposition {
   const repos = createSqliteRepos(paths.dbFile, clock)
   const bus = createEngineBus()
   const secrets = opts.secrets ?? memorySecrets()
-  const keys = keysWithSecrets(secrets, opts.keys ?? createKeyGetter({ env }))
+  // The installed app starts with cwd "/", so it reads `.env.local` from the data folder unless
+  // the working directory has one (a dev run from the repo).
+  const keyBase = existsSync(join(process.cwd(), '.env.local')) ? process.cwd() : paths.root
+  const keys = keysWithSecrets(secrets, opts.keys ?? createKeyGetter({ env, cwd: keyBase }))
   const helper =
     opts.helper ??
     createRealHelper(
