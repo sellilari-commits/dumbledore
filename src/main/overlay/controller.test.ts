@@ -286,16 +286,13 @@ describe('OverlayController', () => {
     expect(t.states.length).toBe(before)
   })
 
-  it('shows "Noted" right when a highlight is caught', () => {
+  it('shows no box when a highlight is caught (no "Noted" notification)', () => {
     const t = setup()
     t.bus.emit('perception:highlight', {
-      text: `James Finlayson founded a cotton mill in 1820, which became ${'x'.repeat(40)}`,
+      text: 'James Finlayson founded a cotton mill in 1820',
       app: 'Google Chrome',
       title: 'Tampere',
     })
-    const toast = t.states.at(-1)?.toasts.at(-1)
-    expect(toast?.title).toBe('📝 Noted')
-    expect(toast?.body.endsWith('…')).toBe(true)
-    expect(toast?.body.length).toBeLessThanOrEqual(61)
+    expect(t.states.at(-1)?.toasts ?? []).toEqual([])
   })
 })
