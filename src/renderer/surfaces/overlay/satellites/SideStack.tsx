@@ -1,10 +1,9 @@
 /**
- * Side stack: 28 pt rounded squares under the orb during a study session — ▸ Next (its "3/8"
- * label shows on hover) and Quiz when a checkpoint is next. Long press opens the Ask bar, like
- * the orb. Opens toward the screen (see layout.stackAnchor).
+ * Side stack: a 28 pt rounded square under the orb during a study session — ▸ Next (its "3/8"
+ * label shows on hover). A checkpoint quiz opens from the orb, the toast or right ⌥, not from
+ * here. Long press opens the Ask bar, like the orb. Opens toward the screen (layout.stackAnchor).
  */
 import type { OverlayAction, OverlayState } from '@shared/state'
-import { ListChecks } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { type Anchor, anchorStyle, type Side } from '../lib/layout'
 import { usePointerGesture } from '../lib/usePointerGesture'
@@ -35,17 +34,6 @@ export function SideStack({ side, anchor, up, send }: Props) {
           onLongPress={longPress}
         >
           <NextGlyph />
-        </StackButton>
-      )}
-      {side.quiz && (
-        <StackButton
-          label="Checkpoint quiz"
-          ariaLabel="Checkpoint quiz"
-          testId="side-quiz"
-          onClick={() => send({ type: 'sideQuiz' })}
-          onLongPress={longPress}
-        >
-          <ListChecks size={15} strokeWidth={1.75} aria-hidden />
         </StackButton>
       )}
     </div>

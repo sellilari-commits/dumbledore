@@ -223,10 +223,8 @@ test.describe('overlay interactions', () => {
     await clickSends('pill', 'study-pill', 'pillClick')
     await clickSends('docked', 'suggestion-chip', 'chipClick')
     await clickSends('session', 'side-next', 'sideNext')
-    await clickSends('checkpoint', 'side-quiz', 'sideQuiz')
-    await expect(page.getByTestId('quiz-card')).toBeVisible()
-    await page.getByRole('button', { name: 'Close quiz' }).click()
-    expect(await actions(page)).toContain('quizClose')
+    await overlay(page, 'checkpoint')
+    await expect(page.getByTestId('side-quiz')).toHaveCount(0)
 
     await overlay(page, 'toast')
     await page.getByRole('button', { name: 'Start quiz' }).click()

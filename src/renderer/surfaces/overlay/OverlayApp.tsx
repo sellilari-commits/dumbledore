@@ -117,7 +117,7 @@ function OverlayScene({ api, state, viewport, send, onDragging }: SceneProps) {
   const moving = gesture.dragPos !== null
   useEffect(() => onDragging(moving), [moving, onDragging])
 
-  const showStack = !look.docked && (state.side.next !== null || state.side.quiz)
+  const showStack = !look.docked && state.side.next !== null
   const showPill = !look.docked && state.pill !== null
   const cardOpts = { clearPill: showPill, dock: look.docked ? state.dockTarget : null }
   const side = sideToward(orb, state.edge, viewport)
