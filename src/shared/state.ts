@@ -20,6 +20,7 @@ import {
   Subject,
   SubjectSummary,
 } from './domain'
+import { Rect } from './geometry'
 
 // ─── App-wide status ────────────────────────────────────────────────────────────────────────
 
@@ -75,7 +76,13 @@ export const Toast = z.object({
 export type Toast = z.infer<typeof Toast>
 
 export const OverlayState = z.object({
+  /** Display the orb is on. Overlays on other displays render nothing. */
+  displayId: z.number().int(),
   orb: z.object({
+    /** Centre of the orb in display-local points (= overlay window coordinates). */
+    x: z.number(),
+    y: z.number(),
+    size: z.number(), // 40 normally, 28 when docked beside a chat box
     visual: OrbVisual,
     thinking: z.boolean(),
     progress: z.object({ k: z.number().int(), n: z.number().int() }).nullable(),
@@ -83,6 +90,8 @@ export const OverlayState = z.object({
     paused: z.boolean(),
     docked: z.boolean(),
   }),
+  /** The focused chat input the orb is docked to, in display-local points. */
+  dockTarget: Rect.nullable(),
   /** Which screen edge the orb is latched to, so stacks and toasts open toward the screen. */
   edge: z.enum(['left', 'right', 'top', 'bottom', 'free']),
   pill: z.object({ label: z.string(), count: z.number().int() }).nullable(),
