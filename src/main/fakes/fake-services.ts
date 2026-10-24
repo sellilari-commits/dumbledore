@@ -8,15 +8,17 @@ import type { Clock } from '@engine/clock'
 import type {
   ChatContext,
   FollowUpService,
+  MemoryControl,
   PromptService,
   Repos,
   StudyService,
   SubjectService,
 } from '@engine/contracts'
 import type { EngineBus } from '@engine/events'
-import type { Assignment, Id, Subject } from '@shared/domain'
+import { createMemoryControl } from '@engine/subjects'
+import type { Assignment, Concept, Encounter, Id, Note, Subject } from '@shared/domain'
 import type { ProviderId } from '@shared/llm'
-import type { NewAssignmentInput, NewSubjectInput, SubjectPatch } from '@shared/state'
+import type { NewAssignmentInput, NewSubjectInput, SubjectPatch, SubjectTree } from '@shared/state'
 import type { ProviderService, ProviderTestResult, SecretKey, SecretStore } from '../services'
 
 const DAY = 86_400_000
@@ -78,7 +80,43 @@ export class FakePromptService implements PromptService {
 }
 
 export class FakeSubjectService implements SubjectService {
-  constructor(private readonly repos: Repos) {}
+  private readonly control: MemoryControl
+
+  constructor(private readonly repos: Repos) {
+    this.control = createMemoryControl(repos)
+  }
+
+  tree(subjectId: Id): SubjectTree {
+    return this.control.tree(subjectId)
+  }
+
+  looseNotes(): Note[] {
+    return this.control.looseNotes()
+  }
+
+  updateNote(id: Id, text: string): Note {
+    return this.control.updateNote(id, text)
+  }
+
+  deleteNote(id: Id): Note {
+    return this.control.deleteNote(id)
+  }
+
+  fileNote(id: Id, subjectId: Id, conceptId: Id | null): Note {
+    return this.control.fileNote(id, subjectId, conceptId)
+  }
+
+  updateConcept(id: Id, patch: { name?: string; summary?: string }): Concept {
+    return this.control.updateConcept(id, patch)
+  }
+
+  deleteConcept(id: Id): Concept {
+    return this.control.deleteConcept(id)
+  }
+
+  deleteEncounter(id: Id): Encounter {
+    return this.control.deleteEncounter(id)
+  }
 
   create(input: NewSubjectInput): Subject {
     return this.repos.subjects.create({

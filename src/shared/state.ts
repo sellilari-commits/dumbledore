@@ -9,10 +9,12 @@ import {
   Assignment,
   CoachAction,
   Concept,
+  ConceptEdge,
   Encounter,
   EpisodeKind,
   Id,
   IsoDate,
+  Note,
   PromptHabits,
   QuizKind,
   Roadmap,
@@ -241,6 +243,23 @@ export const SubjectDetail = z.object({
   assignments: z.array(Assignment),
 })
 export type SubjectDetail = z.infer<typeof SubjectDetail>
+
+/** One concept of a subject's topic tree with its active notes (oldest first). */
+export const ConceptNode = z.object({ concept: Concept, notes: z.array(Note) })
+export type ConceptNode = z.infer<typeof ConceptNode>
+
+/**
+ * A subject's memory as a tree (docs/NOTES.md §7): concepts in tree order (each parent before its
+ * children, siblings by name) with their notes, the subject's notes not placed on a concept yet,
+ * and the prerequisite edges (read-only in the UI).
+ */
+export const SubjectTree = z.object({
+  subjectId: Id,
+  concepts: z.array(ConceptNode),
+  unplaced: z.array(Note),
+  edges: z.array(ConceptEdge),
+})
+export type SubjectTree = z.infer<typeof SubjectTree>
 
 export const NewSubjectInput = z.object({
   name: z.string().min(1),

@@ -18,6 +18,7 @@ import type { Handler, MockContext } from './mock/context'
 import { createDb, type MockDb, type MockScenario } from './mock/db'
 import { accountHandlers } from './mock/handlers-account'
 import { coreHandlers, openInBrowser } from './mock/handlers-core'
+import { memoryHandlers } from './mock/handlers-memory'
 import { studyHandlers } from './mock/handlers-study'
 
 export interface MockOptions {
@@ -47,6 +48,8 @@ const READ_MODELS = new Set<InvokeChannel>([
   'home.get',
   'subjects.list',
   'subjects.get',
+  'subjects.tree',
+  'notes.loose',
   'inbox.list',
   'exams.list',
   'quiz.get',
@@ -56,7 +59,7 @@ const READ_MODELS = new Set<InvokeChannel>([
   'profile.get',
 ])
 
-const handlers = { ...coreHandlers, ...studyHandlers, ...accountHandlers }
+const handlers = { ...coreHandlers, ...studyHandlers, ...accountHandlers, ...memoryHandlers }
 
 export function createMockApi(options: MockOptions = {}): MockApi {
   const surface = options.surface ?? 'app'

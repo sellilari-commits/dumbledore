@@ -54,6 +54,7 @@ import type {
   StepInstruction,
   SubjectDetail,
   SubjectPatch,
+  SubjectTree,
   UsageSummary,
 } from '@shared/state'
 
@@ -135,6 +136,11 @@ export interface ConceptRepo {
   ): Concept
   /** Concepts with nextReviewAt ≤ now, most overdue first. */
   listDue(nowIso: IsoDate, limit: number): Concept[]
+  /**
+   * Deletes a concept (docs/NOTES.md §7): its notes are deleted, its children move up to its
+   * parent, its encounters and quiz questions lose the link, its edges go.
+   */
+  remove(id: Id): void
   listStruggling(limit: number): Concept[]
 }
 
@@ -151,6 +157,11 @@ export interface EncounterRepo {
   setInboxState(id: Id, state: InboxState, subjectId?: Id | null): Encounter
   /** Distinct open questions of recent encounters, newest first. */
   openQuestions(subjectId: Id, limit: number): string[]
+  /**
+   * Deletes an encounter and its notes, and the screen text behind it (its episode) unless
+   * another encounter still uses it.
+   */
+  remove(id: Id): void
 }
 
 export interface NewNoteInput {
@@ -424,7 +435,24 @@ export interface QueryService {
   picker(): PickerData
 }
 
-export interface SubjectService {
+/** What the student sees and edits of the memory (docs/NOTES.md §7; subjects/memory-control.ts). */
+export interface MemoryControl {
+  tree(subjectId: Id): SubjectTree
+  /** Notes of casual reading that matched no subject, newest first. */
+  looseNotes(): Note[]
+  /** The student's edit: the note becomes pinned (consolidation never rewrites it). */
+  updateNote(id: Id, text: string): Note
+  /** Returns the deleted note (for its subject). */
+  deleteNote(id: Id): Note
+  fileNote(id: Id, subjectId: Id, conceptId: Id | null): Note
+  updateConcept(id: Id, patch: { name?: string; summary?: string }): Concept
+  /** Returns the deleted concept. */
+  deleteConcept(id: Id): Concept
+  /** Returns the deleted encounter. */
+  deleteEncounter(id: Id): Encounter
+}
+
+export interface SubjectService extends MemoryControl {
   create(input: NewSubjectInput): Subject
   update(id: Id, patch: SubjectPatch): Subject
   /** Deletes the subject and everything Dumbledore remembers about it. */

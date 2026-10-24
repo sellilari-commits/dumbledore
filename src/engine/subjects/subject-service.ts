@@ -13,6 +13,7 @@ import type { Repos, SubjectService } from '../contracts'
 import type { EngineBus } from '../events'
 import type { RelinkSupport } from '../store/sqlite-repos'
 import { pickSubjectEmoji } from './emoji'
+import { createMemoryControl } from './memory-control'
 
 export interface SubjectServiceDeps {
   repos: Repos
@@ -105,6 +106,9 @@ export function createSubjectService(deps: SubjectServiceDeps): SubjectService {
   }
 
   return {
+    // Memory control (tree, notes, deletes); the IPC handlers announce the changes.
+    ...createMemoryControl(repos),
+
     create(input) {
       const name = clean(input.name)
       if (!name) throw new Error('A subject needs a name')

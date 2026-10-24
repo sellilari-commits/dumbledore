@@ -11,9 +11,32 @@ import { on } from './api'
 import { invalidateChannels, keys } from './queries'
 
 export const SCOPE_CHANNELS: Record<MemoryScope, InvokeChannel[]> = {
-  subjects: ['subjects.list', 'subjects.get', 'home.get', 'session.picker', 'search.query'],
-  concepts: ['subjects.get', 'subjects.list', 'home.get', 'session.picker', 'search.query'],
-  inbox: ['inbox.list', 'subjects.get', 'subjects.list', 'home.get', 'session.picker'],
+  subjects: [
+    'subjects.list',
+    'subjects.get',
+    'subjects.tree',
+    'notes.loose',
+    'home.get',
+    'session.picker',
+    'search.query',
+  ],
+  concepts: [
+    'subjects.get',
+    'subjects.tree',
+    'subjects.list',
+    'home.get',
+    'session.picker',
+    'search.query',
+  ],
+  inbox: [
+    'inbox.list',
+    'notes.loose',
+    'subjects.get',
+    'subjects.tree',
+    'subjects.list',
+    'home.get',
+    'session.picker',
+  ],
   roadmaps: ['subjects.get', 'subjects.list', 'home.get', 'session.picker', 'session.get'],
   quizzes: ['exams.list', 'quiz.get', 'subjects.get', 'home.get'],
   assignments: ['home.get', 'subjects.get'],

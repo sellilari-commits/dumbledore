@@ -168,6 +168,40 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
       memory('subjects', [id])
       memory('inbox', [])
     },
+    // Memory control: a note's change refreshes its subject (or the loose notes in the inbox).
+    'subjects.tree': (id) => subjects.tree(id),
+    'notes.loose': () => subjects.looseNotes(),
+    'notes.update': ({ id, text }) => {
+      const note = subjects.updateNote(id, text)
+      if (note.subjectId) memory('subjects', [note.subjectId])
+      else memory('inbox', [])
+      return note
+    },
+    'notes.delete': (id) => {
+      const note = subjects.deleteNote(id)
+      if (note.subjectId) memory('subjects', [note.subjectId])
+      else memory('inbox', [])
+    },
+    'notes.file': ({ id, subjectId, conceptId }) => {
+      const note = subjects.fileNote(id, subjectId, conceptId)
+      memory('subjects', [subjectId])
+      memory('inbox', [])
+      return note
+    },
+    'concepts.update': ({ id, name, summary }) => {
+      const concept = subjects.updateConcept(id, { name, summary })
+      memory('concepts', [id])
+      return concept
+    },
+    'concepts.delete': (id) => {
+      const concept = subjects.deleteConcept(id)
+      memory('subjects', [concept.subjectId])
+    },
+    'encounters.delete': (id) => {
+      const encounter = subjects.deleteEncounter(id)
+      memory('subjects', [encounter.subjectId])
+      memory('inbox', [id])
+    },
     'suggested.act': ({ subjectId, action, intoId }) => {
       subjects.actSuggested(subjectId, action, intoId)
       memory('subjects', [subjectId, intoId])

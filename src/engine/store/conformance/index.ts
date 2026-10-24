@@ -10,6 +10,7 @@ import type { ConformanceTarget, ReposFactory } from './fixtures'
 import { learningSuite } from './learning'
 import { edgeSuite, noteSuite } from './notes'
 import { recordSuite } from './records'
+import { removalSuite } from './removal'
 import { searchSuite } from './search'
 import { conceptSuite, subjectSuite } from './subjects'
 
@@ -45,5 +46,6 @@ export function describeReposConformance(label: string, factory: ReposFactory): 
     learningSuite(current)
     recordSuite(current)
     searchSuite(current)
+    removalSuite(current)
   })
 }

@@ -120,6 +120,26 @@ export function createEncounterRepo(ctx: StoreCtx): SqliteEncounterRepo {
       return out
     },
 
+    remove(id) {
+      const r = must(getRow(id), `encounter ${id}`)
+      ctx.db.transaction(() => {
+        const noteSeqs = stmt("SELECT seq FROM notes WHERE encounter_id = ? AND status = 'active'")
+          .pluck()
+          .all(id) as number[]
+        stmt(
+          "UPDATE notes SET status = 'deleted', updated_at = ? WHERE encounter_id = ? AND status = 'active'",
+        ).run(ctx.now(), id)
+        for (const seq of noteSeqs) index.remove('note', Number(seq))
+        stmt('DELETE FROM encounters WHERE id = ?').run(id)
+        index.remove('encounter', Number(r.seq))
+        const episodeId = r.episode_id as string | null
+        if (episodeId)
+          stmt(
+            'DELETE FROM episodes WHERE id = ? AND NOT EXISTS (SELECT 1 FROM encounters WHERE episode_id = ?)',
+          ).run(episodeId, episodeId)
+      })()
+    },
+
     setConcept(id, conceptId) {
       get(id)
       stmt('UPDATE encounters SET concept_id = ? WHERE id = ?').run(conceptId, id)

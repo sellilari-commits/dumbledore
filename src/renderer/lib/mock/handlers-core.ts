@@ -9,6 +9,7 @@ import type { AppState } from '@shared/state'
 import type { HandlerMap, MockContext } from './context'
 import { examList, homeData, search, subjectDetail, subjectList } from './derive'
 import type { AccountChannel } from './handlers-account'
+import type { MemoryChannel } from './handlers-memory'
 import { mockId, nowIso } from './time'
 
 type CoreChannel = Exclude<
@@ -28,6 +29,7 @@ type CoreChannel = Exclude<
   | 'ask.submit'
   | 'nudge.act'
   | AccountChannel
+  | MemoryChannel
 >
 
 type SecretKey = InvokeReq<'secrets.set'>['key']
@@ -165,6 +167,9 @@ export const coreHandlers: HandlerMap<CoreChannel> = {
     if (!db.subjects.some((x) => x.id === id)) throw new Error('That subject no longer exists.')
     const only = (ids: string[]) => ids.length === 1 && ids[0] === id
     db.subjects = db.subjects.filter((x) => x.id !== id)
+    const gone = new Set(db.concepts.filter((c) => c.subjectId === id).map((c) => c.id))
+    db.edges = db.edges.filter((e) => !gone.has(e.fromId) && !gone.has(e.toId))
+    db.notes = db.notes.filter((n) => n.subjectId !== id)
     db.concepts = db.concepts.filter((c) => c.subjectId !== id)
     db.encounters = db.encounters.filter((e) => e.subjectId !== id)
     db.assignments = db.assignments.filter((a) => a.subjectId !== id)

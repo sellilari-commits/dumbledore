@@ -11,10 +11,12 @@ import {
   Assignment,
   ChatMessage,
   CoachAction,
+  Concept,
   Encounter,
   ExamSpec,
   Id,
   InboxState,
+  Note,
   Profile,
   Quiz,
   QuizResult,
@@ -40,6 +42,7 @@ import {
   StartSessionInput,
   SubjectDetail,
   SubjectPatch,
+  SubjectTree,
   UsageSummary,
 } from './state'
 
@@ -109,6 +112,22 @@ export const ipcInvoke = {
     res: Void,
   },
   'assignments.add': { req: NewAssignmentInput, res: Assignment },
+
+  // Memory control (docs/NOTES.md §7): the topic tree with notes, loose notes, edit and delete
+  'subjects.tree': { req: Id, res: SubjectTree },
+  'notes.loose': { req: Void, res: z.array(Note) },
+  'notes.update': { req: z.object({ id: Id, text: z.string().min(1) }), res: Note },
+  'notes.delete': { req: Id, res: Void },
+  'notes.file': {
+    req: z.object({ id: Id, subjectId: Id, conceptId: Id.nullable() }),
+    res: Note,
+  },
+  'concepts.update': {
+    req: z.object({ id: Id, name: z.string().min(1).optional(), summary: z.string().optional() }),
+    res: Concept,
+  },
+  'concepts.delete': { req: Id, res: Void },
+  'encounters.delete': { req: Id, res: Void },
 
   // Study session (the shell performs pastes; see StepInstruction)
   'session.get': { req: Void, res: SessionState.nullable() },

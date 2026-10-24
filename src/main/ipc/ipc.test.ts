@@ -183,6 +183,51 @@ describe('IPC handlers', () => {
     expect(dump.profile.aboutMe).toBe('Second-year chemistry student')
     expect(dump.chat.panel.length).toBe(2)
     expect(JSON.stringify(dump)).not.toContain('AIza-test')
+    // Memory control: the tree, loose notes, edit (pins), file, deletes
+    const source = { app: 'Chrome', bundleId: null, url: null, title: 'SN1' }
+    const concept = repos.concepts.listBySubject(orgo.id)[0]
+    const orgoEncounter = repos.encounters.list({ subjectId: orgo.id })[0]
+    if (!concept || !orgoEncounter) throw new Error('seed missing')
+    const placed = repos.notes.add({
+      subjectId: orgo.id,
+      conceptId: concept.id,
+      encounterId: null,
+      kind: 'fact',
+      text: 'SN1 goes through a carbocation',
+      source,
+    }).note
+    const loose = repos.notes.add({
+      subjectId: null,
+      conceptId: null,
+      encounterId: null,
+      kind: 'highlight',
+      text: 'Tampere was founded in 1779',
+      source,
+    }).note
+    const tree = await call('subjects.tree', orgo.id)
+    expect(tree.concepts.find((n) => n.concept.id === concept.id)?.notes.map((n) => n.id)).toEqual([
+      placed.id,
+    ])
+    expect((await call('notes.loose')).map((n) => n.id)).toEqual([loose.id])
+    const edited = await call('notes.update', {
+      id: placed.id,
+      text: 'SN1 forms a carbocation first',
+    })
+    expect(edited).toMatchObject({ text: 'SN1 forms a carbocation first', pinned: true })
+    const filed = await call('notes.file', { id: loose.id, subjectId: orgo.id, conceptId: null })
+    expect(filed.subjectId).toBe(orgo.id)
+    await call('notes.delete', placed.id)
+    expect(repos.notes.get(placed.id)?.status).toBe('deleted')
+    const renamed = await call('concepts.update', {
+      id: concept.id,
+      summary: 'Two-step substitution',
+    })
+    expect(renamed.summary).toBe('Two-step substitution')
+    await call('concepts.delete', concept.id)
+    expect(repos.concepts.get(concept.id)).toBeNull()
+    await call('encounters.delete', orgoEncounter.id)
+    expect(repos.encounters.list({}).some((e) => e.id === orgoEncounter.id)).toBe(false)
+
     await call('subjects.delete', { id: physics.id, confirm: true })
     expect((await call('subjects.list')).map((s) => s.name)).not.toContain('Physics')
     await call('data.deleteAll', { confirm: true })

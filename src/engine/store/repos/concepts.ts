@@ -112,6 +112,25 @@ export function createConceptRepo(ctx: StoreCtx): SqliteConceptRepo {
         ).all(sqlLimit(limit)),
       ),
 
+    remove(id) {
+      const concept = must(repo.get(id), `concept ${id}`)
+      ctx.db.transaction(() => {
+        const noteSeqs = stmt("SELECT seq FROM notes WHERE concept_id = ? AND status = 'active'")
+          .pluck()
+          .all(id) as number[]
+        stmt(
+          "UPDATE notes SET status = 'deleted', updated_at = ? WHERE concept_id = ? AND status = 'active'",
+        ).run(ctx.now(), id)
+        for (const seq of noteSeqs) index.remove('note', Number(seq))
+        stmt('UPDATE concepts SET parent_id = ? WHERE parent_id = ?').run(concept.parentId, id)
+        stmt('UPDATE questions SET concept_id = NULL WHERE concept_id = ?').run(id)
+        const seq = stmt('SELECT seq FROM concepts WHERE id = ?').pluck().get(id) as number
+        // encounters.concept_id and notes.concept_id are SET NULL, edges cascade.
+        stmt('DELETE FROM concepts WHERE id = ?').run(id)
+        index.remove('concept', Number(seq))
+      })()
+    },
+
     moveToSubject(id, subjectId) {
       const concept = must(repo.get(id), `concept ${id}`)
       if (concept.subjectId === subjectId) return concept

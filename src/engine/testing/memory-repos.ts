@@ -280,6 +280,21 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
           .slice(0, limit)
           .map(clone)
       },
+      remove(id) {
+        const concept = must(concepts.get(id), `concept ${id}`)
+        for (const n of notes.values()) {
+          if (n.conceptId !== id) continue
+          if (n.status === 'active') Object.assign(n, { status: 'deleted', updatedAt: now() })
+          n.conceptId = null
+        }
+        for (const c of concepts.values()) if (c.parentId === id) c.parentId = concept.parentId
+        for (const e of encounters.values()) if (e.conceptId === id) e.conceptId = null
+        for (const q of quizzes.values())
+          for (const question of q.questions)
+            if (question.conceptId === id) question.conceptId = null
+        edges = edges.filter((e) => e.fromId !== id && e.toId !== id)
+        concepts.delete(id)
+      },
     },
 
     encounters: {
@@ -326,6 +341,16 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
           }
         }
         return out
+      },
+      remove(id) {
+        const encounter = must(encounters.get(id), `encounter ${id}`)
+        for (const n of notes.values())
+          if (n.encounterId === id && n.status === 'active')
+            Object.assign(n, { status: 'deleted', updatedAt: now() })
+        encounters.delete(id)
+        const episodeId = encounter.episodeId
+        if (episodeId && ![...encounters.values()].some((e) => e.episodeId === episodeId))
+          episodes.delete(episodeId)
       },
     },
 

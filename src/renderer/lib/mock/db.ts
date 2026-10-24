@@ -6,8 +6,10 @@ import {
   type Assignment,
   type ChatMessage,
   type Concept,
+  type ConceptEdge,
   DEFAULT_SETTINGS,
   type Encounter,
+  type Note,
   type Profile,
   type PromptHabits,
   type Quiz,
@@ -25,6 +27,7 @@ import {
   demoUsage,
   demoWeek,
 } from './demo-misc'
+import { demoEdges, demoNotes } from './demo-notes'
 import { demoQuizzes } from './demo-quizzes'
 import { demoConcepts, demoRoadmaps, demoSubjects } from './demo-subjects'
 
@@ -50,6 +53,8 @@ export interface MockDb {
   subjects: Subject[]
   concepts: Concept[]
   encounters: Encounter[]
+  notes: Note[]
+  edges: ConceptEdge[]
   assignments: Assignment[]
   roadmaps: Roadmap[]
   quizzes: Quiz[]
@@ -108,6 +113,8 @@ export function createDb(scenario: MockScenario, opts: CreateDbOptions = {}): Mo
     subjects: empty ? [] : demoSubjects(),
     concepts: empty ? [] : demoConcepts(),
     encounters: empty ? [] : demoEncounters(),
+    notes: empty ? [] : demoNotes(),
+    edges: empty ? [] : demoEdges(),
     assignments: empty ? [] : demoAssignments(),
     roadmaps: empty ? [] : demoRoadmaps(),
     quizzes: empty ? [] : demoQuizzes(),
