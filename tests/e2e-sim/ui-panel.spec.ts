@@ -33,7 +33,7 @@ const open = (page: Page, hash = '/', query = '') =>
 
 const card = (page: Page): Locator => page.locator('.pn-card')
 
-/** The card plus room for its shadow (and menus that hang off it). */
+/** The card plus room for its shadow and the lock's tooltip. */
 async function shoot(page: Page, name: string, theme: string, extra = 0) {
   await page.waitForTimeout(220)
   const box = await card(page).boundingBox()
@@ -46,24 +46,28 @@ async function shoot(page: Page, name: string, theme: string, extra = 0) {
 }
 
 async function loaded(page: Page) {
-  await expect(page.getByRole('list', { name: 'Organic Chemistry topics' })).toBeVisible()
-  await expect(page.getByRole('button', { name: /subject: organic chemistry/i })).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Topics' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Lock topic' })).toBeVisible()
 }
+
+const topics = (page: Page) => page.getByRole('list', { name: 'Topics' }).getByRole('button')
 
 for (const theme of ['light', 'dark'] as const) {
   test.describe(`panel screenshots · ${theme}`, () => {
     test.use({ colorScheme: theme, viewport: { width: 560, height: 700 }, deviceScaleFactor: 2 })
 
-    test('panel: topics and the subject menu', async ({ page }) => {
+    test('panel: topic names, then a locked topic', async ({ page }) => {
       await open(page)
       await loaded(page)
+      await expect(page.getByRole('button', { name: /subject:/i })).toHaveCount(0)
       await shoot(page, 'home', theme)
 
-      await page.getByRole('button', { name: /subject: organic chemistry/i }).press('Enter')
-      await expect(page.getByRole('menuitem', { name: /linear algebra/i })).toBeVisible()
-      await shoot(page, 'focus', theme)
-      await page.getByRole('menuitem', { name: /linear algebra/i }).click()
-      await expect(page.getByRole('list', { name: 'Linear Algebra topics' })).toBeVisible()
+      const pick = topics(page).nth(3)
+      await pick.click()
+      await expect(pick).toHaveAttribute('aria-current', 'true')
+      await expect(page.getByRole('button', { name: 'Unlock topic' })).toBeVisible()
+      await page.mouse.move(0, 0)
+      await shoot(page, 'locked', theme)
     })
 
     test('panel: first day (empty)', async ({ page }) => {
@@ -89,25 +93,29 @@ for (const theme of ['light', 'dark'] as const) {
 test.describe('panel flows', () => {
   test.use({ viewport: { width: 560, height: 700 } })
 
-  test('a topic opens the app; picking in the picker starts and returns to the topics', async ({
+  test('a topic locks (no app opens), unlock follows the latest; the picker returns to topics', async ({
     page,
   }) => {
     const errors: string[] = []
     page.on('pageerror', (e) => errors.push(e.message))
+    let popups = 0
+    page.on('popup', () => popups++)
     await open(page)
     await loaded(page)
-    const popup = page.waitForEvent('popup')
-    await page
-      .getByRole('list', { name: 'Organic Chemistry topics' })
-      .getByRole('button')
-      .first()
-      .click()
-    expect((await popup).url()).toMatch(/subjects\/sub_orgo\/concepts/)
+    const newest = topics(page).first()
+    await expect(newest).toHaveAttribute('aria-current', 'true')
+    const pick = topics(page).last()
+    await pick.click()
+    await expect(pick).toHaveAttribute('aria-current', 'true')
+    await page.getByRole('button', { name: 'Unlock topic' }).click()
+    await expect(page.getByRole('button', { name: 'Lock topic' })).toBeVisible()
+    await expect(topics(page).first()).toHaveAttribute('aria-current', 'true')
+    expect(popups).toBe(0)
 
     await page.goto(`${base}/panel.html?mock=1&latency=0#/picker`)
     await page.getByRole('option', { name: /why does a rotation/i }).click()
     await expect(page).toHaveURL(/#\/$/)
-    await expect(page.getByRole('button', { name: /subject:/i })).toBeVisible()
+    await loaded(page)
     expect(errors).toEqual([])
   })
 })

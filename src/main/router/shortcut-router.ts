@@ -28,7 +28,7 @@ import type { ToastSpec } from '../overlay/toasts'
 import type { SurfaceControl } from '../platform'
 import { type Decision, decide, type RouteContext, type RouteInput } from './decide'
 import { REFUSE_SECURE, unreadableToast } from './hints'
-import { lastStudiedSubject } from './last-subject'
+import { tapTarget } from './last-subject'
 import type { PendingWork } from './pending'
 import { selectionToast } from './selection-actions'
 import type { SuggestionCache } from './suggestions'
@@ -172,14 +172,14 @@ export class ShortcutRouter {
         await surfaces.open('askbar', { route: 'prompt' })
         return
       case 'studyLast': {
-        const subjectId = lastStudiedSubject(this.deps.repos)
-        if (subjectId === null) {
+        const target = tapTarget(this.deps.repos)
+        if (target === null) {
           await surfaces.open('panel', { route: '/picker' })
           return
         }
         await pending.run((signal) =>
           sessions.start(
-            { subjectId, goal: null, question: null },
+            { subjectId: target.subjectId, goal: target.goal, question: null },
             { expect: inChatBox ? snapshot : null, signal },
           ),
         )

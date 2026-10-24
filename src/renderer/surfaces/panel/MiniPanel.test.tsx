@@ -1,76 +1,125 @@
 /**
- * Mini panel against the mock API: the header names one subject (the focus subject, else the
- * one with the newest information), the body lists that subject's topics newest first, a topic
- * opens the full app on the subject's concepts, and the header controls send the right requests.
+ * Mini panel against the mock API: topic names only (every counted subject, newest first), the
+ * current topic softly marked, a click locks a topic (it never opens the app), the header's lock
+ * toggles between a held topic and following the latest, and the window is sized to the card.
  */
 import { useToasts } from '@renderer/design-system'
+import type { MockDb } from '@renderer/lib/mock/db'
+import { listTopics } from '@shared/topics'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { EMPTY_TOPICS } from './TopicList'
 import { renderPanel } from './testing/render'
-import { topicsOf } from './topics'
+import { MIN_HEIGHT, PANEL_WIDTH } from './usePanelAutoSize'
 
 beforeEach(() => {
   useToasts.setState({ toasts: [] })
 })
 
-const topicNames = async (subject: string) => {
-  const list = await screen.findByRole('list', { name: `${subject} topics` })
-  return within(list)
-    .getAllByRole('button')
-    .map((b) => b.querySelector('.pn-topic__name')?.textContent)
+const expectedTopics = (db: MockDb) =>
+  listTopics(db.subjects, (id) => db.concepts.filter((c) => c.subjectId === id))
+
+const rows = async () => {
+  const list = await screen.findByRole('list', { name: 'Topics' })
+  return within(list).getAllByRole('button')
 }
 
+const names = async () => (await rows()).map((b) => b.querySelector('.pn-topic__name')?.textContent)
+
+const current = async () =>
+  (await rows())
+    .find((b) => b.getAttribute('aria-current') === 'true')
+    ?.querySelector('.pn-topic__name')?.textContent
+
 describe('MiniPanel', () => {
-  it('lists the focus subject’s topics, newest first, and nothing else', async () => {
+  it('lists topic names of every subject, newest first, and nothing else', async () => {
     const r = renderPanel()
-    expect(await screen.findByRole('button', { name: /subject: organic chemistry/i })).toBeTruthy()
-    const expected = topicsOf(r.api.db.concepts.filter((c) => c.subjectId === 'sub_orgo'))
-    expect(await topicNames('Organic Chemistry')).toEqual(expected.map((c) => c.name))
+    const expected = expectedTopics(r.api.db)
+    expect(expected.length).toBeGreaterThan(1)
+    expect(await names()).toEqual(expected.map((t) => t.name))
+    expect(screen.queryByRole('button', { name: /subject:/i })).toBeNull()
     expect(screen.queryByText(/goals & due/i)).toBeNull()
     expect(screen.queryByRole('textbox', { name: 'Ask Dumbledore' })).toBeNull()
-    expect(screen.queryByText('Linear Algebra')).toBeNull()
   })
 
-  it('without a focus, shows the subject that got new information most recently', async () => {
-    renderPanel({
-      prepare: (db) => {
-        db.settings.focusSubjectId = null
-        const linalg = db.encounters.find((e) => e.subjectId === 'sub_linalg')
-        if (linalg) linalg.createdAt = new Date(Date.now() + 60_000).toISOString()
-      },
-    })
-    expect(await screen.findByRole('button', { name: /subject: linear algebra/i })).toBeTruthy()
-    expect(await screen.findByRole('list', { name: 'Linear Algebra topics' })).toBeTruthy()
-  })
-
-  it('switches subject from the header (sets focus) and can follow the latest again', async () => {
+  it('unlocked, the newest topic is current', async () => {
     const r = renderPanel()
-    const trigger = await screen.findByRole('button', { name: /subject: organic chemistry/i })
-    fireEvent.keyDown(trigger, { key: 'Enter' })
-    fireEvent.click(await screen.findByRole('menuitem', { name: /linear algebra/i }))
-    await waitFor(() => expect(r.api.db.settings.focusSubjectId).toBe('sub_linalg'))
-    expect(await screen.findByRole('list', { name: 'Linear Algebra topics' })).toBeTruthy()
+    expect(await current()).toBe(expectedTopics(r.api.db)[0]?.name)
+    expect(screen.getByRole('button', { name: 'Lock topic' }).getAttribute('aria-pressed')).toBe(
+      'false',
+    )
+  })
 
-    fireEvent.keyDown(screen.getByRole('button', { name: /subject: linear algebra/i }), {
-      key: 'Enter',
-    })
-    fireEvent.click(await screen.findByRole('menuitem', { name: /follow the latest/i }))
-    await waitFor(() => expect(r.api.db.settings.focusSubjectId).toBeNull())
+  it('clicking a topic makes it current and locks it, without opening the app', async () => {
+    const r = renderPanel()
+    const pick = expectedTopics(r.api.db).at(-1)
+    if (!pick) throw new Error('demo has no topics')
+    const row = (await rows()).find((b) => b.textContent?.startsWith(pick.name))
+    fireEvent.click(row as HTMLElement)
+    await waitFor(() => expect(r.api.db.settings.focusTopicId).toBe(pick.id))
+    expect(r.api.db.settings.focusSubjectId).toBe(pick.subjectId)
+    await waitFor(async () => expect(await current()).toBe(pick.name))
+    expect(screen.getByRole('button', { name: 'Unlock topic' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    )
+    expect(r.calls('window.open')).toEqual([])
+  })
+
+  it('the lock holds the current topic, and unlocking follows the latest again', async () => {
+    const r = renderPanel()
+    const newest = expectedTopics(r.api.db)[0]
+    if (!newest) throw new Error('demo has no topics')
+    await rows()
+    fireEvent.click(screen.getByRole('button', { name: 'Lock topic' }))
+    await waitFor(() => expect(r.api.db.settings.focusTopicId).toBe(newest.id))
+    fireEvent.click(await screen.findByRole('button', { name: 'Unlock topic' }))
+    await waitFor(() => expect(r.api.db.settings.focusTopicId).toBeNull())
     expect(r.calls('settings.update')).toEqual([
-      { focusSubjectId: 'sub_linalg' },
-      { focusSubjectId: null },
+      { focusTopicId: newest.id, focusSubjectId: newest.subjectId },
+      { focusTopicId: null, focusSubjectId: null },
     ])
   })
 
-  it('opens the subject’s concepts in the full app when a topic is clicked', async () => {
+  it('a locked topic stays current even when another topic is newer', async () => {
+    let held = ''
+    renderPanel({
+      prepare: (db) => {
+        const oldest = expectedTopics(db).at(-1)
+        held = oldest?.name ?? ''
+        db.settings.focusTopicId = oldest?.id ?? null
+      },
+    })
+    expect(await current()).toBe(held)
+  })
+
+  it('refreshes live when memory changes, without reopening', async () => {
     const r = renderPanel()
-    const list = await screen.findByRole('list', { name: 'Organic Chemistry topics' })
-    fireEvent.click(within(list).getAllByRole('button')[0] as HTMLElement)
+    await rows()
+    const subject = r.api.db.subjects.find((s) => s.status === 'active')
+    if (!subject) throw new Error('demo has no subject')
+    const seed = r.api.db.concepts.find((c) => c.subjectId === subject.id)
+    if (!seed) throw new Error('demo has no concept')
+    r.api.db.concepts.push({
+      ...seed,
+      id: 'con_fresh',
+      name: 'Fresh topic',
+      parentId: null,
+      lastSeenAt: new Date(Date.now() + 60_000).toISOString(),
+    })
+    act(() => r.api.emit('memory.changed', { scope: 'concepts', ids: ['con_fresh'] }))
+    await waitFor(async () => expect((await names())[0]).toBe('Fresh topic'))
+    expect(await current()).toBe('Fresh topic')
+  })
+
+  it('fits the window to the card', async () => {
+    const r = renderPanel()
+    await rows()
     await waitFor(() =>
-      expect(r.calls('window.open')).toEqual([
-        { surface: 'app', route: '/subjects/sub_orgo/concepts' },
-      ]),
+      expect(r.calls('window.setSize')).toContainEqual({
+        surface: 'panel',
+        width: PANEL_WIDTH,
+        height: MIN_HEIGHT,
+      }),
     )
   })
 
@@ -86,7 +135,6 @@ describe('MiniPanel', () => {
   it('shows one calm line on the first day', async () => {
     renderPanel({ scenario: 'empty' })
     expect(await screen.findByText(EMPTY_TOPICS)).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /subject:/i })).toBeNull()
   })
 
   it('says what failed when the engine does not answer', async () => {
@@ -96,7 +144,7 @@ describe('MiniPanel', () => {
 
   it('closes on Esc', async () => {
     const r = renderPanel()
-    await screen.findByRole('list', { name: 'Organic Chemistry topics' })
+    await rows()
     act(() => {
       fireEvent.keyDown(window, { key: 'Escape' })
     })

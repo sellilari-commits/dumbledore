@@ -1,7 +1,14 @@
 import { join, resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { DISPLAY } from '../testing/harness'
-import { askbarBounds, clampRect, PANEL_SIZE, panelBounds, resizeKeepingTop } from './placement'
+import {
+  askbarBounds,
+  clampRect,
+  PANEL_SIZE,
+  panelBounds,
+  panelOpenSize,
+  resizeKeepingTop,
+} from './placement'
 import { mimeType, resolveRendererPath, responseHeaders } from './protocol'
 import { devCsp, isExternalLink, isOwnUrl, PROD_CSP, pageUrl, rendererBase } from './urls'
 
@@ -100,6 +107,16 @@ describe('window placement', () => {
     const top = panelBounds(DISPLAY, { displayId: 1, x: 756, y: 60, edge: 'top' })
     expect(top.y).toBeGreaterThan(60)
     expect(top.x + top.width / 2).toBeCloseTo(756, 0)
+  })
+
+  it('reopens the mini panel at its fitted size; the picker always gets the full size', () => {
+    const fitted = { width: 380, height: 212 }
+    expect(panelOpenSize('/', null)).toEqual(PANEL_SIZE)
+    expect(panelOpenSize('/', fitted)).toEqual(fitted)
+    expect(panelOpenSize(null, fitted)).toEqual(fitted)
+    expect(panelOpenSize('/picker', fitted)).toEqual(PANEL_SIZE)
+    const short = panelBounds(DISPLAY, { displayId: 1, x: 1480, y: 491, edge: 'right' }, fitted)
+    expect(short).toMatchObject(fitted)
   })
 
   it('puts the ask bar over the focused field, or high and centred', () => {

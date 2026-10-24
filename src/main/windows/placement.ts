@@ -24,6 +24,18 @@ export function clampRect(r: Rect, area: Rect, margin = MARGIN): Rect {
   }
 }
 
+/**
+ * Size the panel opens at: the mini panel reopens at the size it last fitted to (its content
+ * asks for it, see usePanelAutoSize); the study picker always gets the full PANEL_SIZE.
+ */
+export function panelOpenSize(
+  route: string | null,
+  fitted: { width: number; height: number } | null,
+): { width: number; height: number } {
+  if (route?.startsWith('/picker') || !fitted) return PANEL_SIZE
+  return fitted
+}
+
 /** The panel opens beside the orb, on the side facing the middle of the screen. */
 export function panelBounds(d: DisplayInfo, orb: OrbSpot, size = PANEL_SIZE): Rect {
   const ox = d.bounds.x + orb.x

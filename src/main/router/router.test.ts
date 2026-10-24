@@ -3,6 +3,7 @@
  * (text written through the fake helper, windows opened, toasts shown).
  */
 import { FakeBrain } from '@engine/testing/fake-brain'
+import { currentTopic, listTopics } from '@shared/topics'
 import { describe, expect, it } from 'vitest'
 import { makeFocused } from '../fakes/fake-helper'
 import { CHAT_FRAME, chatInput, createHarness, flush, inChatGPT, NOTES } from '../testing/harness'
@@ -35,15 +36,28 @@ function slowImprove() {
 }
 
 describe('ShortcutRouter', () => {
-  it('(c) a tap in an empty AI-chat box studies the subject extracted last', async () => {
+  it('(c) a tap in an empty AI-chat box studies the current topic’s subject', async () => {
     const h = await harness()
     await inChatGPT(h)
     const { repos } = h.services
-    const newest = repos.encounters.list({ limit: 50 }).find((e) => e.subjectId !== null)
+    const topics = listTopics(repos.subjects.list(), (id) => repos.concepts.listBySubject(id))
+    const newest = currentTopic(topics, null)
     expect(await h.core.router.gesture('tap')).toEqual({ kind: 'studyLast' })
     expect(h.services.study.current()?.subjectId).toBe(newest?.subjectId)
     expect(h.helper.state.fieldValue).not.toBe('')
     expect(h.surfaces.log).not.toContain('open:panel:/picker')
+  })
+
+  it('a tap with a locked topic studies that topic (its name is the goal)', async () => {
+    const h = await harness()
+    await inChatGPT(h)
+    const { repos } = h.services
+    const topics = listTopics(repos.subjects.list(), (id) => repos.concepts.listBySubject(id))
+    const pick = topics.at(-1)
+    if (!pick) throw new Error('seed has no topics')
+    repos.settings.update({ focusTopicId: pick.id, focusSubjectId: pick.subjectId })
+    expect(await h.core.router.gesture('tap')).toEqual({ kind: 'studyLast' })
+    expect(h.services.study.current()?.subjectId).toBe(pick.subjectId)
   })
 
   it('a tap with no subjects at all opens the picker', async () => {

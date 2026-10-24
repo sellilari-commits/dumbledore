@@ -23,7 +23,14 @@ import type { OpenOptions, SurfaceControl, WindowSurface } from '../platform'
 import { refreshShadow, sendKey } from './native'
 import { appOptions, finishTyping, typingOptions, webPreferences } from './options'
 import { OverlayWindows } from './overlays'
-import { ASKBAR_SIZE, askbarBounds, PANEL_SIZE, panelBounds, resizeKeepingTop } from './placement'
+import {
+  ASKBAR_SIZE,
+  askbarBounds,
+  PANEL_SIZE,
+  panelBounds,
+  panelOpenSize,
+  resizeKeepingTop,
+} from './placement'
 import { pageUrl } from './urls'
 
 export interface WindowManagerOptions {
@@ -50,6 +57,8 @@ export class WindowManager implements SurfaceControl, EventSink {
     askbar: null,
   }
   private appWin: BrowserWindow | null = null
+  /** The mini panel's last content-fitted size; it reopens at it (null until it first fits). */
+  private panelFitted: { width: number; height: number } | null = null
   private readonly senders = new Map<number, InvokeContext>()
   private readonly ready = new WeakSet<BrowserWindow>()
   private readonly shownAt = new WeakMap<BrowserWindow, number>()
@@ -133,6 +142,7 @@ export class WindowManager implements SurfaceControl, EventSink {
     const h = Math.round(Math.min(Math.max(height, 44), surface === 'askbar' ? 600 : 900))
     const current = win.getBounds()
     const area = displayAt(this.displays(), rectCenter(current))?.workArea ?? current
+    if (surface === 'panel') this.panelFitted = { width: w, height: h }
     win.setBounds(resizeKeepingTop(current, w, h, area))
     refreshShadow(win)
   }
@@ -208,8 +218,9 @@ export class WindowManager implements SurfaceControl, EventSink {
     if (surface === 'panel') {
       const anchor = this.bindings?.overlay.anchor() ?? null
       const display = displays.find((d) => d.id === anchor?.displayId) ?? primaryDisplay(displays)
-      if (anchor && display) return panelBounds(display, anchor)
-      return { x: 100, y: 100, ...PANEL_SIZE }
+      const size = panelOpenSize(opts.route ?? null, this.panelFitted)
+      if (anchor && display) return panelBounds(display, anchor, size)
+      return { x: 100, y: 100, ...size }
     }
     const display =
       (await this.activeDisplay(opts.nearField ?? null, displays)) ?? primaryDisplay(displays)

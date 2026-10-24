@@ -464,6 +464,8 @@ export const Settings = z.object({
   autoSend: z.boolean(),
   theme: z.enum(['system', 'light', 'dark']),
   focusSubjectId: Id.nullable(),
+  /** Topic locked in the mini panel (a top-level concept); null = follow the latest. */
+  focusTopicId: Id.nullable(),
   onboardingDone: z.boolean(),
 })
 export type Settings = z.infer<typeof Settings>
@@ -503,5 +505,6 @@ export const DEFAULT_SETTINGS: Settings = {
   autoSend: false,
   theme: 'system',
   focusSubjectId: null,
+  focusTopicId: null,
   onboardingDone: false,
 }

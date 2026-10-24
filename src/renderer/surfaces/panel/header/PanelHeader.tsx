@@ -1,22 +1,22 @@
 /**
- * Panel header: spectacles glyph + "Dumbledore", the subject menu, the capture switch and ⤢ to
- * open the full app.
+ * Panel header: spectacles glyph + "Dumbledore", the topic lock, the capture switch and ⤢ to open
+ * the full app.
  */
 import { IconButton, SpectaclesGlyph, Tooltip } from '@renderer/design-system'
 import { Maximize2 } from 'lucide-react'
 import { openApp } from '../panel-actions'
-import type { PanelSubject } from '../usePanelSubject'
+import type { PanelTopics } from '../usePanelTopics'
 import { CaptureSwitch } from './CaptureSwitch'
-import { SubjectMenu } from './SubjectMenu'
+import { LockButton } from './LockButton'
 
-export function PanelHeader({ panel }: { panel: PanelSubject }) {
+export function PanelHeader({ panel }: { panel: PanelTopics }) {
   return (
     <header className="pn-header">
       <div className="pn-brand">
         <SpectaclesGlyph size={20} />
         <span className="pn-brand__name">Dumbledore</span>
       </div>
-      <SubjectMenu panel={panel} />
+      <LockButton panel={panel} />
       <CaptureSwitch />
       <Tooltip content="Open Dumbledore" shortcut="⌃⌥⌘D">
         <IconButton label="Open Dumbledore" onClick={() => openApp()}>
