@@ -549,3 +549,11 @@ button.dd-crumb:hover {
   color: var(--c-texTer);
   font-size: var(--text-small);
 }
+
+/* Back / forward (and "open sidebar") at the left of the top bar. */
+.dd-topbar__nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 6px;
+}
