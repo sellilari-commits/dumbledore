@@ -4,6 +4,7 @@
  *
  * Scenarios (?scenario=…): demo (default) · empty (first day, nothing captured) · onboarding
  * (first run) · slow (read models never resolve, to show skeletons) · error (read models fail).
+ * `pressKey` simulates the trigger key: it emits 'key.gesture' like main does for the helper.
  */
 import type {
   DumbledoreApi,
@@ -15,6 +16,7 @@ import type {
 } from '@shared/ipc'
 import type { Handler, MockContext } from './mock/context'
 import { createDb, type MockDb, type MockScenario } from './mock/db'
+import { accountHandlers } from './mock/handlers-account'
 import { coreHandlers, openInBrowser } from './mock/handlers-core'
 import { studyHandlers } from './mock/handlers-study'
 
@@ -23,12 +25,21 @@ export interface MockOptions {
   scenario?: MockScenario
   /** Fixed latency per call; default is a random 80–320 ms. */
   latencyMs?: number
+  /** A Gemini key in the dev env file (default true): Gemini tests pass without a saved key. */
+  geminiEnvKey?: boolean
 }
+
+export type KeyGestureKind = EventPayload<'key.gesture'>['gesture']
 
 export interface MockApi extends DumbledoreApi {
   /** The live in-memory database (tests and scenarios poke at it). */
   db: MockDb
   emit<E extends EventChannel>(event: E, payload: EventPayload<E>): void
+  /**
+   * Simulates the student pressing a key: emits 'key.gesture'. The key defaults to the one in
+   * settings ('rightOption'); pass e.g. 'leftOption' for a wrong key.
+   */
+  pressKey(gesture?: KeyGestureKind, key?: string): void
 }
 
 /** Channels that feed pages; the error/slow scenarios break exactly these. */
@@ -42,14 +53,15 @@ const READ_MODELS = new Set<InvokeChannel>([
   'session.picker',
   'providers.usage',
   'chat.history',
+  'profile.get',
 ])
 
-const handlers = { ...coreHandlers, ...studyHandlers }
+const handlers = { ...coreHandlers, ...studyHandlers, ...accountHandlers }
 
 export function createMockApi(options: MockOptions = {}): MockApi {
   const surface = options.surface ?? 'app'
   const scenario = options.scenario ?? 'demo'
-  const db = createDb(scenario)
+  const db = createDb(scenario, { geminiEnvKey: options.geminiEnvKey })
   const listeners = new Map<EventChannel, Set<(payload: unknown) => void>>()
 
   const emit: MockApi['emit'] = (event, payload) => {
@@ -89,6 +101,8 @@ export function createMockApi(options: MockOptions = {}): MockApi {
     surface,
     db,
     emit,
+    pressKey: (gesture = 'tap', key) =>
+      emit('key.gesture', { gesture, key: key ?? db.settings.shortcut.key }),
     invoke,
     on(event, listener) {
       const set = listeners.get(event) ?? new Set()

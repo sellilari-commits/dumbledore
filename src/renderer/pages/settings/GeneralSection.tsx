@@ -21,7 +21,10 @@ export function GeneralSection({ settings }: { settings: Settings }) {
     ...active.map((s) => ({ value: s.id, label: `${s.emoji} ${s.name}` })),
   ]
   return (
-    <SettingsSection title="General" description="How Dumbledore looks and how it hands you prompts.">
+    <SettingsSection
+      title="General"
+      description="How Dumbledore looks and how it hands you prompts."
+    >
       <SettingsRow
         label="Appearance"
         description="Follow your Mac, or stay light or dark. ⌘⇧L switches any time."

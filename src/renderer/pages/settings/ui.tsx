@@ -46,7 +46,9 @@ export function SettingsRow({ label, description, children, stacked }: SettingsR
         <div className="dd-set-row__label">{label}</div>
         {description ? <div className="dd-set-row__desc">{description}</div> : null}
       </div>
-      {children ? <div className={stacked ? undefined : 'dd-set-row__control'}>{children}</div> : null}
+      {children ? (
+        <div className={stacked ? undefined : 'dd-set-row__control'}>{children}</div>
+      ) : null}
     </div>
   )
 }
@@ -89,7 +91,11 @@ export function SelectMenu<T extends string | number>({
       }
     >
       {options.map((o) => (
-        <MenuItem key={String(o.value)} checked={o.value === value} onSelect={() => onChange(o.value)}>
+        <MenuItem
+          key={String(o.value)}
+          checked={o.value === value}
+          onSelect={() => onChange(o.value)}
+        >
           {o.label}
         </MenuItem>
       ))}

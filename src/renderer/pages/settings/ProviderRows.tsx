@@ -1,16 +1,18 @@
 /**
- * AI provider rows for Settings → AI providers: Apple on-device (switch + test), Groq and
- * Mistral (key entry through 'secrets.set' — keys are never shown again — plus a test), and
- * keyless OVHcloud (test only). Test results show inline: "✓ Connected · 310 ms" or the error.
+ * Fallback provider rows for Settings → AI providers (Gemini has its own row): Groq and
+ * Mistral (key entry through KeyForm — keys are never shown again — plus a test), keyless
+ * OVHcloud (test only) and Apple on-device (switch + test). Test results show inline:
+ * "✓ Connected · 310 ms" or the error.
  */
-import { Button, Input, Switch, Tag, toast } from '@renderer/design-system'
-import { useAction } from '@renderer/lib/queries'
+import { Button, Switch, Tag } from '@renderer/design-system'
+import { type ProviderKey, useAction } from '@renderer/lib/queries'
 import type { Settings } from '@shared/domain'
-import { type FormEvent, useState } from 'react'
+import { useState } from 'react'
+import { KeyForm } from './KeyForm'
 import { OkLabel, SettingsRow } from './ui'
 import { useSettingsPatch } from './useSettingsPatch'
 
-type ProviderId = 'apple' | 'groq' | 'ovh' | 'mistral'
+type ProviderId = ProviderKey
 type TestResult = { ok: boolean; latencyMs: number | null; error: string | null }
 
 export function TestOutcome({ result }: { result: TestResult | null }) {
@@ -81,22 +83,8 @@ export function KeyRow({
   keySet: boolean
   placeholder: string
 }) {
-  const [draft, setDraft] = useState('')
   const [editing, setEditing] = useState(false)
   const t = useProviderTest(id)
-  const save = useAction('secrets.set', {
-    onSuccess: () => {
-      setDraft('')
-      setEditing(false)
-      toast(`${name} key saved to your Keychain`, { tone: 'success' })
-      t.run()
-    },
-    onError: (err) => toast(`Couldn’t save the key: ${err.message}`, { tone: 'error' }),
-  })
-  const submit = (e?: FormEvent) => {
-    e?.preventDefault()
-    if (draft.trim()) save.mutate({ key: id, value: draft.trim() })
-  }
   const showForm = !keySet || editing
   return (
     <SettingsRow
@@ -109,7 +97,7 @@ export function KeyRow({
         <>
           {description}
           {t.result ? (
-            <span style={{ display: 'block', marginTop: 4 }}>
+            <span className="dd-set-status">
               <TestOutcome result={t.result} />
             </span>
           ) : null}
@@ -117,26 +105,17 @@ export function KeyRow({
       }
     >
       {showForm ? (
-        <form onSubmit={submit} style={{ display: 'flex', gap: 8 }}>
-          <Input
-            type="password"
-            aria-label={`${name} API key`}
-            placeholder={placeholder}
-            autoComplete="off"
-            spellCheck={false}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            style={{ width: 200 }}
-          />
-          <Button type="submit" disabled={!draft.trim()} loading={save.isPending}>
-            Save
-          </Button>
-          {editing ? (
-            <Button variant="ghost" onClick={() => setEditing(false)}>
-              Cancel
-            </Button>
-          ) : null}
-        </form>
+        <KeyForm
+          id={id}
+          name={name}
+          placeholder={placeholder}
+          autoFocus={editing}
+          onSaved={() => {
+            setEditing(false)
+            t.run()
+          }}
+          onCancel={editing ? () => setEditing(false) : undefined}
+        />
       ) : (
         <>
           <OkLabel>Key saved</OkLabel>

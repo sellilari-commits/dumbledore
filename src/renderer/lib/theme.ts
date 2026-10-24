@@ -22,7 +22,9 @@ export function applyTheme(theme: ThemeSetting): void {
 }
 
 export function systemPrefersDark(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches
+  return (
+    typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches
+  )
 }
 
 /** The theme actually on screen right now. */

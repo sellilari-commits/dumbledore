@@ -59,7 +59,10 @@ export function PermissionControl({
   if (granted) return <OkLabel>Granted</OkLabel>
   if (waiting)
     return (
-      <span className="dd-set-muted" style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+      <span
+        className="dd-set-muted"
+        style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}
+      >
         <Spinner size={12} />
         Waiting for macOS…
         <Button size="xs" variant="ghost" onClick={onOpen}>

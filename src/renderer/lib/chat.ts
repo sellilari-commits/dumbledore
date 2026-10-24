@@ -41,7 +41,9 @@ export function useChat(thread: string): ChatView {
   // Drop the streaming bubble and optimistic messages once the stored history has them.
   useEffect(() => {
     if (stream?.id && stored.some((m) => m.id === stream.id)) setStream(null)
-    setPending((p) => p.filter((m) => !stored.some((s) => s.role === 'user' && s.content === m.content)))
+    setPending((p) =>
+      p.filter((m) => !stored.some((s) => s.role === 'user' && s.content === m.content)),
+    )
   }, [stored, stream?.id])
 
   const send = useCallback(

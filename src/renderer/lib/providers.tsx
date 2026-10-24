@@ -2,7 +2,7 @@
  * Providers shared by the app and panel windows: one QueryClient, Radix tooltips, toasts and
  * the push-event subscription (memory/state/session → cache).
  */
-import { TooltipProvider, Toaster } from '@renderer/design-system'
+import { Toaster, TooltipProvider } from '@renderer/design-system'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { useLiveUpdates } from './live'

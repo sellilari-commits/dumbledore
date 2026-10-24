@@ -74,8 +74,8 @@ export function KeyConflictNote({
   return (
     <Callout icon="🐟" title="Another app may use right ⌥ too">
       <span>
-        Goldfish listens to right ⌥, and Claude Desktop to a double-tap of ⌥. If one of them runs
-        on this Mac, give Dumbledore another key — {chord} always works.
+        Goldfish listens to right ⌥, and Claude Desktop to a double-tap of ⌥. If one of them runs on
+        this Mac, give Dumbledore another key — {chord} always works.
       </span>
       <div>
         <Button

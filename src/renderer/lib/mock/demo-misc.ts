@@ -7,8 +7,26 @@ import { DAY, HOUR, isoAgo, isoDayAt, MINUTE } from './time'
 
 export function demoAssignments(): Assignment[] {
   return [
-    { id: 'as_ps4', subjectId: 'sub_linalg', title: 'Problem set 4', course: 'MATH 2400', dueAt: isoDayAt(6, 23, 59), source: 'Canvas', status: 'open', createdAt: isoAgo(5 * HOUR) },
-    { id: 'as_lab', subjectId: 'sub_orgo', title: 'Lab report: SN1 hydrolysis', course: 'CHEM 2210', dueAt: isoDayAt(10, 17), source: 'Canvas', status: 'open', createdAt: isoAgo(3 * DAY) },
+    {
+      id: 'as_ps4',
+      subjectId: 'sub_linalg',
+      title: 'Problem set 4',
+      course: 'MATH 2400',
+      dueAt: isoDayAt(6, 23, 59),
+      source: 'Canvas',
+      status: 'open',
+      createdAt: isoAgo(5 * HOUR),
+    },
+    {
+      id: 'as_lab',
+      subjectId: 'sub_orgo',
+      title: 'Lab report: SN1 hydrolysis',
+      course: 'CHEM 2210',
+      dueAt: isoDayAt(10, 17),
+      source: 'Canvas',
+      status: 'open',
+      createdAt: isoAgo(3 * DAY),
+    },
   ]
 }
 
@@ -32,7 +50,12 @@ export function demoChat(): ChatMessage[] {
         { type: 'start_roadmap', subjectId: 'sub_orgo', goal: 'Carbocation stability' },
         {
           type: 'create_exam',
-          spec: { subjectIds: ['sub_orgo', 'sub_linalg'], count: 5, focus: 'due', difficulty: 'mixed' },
+          spec: {
+            subjectIds: ['sub_orgo', 'sub_linalg'],
+            count: 5,
+            focus: 'due',
+            difficulty: 'mixed',
+          },
         },
       ],
       createdAt: isoAgo(3 * HOUR - MINUTE),
@@ -43,15 +66,76 @@ export function demoChat(): ChatMessage[] {
 export function demoUsage(): UsageSummary {
   return {
     rows: [
-      { provider: 'apple', model: 'on-device', calls: 214, failures: 2, tokensIn: 181_400, tokensOut: 22_900 },
-      { provider: 'groq', model: 'openai/gpt-oss-120b', calls: 46, failures: 1, tokensIn: 61_200, tokensOut: 18_400 },
-      { provider: 'groq', model: 'openai/gpt-oss-20b', calls: 88, failures: 0, tokensIn: 52_700, tokensOut: 9_100 },
-      { provider: 'ovh', model: 'gpt-oss-20b', calls: 3, failures: 0, tokensIn: 2_100, tokensOut: 600 },
+      {
+        provider: 'gemini',
+        model: 'gemini-3.5-flash',
+        calls: 132,
+        failures: 1,
+        tokensIn: 248_300,
+        tokensOut: 41_600,
+      },
+      {
+        provider: 'gemini',
+        model: 'gemini-3.5-flash-lite',
+        calls: 391,
+        failures: 0,
+        tokensIn: 402_900,
+        tokensOut: 28_700,
+      },
+      {
+        provider: 'apple',
+        model: 'on-device',
+        calls: 214,
+        failures: 2,
+        tokensIn: 181_400,
+        tokensOut: 22_900,
+      },
+      {
+        provider: 'groq',
+        model: 'openai/gpt-oss-120b',
+        calls: 46,
+        failures: 1,
+        tokensIn: 61_200,
+        tokensOut: 18_400,
+      },
+      {
+        provider: 'groq',
+        model: 'openai/gpt-oss-20b',
+        calls: 88,
+        failures: 0,
+        tokensIn: 52_700,
+        tokensOut: 9_100,
+      },
+      {
+        provider: 'ovh',
+        model: 'gpt-oss-20b',
+        calls: 3,
+        failures: 0,
+        tokensIn: 2_100,
+        tokensOut: 600,
+      },
     ],
     limits: [
+      { provider: 'gemini', model: 'gemini-3.5-flash', requestsPerDay: null, tokensPerDay: null },
+      {
+        provider: 'gemini',
+        model: 'gemini-3.5-flash-lite',
+        requestsPerDay: null,
+        tokensPerDay: null,
+      },
       { provider: 'apple', model: 'on-device', requestsPerDay: null, tokensPerDay: null },
-      { provider: 'groq', model: 'openai/gpt-oss-120b', requestsPerDay: 1000, tokensPerDay: 200_000 },
-      { provider: 'groq', model: 'openai/gpt-oss-20b', requestsPerDay: 1000, tokensPerDay: 200_000 },
+      {
+        provider: 'groq',
+        model: 'openai/gpt-oss-120b',
+        requestsPerDay: 1000,
+        tokensPerDay: 200_000,
+      },
+      {
+        provider: 'groq',
+        model: 'openai/gpt-oss-20b',
+        requestsPerDay: 1000,
+        tokensPerDay: 200_000,
+      },
       { provider: 'ovh', model: 'gpt-oss-20b', requestsPerDay: 2880, tokensPerDay: null },
     ],
   }
@@ -63,8 +147,15 @@ export function demoProfile(): Profile {
       'Second-year chemistry student at the University of Helsinki. I learn best from worked examples and like being quizzed.',
     level: 'University, year 2',
     promptLanguage: 'auto',
-    habits: { promptsSeen: 64, withContext: 22, withStructure: 31, askedToBeQuizzed: 9, askedForExamples: 27 },
-    summary: 'Strong on mechanisms once the intuition clicks; recurring struggle with stability arguments.',
+    habits: {
+      promptsSeen: 64,
+      withContext: 22,
+      withStructure: 31,
+      askedToBeQuizzed: 9,
+      askedForExamples: 27,
+    },
+    summary:
+      'Strong on mechanisms once the intuition clicks; recurring struggle with stability arguments.',
     updatedAt: isoAgo(DAY),
   }
 }
@@ -78,6 +169,7 @@ export function demoAppState(onboardingDone: boolean): AppState {
       ready: true,
       onDevice: true,
       providers: [
+        { id: 'gemini', ok: true },
         { id: 'apple', ok: true },
         { id: 'groq', ok: true },
         { id: 'ovh', ok: true },

@@ -48,7 +48,9 @@ export function PermissionsStep({ onNext, onBack }: { onNext: () => void; onBack
               <div className="dd-onb__row-text">
                 <div className="dd-onb__row-title">
                   {p.title}
-                  <Tag color={p.required ? 'blue' : 'gray'}>{p.required ? 'Required' : 'Optional'}</Tag>
+                  <Tag color={p.required ? 'blue' : 'gray'}>
+                    {p.required ? 'Required' : 'Optional'}
+                  </Tag>
                 </div>
                 <div className="dd-onb__row-desc">{p.description}</div>
               </div>

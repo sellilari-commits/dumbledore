@@ -17,7 +17,7 @@ export const SCOPE_CHANNELS: Record<MemoryScope, InvokeChannel[]> = {
   roadmaps: ['subjects.get', 'subjects.list', 'home.get', 'session.picker', 'session.get'],
   quizzes: ['exams.list', 'quiz.get', 'subjects.get', 'home.get'],
   assignments: ['home.get', 'subjects.get'],
-  profile: ['home.get'],
+  profile: ['home.get', 'profile.get'],
   chat: ['chat.history'],
   nudges: ['home.get'],
   settings: ['settings.get', 'app.getState'],

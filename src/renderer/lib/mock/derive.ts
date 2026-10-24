@@ -39,7 +39,11 @@ export function summarize(db: MockDb, s: Subject): SubjectSummary {
   const roadmap = roadmapFor(db, s.id)
   const done = roadmap ? roadmap.items.filter((i) => i.status === 'done').length : 0
   const encounters = db.encounters.filter((e) => e.subjectId === s.id)
-  const last = encounters.map((e) => e.createdAt).sort().pop() ?? null
+  const last =
+    encounters
+      .map((e) => e.createdAt)
+      .sort()
+      .pop() ?? null
   return {
     ...s,
     progress: roadmap && roadmap.items.length > 0 ? done / roadmap.items.length : 0,
@@ -98,7 +102,9 @@ export function homeData(db: MockDb): HomeData {
       }
     })
   const due = dueConcepts(db).filter((c) => activeIds.has(c.subjectId))
-  const struggling = db.concepts.filter((c) => c.status === 'struggling' && activeIds.has(c.subjectId))
+  const struggling = db.concepts.filter(
+    (c) => c.status === 'struggling' && activeIds.has(c.subjectId),
+  )
   const deadlines = [
     ...db.assignments
       .filter((a) => a.status === 'open' && a.dueAt)
@@ -143,7 +149,12 @@ export function homeData(db: MockDb): HomeData {
     deadlines,
     week: {
       minutesBySubject: active
-        .map((s) => ({ subjectId: s.id, name: s.name, emoji: s.emoji, minutes: db.weekMinutes[s.id] ?? 0 }))
+        .map((s) => ({
+          subjectId: s.id,
+          name: s.name,
+          emoji: s.emoji,
+          minutes: db.weekMinutes[s.id] ?? 0,
+        }))
         .filter((m) => m.minutes > 0),
       questionsAnswered: db.questionsAnswered,
       accuracy: db.questionsAnswered ? db.correct / db.questionsAnswered : null,
@@ -174,16 +185,44 @@ export function search(db: MockDb, query: string): SearchHit[] {
   const hits: SearchHit[] = []
   for (const s of db.subjects)
     if (hit(s.name) || hit(s.description))
-      hits.push({ kind: 'subject', id: s.id, title: `${s.emoji} ${s.name}`, snippet: s.description, subjectId: s.id, route: `/subjects/${s.id}/roadmap` })
+      hits.push({
+        kind: 'subject',
+        id: s.id,
+        title: `${s.emoji} ${s.name}`,
+        snippet: s.description,
+        subjectId: s.id,
+        route: `/subjects/${s.id}/roadmap`,
+      })
   for (const c of db.concepts)
     if (hit(c.name) || hit(c.summary))
-      hits.push({ kind: 'concept', id: c.id, title: c.name, snippet: c.summary, subjectId: c.subjectId, route: `/subjects/${c.subjectId}/concepts` })
+      hits.push({
+        kind: 'concept',
+        id: c.id,
+        title: c.name,
+        snippet: c.summary,
+        subjectId: c.subjectId,
+        route: `/subjects/${c.subjectId}/concepts`,
+      })
   for (const e of db.encounters)
     if (hit(e.seen) || hit(e.source.title ?? ''))
-      hits.push({ kind: 'encounter', id: e.id, title: e.source.title ?? e.source.app, snippet: e.seen, subjectId: e.subjectId, route: e.subjectId ? `/subjects/${e.subjectId}/seen` : '/inbox' })
+      hits.push({
+        kind: 'encounter',
+        id: e.id,
+        title: e.source.title ?? e.source.app,
+        snippet: e.seen,
+        subjectId: e.subjectId,
+        route: e.subjectId ? `/subjects/${e.subjectId}/seen` : '/inbox',
+      })
   for (const x of db.quizzes)
     if (hit(x.title))
-      hits.push({ kind: 'exam', id: x.id, title: x.title, snippet: `${x.questions.length} questions`, subjectId: x.subjectIds[0] ?? null, route: `/exams/${x.id}` })
+      hits.push({
+        kind: 'exam',
+        id: x.id,
+        title: x.title,
+        snippet: `${x.questions.length} questions`,
+        subjectId: x.subjectIds[0] ?? null,
+        route: `/exams/${x.id}`,
+      })
   return hits.slice(0, 20)
 }
 
@@ -191,7 +230,9 @@ export function picker(db: MockDb): PickerData {
   return {
     subjects: subjectList(db)
       .filter((s) => s.status === 'active')
-      .sort((a, b) => (a.focus === 'focus' ? -1 : b.focus === 'focus' ? 1 : b.dueReviews - a.dueReviews))
+      .sort((a, b) =>
+        a.focus === 'focus' ? -1 : b.focus === 'focus' ? 1 : b.dueReviews - a.dueReviews,
+      )
       .map((s) => ({
         subject: s,
         questions: db.encounters
@@ -223,7 +264,13 @@ export function sessionState(db: MockDb): SessionState | null {
     total: r.items.length,
     items: r.items,
     nextAction:
-      phase === 'planning' ? 'none' : phase === 'checkpoint' ? 'open_quiz' : phase === 'complete' ? 'finish' : 'paste_next',
+      phase === 'planning'
+        ? 'none'
+        : phase === 'checkpoint'
+          ? 'open_quiz'
+          : phase === 'complete'
+            ? 'finish'
+            : 'paste_next',
     assistant: db.appState.aiChat?.provider ?? null,
     startReason: r.startReason,
     offerPlacement: r.offerPlacement,

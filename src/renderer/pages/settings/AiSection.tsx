@@ -1,22 +1,27 @@
-/** Settings → AI providers: provider rows (keys, tests) and today's usage vs free limits. */
+/**
+ * Settings → AI providers: Gemini 3.5 first (the primary, with its live key status), then the
+ * fallbacks in router order — Groq, OVHcloud (no key), Mistral, Apple on-device — and today's
+ * usage per model.
+ */
 import type { Settings } from '@shared/domain'
+import { GeminiRow } from './GeminiRow'
 import { AppleRow, KeyRow, OvhRow } from './ProviderRows'
-import { SettingsSection } from './ui'
 import { UsageMeters } from './UsageMeters'
+import { SettingsSection } from './ui'
 
 export function AiSection({ settings }: { settings: Settings }) {
   return (
     <>
       <SettingsSection
         title="AI providers"
-        description="Free tiers only. Text is redacted before it leaves your Mac; keys live in the macOS Keychain."
+        description="Gemini does the thinking; the others take over when it’s busy. Text is redacted before it leaves your Mac, and keys live in the macOS Keychain."
       >
-        <AppleRow settings={settings} />
+        <GeminiRow keySet={settings.ai.geminiKeySet} />
         <KeyRow
           id="groq"
           name="Groq"
-          badge={{ text: 'Primary', color: 'blue' }}
-          description="Writes roadmaps, quizzes and prompts. Free tier, no card: console.groq.com → API Keys."
+          badge={{ text: 'Free fallback', color: 'gray' }}
+          description="Fast backup for roadmaps and prompts. Free tier, no card: console.groq.com → API Keys."
           keySet={settings.ai.groqKeySet}
           placeholder="gsk_…"
         />
@@ -29,6 +34,7 @@ export function AiSection({ settings }: { settings: Settings }) {
           keySet={settings.ai.mistralKeySet}
           placeholder="Mistral API key"
         />
+        <AppleRow settings={settings} />
       </SettingsSection>
       <SettingsSection
         title="Today’s usage"

@@ -28,12 +28,19 @@ export function coachReply(db: MockDb, text: string): CannedReply {
     const ids = focus ? [focus.id] : active.map((s) => s.id)
     return {
       content: `Here’s a 5-question check on **${focus?.name ?? 'your subjects'}**, weighted toward what you missed recently. Takes about 4 minutes.`,
-      actions: [{ type: 'create_exam', spec: { subjectIds: ids, count: 5, focus: 'weak', difficulty: 'mixed' } }],
+      actions: [
+        {
+          type: 'create_exam',
+          spec: { subjectIds: ids, count: 5, focus: 'weak', difficulty: 'mixed' },
+        },
+      ],
     }
   }
 
   if (/(don.?t get|understand|explain|learn|confus|roadmap|how does|why)/.test(t)) {
-    const goal = text.replace(/^(i (don.?t|do not) (get|understand)|explain|help me (understand|learn))\s*/i, '').trim()
+    const goal = text
+      .replace(/^(i (don.?t|do not) (get|understand)|explain|help me (understand|learn))\s*/i, '')
+      .trim()
     return {
       content: `Let’s make a short roadmap for **${goal || 'this'}**. I’ll start from what you already know, write each prompt for ChatGPT, and check you with a quick quiz after every two or three steps.`,
       actions: [{ type: 'start_roadmap', subjectId: focus?.id ?? null, goal: goal || text }],
@@ -51,7 +58,8 @@ export function coachReply(db: MockDb, text: string): CannedReply {
     '3. Five minutes of retrieval beats twenty minutes of re-reading.',
   ]
   const actions: CoachAction[] = []
-  if (struggling) actions.push({ type: 'start_roadmap', subjectId: struggling.subjectId, goal: struggling.name })
+  if (struggling)
+    actions.push({ type: 'start_roadmap', subjectId: struggling.subjectId, goal: struggling.name })
   if (due.length) actions.push({ type: 'start_review', conceptIds: due.map((c) => c.id) })
   return { content: `Here’s what I’d do next:\n\n${lines.join('\n')}`, actions }
 }

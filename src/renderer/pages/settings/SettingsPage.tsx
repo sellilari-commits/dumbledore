@@ -15,8 +15,8 @@ import { CoachingSection } from './CoachingSection'
 import { DataSection } from './DataSection'
 import { GeneralSection } from './GeneralSection'
 import { OrbSection } from './OrbSection'
-import { findSection, type SectionId, SETTINGS_SECTIONS } from './sections'
 import { ShortcutsSection } from './ShortcutsSection'
+import { findSection, SETTINGS_SECTIONS, type SectionId } from './sections'
 import './settings.css'
 
 function SettingsNav({ active }: { active: SectionId }) {

@@ -1,11 +1,14 @@
 /**
- * Mock handlers for app status, settings, read models, subjects, inbox, prompts and windows.
- * Study, quiz, exam and chat handlers live in ./handlers-study.
+ * Mock handlers for app status, settings, keys, read models, subjects, inbox, prompts and
+ * windows. Study, quiz, exam and chat handlers live in ./handlers-study; profile and data
+ * (export, delete all) in ./handlers-account.
  */
-import type { InvokeChannel } from '@shared/ipc'
+import type { Settings } from '@shared/domain'
+import type { InvokeChannel, InvokeReq } from '@shared/ipc'
 import type { AppState } from '@shared/state'
 import type { HandlerMap, MockContext } from './context'
 import { examList, homeData, search, subjectDetail, subjectList } from './derive'
+import type { AccountChannel } from './handlers-account'
 import { mockId, nowIso } from './time'
 
 type CoreChannel = Exclude<
@@ -24,7 +27,31 @@ type CoreChannel = Exclude<
   | 'coach.runAction'
   | 'ask.submit'
   | 'nudge.act'
+  | AccountChannel
 >
+
+type SecretKey = InvokeReq<'secrets.set'>['key']
+type ProviderKey = InvokeReq<'providers.test'>
+
+const KEY_FIELD = {
+  gemini: 'geminiKeySet',
+  groq: 'groqKeySet',
+  mistral: 'mistralKeySet',
+} as const satisfies Record<SecretKey, keyof Settings['ai']>
+
+const KEY_NAME: Record<SecretKey, string> = { gemini: 'Gemini', groq: 'Groq', mistral: 'Mistral' }
+
+/** Simulated round trips; OVHcloud's anonymous endpoint is the slow one. */
+const LATENCY: Record<ProviderKey, number> = {
+  gemini: 420,
+  apple: 240,
+  groq: 310,
+  ovh: 880,
+  mistral: 520,
+}
+
+/** Real keys are long (Gemini 39 characters, Groq 56); shorter ones are "rejected". */
+const MIN_KEY_LENGTH = 12
 
 const COLORS = ['purple', 'pink', 'yellow', 'brown', 'red', 'blue', 'green', 'orange'] as const
 
@@ -33,7 +60,8 @@ export function appState(ctx: MockContext): AppState {
   const now = Date.now()
   const p = db.appState.permissions
   if (db.grantAt.accessibility !== null && now >= db.grantAt.accessibility) p.accessibility = true
-  if (db.grantAt.screenRecording !== null && now >= db.grantAt.screenRecording) p.screenRecording = true
+  if (db.grantAt.screenRecording !== null && now >= db.grantAt.screenRecording)
+    p.screenRecording = true
   db.appState.capture.enabled = db.settings.captureEnabled
   db.appState.capture.active = db.settings.captureEnabled && p.accessibility
   db.appState.focusSubjectId = db.settings.focusSubjectId
@@ -58,9 +86,12 @@ export const coreHandlers: HandlerMap<CoreChannel> = {
     return structuredClone(ctx.db.settings)
   },
   'secrets.set': (ctx, { key, value }) => {
-    const set = value.trim().length > 0
-    ctx.db.settings.ai = { ...ctx.db.settings.ai, [key === 'groq' ? 'groqKeySet' : 'mistralKeySet']: set }
+    const trimmed = value.trim()
+    ctx.db.settings.ai = { ...ctx.db.settings.ai, [KEY_FIELD[key]]: trimmed.length > 0 }
+    ctx.db.rejectedKeys = ctx.db.rejectedKeys.filter((k) => k !== key)
+    if (trimmed.length > 0 && trimmed.length < MIN_KEY_LENGTH) ctx.db.rejectedKeys.push(key)
     ctx.changed('settings')
+    ctx.emit('state.changed', appState(ctx))
   },
   'capture.setEnabled': (ctx, enabled) => {
     ctx.db.settings.captureEnabled = enabled
@@ -74,12 +105,19 @@ export const coreHandlers: HandlerMap<CoreChannel> = {
     ctx.later(2600, () => ctx.emit('state.changed', appState(ctx)))
   },
   'providers.test': (ctx, id) => {
-    if (id === 'groq' && !ctx.db.settings.ai.groqKeySet)
-      return { ok: false, latencyMs: null, error: 'Add a Groq key first.' }
-    if (id === 'mistral' && !ctx.db.settings.ai.mistralKeySet)
-      return { ok: false, latencyMs: null, error: 'Add a Mistral key first.' }
-    const latency = { apple: 240, groq: 310, ovh: 880, mistral: 520 }[id]
-    return { ok: true, latencyMs: latency, error: null }
+    if (id === 'gemini' || id === 'groq' || id === 'mistral') {
+      const saved = ctx.db.settings.ai[KEY_FIELD[id]]
+      const fromEnv = id === 'gemini' && ctx.db.envKeys.gemini
+      if (!saved && !fromEnv)
+        return { ok: false, latencyMs: null, error: `Add a ${KEY_NAME[id]} key first.` }
+      if (saved && ctx.db.rejectedKeys.includes(id))
+        return {
+          ok: false,
+          latencyMs: null,
+          error: `${KEY_NAME[id]} rejected that key (401). Check you copied all of it.`,
+        }
+    }
+    return { ok: true, latencyMs: LATENCY[id], error: null }
   },
   'providers.usage': (ctx) => structuredClone(ctx.db.usage),
 
@@ -88,7 +126,11 @@ export const coreHandlers: HandlerMap<CoreChannel> = {
   'subjects.get': (ctx, id) => subjectDetail(ctx.db, id),
   'inbox.list': (ctx, { state, subjectId }) =>
     ctx.db.encounters
-      .filter((e) => (state === null || e.inboxState === state) && (subjectId === null || e.subjectId === subjectId))
+      .filter(
+        (e) =>
+          (state === null || e.inboxState === state) &&
+          (subjectId === null || e.subjectId === subjectId),
+      )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
   'exams.list': (ctx) => examList(ctx.db),
   'search.query': (ctx, q) => search(ctx.db, q),
@@ -171,7 +213,17 @@ export const coreHandlers: HandlerMap<CoreChannel> = {
 
   'overlay.getState': (ctx) => ({
     displayId: 1,
-    orb: { x: 1400, y: 450, size: 40, visual: 'idle', thinking: false, progress: null, dot: 'none', paused: !ctx.db.settings.captureEnabled, docked: false },
+    orb: {
+      x: 1400,
+      y: 450,
+      size: 40,
+      visual: 'idle',
+      thinking: false,
+      progress: null,
+      dot: 'none',
+      paused: !ctx.db.settings.captureEnabled,
+      docked: false,
+    },
     dockTarget: null,
     edge: 'right',
     pill: null,

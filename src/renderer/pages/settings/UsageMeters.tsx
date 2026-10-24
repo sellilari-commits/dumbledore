@@ -8,6 +8,7 @@ import { useUsage } from '@renderer/lib/queries'
 import type { UsageSummary } from '@shared/state'
 
 const PROVIDER_NAME: Record<string, string> = {
+  gemini: 'Gemini',
   apple: 'Apple',
   groq: 'Groq',
   ovh: 'OVHcloud',
@@ -54,7 +55,13 @@ function Meter({
   )
 }
 
-function UsageRow({ row, limits }: { row: UsageSummary['rows'][number]; limits: UsageSummary['limits'] }) {
+function UsageRow({
+  row,
+  limits,
+}: {
+  row: UsageSummary['rows'][number]
+  limits: UsageSummary['limits']
+}) {
   const limit = limits.find((l) => l.provider === row.provider && l.model === row.model)
   const calls = (n: number) => n.toLocaleString('en-US')
   return (
@@ -70,7 +77,12 @@ function UsageRow({ row, limits }: { row: UsageSummary['rows'][number]; limits: 
         </span>
       </div>
       <div className="dd-usage__bars">
-        <Meter label="Requests" used={row.calls} limit={limit?.requestsPerDay ?? null} format={calls} />
+        <Meter
+          label="Requests"
+          used={row.calls}
+          limit={limit?.requestsPerDay ?? null}
+          format={calls}
+        />
         <Meter
           label="Tokens"
           used={row.tokensIn + row.tokensOut}

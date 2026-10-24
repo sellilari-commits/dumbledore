@@ -30,7 +30,12 @@ export const keys = {
   picker: () => ['session.picker'] as const,
   quiz: (id: string) => ['quiz.get', id] as const,
   chat: (thread: string) => ['chat.history', thread] as const,
+  profile: () => ['profile.get'] as const,
+  providerCheck: (id: ProviderKey) => ['providers.test', id] as const,
 }
+
+/** Provider ids 'providers.test' accepts (gemini, apple, groq, ovh, mistral). */
+export type ProviderKey = InvokeReq<'providers.test'>
 
 export function invalidateChannels(qc: QueryClient, channels: readonly InvokeChannel[]): void {
   for (const ch of channels) void qc.invalidateQueries({ queryKey: [ch] })
@@ -77,13 +82,31 @@ export const useQuiz = (id: string) =>
   useQuery({ queryKey: keys.quiz(id), queryFn: () => invoke('quiz.get', id) })
 export const useChatHistory = (thread: string) =>
   useQuery({ queryKey: keys.chat(thread), queryFn: () => invoke('chat.history', thread) })
+export const useProfile = () =>
+  useQuery({ queryKey: keys.profile(), queryFn: () => invoke('profile.get') })
+
+/**
+ * A provider's connection check as a cached query, so Settings and Onboarding can show a live
+ * status ("Using key from Hugo project ✓") without a click. `refetch()` is the Test button.
+ * Saving a key ('secrets.set') invalidates it.
+ */
+export const useProviderCheck = (id: ProviderKey, enabled = true) =>
+  useQuery({
+    queryKey: keys.providerCheck(id),
+    queryFn: () => invoke('providers.test', id),
+    enabled,
+    staleTime: 5 * 60_000,
+    retry: 0,
+    refetchOnWindowFocus: false,
+  })
 
 // ─── Writes ─────────────────────────────────────────────────────────────────────────────────
 
 /** Read channels each write channel can change; push events cover the rest. */
 const AFFECTS: Partial<Record<InvokeChannel, InvokeChannel[]>> = {
   'settings.update': ['settings.get', 'app.getState'],
-  'secrets.set': ['settings.get', 'app.getState'],
+  'secrets.set': ['settings.get', 'app.getState', 'providers.test'],
+  'profile.update': ['profile.get', 'home.get'],
   'capture.setEnabled': ['settings.get', 'app.getState'],
   'subjects.create': ['subjects.list', 'home.get', 'session.picker'],
   'subjects.update': ['subjects.list', 'subjects.get', 'home.get', 'session.picker'],
@@ -95,7 +118,17 @@ const AFFECTS: Partial<Record<InvokeChannel, InvokeChannel[]>> = {
   'session.end': ['session.get', 'home.get', 'subjects.get'],
   'quiz.finish': ['exams.list', 'quiz.get', 'home.get', 'subjects.get'],
   'exams.create': ['exams.list', 'subjects.get'],
-  'coach.runAction': ['session.get', 'exams.list', 'settings.get', 'app.getState'],
+  // start_roadmap, create_exam, start_review and set_focus between them touch all of these.
+  'coach.runAction': [
+    'session.get',
+    'session.picker',
+    'subjects.get',
+    'subjects.list',
+    'home.get',
+    'exams.list',
+    'settings.get',
+    'app.getState',
+  ],
 }
 
 type MutationOpts<C extends InvokeChannel> = Omit<
@@ -111,6 +144,38 @@ export function useAction<C extends InvokeChannel>(channel: C, opts: MutationOpt
     mutationFn: (req) => invoke(channel, ...([req] as unknown as InvokeArgs<C>)),
     onSuccess: (data, vars, result, context) => {
       invalidateChannels(qc, AFFECTS[channel] ?? [])
+      return opts.onSuccess?.(data, vars, result, context)
+    },
+  })
+}
+
+/** Saves "About you"; the returned profile goes straight into the cache. */
+export function useUpdateProfile(opts: MutationOpts<'profile.update'> = {}) {
+  const qc = useQueryClient()
+  return useAction('profile.update', {
+    ...opts,
+    onSuccess: (profile, vars, result, context) => {
+      qc.setQueryData(keys.profile(), profile)
+      return opts.onSuccess?.(profile, vars, result, context)
+    },
+  })
+}
+
+/** Writes the JSON export; main returns its path (and shows it in Finder). */
+export const useExportData = (opts: MutationOpts<'data.export'> = {}) =>
+  useAction('data.export', opts)
+
+/**
+ * Erases everything. On success every cached read model is reset (and active ones refetched)
+ * before `onSuccess` runs, so the caller can navigate on fresh data (e.g. back to onboarding).
+ */
+export function useDeleteAllData(opts: MutationOpts<'data.deleteAll'> = {}) {
+  const qc = useQueryClient()
+  return useMutation<InvokeRes<'data.deleteAll'>, Error, InvokeReq<'data.deleteAll'>>({
+    ...opts,
+    mutationFn: (req) => invoke('data.deleteAll', req),
+    onSuccess: async (data, vars, result, context) => {
+      await qc.resetQueries()
       return opts.onSuccess?.(data, vars, result, context)
     },
   })

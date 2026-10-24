@@ -1,7 +1,7 @@
 /**
- * The frame every onboarding step shares: progress dots ("Step 2 of 5"), a title that takes
- * focus when the step appears, a lead sentence, the step's content and a footer row
- * (Back on the left, secondary and primary actions on the right).
+ * The frame every onboarding step shares: progress dots ("Step 2 of 5", "All set" on the final
+ * screen), a title that takes focus when the step appears, a lead sentence, the step's content
+ * and a footer row (Back on the left, secondary and primary actions on the right).
  */
 import { type ReactNode, useEffect, useRef } from 'react'
 import './onboarding.css'
@@ -21,9 +21,7 @@ export function Progress({ step }: { step: number }) {
           />
         ))}
       </div>
-      <span>
-        Step {step + 1} of {STEP_COUNT}
-      </span>
+      <span>{step < STEP_COUNT ? `Step ${step + 1} of ${STEP_COUNT}` : 'All set'}</span>
     </div>
   )
 }
@@ -41,7 +39,16 @@ export interface StepFrameProps {
   actions?: ReactNode
 }
 
-export function StepFrame({ step, title, lead, art, center, children, back, actions }: StepFrameProps) {
+export function StepFrame({
+  step,
+  title,
+  lead,
+  art,
+  center,
+  children,
+  back,
+  actions,
+}: StepFrameProps) {
   const titleRef = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
     titleRef.current?.focus({ preventScroll: true })

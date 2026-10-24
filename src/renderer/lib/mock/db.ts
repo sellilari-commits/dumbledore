@@ -9,18 +9,39 @@ import {
   DEFAULT_SETTINGS,
   type Encounter,
   type Profile,
+  type PromptHabits,
   type Quiz,
   type Roadmap,
   type Settings,
   type Subject,
 } from '@shared/domain'
 import type { AppState, SessionState, UsageSummary } from '@shared/state'
-import { demoAppState, demoAssignments, demoChat, demoProfile, demoUsage, demoWeek } from './demo-misc'
 import { demoEncounters } from './demo-encounters'
+import {
+  demoAppState,
+  demoAssignments,
+  demoChat,
+  demoProfile,
+  demoUsage,
+  demoWeek,
+} from './demo-misc'
 import { demoQuizzes } from './demo-quizzes'
 import { demoConcepts, demoRoadmaps, demoSubjects } from './demo-subjects'
 
 export type MockScenario = 'demo' | 'empty' | 'error' | 'slow' | 'onboarding'
+
+/** No prompts seen yet: what a first day (and a wiped install) reports as prompting habits. */
+export const EMPTY_HABITS: PromptHabits = {
+  promptsSeen: 0,
+  withContext: 0,
+  withStructure: 0,
+  askedToBeQuizzed: 0,
+  askedForExamples: 0,
+}
+
+function blankProfile(habits: PromptHabits): Profile {
+  return { ...demoProfile(), aboutMe: '', level: null, summary: '', habits }
+}
 
 export interface MockDb {
   settings: Settings
@@ -43,9 +64,21 @@ export interface MockDb {
   correct: number
   /** When a permission flips to granted after the user "opens System Settings". */
   grantAt: { accessibility: number | null; screenRecording: number | null }
+  /**
+   * Keys found in the development env file (DUMBLEDORE_ENV_FILES → the Hugo project's .env).
+   * They make 'providers.test' pass without a saved key; they are never copied into settings.
+   */
+  envKeys: { gemini: boolean }
+  /** Saved keys the provider "rejects" (too short to be real), so tests can show the error. */
+  rejectedKeys: Array<'gemini' | 'groq' | 'mistral'>
 }
 
-export function createDb(scenario: MockScenario): MockDb {
+export interface CreateDbOptions {
+  /** A Gemini key in the dev env file (default true; `?geminiEnv=0` turns it off). */
+  geminiEnvKey?: boolean
+}
+
+export function createDb(scenario: MockScenario, opts: CreateDbOptions = {}): MockDb {
   const onboarding = scenario === 'onboarding'
   const empty = scenario === 'empty' || onboarding
   const appState = demoAppState(!onboarding)
@@ -66,7 +99,12 @@ export function createDb(scenario: MockScenario): MockDb {
   return {
     settings,
     appState,
-    profile: empty ? { ...demoProfile(), aboutMe: '', level: null, summary: '' } : demoProfile(),
+    profile:
+      scenario === 'empty'
+        ? blankProfile({ ...EMPTY_HABITS })
+        : empty
+          ? blankProfile(demoProfile().habits)
+          : demoProfile(),
     subjects: empty ? [] : demoSubjects(),
     concepts: empty ? [] : demoConcepts(),
     encounters: empty ? [] : demoEncounters(),
@@ -81,5 +119,7 @@ export function createDb(scenario: MockScenario): MockDb {
     questionsAnswered: empty ? 0 : demoWeek.questionsAnswered,
     correct: empty ? 0 : demoWeek.correct,
     grantAt: { accessibility: null, screenRecording: null },
+    envKeys: { gemini: opts.geminiEnvKey ?? true },
+    rejectedKeys: [],
   }
 }

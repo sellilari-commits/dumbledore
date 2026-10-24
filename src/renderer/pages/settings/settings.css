@@ -40,7 +40,7 @@
   text-decoration: none;
 }
 
-.dd-set__nav-item[aria-current='page'] {
+.dd-set__nav-item[aria-current="page"] {
   background: var(--c-hover);
   color: var(--c-texPri);
 }
@@ -154,7 +154,7 @@
 }
 
 .dd-set-select:hover,
-.dd-set-select[data-state='open'] {
+.dd-set-select[data-state="open"] {
   background: var(--c-hover);
 }
 
@@ -343,4 +343,50 @@
   display: flex;
   gap: 8px;
   margin-top: 16px;
+}
+
+/* ── Provider status, key form, data results ────────────────────────────── */
+
+.dd-set-status {
+  display: block;
+  margin-top: 4px;
+}
+
+.dd-set-status .dd-set-muted {
+  white-space: normal;
+}
+
+.dd-set-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dd-set-keyform {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dd-set-result {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.dd-set-danger-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--c-texSec);
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+}
+
+.dd-set-note {
+  margin: 12px 0 0;
+  color: var(--c-texSec);
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
 }

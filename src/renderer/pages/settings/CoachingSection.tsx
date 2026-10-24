@@ -82,7 +82,10 @@ export function CoachingSection({ settings }: { settings: Settings }) {
           onCheckedChange={(morningPlan) => set({ morningPlan })}
         />
       </SettingsRow>
-      <SettingsRow label="Evening wrap" description="What you learned today and what comes back tomorrow.">
+      <SettingsRow
+        label="Evening wrap"
+        description="What you learned today and what comes back tomorrow."
+      >
         <Switch
           label="Evening wrap"
           checked={c.eveningWrap}

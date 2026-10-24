@@ -69,11 +69,11 @@
     background var(--dur-base) var(--ease-out);
 }
 
-.dd-onb__dot[data-state='done'] {
+.dd-onb__dot[data-state="done"] {
   background: var(--c-texSec);
 }
 
-.dd-onb__dot[data-state='current'] {
+.dd-onb__dot[data-state="current"] {
   width: 18px;
   background: var(--c-texPri);
 }
@@ -286,7 +286,7 @@
   user-select: none;
 }
 
-.dd-keycap[data-down='true'] {
+.dd-keycap[data-down="true"] {
   transform: translateY(3px);
   box-shadow:
     0 0 0 1px var(--c-borStr),
@@ -294,7 +294,7 @@
     0 4px 10px rgba(15, 15, 15, 0.08);
 }
 
-.dd-keycap[data-tone='good'] {
+.dd-keycap[data-tone="good"] {
   box-shadow:
     0 0 0 2px var(--c-green-text),
     0 4px 0 var(--c-borStr),
@@ -335,15 +335,179 @@
   color: var(--c-texPri);
 }
 
-.dd-onb__verdict[data-tone='good'] {
+.dd-onb__verdict[data-tone="good"] {
   color: var(--c-green-ink);
 }
 
-.dd-onb__verdict[data-tone='warn'] {
+.dd-onb__verdict[data-tone="warn"] {
   color: var(--c-orange-ink);
 }
 
-.dd-onb__verdict[data-tone='idle'] {
+.dd-onb__verdict[data-tone="idle"] {
   color: var(--c-texSec);
   font-weight: var(--weight-regular);
+}
+
+.dd-keycap[data-pressed="true"] {
+  animation: dd-keycap-press 240ms var(--ease-out);
+}
+
+@keyframes dd-keycap-press {
+  35% {
+    transform: translateY(3px);
+    box-shadow:
+      0 0 0 2px var(--c-green-text),
+      0 1px 0 var(--c-borStr),
+      0 4px 10px rgba(15, 15, 15, 0.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dd-keycap,
+  .dd-keycap[data-pressed="true"] {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ── Lessons (tap / hold) and the final checklist ───────────────────────── */
+
+.dd-onb__lessons,
+.dd-onb__done {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.dd-onb__done {
+  width: 100%;
+  padding: 16px 18px;
+  border-radius: var(--radius-menu);
+  box-shadow: inset 0 0 0 1px var(--c-borPri);
+}
+
+.dd-onb__lesson,
+.dd-onb__done-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+  color: var(--c-texSec);
+}
+
+.dd-onb__lesson-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border-radius: 9px;
+  box-shadow: inset 0 0 0 1.5px var(--c-borStr);
+  color: var(--c-bacPri);
+  transition:
+    background var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+
+.dd-onb__lesson[data-done="true"] .dd-onb__lesson-mark,
+.dd-onb__done-item[data-ok="true"] .dd-onb__lesson-mark {
+  background: var(--c-green-text);
+  box-shadow: none;
+}
+
+.dd-onb__done-item[data-ok="false"] .dd-onb__lesson-mark {
+  color: var(--c-texTer);
+}
+
+.dd-onb__lesson-title {
+  margin-right: 6px;
+  font-weight: var(--weight-semibold);
+  color: var(--c-texPri);
+}
+
+.dd-onb__try {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--radius-menu);
+  background: var(--c-blue-bg);
+  color: var(--c-texPri);
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+  text-align: left;
+}
+
+.dd-onb__try-label {
+  display: block;
+  margin-bottom: 2px;
+  font-size: var(--text-small);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--c-blue-ink);
+}
+
+/* ── Subjects + About you ───────────────────────────────────────────────── */
+
+.dd-onb__emoji {
+  flex: none;
+  width: 24px;
+  font-size: 18px;
+  line-height: 24px;
+  text-align: center;
+}
+
+.dd-onb__deadline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  padding-right: 6px;
+  font-size: var(--text-meta);
+  color: var(--c-texSec);
+}
+
+.dd-onb__add {
+  gap: 8px;
+  padding: 8px;
+  background: var(--c-bacSec);
+  border-radius: 0 0 var(--radius-menu) var(--radius-menu);
+}
+
+.dd-onb__add:first-child {
+  border-radius: var(--radius-menu);
+}
+
+.dd-onb__add > input:not([type="date"]) {
+  flex: 1;
+  min-width: 0;
+}
+
+.dd-onb__about {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.dd-onb__subtitle {
+  margin: 0;
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  font-weight: var(--weight-semibold);
+  color: var(--c-texPri);
+}
+
+.dd-onb__status {
+  margin-top: 2px;
+}
+
+.dd-onb__status .dd-set-muted {
+  white-space: normal;
 }

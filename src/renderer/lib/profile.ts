@@ -1,7 +1,7 @@
 /**
- * "About you" profile — STUB. The IPC contract has no profile.get / profile.update channel yet,
- * so the text is kept in localStorage until it does (requested from the integrator).
- * Swap the bodies of loadAboutYou/saveAboutYou for invoke calls when the channels exist.
+ * DEPRECATED localStorage stub for "About you", from before the contract had profile channels.
+ * Use `useProfile` / `useUpdateProfile` from ./queries (profile.get / profile.update) instead;
+ * these exports stay only so nothing that still imports them breaks.
  */
 import { useCallback, useState } from 'react'
 
