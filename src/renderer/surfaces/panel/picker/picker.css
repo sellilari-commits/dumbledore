@@ -1,0 +1,189 @@
+/*
+ * Study picker (#/picker): the big "What do you want to learn?" input, the listbox of subjects
+ * and their questions, and the keyboard hints in the footer.
+ */
+
+/* ── Picker ─────────────────────────────────────────────────────────────── */
+
+.pn-picker__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  padding: 0 var(--pn-pad) 0 15px;
+  border-bottom: 1px solid var(--c-borPri);
+}
+
+.pn-picker__glyph {
+  color: var(--c-icoPri);
+}
+
+.pn-picker__input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--c-texPri);
+  font-size: 17px;
+  caret-color: var(--c-accent);
+}
+
+.pn-picker__input:focus-visible {
+  box-shadow: none;
+}
+
+.pn-picker__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px 6px 10px;
+}
+
+.pn-picker__label {
+  padding: 6px 8px 4px;
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  color: var(--c-texSec);
+}
+
+.pn-picker__body > .pn-skel,
+.pn-picker__body > .pn-note {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.pn-picker__hint {
+  margin: 8px 8px 0;
+  font-size: 13px;
+  color: var(--c-texTer);
+}
+
+.pn-options {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pn-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.pn-opt.is-active {
+  background: var(--c-hover);
+}
+
+.pn-opt--subject:not(:first-child) {
+  margin-top: 6px;
+}
+
+.pn-opt--question {
+  align-items: flex-start;
+  min-height: 30px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  padding-left: 12px;
+  line-height: 20px;
+  color: var(--c-texSec);
+  font-size: 13px;
+}
+
+.pn-opt--question.is-active {
+  color: var(--c-texPri);
+}
+
+.pn-opt__icon {
+  flex: none;
+  display: inline-flex;
+  justify-content: center;
+  width: 20px;
+  font-size: 15px;
+}
+
+.pn-opt__icon--q {
+  width: 20px;
+  color: var(--c-icoSec);
+}
+
+.pn-opt__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pn-opt--subject .pn-opt__label {
+  flex: 0 1 auto;
+  font-weight: var(--weight-medium);
+}
+
+.pn-opt--subject .dd-tag:first-of-type {
+  margin-left: 2px;
+}
+
+.pn-opt__meta {
+  flex: none;
+  font-size: var(--text-small);
+  color: var(--c-texSec);
+}
+
+.pn-opt__enter {
+  flex: none;
+  display: inline-flex;
+  justify-content: flex-end;
+  width: 16px;
+  margin-left: auto;
+  color: var(--c-icoSec);
+}
+
+.pn-picker__foot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  height: 36px;
+  padding: 0 var(--pn-pad);
+  border-top: 1px solid var(--c-borPri);
+  font-size: var(--text-small);
+  color: var(--c-texSec);
+  white-space: nowrap;
+}
+
+.pn-picker__foot .dd-kbd {
+  margin-right: 4px;
+}
+
+.pn-picker__foot .dd-kbd + .dd-kbd {
+  margin-left: -2px;
+}
+
+.pn-picker__target {
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Questions are the point of the picker: wrap to two lines instead of cutting them short. */
+.pn-opt--question .pn-opt__label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+}
+
+.pn-opt--question .pn-opt__icon,
+.pn-opt--question .pn-opt__enter {
+  height: 20px;
+  align-items: center;
+}
