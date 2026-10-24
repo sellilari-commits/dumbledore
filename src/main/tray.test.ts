@@ -1,7 +1,7 @@
 import { inflateSync } from 'node:zlib'
 import { describe, expect, it, vi } from 'vitest'
 import { menuTemplate, type TrayActions } from './tray'
-import { crc32, encodePng, rasterizeGlyph, trayIconPngs } from './tray-icon'
+import { crc32, encodePng, rasterizeGlyph, rasterizeMark, trayIconPngs } from './tray-icon'
 
 vi.mock('electron', () => ({ Menu: {}, nativeImage: {}, Tray: class {} }))
 
@@ -74,6 +74,17 @@ describe('tray icon', () => {
     const { x1, x2 } = trayIconPngs()
     expect(decodePng(x1).width).toBe(18)
     expect(decodePng(x2).width).toBe(36)
+  })
+
+  it('fills the beard, keeps the lenses open and cuts the smile only when asked', () => {
+    const size = 240 // 10 px per mark unit
+    const at = (px: Float32Array, x: number, y: number) =>
+      px[Math.round(y * 10) * size + Math.round(x * 10)] ?? 0
+    const plain = rasterizeMark(size)
+    expect(at(plain, 12, 18)).toBe(1) // beard
+    expect(at(plain, 7, 7.5)).toBe(0) // inside a lens
+    expect(at(plain, 12, 17.1)).toBe(1) // where the smile would be
+    expect(at(rasterizeMark(size, { smile: true }), 12, 17.1)).toBe(0)
   })
 })
 

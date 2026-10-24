@@ -1,28 +1,27 @@
 /**
- * The menu-bar icon, drawn in code so no binary asset is needed: Dumbledore's half-moon
- * spectacles as an anti-aliased black-on-transparent PNG (a macOS template image), at 1× and 2×.
- * Includes a tiny PNG encoder (RGBA, zlib, CRC-32).
+ * The menu-bar icon, drawn in code so no binary asset is needed: Dumbledore's mark (half-moon
+ * spectacles over a beard, `@shared/brand-mark`) as an anti-aliased black-on-transparent PNG
+ * (a macOS template image), at 1× and 2×. The same rasterizer draws the app icon
+ * (`tools/brand/build-icons.ts`). Includes a tiny PNG encoder (RGBA, zlib, CRC-32).
  */
 import { deflateSync } from 'node:zlib'
+import {
+  BEARD,
+  type Contour,
+  flattenContour,
+  MARK_BOX,
+  MARK_STROKE,
+  type Point,
+  SMILE,
+  SPECTACLES,
+  type StrokeShape,
+} from '@shared/brand-mark'
 
-type Shape =
-  | { kind: 'line'; x1: number; y1: number; x2: number; y2: number }
-  | { kind: 'arc'; cx: number; cy: number; r: number; a0: number; a1: number }
-
-/** Glyph in an 18×18 box, y down. Angles 0..π run through the lower half of a circle. */
-const GLYPH: Shape[] = [
-  { kind: 'line', x1: 2, y1: 8, x2: 8, y2: 8 },
-  { kind: 'arc', cx: 5, cy: 8, r: 3, a0: 0, a1: Math.PI },
-  { kind: 'line', x1: 10, y1: 8, x2: 16, y2: 8 },
-  { kind: 'arc', cx: 13, cy: 8, r: 3, a0: 0, a1: Math.PI },
-  { kind: 'arc', cx: 9, cy: 8, r: 1, a0: Math.PI, a1: 2 * Math.PI },
-  { kind: 'line', x1: 2, y1: 8, x2: 0.9, y2: 6.1 },
-  { kind: 'line', x1: 16, y1: 8, x2: 17.1, y2: 6.1 },
-]
 const BOX = 18
-const HALF_STROKE = 0.72
+/** A touch heavier than the in-app glyph so the spectacles hold up at 18 px. */
+const TRAY_STROKE = 2.1
 
-function distToSegment(px: number, py: number, s: Extract<Shape, { kind: 'line' }>): number {
+function distToSegment(px: number, py: number, s: Extract<StrokeShape, { kind: 'line' }>): number {
   const dx = s.x2 - s.x1
   const dy = s.y2 - s.y1
   const len2 = dx * dx + dy * dy
@@ -30,7 +29,7 @@ function distToSegment(px: number, py: number, s: Extract<Shape, { kind: 'line' 
   return Math.hypot(px - (s.x1 + t * dx), py - (s.y1 + t * dy))
 }
 
-function distToArc(px: number, py: number, s: Extract<Shape, { kind: 'arc' }>): number {
+function distToArc(px: number, py: number, s: Extract<StrokeShape, { kind: 'arc' }>): number {
   let angle = Math.atan2(py - s.cy, px - s.cx)
   if (angle < s.a0) angle += 2 * Math.PI
   if (angle >= s.a0 && angle <= s.a1) return Math.abs(Math.hypot(px - s.cx, py - s.cy) - s.r)
@@ -39,22 +38,56 @@ function distToArc(px: number, py: number, s: Extract<Shape, { kind: 'arc' }>): 
   return Math.min(end(s.a0), end(s.a1))
 }
 
-/** RGBA pixels of the glyph at `size`×`size`. */
-export function rasterizeGlyph(size: number): Uint8Array {
-  const scale = size / BOX
-  const out = new Uint8Array(size * size * 4)
+/** Distance to the nearest polygon edge, negative inside (even-odd over all polygons). */
+function signedDistToFill(px: number, py: number, polys: readonly Point[][]): number {
+  let d = Number.POSITIVE_INFINITY
+  let inside = false
+  for (const poly of polys) {
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [x1, y1] = poly[j] as Point
+      const [x2, y2] = poly[i] as Point
+      if (y1 > py !== y2 > py && px < ((x2 - x1) * (py - y1)) / (y2 - y1) + x1) inside = !inside
+      d = Math.min(d, distToSegment(px, py, { kind: 'line', x1, y1, x2, y2 }))
+    }
+  }
+  return inside ? -d : d
+}
+
+export interface MarkOptions {
+  /** Cut the smile out of the beard. */
+  smile?: boolean
+  /** Spectacles stroke width in mark units (24-unit box). */
+  strokeWidth?: number
+}
+
+/** Coverage (0..1) of the mark drawn into a `size`×`size` square, row by row. */
+export function rasterizeMark(size: number, options: MarkOptions = {}): Float32Array {
+  const scale = size / MARK_BOX
+  const half = (options.strokeWidth ?? MARK_STROKE) / 2
+  const contours: Contour[] = options.smile ? [BEARD, SMILE] : [BEARD]
+  const polys = contours.map((c) => flattenContour(c))
+  const out = new Float32Array(size * size)
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const gx = (x + 0.5) / scale
       const gy = (y + 0.5) / scale
       let d = Number.POSITIVE_INFINITY
-      for (const s of GLYPH) {
+      for (const s of SPECTACLES) {
         d = Math.min(d, s.kind === 'line' ? distToSegment(gx, gy, s) : distToArc(gx, gy, s))
       }
-      const coverage = Math.max(0, Math.min(1, (HALF_STROKE - d) * scale + 0.5))
-      out[(y * size + x) * 4 + 3] = Math.round(coverage * 255)
+      const stroke = (half - d) * scale + 0.5
+      const fill = -signedDistToFill(gx, gy, polys) * scale + 0.5
+      out[y * size + x] = Math.max(0, Math.min(1, Math.max(stroke, fill)))
     }
   }
+  return out
+}
+
+/** RGBA pixels of the tray glyph at `size`×`size`: black, alpha = coverage. */
+export function rasterizeGlyph(size: number): Uint8Array {
+  const coverage = rasterizeMark(size, { strokeWidth: TRAY_STROKE })
+  const out = new Uint8Array(size * size * 4)
+  for (let i = 0; i < coverage.length; i++) out[i * 4 + 3] = Math.round((coverage[i] ?? 0) * 255)
   return out
 }
 

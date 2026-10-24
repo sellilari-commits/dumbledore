@@ -21,6 +21,7 @@
     "seed": "tsx tools/seed-demo.ts",
     "eval": "tsx tools/eval-prompts.ts",
     "bench": "tsx tools/bench.ts",
+    "icons": "tsx --tsconfig tsconfig.node.json tools/brand/build-icons.ts",
     "package": "npm run build && electron-builder --mac --dir"
   },
   "devDependencies": {

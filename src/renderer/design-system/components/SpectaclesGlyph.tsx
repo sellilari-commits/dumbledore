@@ -1,9 +1,12 @@
 /**
- * SpectaclesGlyph: Dumbledore's half-moon spectacles — two flat-topped half-circle lenses, a
- * small arched bridge and short temples. Monochrome; inherits the text colour.
+ * SpectaclesGlyph: Dumbledore's mark — half-moon spectacles over a beard (`@shared/brand-mark`).
+ * Monochrome; inherits the text colour. The smile cut into the beard shows from 32 px up.
  */
+import { fillPath, MARK_STROKE, markFills, spectaclesPath } from '@shared/brand-mark'
 import { cx } from '../cx'
 import '../styles/display.css'
+
+const SPECTACLES_D = spectaclesPath()
 
 export interface SpectaclesGlyphProps {
   size?: number
@@ -15,7 +18,7 @@ export interface SpectaclesGlyphProps {
 
 export function SpectaclesGlyph({
   size = 20,
-  strokeWidth = 1.6,
+  strokeWidth = MARK_STROKE,
   className,
   title,
 }: SpectaclesGlyphProps) {
@@ -25,23 +28,21 @@ export function SpectaclesGlyph({
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
       role={title ? 'img' : undefined}
       aria-hidden={title ? undefined : true}
       aria-label={title}
     >
-      {/* lenses: flat top, round bottom */}
-      <path d="M2.75 10.25h7.5a3.75 3.75 0 0 1-7.5 0Z" />
-      <path d="M13.75 10.25h7.5a3.75 3.75 0 0 1-7.5 0Z" />
-      {/* bridge */}
-      <path d="M10.25 10.75c1-1.1 2.5-1.1 3.5 0" />
-      {/* temples */}
-      <path d="M2.75 10.25 1.25 8.5" />
-      <path d="M21.25 10.25 22.75 8.5" />
+      {/* spectacles: flat-topped half-moon lenses, bridge, temples */}
+      <path
+        d={SPECTACLES_D}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* beard, with the smile cut out at larger sizes */}
+      <path d={fillPath(markFills(size))} fill="currentColor" fillRule="evenodd" />
     </svg>
   )
 }
