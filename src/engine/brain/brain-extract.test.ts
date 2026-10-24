@@ -1,6 +1,7 @@
 import type { ExtractInput } from '@engine/brain-contract'
 import { describe, expect, it } from 'vitest'
 import { groupEpisodes } from './brain'
+import { buildExtractUser, finalizeExtract, type LlmExtract } from './prompts/p01-extract'
 import { brainHarness, R } from './testing/harness'
 
 const signals = {
@@ -10,6 +11,7 @@ const signals = {
   revisitsToday: 2,
   searches: ['sn1 vs sn2 difference'],
   aiQuestions: [],
+  highlights: [],
 }
 const episode = (id: string, over: Partial<ExtractInput['episodes'][number]> = {}) => ({
   id,
@@ -194,5 +196,65 @@ describe('Brain.extract', () => {
     const h = brainHarness()
     expect(await h.brain.extract(input([]))).toEqual({ results: [] })
     expect(h.groq.requests).toHaveLength(0)
+  })
+})
+
+describe('P1 highlights', () => {
+  const highlighted = episode('h1', {
+    signals: { ...signals, highlights: ['James Finlayson founded a cotton mill in 1820'] },
+  })
+
+  it('shows highlights to the model as notes the student marked', () => {
+    const user = buildExtractUser(input([highlighted]), '2026-10-24')
+    expect(user).toContain('Student highlighted (marked as important):')
+    expect(user).toContain('- James Finlayson founded a cotton mill in 1820')
+    expect(buildExtractUser(input([episode('e1')]), '2026-10-24')).not.toContain('highlighted')
+  })
+
+  it('never lets an episode with highlights come back as not learning', () => {
+    const out = finalizeExtract(
+      {
+        results: [
+          {
+            episodeId: 'h1',
+            reason: 'Tourism page',
+            isLearning: false,
+            confidence: 0.8,
+            items: [],
+            studentPrompts: [],
+          },
+        ],
+      },
+      input([highlighted]),
+    )
+    const r = out.results[0]
+    expect(r?.isLearning).toBe(true)
+    expect(r?.items[0]?.seen).toContain('"James Finlayson founded a cotton mill in 1820"')
+    expect(r?.items[0]?.keyTerms).toEqual(['James Finlayson founded a cotton mill in 1820'])
+  })
+
+  it('adds a highlight the model left out to the first item', () => {
+    const out = finalizeExtract(
+      {
+        results: [
+          {
+            episodeId: 'h1',
+            reason: 'Reading about Tampere history',
+            isLearning: true,
+            confidence: 0.9,
+            items: [
+              item({
+                seen: 'Tampere grew around the Tammerkoski rapids.',
+              }) as LlmExtract['results'][number]['items'][number],
+            ],
+            studentPrompts: [],
+          },
+        ],
+      },
+      input([highlighted]),
+    )
+    expect(out.results[0]?.items[0]?.seen).toBe(
+      'Tampere grew around the Tammerkoski rapids. Highlighted: "James Finlayson founded a cotton mill in 1820"',
+    )
   })
 })

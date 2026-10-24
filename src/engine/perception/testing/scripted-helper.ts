@@ -33,6 +33,8 @@ export interface ScriptedWindow {
 export class ScriptedHelper implements HelperClient {
   status: HelperStatus = 'connected'
   idleSeconds = 0
+  /** What `ax.selectedText` returns (the student's current selection). */
+  selection: string | null = null
   front: ScriptedWindow | null = null
   others: ScriptedWindow[] = []
   /** Methods that throw on their next call (one-shot). */
@@ -85,6 +87,8 @@ export class ScriptedHelper implements HelperClient {
       }
       case 'ax.findChatInput':
         return { found: false, frame: null, ref: null, method: null }
+      case 'ax.selectedText':
+        return { text: this.selection }
       default:
         throw new Error(`ScriptedHelper: ${method} not scripted`)
     }

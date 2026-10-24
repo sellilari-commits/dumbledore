@@ -87,6 +87,9 @@ export class OpenEpisode {
   private sources = new Set<'ax' | 'ocr'>()
   private lastSource: 'ax' | 'ocr' | null = null
   viewport: string[] = []
+  /** Text the student selected in this segment (perception/highlights.ts). */
+  highlights: string[] = []
+  private lastHighlight: string | null = null
 
   constructor(init: OpenEpisodeInit) {
     this.key = init.key
@@ -113,6 +116,14 @@ export class OpenEpisode {
     if (ms <= 0) return
     this.dwellMs += ms
     this.visitDwellMs += ms
+  }
+
+  /** Records a highlight; false when it repeats the last one saved for this page. */
+  addHighlight(text: string): boolean {
+    if (text === this.lastHighlight) return false
+    this.lastHighlight = text
+    this.highlights.push(text)
+    return true
   }
 
   /** Cleans, masks and merges one changed frame; returns the frame lines as stored. */
@@ -172,7 +183,11 @@ export class OpenEpisode {
     let text = lines.map((l) => (tagged && l.align ? TAG[l.align] : '') + l.text).join('\n')
     if (text.length > env.maxTextChars) text = text.slice(0, env.maxTextChars)
     const dwellSeconds = Math.round(this.dwellMs / SECOND)
-    if (dwellSeconds < env.minPersistDwellS || text.trim().length === 0) return null
+    // A highlight is a note the student chose to keep: it is stored however short the visit.
+    const highlights = [...this.highlights]
+    if (highlights.length === 0 && (dwellSeconds < env.minPersistDwellS || !text.trim()))
+      return null
+    if (!text.trim()) text = highlights.join('\n')
 
     const words = lines.reduce((n, l) => n + wordCount(l.text), 0)
     const readingWpm =
@@ -200,8 +215,9 @@ export class OpenEpisode {
         revisitsToday: this.revisitsToday,
         searches: env.searches.between(this.visitStartedAt - SEARCH_LOOKBACK_MS, endedAt),
         aiQuestions: kind === 'ai_chat' ? studentMessages(lines, this.userAlign) : [],
+        highlights,
       },
-      extracted: this.agentSession,
+      extracted: this.agentSession && highlights.length === 0,
     }
   }
 
@@ -211,6 +227,7 @@ export class OpenEpisode {
     this.segment++
     this.startedAt = at
     this.dwellMs = 0
+    this.highlights = []
     this.scroll = new ScrollTracker()
     this.sources = new Set(this.lastSource ? [this.lastSource] : [])
     this.merged.touch(this.viewport, this.segment)

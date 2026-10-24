@@ -117,6 +117,15 @@ export class EpisodeBuilder {
     return this.front
   }
 
+  /**
+   * Adds a highlight to the readable page in front. Returns that episode, or null when nothing
+   * readable is in front (blocked or excluded apps never get one) or the text repeats the last one.
+   */
+  addHighlight(text: string): OpenEpisode | null {
+    const ep = this.front
+    return ep?.addHighlight(text) ? ep : null
+  }
+
   /** Closes the current segment of matching episodes now; they continue as new segments. */
   checkpointNow(filter: (ep: OpenEpisode) => boolean, at: number): number {
     let n = 0

@@ -150,5 +150,10 @@ export function prefilter(ep: Episode, options: Partial<PrefilterOptions> = {}):
     pass = false
     reasons.push(`${clean.length} chars < ${opts.minChars}`)
   }
+  // Text the student highlighted is a note they chose to keep: always extracted.
+  if ((ep.signals.highlights?.length ?? 0) > 0 && !isOwnUi(clean)) {
+    pass = true
+    reasons.push('highlighted')
+  }
   return { pass, score: Math.round(score * 100) / 100, cleanChars: clean.length, reasons }
 }

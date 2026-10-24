@@ -20,6 +20,8 @@ export interface EngineEvents {
   'perception:episodeClosed': { episode: Episode }
   'perception:now': { now: NowContext | null }
   'perception:aiChat': { chat: AiChatInfo | null }
+  /** The student selected text on a readable page: saved as a highlight (a note). */
+  'perception:highlight': { text: string; app: string; title: string | null }
 
   'memory:changed': MemoryChanged
   'session:changed': { session: SessionState | null }

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { FakeClock } from '../clock'
-import { encounterInput, quiz, roadmap } from './conformance/fixtures'
+import { encounterInput, episode, quiz, roadmap } from './conformance/fixtures'
 import { openDatabase } from './db'
 import { currentSchemaVersion, LATEST_SCHEMA_VERSION, migrate } from './migrations'
 import { createSqliteRepos, type SqliteRepos } from './sqlite-repos'
@@ -44,6 +44,16 @@ describe('createSqliteRepos', () => {
     expect(second.search.query('subst', 5).map((h) => h.title)).toEqual(['Substitution'])
     expect(second.db.pragma('journal_mode', { simple: true })).toBe('wal')
     expect(second.db.pragma('foreign_keys', { simple: true })).toBe(1)
+  })
+
+  it('reads episodes stored before highlights existed with no highlights', () => {
+    const repos = make()
+    const ep = episode()
+    repos.episodes.save(ep)
+    const { highlights: _h, ...old } = ep.signals
+    repos.db.prepare('UPDATE episodes SET signals = ? WHERE id = ?').run(JSON.stringify(old), ep.id)
+    expect(repos.episodes.get(ep.id)?.signals.highlights).toEqual([])
+    expect(repos.episodes.listUnextracted(5)[0]?.signals.highlights).toEqual([])
   })
 
   it('records migrations once and refuses databases from a newer version', () => {

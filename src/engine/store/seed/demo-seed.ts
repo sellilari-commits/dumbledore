@@ -116,6 +116,7 @@ export function seedDemo(
           revisitsToday: 0,
           searches: [],
           aiQuestions: [],
+          highlights: [],
         },
         extracted: true,
       })

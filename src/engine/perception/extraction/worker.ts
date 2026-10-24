@@ -149,7 +149,9 @@ export class ExtractionWorker {
     }
     if (this.inFlight.has(episode.id) || this.queue.some((i) => i.episode.id === episode.id))
       return result
-    const urgent = episode.kind === 'ai_chat' && this.sessionActive
+    const urgent =
+      (episode.kind === 'ai_chat' && this.sessionActive) ||
+      (episode.signals.highlights?.length ?? 0) > 0
     this.queue.push({ episode, score: result.score, urgent, attempts: 0, seq: this.seq++ })
     if (this.queue.length > this.opts.maxQueue) {
       this.sortQueue()

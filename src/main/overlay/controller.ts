@@ -106,6 +106,7 @@ export class OverlayController {
       bus.on('session:changed', ({ session }) => this.onSession(session)),
       bus.on('nudge:ready', ({ nudge }) => this.showNudge(nudge)),
       bus.on('toast:show', ({ toast }) => this.showEngineToast(toast)),
+      bus.on('perception:highlight', ({ text }) => this.showHighlight(text)),
       bus.on('thinking:changed', ({ busy }) => {
         this.thinking = busy
         this.update()
@@ -356,6 +357,12 @@ export class OverlayController {
       onExpire: () => this.collapseNudge(nudge.id),
       onDismiss: () => onNudge?.(nudge.id, 'dismiss'),
     })
+  }
+
+  /** Right when a highlight is caught: confirms it was noted (before any extraction). */
+  private showHighlight(text: string): void {
+    const short = text.length > 60 ? `${text.slice(0, 60).trimEnd()}…` : text
+    this.toasts.show({ kind: 'info', title: '📝 Noted', body: short, ttlMs: 2500 })
   }
 
   private showEngineToast(toast: Toast): void {

@@ -285,4 +285,17 @@ describe('OverlayController', () => {
     t.bus.emit('thinking:changed', { busy: false, label: null })
     expect(t.states.length).toBe(before)
   })
+
+  it('shows "Noted" right when a highlight is caught', () => {
+    const t = setup()
+    t.bus.emit('perception:highlight', {
+      text: `James Finlayson founded a cotton mill in 1820, which became ${'x'.repeat(40)}`,
+      app: 'Google Chrome',
+      title: 'Tampere',
+    })
+    const toast = t.states.at(-1)?.toasts.at(-1)
+    expect(toast?.title).toBe('📝 Noted')
+    expect(toast?.body.endsWith('…')).toBe(true)
+    expect(toast?.body.length).toBeLessThanOrEqual(61)
+  })
 })

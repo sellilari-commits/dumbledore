@@ -57,6 +57,7 @@ export function episode(over: Partial<Episode> = {}): Episode {
       revisitsToday: 1,
       searches: ['sn1 vs sn2'],
       aiQuestions: [],
+      highlights: [],
     },
     extracted: false,
     ...over,

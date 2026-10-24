@@ -71,6 +71,8 @@ const ITEM_RULES = `For each learning episode give one item per distinct topic (
 - subjectMatchId: id of the listed subject this belongs to, else null. subjectNewName: only when no listed subject fits and this is a genuine area of study (short course-like name, e.g. "Linear Algebra"), else null. Never fill both.
 - assignment: only when the text names an assignment, exam or deadline: {title, course or null, dueAt as YYYY-MM-DD or null}; resolve relative dates ("Friday") from <today>. Otherwise null.`
 
+const HIGHLIGHT_RULES = `Highlights: <highlighted> lists text the student selected on screen to mark it as important — a note they chose to keep. An episode with highlights is always learning (isLearning=true): put each highlighted passage in \`seen\` (quote it, or paraphrase it closely) and its key words in keyTerms, even when the rest of the page is noise.`
+
 const CHAT_RULES = `AI-chat episodes (kind="ai_chat"): lines tagged [R] are usually the student's messages, [L] the AI's. A repeated or rephrased question is evidence of confusion. Put every student message in studentPrompts: text, hasContext (states their level, course, what they know or what confuses them), hasStructure (asks for a format, steps, length or numbered points), asksToBeQuizzed, asksForExamples. For other episodes studentPrompts is [].`
 
 const OUTPUT_RULES = `Return one result per episode, in input order, with its episodeId. reason: ≤ 15 words. confidence: how sure you are about isLearning (0–1). Non-learning episodes: items [] and studentPrompts [].`
@@ -109,6 +111,8 @@ ${RULES}
 
 ${ITEM_RULES}
 
+${HIGHLIGHT_RULES}
+
 ${CHAT_RULES}
 
 ${OUTPUT_RULES}
@@ -120,6 +124,8 @@ const SYSTEM_COMPACT = `You are the perception module of a study coach. From scr
 ${RULES_COMPACT}
 
 ${ITEM_RULES}
+
+Highlighted text is a note the student chose to keep: such an episode is always learning; quote it in seen and keyTerms.
 
 ${CHAT_RULES}
 
@@ -162,7 +168,21 @@ export function buildExtractUser(input: ExtractInput, today: string): string {
   const episodes = input.episodes.map((ep) =>
     tag(
       'episode',
-      `${tag('signals', formatSignals(ep.signals))}\n${tag('text', ep.text || '(empty)')}`,
+      [
+        tag('signals', formatSignals(ep.signals)),
+        ...(ep.signals.highlights?.length
+          ? [
+              tag(
+                'highlighted',
+                `Student highlighted (marked as important):\n${ep.signals.highlights
+                  .slice(0, 10)
+                  .map((h) => `- ${h}`)
+                  .join('\n')}`,
+              ),
+            ]
+          : []),
+        tag('text', ep.text || '(empty)'),
+      ].join('\n'),
       {
         id: ep.id,
         kind: ep.kind,
@@ -189,68 +209,122 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}([T ][\d:.]+(Z|[+-]\d{2}:?\d{2})?)?$/
 const clean = (xs: string[], max: number) =>
   [...new Set(xs.map((x) => x.trim()).filter(Boolean))].slice(0, max)
 
+/** Highlight snippet for `seen`: short enough to read, quoted. */
+const quoteHighlight = (h: string) => `"${h.length > 300 ? `${h.slice(0, 297)}…` : h}"`
+
+/**
+ * A highlight is a strong signal of learning intent: an episode with highlights is always
+ * learning, and every highlighted passage ends up in `seen` (and short ones in keyTerms), even
+ * when the model said otherwise or left it out.
+ */
+export function keepHighlights(
+  result: ExtractOutput['results'][number],
+  ep: ExtractInput['episodes'][number],
+): ExtractOutput['results'][number] {
+  const highlights = ep.signals.highlights ?? []
+  if (highlights.length === 0) return result
+  const short = highlights.filter((h) => h.length <= 60)
+  if (!result.isLearning || result.items.length === 0) {
+    const where = ep.title ?? ep.app
+    return {
+      ...result,
+      isLearning: true,
+      confidence: Math.max(result.confidence, 0.9),
+      reason: result.reason || 'Student highlighted text',
+      items: [
+        {
+          subject: { matchId: null, newName: null },
+          topicPath: [where],
+          seen: `Highlighted: ${highlights.map(quoteHighlight).join(' · ')}`,
+          bigPicture: `Marked as important while reading ${where}.`,
+          understanding: { status: 'unknown', evidence: 'The student highlighted this text.' },
+          openQuestions: [],
+          keyTerms: clean(short, 10),
+          assignment: null,
+        },
+      ],
+    }
+  }
+  const [first, ...rest] = result.items
+  if (!first) return result
+  const all = result.items.map((it) => it.seen.toLowerCase()).join(' ')
+  const missing = highlights.filter((h) => !all.includes(h.slice(0, 40).toLowerCase()))
+  const seen = missing.length
+    ? `${first.seen} Highlighted: ${missing.map(quoteHighlight).join(' · ')}`
+    : first.seen
+  return {
+    ...result,
+    items: [{ ...first, seen, keyTerms: clean([...first.keyTerms, ...short], 10) }, ...rest],
+  }
+}
+
 export function finalizeExtract(out: LlmExtract, input: ExtractInput): ExtractOutput {
   const subjectIds = new Set(input.subjects.map((s) => s.id))
   return {
-    results: input.episodes.map((ep, i) => {
-      const r = out.results.find((x) => x.episodeId === ep.id) ?? out.results[i]
-      if (!r) {
+    results: input.episodes.map((ep, i) => keepHighlights(finalizeOne(out, ep, i, subjectIds), ep)),
+  }
+}
+
+function finalizeOne(
+  out: LlmExtract,
+  ep: ExtractInput['episodes'][number],
+  i: number,
+  subjectIds: Set<string>,
+): ExtractOutput['results'][number] {
+  const r = out.results.find((x) => x.episodeId === ep.id) ?? out.results[i]
+  if (!r) {
+    return {
+      episodeId: ep.id,
+      isLearning: false,
+      confidence: 0,
+      reason: 'No result from the model',
+      items: [],
+      studentPrompts: [],
+    }
+  }
+  const items = r.isLearning
+    ? r.items.slice(0, 3).map((it) => {
+        const evidence = it.evidence.trim()
+        const status =
+          (it.understanding === 'struggling' || it.understanding === 'understood') &&
+          evidence.length < 8
+            ? 'unknown'
+            : it.understanding
+        const matchId =
+          it.subjectMatchId && subjectIds.has(it.subjectMatchId) ? it.subjectMatchId : null
+        const topicPath = clean(it.topicPath, 4)
+        const newName = matchId ? null : it.subjectNewName?.trim() || topicPath[0] || null
         return {
-          episodeId: ep.id,
-          isLearning: false,
-          confidence: 0,
-          reason: 'No result from the model',
-          items: [],
-          studentPrompts: [],
+          subject: { matchId, newName },
+          topicPath: topicPath.length ? topicPath : [newName ?? ep.title ?? ep.app],
+          seen: it.seen.trim(),
+          bigPicture: it.bigPicture.trim(),
+          understanding: { status, evidence },
+          openQuestions: clean(it.openQuestions, 3),
+          keyTerms: clean(it.keyTerms, 10),
+          assignment: it.assignment?.title.trim()
+            ? {
+                title: it.assignment.title.trim(),
+                course: it.assignment.course?.trim() || null,
+                dueAt:
+                  it.assignment.dueAt && ISO_DATE.test(it.assignment.dueAt.trim())
+                    ? it.assignment.dueAt.trim()
+                    : null,
+              }
+            : null,
         }
-      }
-      const items = r.isLearning
-        ? r.items.slice(0, 3).map((it) => {
-            const evidence = it.evidence.trim()
-            const status =
-              (it.understanding === 'struggling' || it.understanding === 'understood') &&
-              evidence.length < 8
-                ? 'unknown'
-                : it.understanding
-            const matchId =
-              it.subjectMatchId && subjectIds.has(it.subjectMatchId) ? it.subjectMatchId : null
-            const topicPath = clean(it.topicPath, 4)
-            const newName = matchId ? null : it.subjectNewName?.trim() || topicPath[0] || null
-            return {
-              subject: { matchId, newName },
-              topicPath: topicPath.length ? topicPath : [newName ?? ep.title ?? ep.app],
-              seen: it.seen.trim(),
-              bigPicture: it.bigPicture.trim(),
-              understanding: { status, evidence },
-              openQuestions: clean(it.openQuestions, 3),
-              keyTerms: clean(it.keyTerms, 10),
-              assignment: it.assignment?.title.trim()
-                ? {
-                    title: it.assignment.title.trim(),
-                    course: it.assignment.course?.trim() || null,
-                    dueAt:
-                      it.assignment.dueAt && ISO_DATE.test(it.assignment.dueAt.trim())
-                        ? it.assignment.dueAt.trim()
-                        : null,
-                  }
-                : null,
-            }
-          })
-        : []
-      return {
-        episodeId: ep.id,
-        isLearning: r.isLearning,
-        confidence: Math.min(1, Math.max(0, r.confidence)),
-        reason: r.reason.trim(),
-        items,
-        studentPrompts:
-          ep.kind === 'ai_chat'
-            ? r.studentPrompts
-                .filter((p) => p.text.trim())
-                .map((p) => ({ ...p, text: p.text.trim() }))
-            : [],
-      }
-    }),
+      })
+    : []
+  return {
+    episodeId: ep.id,
+    isLearning: r.isLearning,
+    confidence: Math.min(1, Math.max(0, r.confidence)),
+    reason: r.reason.trim(),
+    items,
+    studentPrompts:
+      ep.kind === 'ai_chat'
+        ? r.studentPrompts.filter((p) => p.text.trim()).map((p) => ({ ...p, text: p.text.trim() }))
+        : [],
   }
 }
 

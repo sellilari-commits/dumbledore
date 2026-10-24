@@ -104,6 +104,64 @@ describe('Perception', () => {
     expect(closed.every((e) => e.bundleId !== onePassword.bundleId)).toBe(true)
   })
 
+  it('stores a highlight right away and closes the page ~10 s after the last one', async () => {
+    const noted: string[] = []
+    bus.on('perception:highlight', ({ text }) => noted.push(text))
+    helper.front = wiki
+    perception.start()
+    await runFor(clock, 3000)
+    const start = clock.now()
+    helper.selection = 'Osmosis sentence 2'
+    await runFor(clock, 1000)
+    expect(noted).toEqual(['Osmosis sentence 2'])
+    expect(clock.now() - start).toBeLessThanOrEqual(1000)
+    helper.selection = null
+    await runFor(clock, 4000)
+    helper.selection = 'Osmosis sentence 3'
+    await runFor(clock, 1000)
+    expect(noted).toHaveLength(2)
+    await runFor(clock, 8500)
+    expect(closed).toHaveLength(0) // debounced: 10 s after the *last* highlight
+    await runFor(clock, 2000)
+    expect(closed).toHaveLength(1)
+    expect(closed[0]?.signals.highlights).toEqual(['Osmosis sentence 2', 'Osmosis sentence 3'])
+    expect(closed[0]?.extracted).toBe(false)
+    expect(repos.episodes.get(closed[0]?.id ?? '')?.signals.highlights).toHaveLength(2)
+  })
+
+  it('ignores selections in text fields and in blocked apps', async () => {
+    const noted: string[] = []
+    bus.on('perception:highlight', ({ text }) => noted.push(text))
+    helper.front = wiki
+    perception.start()
+    await runFor(clock, 2000)
+    const field = { pid: 10, bundleId: wiki.bundleId, appName: wiki.appName, role: 'AXTextField' }
+    bus.emit('helper:focus', {
+      app: null,
+      element: {
+        ...field,
+        subrole: null,
+        editable: true,
+        isSecure: false,
+        frame: null,
+        caret: null,
+        placeholder: null,
+        valueLength: 5,
+        ref: null,
+      },
+    })
+    helper.selection = 'typed text'
+    await runFor(clock, 2000)
+    expect(noted).toEqual([])
+    bus.emit('helper:focus', { app: null, element: null })
+    helper.selection = null
+    helper.front = onePassword
+    await runFor(clock, 2000)
+    helper.selection = 'github.com'
+    await runFor(clock, 2000)
+    expect(noted).toEqual([])
+  })
+
   it('stops immediately when switched off, closing what was open', async () => {
     helper.front = wiki
     perception.start()

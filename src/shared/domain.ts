@@ -131,6 +131,8 @@ export const EpisodeSignals = z.object({
   revisitsToday: z.number().int(),
   searches: z.array(z.string()),
   aiQuestions: z.array(z.string()),
+  /** Text the student selected (marked) on this page: a note they chose to keep. */
+  highlights: z.array(z.string()).default([]),
 })
 export type EpisodeSignals = z.infer<typeof EpisodeSignals>
 

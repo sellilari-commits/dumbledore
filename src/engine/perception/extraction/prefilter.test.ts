@@ -45,6 +45,18 @@ describe('siteHints', () => {
 })
 
 describe('prefilter', () => {
+  it('always passes an episode with highlights, however short or off-topic', () => {
+    const ep = makeEpisode({
+      title: 'Visit Tampere',
+      text: 'Tampere',
+      dwellSeconds: 2,
+      signals: { ...makeEpisode().signals, highlights: ['James Finlayson founded a cotton mill'] },
+    })
+    const r = prefilter(ep)
+    expect(r.pass).toBe(true)
+    expect(r.reasons).toContain('highlighted')
+  })
+
   it('passes a study page read for a while', () => {
     const r = prefilter(makeEpisode())
     expect(r.pass).toBe(true)

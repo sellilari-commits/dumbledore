@@ -32,6 +32,7 @@ export function makeEpisode(overrides: Partial<Episode> = {}): Episode {
       revisitsToday: 0,
       searches: [],
       aiQuestions: [],
+      highlights: [],
     },
     extracted: false,
     ...overrides,

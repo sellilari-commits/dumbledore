@@ -137,12 +137,17 @@ const EPISODE_UPSERT = `${insertSql('episodes', episodeCodec.columns)}
 
 export function createEpisodeRepo(ctx: StoreCtx): EpisodeRepo {
   const { stmt } = ctx
-  const decodeAll = (rows: unknown[]) => (rows as Row[]).map((r) => episodeCodec.decode(r))
+  const decode = (r: Row): Episode => {
+    const e = episodeCodec.decode(r)
+    // Rows stored before highlights existed have no `highlights` in their signals JSON.
+    return { ...e, signals: { ...e.signals, highlights: e.signals.highlights ?? [] } }
+  }
+  const decodeAll = (rows: unknown[]) => (rows as Row[]).map(decode)
   return {
     save: (episode) => void stmt(EPISODE_UPSERT).run(episodeCodec.params(episode)),
     get(id) {
       const r = stmt('SELECT * FROM episodes WHERE id = ?').get(id) as Row | undefined
-      return r ? episodeCodec.decode(r) : null
+      return r ? decode(r) : null
     },
     listUnextracted: (limit) =>
       decodeAll(

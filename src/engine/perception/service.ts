@@ -2,13 +2,14 @@
  * PerceptionService (engine/contracts.ts): wires the capture scheduler, the privacy gate, the
  * AI-chat tracker and the episode builder to the helper, Repos and the engine bus.
  *
- * Emits 'perception:window' (masked frames), 'perception:episodeClosed', 'perception:now' and
- * 'perception:aiChat'. Listens to 'settings:changed' and the helper:* events the shell forwards
+ * Emits 'perception:window' (masked frames), 'perception:episodeClosed', 'perception:now',
+ * 'perception:aiChat' and 'perception:highlight' (text the student selected, see highlights.ts;
+ * the page's segment closes ~10 s after the last highlight so it is extracted soon). Listens to 'settings:changed' and the helper:* events the shell forwards
  * ('helper:focus' feeds the focused composer to the AI-chat tracker).
  */
 import type { Episode, Settings } from '@shared/domain'
 import type { NowContext } from '@shared/state'
-import { type Clock, systemClock } from '../clock'
+import { type Cancel, type Clock, systemClock } from '../clock'
 import type { AiChatInfo, HelperClient, PerceptionService, Repos } from '../contracts'
 import type { EngineBus } from '../events'
 import { assistantByKey } from './ai-chat/assistants'
@@ -16,6 +17,8 @@ import { AiChatTracker } from './ai-chat/tracker'
 import { EpisodeBuilder, type EpisodeOptions } from './episodes/builder'
 import { chatExcerptOf, pageContextOf } from './episodes/context'
 import { pageKeyOf } from './episodes/keys'
+import type { OpenEpisode } from './episodes/open-episode'
+import { HighlightWatcher } from './highlights'
 import { CaptureScheduler } from './scheduler'
 
 export interface PerceptionDeps {
@@ -31,12 +34,18 @@ export interface PerceptionDeps {
 
 const DAY = 24 * 60 * 60 * 1000
 const MAX_LINKS = 500
+/** A page's segment closes this long after its last highlight (several highlights batch). */
+export const HIGHLIGHT_FLUSH_MS = 10_000
 
 export class Perception implements PerceptionService {
   private readonly clock: Clock
   private readonly scheduler: CaptureScheduler
   private readonly tracker: AiChatTracker
   private readonly builder: EpisodeBuilder
+  private readonly highlights: HighlightWatcher
+  private readonly highlightFlush = new Map<OpenEpisode, Cancel>()
+  /** The focused element is a text field: a selection there is editing, not marking. */
+  private focusEditable = false
   private settings: Settings
   private enabled = true
   private started = false
@@ -78,6 +87,13 @@ export class Perception implements PerceptionService {
         this.tracker.reset()
       },
     })
+    this.highlights = new HighlightWatcher({
+      helper: deps.helper,
+      clock: this.clock,
+      canWatch: () => this.isActive() && !this.focusEditable && this.builder.current() !== null,
+      onHighlight: (text) => this.onHighlight(text),
+      log: deps.log,
+    })
   }
 
   start(): void {
@@ -92,7 +108,10 @@ export class Perception implements PerceptionService {
       bus.on('helper:screenLocked', ({ locked }) => this.scheduler.setLocked(locked)),
       bus.on('helper:appActivated', () => this.scheduler.poke()),
       // The composer the student focuses tells unknown AI chats apart (ai-chat/composer.ts).
-      bus.on('helper:focus', ({ element }) => this.tracker.observeFocus(element)),
+      bus.on('helper:focus', ({ element }) => {
+        this.focusEditable = element?.editable ?? false
+        this.tracker.observeFocus(element)
+      }),
       bus.on('helper:status', ({ status }) => {
         if (status === 'connected') this.scheduler.poke()
       }),
@@ -100,6 +119,7 @@ export class Perception implements PerceptionService {
     this.seedHistory()
     this.scheduler.setEnabled(this.enabled)
     this.scheduler.start()
+    this.highlights.start()
   }
 
   stop(): void {
@@ -107,6 +127,9 @@ export class Perception implements PerceptionService {
     this.started = false
     for (const off of this.offs) off()
     this.offs = []
+    this.highlights.stop()
+    for (const cancel of this.highlightFlush.values()) cancel()
+    this.highlightFlush.clear()
     this.scheduler.stop()
     this.builder.closeAll()
     this.tracker.reset()
@@ -160,6 +183,19 @@ export class Perception implements PerceptionService {
   /** One capture tick right now (integration and tests). */
   tickNow(): Promise<void> {
     return this.scheduler.tickNow()
+  }
+
+  /** Saves a highlight on the page in front and closes its segment soon after the last one. */
+  private onHighlight(text: string): void {
+    const ep = this.builder.addHighlight(text)
+    if (!ep) return
+    this.deps.bus.emit('perception:highlight', { text, app: ep.app, title: ep.title })
+    this.highlightFlush.get(ep)?.()
+    const cancel = this.clock.setTimeout(() => {
+      this.highlightFlush.delete(ep)
+      this.builder.checkpointNow((e) => e === ep, this.clock.now())
+    }, HIGHLIGHT_FLUSH_MS)
+    this.highlightFlush.set(ep, cancel)
   }
 
   private onEpisodeClosed(episode: Episode, pageKey: string): void {
