@@ -8,6 +8,7 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
+| 2026-10-24 22:40 | Ilari / Claude | Batched extraction: ~5 min windows, cheap triage yes/no (P0) together, full P1 only for yes, prefilter as pre-gate | src/engine/perception/extraction/ (worker, prefilter, budget + tests), src/engine/brain-contract.ts, src/engine/brain/brain.ts, src/engine/brain/prompts/p00-triage.ts (new) + p01-extract.ts (context line), src/engine/brain/*.test.ts, src/engine/testing/fake-brain.ts | main | coordinator deploys |
 | 2026-10-24 22:30 | Ilari / Claude | Mini panel: only the topics of the current subject (focus, else latest new info), calm and simple | `src/renderer/surfaces/panel/`, panel queries in `src/renderer/lib/` (if any), `tests/e2e-sim/ui-panel.spec.ts` + its panel screenshots | main | coordinator deploys |
 | 2026-10-24 22:20 | Olle / Claude | Empty home: first-steps checklist; onboarding: "How Dumbledore works" intro step | `src/renderer/pages/home/`, `src/renderer/pages/onboarding/`, `tests/e2e-sim/` (home/onboarding specs + screenshots) | main | Renderer only; no data or engine changes |
 
