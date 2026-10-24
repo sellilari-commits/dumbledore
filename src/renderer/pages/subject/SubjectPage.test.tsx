@@ -38,7 +38,7 @@ describe('SubjectPage', () => {
     const gaps = screen.getByRole('region', { name: 'Gaps' })
     expect(within(gaps).getByText('Carbocation stability')).toBeTruthy()
     const caught = screen.getByRole('region', { name: 'What Dumbledore caught' })
-    expect(within(caught).getByRole('article', { name: 'SN1 reaction – Wikipedia' })).toBeTruthy()
+    expect(await within(caught).findByRole('region', { name: 'SN1 mechanism' })).toBeTruthy()
     expect(screen.queryByRole('tab')).toBeNull()
   })
 
@@ -112,6 +112,72 @@ describe('SubjectPage', () => {
     await waitFor(() => expect(r.api.db.roadmaps.some((m) => m.subjectId === 'sub_geo')).toBe(true))
     fireEvent.click(screen.getByRole('button', { name: /add to my subjects/i }))
     await waitFor(() => expect(r.api.db.subjects[2]?.status).toBe('active'))
+  })
+})
+
+describe('SubjectPage memory', () => {
+  it('shows topics as a tree with their notes, sources and prerequisites', async () => {
+    renderSubject()
+    const topic = await screen.findByRole('region', { name: 'SN1 mechanism' })
+    expect(
+      within(topic).getByText(
+        'SN1 goes through a carbocation, so its rate depends only on the substrate.',
+      ),
+    ).toBeTruthy()
+    expect(within(topic).getByText(/^ChatGPT · /)).toBeTruthy()
+    expect(within(topic).getByText('Needs first: Carbocation stability')).toBeTruthy()
+    const carbo = screen.getByRole('region', { name: 'Carbocation stability' })
+    expect(within(carbo).getByLabelText('Highlight')).toBeTruthy()
+    const loose = screen.getByRole('region', { name: 'Not in a topic yet' })
+    expect(
+      within(loose).getByText('Polar protic solvents stabilise ions in solution.'),
+    ).toBeTruthy()
+  })
+
+  it('edits a note inline (it becomes pinned) and deletes one with its ✕', async () => {
+    const r = renderSubject()
+    const topic = await screen.findByRole('region', { name: 'Leaving groups' })
+    fireEvent.click(within(topic).getByRole('button', { name: /^Edit note: Good leaving/ }))
+    const input = within(topic).getByRole('textbox', { name: 'Edit note' })
+    fireEvent.change(input, { target: { value: 'Weak bases make good leaving groups.' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await waitFor(() =>
+      expect(r.api.db.notes.find((n) => n.id === 'note_lg1')).toMatchObject({
+        text: 'Weak bases make good leaving groups.',
+        pinned: true,
+      }),
+    )
+    const carbo = screen.getByRole('region', { name: 'Carbocation stability' })
+    fireEvent.click(within(carbo).getAllByRole('button', { name: 'Delete note' })[0] as HTMLElement)
+    await waitFor(() =>
+      expect(r.api.db.notes.find((n) => n.id === 'note_cc1')?.status).toBe('deleted'),
+    )
+    expect(toastTexts()).toContain('Note deleted')
+  })
+
+  it('deletes a topic after a confirm', async () => {
+    const r = renderSubject()
+    const carbo = await screen.findByRole('region', { name: 'Carbocation stability' })
+    fireEvent.click(
+      within(carbo).getByRole('button', { name: 'Delete topic Carbocation stability' }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'Delete Carbocation stability?' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
+    await waitFor(() =>
+      expect(r.api.db.concepts.some((c) => c.id === 'con_carbocation')).toBe(false),
+    )
+  })
+
+  it('lists every capture by day in a toggle and removes one with its ✕', async () => {
+    const r = renderSubject()
+    fireEvent.click(await screen.findByRole('button', { name: /Everything it saw, by day/ }))
+    const block = await screen.findByRole('article', { name: 'SN1 reaction – Wikipedia' })
+    const before = r.api.db.encounters.length
+    fireEvent.click(
+      within(block).getByRole('button', { name: 'Remove SN1 reaction – Wikipedia from memory' }),
+    )
+    await waitFor(() => expect(r.api.db.encounters.length).toBe(before - 1))
+    expect(toastTexts()).toContain('Removed from memory')
   })
 })
 

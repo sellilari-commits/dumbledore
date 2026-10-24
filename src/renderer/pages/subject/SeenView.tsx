@@ -1,13 +1,16 @@
 /**
  * Seen view: what Dumbledore saw for this subject, grouped by day. Each encounter shows its
  * source (app, page, time, dwell) and the three parts from the brief — Seen, Big picture and
- * Understanding (with the evidence) — plus open questions when there are any.
+ * Understanding (with the evidence) — plus open questions when there are any. The ✕ on an
+ * encounter removes it from memory with its notes (and its screen text unless shared).
  */
-import { EmptyState, Tag } from '@renderer/design-system'
+import { EmptyState, IconButton, Tag, toast } from '@renderer/design-system'
+import { errorToast } from '@renderer/lib/errors'
 import { formatSeconds, formatTime, hostOf } from '@renderer/lib/format'
+import { useAction } from '@renderer/lib/queries'
 import { UNDERSTANDING } from '@renderer/lib/status'
 import type { Encounter } from '@shared/domain'
-import { Eye, FileText, Globe, MessageSquare, Monitor, Play } from 'lucide-react'
+import { Eye, FileText, Globe, MessageSquare, Monitor, Play, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { groupByDay } from './subject-utils'
 
@@ -38,6 +41,10 @@ function EncounterBlock({ e }: { e: Encounter }) {
   const host = hostOf(e.source.url)
   const u = UNDERSTANDING[e.understanding]
   const title = e.source.title ?? e.source.app
+  const remove = useAction('encounters.delete', {
+    onSuccess: () => toast('Removed from memory', { tone: 'info' }),
+    onError: (err) => errorToast(err),
+  })
   return (
     <article className="sp-enc" aria-label={title}>
       <header className="sp-enc__head">
@@ -51,6 +58,14 @@ function EncounterBlock({ e }: { e: Encounter }) {
             ' · ',
           )}
         </span>
+        <IconButton
+          label={`Remove ${title} from memory`}
+          size="sm"
+          className="tt-del"
+          onClick={() => remove.mutate(e.id)}
+        >
+          <X size={14} strokeWidth={1.75} />
+        </IconButton>
       </header>
       <div className="sp-enc__body">
         <Part label="Seen">

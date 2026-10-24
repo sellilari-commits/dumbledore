@@ -477,3 +477,149 @@ button.sp-edit:hover {
 .sp-gap__why {
   color: var(--c-red-ink);
 }
+
+/* ── What Dumbledore caught: Ilari’s topic tree (docs/progress/notes-phase3) ── */
+
+/* ── Concepts: topic tree with notes (docs/NOTES.md §7) ─────────────────── */
+
+.tt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 760px;
+}
+
+.tt-topic {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: calc(var(--tt-depth, 0) * 24px);
+}
+
+.tt-topic__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.tt-topic__name {
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  color: var(--c-texPri);
+}
+
+.tt-topic__summary {
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+  color: var(--c-texSec);
+}
+
+.tt-muted,
+.tt-needs,
+.tt-note__meta {
+  font-size: var(--text-small);
+  color: var(--c-texTer);
+}
+
+.tt-needs {
+  margin: 2px 0 0;
+}
+
+.tt-unplaced__title {
+  font-size: var(--text-ui);
+  font-weight: var(--weight-medium);
+  color: var(--c-texSec);
+}
+
+/* Delete buttons stay out of the way until the row is hovered or focused. */
+.tt-del {
+  flex: none;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.tt-topic__head > .tt-del {
+  margin-left: auto;
+}
+
+.tt-topic__head:hover > .tt-del,
+.tt-note:hover > .tt-del,
+.tt-del:focus-visible {
+  opacity: 1;
+}
+
+.tt-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tt-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 4px 6px;
+  margin: 0 -6px;
+  border-radius: var(--radius-control);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.tt-note:hover {
+  background: var(--c-hover);
+}
+
+.tt-note__dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  margin-top: 9px;
+  border-radius: var(--radius-round);
+  background: var(--c-texTer);
+}
+
+.tt-note__mark {
+  flex: none;
+  margin-top: 4px;
+  color: var(--c-orange-text);
+}
+
+.tt-note__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tt-note__text {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+  color: var(--c-texPri);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+
+.tt-note__input {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: transparent;
+  font: inherit;
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+  color: var(--c-texPri);
+}
+
+.sp-enc:hover .sp-enc__head > .tt-del {
+  opacity: 1;
+}

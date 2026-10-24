@@ -144,3 +144,21 @@ export function groupByDay(list: readonly Encounter[], now = Date.now()): DayGro
   }
   return groups
 }
+
+// ─── Concepts: tree depth ───────────────────────────────────────────────────────────────────
+
+/** Depth of each concept in the topic tree (a missing parent or a cycle counts as a root). */
+export function depthsOf(concepts: readonly Concept[]): Map<string, number> {
+  const byId = new Map(concepts.map((c) => [c.id, c]))
+  const depths = new Map<string, number>()
+  const depth = (c: Concept, path: Set<string>): number => {
+    const known = depths.get(c.id)
+    if (known !== undefined) return known
+    const parent = c.parentId ? byId.get(c.parentId) : undefined
+    const d = parent && !path.has(parent.id) ? depth(parent, path.add(c.id)) + 1 : 0
+    depths.set(c.id, d)
+    return d
+  }
+  for (const c of concepts) depth(c, new Set())
+  return depths
+}

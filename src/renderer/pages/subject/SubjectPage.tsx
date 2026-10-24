@@ -1,14 +1,23 @@
 /**
  * Subject page (/subjects/:id/:view): one simple page, no tabs. Emoji + inline title and
- * description, the goals (goal, deadline), then Progress, Gaps and What Dumbledore caught.
+ * description, the goals (goal, deadline), then Progress, Gaps and What Dumbledore caught
+ * (the topic tree with its notes, and every capture by day in a toggle).
  * The top bar has "Make a quiz" and a "⋯" menu (Focus, Delete). Every :view opens this page.
  */
-import { ErrorState, LoadingState, PageHeader, Section, Skeleton } from '@renderer/design-system'
+import {
+  ErrorState,
+  LoadingState,
+  PageHeader,
+  Section,
+  Skeleton,
+  ToggleBlock,
+} from '@renderer/design-system'
 import { useSubject, useSubjects } from '@renderer/lib/queries'
 import { Eye } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Redirect, useParams } from 'wouter'
 import { PageFrame } from '../PageFrame'
+import { MemoryTree } from './MemoryTree'
 import { SeenView } from './SeenView'
 import { GenerateExamButton, SubjectMenu } from './SubjectActions'
 import { SubjectHeader } from './SubjectHeader'
@@ -81,7 +90,15 @@ export function SubjectPage() {
           <ProgressSection detail={detail} />
           <GapsSection concepts={detail.concepts} />
           <Section id="subject-caught" title="What Dumbledore caught" icon={<Eye {...HEAD} />}>
-            <SeenView encounters={detail.encounters} />
+            <MemoryTree subjectId={detail.subject.id} />
+            {detail.encounters.length > 0 ? (
+              <ToggleBlock
+                title={`Everything it saw, by day (${detail.encounters.length})`}
+                className="sp-sources"
+              >
+                <SeenView encounters={detail.encounters} />
+              </ToggleBlock>
+            ) : null}
           </Section>
         </div>
       </>
