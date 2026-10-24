@@ -1,40 +1,98 @@
 /**
- * The Ask bar: a Spotlight-like 560×52 input with the spectacles glyph. Enter sends the question
- * to the cheap LLM (`ask.submit`); the markdown reply (streamed when 'chat.delta' arrives) and
- * action chips expand below while the window grows to fit. Esc closes and returns focus.
+ * The Ask bar: a Spotlight-like 560 × 52 input with the spectacles glyph that grows into a chat
+ * with Dumbledore (thread 'ask'). The conversation sits above the input; the window grows with it
+ * up to 600 pt, then the conversation scrolls. Enter sends, Shift+Enter adds a line, Esc closes
+ * and hands focus back, ⌘N (or the pen icon) starts a new chat. Opened with route 'choose', recent
+ * subjects are offered above the input first (see useChoose).
  */
 import type { DumbledoreApi } from '@shared/ipc'
-import { Check } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import Markdown, { type Components } from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { SquarePen } from 'lucide-react'
+import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { SpectaclesGlyph } from '../overlay/glyph/SpectaclesGlyph'
-import { ActionChips } from './ActionChips'
-import { type AskController, useAsk } from './useAsk'
+import { AskLog } from './AskLog'
+import { SubjectChoices } from './SubjectChoices'
+import { useAsk } from './useAsk'
+import { useChoose } from './useChoose'
 import { useWindowAutoSize } from './useWindowAutoSize'
 import './askbar.css'
 
 export const PLACEHOLDER = 'Ask Dumbledore — e.g. ‘I don’t get recursion’'
+export const FOLLOW_UP = 'Reply to Dumbledore…'
+export const NEW_TOPIC = 'What do you want to learn? e.g. ‘the Calvin cycle’'
+export const OR_ASK = 'Or ask Dumbledore anything…'
 
 export function AskBar({ api }: { api: DumbledoreApi }) {
-  const ask = useAsk(api)
+  const chat = useAsk(api)
+  const choose = useChoose(api, chat.close)
   const [text, setText] = useState('')
   const card = useRef<HTMLDivElement>(null)
-  const input = useRef<HTMLInputElement>(null)
-  useWindowAutoSize(api, card)
+  const input = useRef<HTMLTextAreaElement>(null)
+  const maxHeight = useWindowAutoSize(api, card)
+  const busy = chat.pending !== null
+  const open = chat.messages.length > 0 || busy || chat.error !== null
+  const choosing = choose.active && !choose.newTopic
 
-  // Esc closes from anywhere; coming back to the window re-selects the question.
-  const { close } = ask
+  const send = () => {
+    const question = text.trim()
+    if (!question) return
+    if (choose.active && choose.newTopic) {
+      setText('')
+      choose.startTopic(question)
+      return
+    }
+    if (busy) return
+    setText('')
+    choose.exit()
+    void chat.submit(question).then((sent) => {
+      if (!sent) setText((now) => (now.trim() ? now : question))
+    })
+  }
+
+  const newTopic = () => {
+    choose.startNewTopic()
+    input.current?.focus()
+  }
+
+  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.nativeEvent.isComposing) return
+    const rows = choose.choices.length + 1
+    if (choosing && !text && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      e.preventDefault()
+      const step = e.key === 'ArrowDown' ? 1 : rows - 1
+      choose.setHighlight((choose.highlight + step) % rows)
+      return
+    }
+    if (e.key !== 'Enter' || e.shiftKey) return
+    e.preventDefault()
+    if (choosing && !text.trim()) {
+      const subject = choose.choices[choose.highlight]
+      if (subject) choose.pick(subject.id)
+      else newTopic()
+      return
+    }
+    send()
+  }
+
+  // Esc closes and ⌘N starts over from anywhere; coming back to the window reloads the chat.
+  const { close, refresh, newChat } = chat
+  const { exit } = choose
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.isComposing) return
       if (e.key === 'Escape') {
         e.preventDefault()
+        exit()
         close()
+      } else if (e.metaKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault()
+        newChat()
+        input.current?.focus()
       }
     }
+    // No select(): the input is cleared on send, and a late focus event mustn't eat typing.
     const onFocus = () => {
       input.current?.focus()
-      input.current?.select()
+      refresh()
     }
     window.addEventListener('keydown', onKey)
     window.addEventListener('focus', onFocus)
@@ -42,18 +100,35 @@ export function AskBar({ api }: { api: DumbledoreApi }) {
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('focus', onFocus)
     }
-  }, [close])
+  }, [close, exit, newChat, refresh])
 
-  const { phase } = ask.view
+  const placeholder = choose.active
+    ? choose.newTopic
+      ? NEW_TOPIC
+      : OR_ASK
+    : open
+      ? FOLLOW_UP
+      : PLACEHOLDER
   return (
-    <div className="ask" ref={card} data-phase={phase}>
-      <div className="ask__bar">
+    <div
+      className="ask"
+      ref={card}
+      data-mode={open ? 'chat' : 'bar'}
+      data-choosing={choose.active || undefined}
+      style={{ maxHeight }}
+    >
+      {open && <AskLog chat={chat} />}
+      {choosing && (
+        <SubjectChoices choose={choose} enterPicks={!text.trim()} onNewTopic={newTopic} />
+      )}
+      <div className="ask__composer">
         <SpectaclesGlyph className="ask__glyph" size={22} />
-        <input
+        <textarea
           ref={input}
           className="ask__input"
+          rows={1}
           value={text}
-          placeholder={PLACEHOLDER}
+          placeholder={placeholder}
           aria-label="Ask Dumbledore"
           // biome-ignore lint/a11y/noAutofocus: the bar exists to be typed into the moment it opens
           autoFocus
@@ -61,17 +136,12 @@ export function AskBar({ api }: { api: DumbledoreApi }) {
           autoComplete="off"
           onChange={(e) => {
             setText(e.target.value)
-            if (!e.target.value.trim() && phase !== 'loading') ask.reset()
+            if (!e.target.value.trim() && chat.messages.length === 0 && !busy) chat.dismissError()
           }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-              e.preventDefault()
-              ask.submit(text)
-            }
-          }}
+          onKeyDown={onKeyDown}
         />
-        {phase === 'loading' ? (
-          <span className="ov-spinner" role="status" aria-label="Thinking" />
+        {busy && !choose.newTopic ? (
+          <span className="ov-spinner ask__busy" role="status" aria-label="Thinking" />
         ) : (
           text.trim() && (
             <kbd className="ov-key ask__enter" aria-hidden>
@@ -79,40 +149,22 @@ export function AskBar({ api }: { api: DumbledoreApi }) {
             </kbd>
           )
         )}
+        {open && (
+          <button
+            type="button"
+            className="ov-icon-btn ask__new"
+            aria-label="New chat"
+            title="New chat · ⌘N"
+            aria-disabled={busy || undefined}
+            onClick={() => {
+              chat.newChat()
+              input.current?.focus()
+            }}
+          >
+            <SquarePen size={15} strokeWidth={1.75} aria-hidden />
+          </button>
+        )}
       </div>
-      {phase !== 'idle' && <AskAnswer ask={ask} />}
-    </div>
-  )
-}
-
-const MARKDOWN: Components = {
-  a: ({ node: _node, ...props }) => <a {...props} target="_blank" rel="noreferrer" />,
-}
-
-function AskAnswer({ ask }: { ask: AskController }) {
-  const { view } = ask
-  const text = view.result?.reply ?? view.streamed
-  return (
-    <div className="ask__answer" aria-live="polite">
-      {view.phase === 'loading' && !text && <p className="ask__thinking">Thinking…</p>}
-      {text && (
-        <div className="ask__reply" data-streaming={view.phase === 'loading' || undefined}>
-          <Markdown remarkPlugins={[remarkGfm]} components={MARKDOWN}>
-            {text}
-          </Markdown>
-        </div>
-      )}
-      {view.phase === 'error' && (
-        <p className="ask__error" role="alert">
-          {view.error ?? 'Something went wrong.'} Press ↵ to try again.
-        </p>
-      )}
-      {view.result?.pasted && (
-        <p className="ask__pasted">
-          <Check size={14} aria-hidden /> Pasted into the chat box
-        </p>
-      )}
-      {view.result && <ActionChips actions={view.result.actions} onRun={ask.runAction} />}
     </div>
   )
 }

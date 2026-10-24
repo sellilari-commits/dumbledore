@@ -1,73 +1,160 @@
 /**
- * Ask bar logic: `ask.submit` with the reply streamed from 'chat.delta' while it is written,
- * then the final markdown reply and its action chips (`coach.runAction`, then the bar closes).
- * Only the latest question's answer is kept; a stale reply never overwrites a newer one.
+ * Ask bar chat logic for thread 'ask': the stored conversation since the last "New chat"
+ * (`chat.history`, reloaded whenever the bar comes back), `ask.submit` with the reply streamed
+ * from 'chat.delta' while it is written, action chips per reply (`coach.runAction`, then the bar
+ * closes) and "New chat". One question at a time; a reply that lands after "New chat" is dropped.
  */
-import type { CoachAction } from '@shared/domain'
+import type { ChatMessage, CoachAction } from '@shared/domain'
 import type { DumbledoreApi } from '@shared/ipc'
-import type { AskResult } from '@shared/state'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { errorMessage, report } from '../overlay/lib/bridge'
+import { ASK_THREAD, ASK_THREADS, currentChat, loadSince, saveSince } from './askHistory'
 
-/** chat.delta threads that belong to the Ask bar (main's naming is not pinned down yet). */
-export const ASK_THREADS: ReadonlySet<string> = new Set(['ask', 'askbar'])
-
-export type AskPhase = 'idle' | 'loading' | 'done' | 'error'
-
-export interface AskView {
-  phase: AskPhase
-  question: string
-  streamed: string
-  result: AskResult | null
-  error: string | null
+/** A chat message, plus the "pasted into the chat box" note for replies sent from this window. */
+export interface AskMessage extends ChatMessage {
+  pasted?: boolean
 }
 
-const IDLE: AskView = { phase: 'idle', question: '', streamed: '', result: null, error: null }
+/** The reply being written: '' until the first streamed words arrive. */
+export interface AskPending {
+  text: string
+  /** The chat.delta message id it streams under (the first one seen wins). */
+  streamId: string | null
+}
+
+export interface AskError {
+  message: string
+  /** A failed question can be sent again with ↵; a failed action can't. */
+  retry: boolean
+}
 
 export interface AskController {
-  view: AskView
-  submit: (text: string) => void
-  reset: () => void
+  messages: AskMessage[]
+  pending: AskPending | null
+  error: AskError | null
+  /** Sends a question; resolves false when it wasn't answered (the bar puts the text back). */
+  submit: (text: string) => Promise<boolean>
+  /** Starts over: hides the conversation and leaves it out of the context from now on. */
+  newChat: () => void
+  /** Reloads the stored conversation (a `/d` line or another window may have added to it). */
+  refresh: () => void
+  dismissError: () => void
   runAction: (action: CoachAction) => Promise<void>
   close: () => void
 }
 
+let localSeq = 0
+
+function localMessage(role: ChatMessage['role'], content: string, extra?: Partial<AskMessage>) {
+  const message: AskMessage = {
+    id: `local_${++localSeq}`,
+    thread: ASK_THREAD,
+    role,
+    content,
+    actions: [],
+    createdAt: new Date().toISOString(),
+    ...extra,
+  }
+  return message
+}
+
+/** Stored messages, reusing the objects already on screen (no re-render) and their notes. */
+function merge(stored: ChatMessage[], prev: AskMessage[]): AskMessage[] {
+  const byId = new Map(prev.map((m) => [m.id, m]))
+  const pasted = new Set(prev.filter((m) => m.pasted).map((m) => m.content))
+  const next = stored.map(
+    (m) =>
+      byId.get(m.id) ??
+      (m.role === 'assistant' && pasted.has(m.content) ? { ...m, pasted: true } : m),
+  )
+  return next.length === prev.length && next.every((m, i) => m === prev[i]) ? prev : next
+}
+
 export function useAsk(api: DumbledoreApi): AskController {
-  const [view, setView] = useState<AskView>(IDLE)
-  const request = useRef(0)
+  const [messages, setMessages] = useState<AskMessage[]>([])
+  const [pending, setPending] = useState<AskPending | null>(null)
+  const [error, setError] = useState<AskError | null>(null)
+  const since = useRef<string | null | undefined>(undefined)
+  if (since.current === undefined) since.current = loadSince()
+  const inFlight = useRef(false)
+  /** Bumped by every question and "New chat": anything that started before is stale. */
+  const version = useRef(0)
+
+  const refresh = useCallback(() => {
+    if (inFlight.current) return
+    const started = version.current
+    api
+      .invoke('chat.history', ASK_THREAD)
+      .then((stored) => {
+        if (started !== version.current || inFlight.current) return
+        setMessages((prev) => merge(currentChat(stored, since.current ?? null), prev))
+      })
+      .catch((e: unknown) => report(e, 'chat.history'))
+  }, [api])
+
+  useEffect(() => refresh(), [refresh])
 
   useEffect(
     () =>
       api.on('chat.delta', (d) => {
         if (!ASK_THREADS.has(d.thread) || !d.delta) return
-        setView((v) => (v.phase === 'loading' ? { ...v, streamed: v.streamed + d.delta } : v))
+        setPending((p) =>
+          !p || (p.streamId !== null && p.streamId !== d.messageId)
+            ? p
+            : { streamId: d.messageId, text: p.text + d.delta },
+        )
       }),
     [api],
   )
 
   const submit = useCallback(
-    (text: string) => {
+    async (text: string): Promise<boolean> => {
       const question = text.trim()
-      if (!question) return
-      const id = ++request.current
-      setView({ ...IDLE, phase: 'loading', question })
-      api
-        .invoke('ask.submit', { text: question })
-        .then((result) => {
-          if (id === request.current) setView((v) => ({ ...v, phase: 'done', result }))
-        })
-        .catch((error: unknown) => {
-          if (id === request.current)
-            setView((v) => ({ ...v, phase: 'error', error: errorMessage(error) }))
-        })
+      if (!question || inFlight.current) return false
+      inFlight.current = true
+      const id = ++version.current
+      const mine = localMessage('user', question)
+      setError(null)
+      setMessages((m) => [...m, mine])
+      setPending({ text: '', streamId: null })
+      const after = since.current
+      try {
+        const result = await api.invoke(
+          'ask.submit',
+          after ? { text: question, since: after } : { text: question },
+        )
+        if (id === version.current) {
+          const { reply, actions, pasted } = result
+          setMessages((m) => [...m, localMessage('assistant', reply, { actions, pasted })])
+        }
+        return true
+      } catch (e) {
+        if (id === version.current) {
+          setMessages((m) => m.filter((x) => x !== mine))
+          setError({ message: errorMessage(e), retry: true })
+        }
+        return false
+      } finally {
+        if (id === version.current) {
+          inFlight.current = false
+          setPending(null)
+        }
+      }
     },
     [api],
   )
 
-  const reset = useCallback(() => {
-    request.current++
-    setView(IDLE)
+  const newChat = useCallback(() => {
+    if (inFlight.current) return
+    const now = new Date().toISOString()
+    since.current = now
+    saveSince(now)
+    version.current++
+    setMessages([])
+    setError(null)
   }, [])
+
+  const dismissError = useCallback(() => setError(null), [])
 
   const close = useCallback(() => {
     api.invoke('window.close', 'askbar').catch((e: unknown) => report(e, 'window.close'))
@@ -78,12 +165,12 @@ export function useAsk(api: DumbledoreApi): AskController {
       try {
         await api.invoke('coach.runAction', action)
         close()
-      } catch (error) {
-        setView((v) => ({ ...v, phase: 'error', error: errorMessage(error) }))
+      } catch (e) {
+        setError({ message: errorMessage(e), retry: false })
       }
     },
     [api, close],
   )
 
-  return { view, submit, reset, runAction, close }
+  return { messages, pending, error, submit, newChat, refresh, dismissError, runAction, close }
 }

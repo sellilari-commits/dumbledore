@@ -135,6 +135,7 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     overlay,
     contextText,
     runAction,
+    emitDelta: hooks.onChatDelta,
   })
   const chat = new CoachChat({
     brain: services.brain,

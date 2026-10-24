@@ -139,7 +139,8 @@ describe('TestControlServer', () => {
     const overlay = (await http(info, 'GET', '/state/overlay')).json as { orb: { docked: boolean } }
     expect(overlay.orb.docked).toBe(true)
     const tap = await http(info, 'POST', '/gesture', { gesture: 'tap' })
-    expect(tap.json).toEqual({ decision: { kind: 'suggest' } })
+    // An empty chat box with no session studies the subject worked on last.
+    expect(tap.json).toEqual({ decision: { kind: 'studyLast' } })
     expect(h.helper.state.fieldValue).toMatch(/No greetings/)
   })
 
@@ -164,6 +165,8 @@ describe('TestControlServer', () => {
       event: 'key.trigger',
       payload: { gesture: 'tap', key: 'rightOption', secureInput: false },
     })
+    // Key taps wait out the double-tap window (doubleTapMs + 150 ms) before they act.
+    await new Promise((resolve) => setTimeout(resolve, 600))
     await flush()
     expect(h.surfaces.enters).toEqual(['askbar'])
   })

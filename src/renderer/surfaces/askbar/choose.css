@@ -1,0 +1,81 @@
+/*
+ * The Ask bar's choose view (route 'choose'): recent subjects and "New topic…" above the input,
+ * styled like a Notion menu (36 px rows, hover tint, grey hint).
+ */
+
+.ask__choose {
+  flex: none;
+  padding: 10px 8px 8px;
+  animation: ask-fade-in var(--dur-base) var(--ease-out);
+}
+
+.ask__choose-title {
+  margin: 0;
+  padding: 0 10px 6px;
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  color: var(--c-texSec);
+}
+
+.ask__choices {
+  display: flex;
+  flex-direction: column;
+}
+
+.ask__choice {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: var(--radius-menu);
+  font-size: var(--text-ui);
+  color: var(--c-texPri);
+}
+
+.ask__choice[data-active] {
+  background: var(--c-hover);
+}
+
+.ask__choice:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+.ask__choice-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.ask__choice-icon--plus {
+  color: var(--c-icoSec);
+}
+
+.ask__choice-name {
+  flex: none;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--weight-medium);
+}
+
+.ask__choice-hint {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-meta);
+  color: var(--c-texSec);
+}
+
+.ask__choice-key {
+  flex: none;
+  margin-left: auto;
+}
