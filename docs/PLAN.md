@@ -10,6 +10,7 @@
 - **Three surfaces:** a tiny orb that lives on screen (Goldfish-style), a floating mini panel (context, progress, chat), and a full Notion-style app (subjects, roadmaps, exams, everything Dumbledore knows).
 - **Tech:** Electron + TypeScript + React for the app and all logic. A ~1k-line Swift helper for the Apple-only APIs (Accessibility, Vision OCR, global right-⌥, paste, the on-device model). Local SQLite.
 - **Free AI:** Apple's on-device model reads the screen text (free, stays on the Mac). Groq's free tier writes roadmaps, quizzes and prompts. A keyless EU service (OVHcloud) is the fallback.
+- **Update 2026-10-24, AI provider:** Gemini 3.5 on the Hugo project's key is now primary for every tier (`gemini-3.5-flash-lite` for triage/extract, `gemini-3.5-flash` for reason/write/chat), with a hard €10 total spend cap. Apple on-device, OVHcloud, Groq and Mistral are fallbacks. Routes: `DEFAULT_ROUTES` in `src/shared/llm.ts`.
 - **Screen text:** read through Accessibility first, as Goldfish does. Apple's built-in Vision OCR covers what is only pixels (slides, scanned PDFs, video): nothing to download or bundle, and it only runs when the screen changes.
 - **Build:** in parallel waves. Up to six subagents build separate parts at the same time. Then come integration, hardening, and a dogfooding loop on this Mac with real ChatGPT until the Definition of Done (§9.4) is met.
 - **Needed from you at approval:** a project folder, 1 free Groq API key, a one-time permission click once the packaged app is ready, an OK to use your ChatGPT for testing, and a choice on the right-⌥ clash with Goldfish (§12).
@@ -189,6 +190,8 @@ Notion's 2026 CSS uses semantic variables (`--c-texPri`, `--c-bacSec`, `--c-shaO
 **Layout patterns we copy:** 240px sidebar on `--c-bacSec` with 28px rows · 44px top bar with breadcrumbs · page = emoji icon (78px) + title + property rows + blocks · ~708px reading column, full-width option · toggles, callouts (tinted background + emoji), to-do checkboxes, dividers · database table views with coloured select tags and view tabs · ⌘K search · controls that only appear on hover · soft menus with the large shadow · 150 ms transitions.
 
 ### 3.3 Free LLM APIs (verified 2026-10-24)
+
+> **Update 2026-10-24:** for the provider choice this section is superseded: Gemini 3.5 is primary (see §0). The research below still describes the fallbacks.
 
 Free tiers shrank a lot in 2026. What is left and fits:
 
@@ -573,6 +576,8 @@ Events (helper → engine): `focus.changed`, `app.activated`, `key.rightOption {
 | Retention | Episode text kept 48 h (configurable), then only the extracted learning items remain |
 
 ### 6.5 Brain (LLM layer)
+
+> **Update 2026-10-24:** Gemini 3.5 is the primary provider for every tier, with a €10 total spend cap; see `DEFAULT_ROUTES` in `src/shared/llm.ts`.
 
 - **Tiers:** `triage` (tiny yes/no), `extract` (JSON from screen text), `reason` (roadmaps, quizzes, exams, profile), `write` (prompts for the student's AI — latency-critical), `chat` (coach with tools).
 - **Routing (v1):**
