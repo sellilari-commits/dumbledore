@@ -8,7 +8,7 @@ import type { MockScenario } from '@renderer/lib/mock/db'
 import { useShell } from '@renderer/lib/shell'
 import { renderWithApp } from '@renderer/lib/test-utils'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { Route } from 'wouter'
 import { SubjectPage } from './SubjectPage'
 

@@ -3,11 +3,11 @@
  * Creates it through 'subjects.create' and opens the new subject page.
  */
 import { Button, Dialog, Field, Input, Popover, PopoverClose, toast } from '@renderer/design-system'
+import { errorToast } from '@renderer/lib/errors'
 import { useAction } from '@renderer/lib/queries'
 import { useShell } from '@renderer/lib/shell'
 import { type FormEvent, useState } from 'react'
 import { useLocation } from 'wouter'
-import { errorToast } from '@renderer/lib/errors'
 
 export const SUBJECT_EMOJI = [
   '📘',
