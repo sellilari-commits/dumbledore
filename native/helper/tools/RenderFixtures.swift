@@ -2,8 +2,11 @@
 // integration test (tests/integration/helper-ocr.test.ts). Build + run: native/helper/build.sh fixtures
 //
 // Each fixture is <name>.png (rendered at 2× like a Retina capture) and <name>.json:
-//   { width, height, scale, lines: [{ text, x, y, w, h, align, role }] }  — points, reading order.
+//   { name, width, height, scale, lines: [{ text, x, y, w, h, size, align?, role? }] }
+// Boxes are in points (top-left origin), lines in drawing order; `size` is the font size in points.
 // `align` is set where the expected alignment is unambiguous; `role` marks chat speakers.
+// Fixtures: document (heading, body, Swedish + Finnish with ä/ö/å, caption), chat-light/-dark
+// (ChatGPT/Claude-like layout), slide, two-column, ui-small (10–13 pt settings window).
 import AppKit
 
 struct GTLine: Encodable {
@@ -12,6 +15,7 @@ struct GTLine: Encodable {
   let y: Double
   let w: Double
   let h: Double
+  let size: Double
   let align: String?
   let role: String?
 }
@@ -45,6 +49,13 @@ final class Canvas {
     if radius > 0 { NSBezierPath(roundedRect: r, xRadius: radius, yRadius: radius).fill() } else { r.fill() }
   }
 
+  func stroke(_ r: CGRect, _ c: NSColor, radius: CGFloat) {
+    c.setStroke()
+    let path = NSBezierPath(roundedRect: r, xRadius: radius, yRadius: radius)
+    path.lineWidth = 1
+    path.stroke()
+  }
+
   func size(_ s: String, _ font: NSFont) -> CGSize { NSAttributedString(string: s, attributes: [.font: font]).size() }
 
   /// Draws one line. `x` is the left edge, or the right edge for align "right", or the centre for "center".
@@ -56,7 +67,7 @@ final class Canvas {
     NSAttributedString(string: s, attributes: [.font: font, .foregroundColor: color]).draw(at: CGPoint(x: left, y: y))
     let r = CGRect(x: left, y: y, width: sz.width, height: sz.height)
     lines.append(GTLine(text: s, x: Double(r.minX), y: Double(r.minY), w: Double(r.width), h: Double(r.height),
-                        align: expect, role: role))
+                        size: Double(font.pointSize), align: expect, role: role))
     return r
   }
 
@@ -97,11 +108,10 @@ let userTurns = [
   "Can you explain how photosynthesis turns light into chemical energy?",
   "So the Calvin cycle does not need light directly? Quiz me on it.",
 ]
+/// Paragraphs per assistant turn; each is wrapped to the conversation column.
 let assistantTurns = [
-  ["Photosynthesis happens in two stages. In the light-dependent reactions, chlorophyll in the thylakoid membranes",
-   "absorbs light and splits water, releasing oxygen and storing energy in ATP and NADPH.",
-   "In the Calvin cycle, the enzyme RuBisCO fixes carbon dioxide, and the cell uses ATP and NADPH to build",
-   "glucose. Plants in Sweden and Finland, from Åland to Lappland, slow this down in the cold winter months."],
+  ["Photosynthesis happens in two stages. In the light-dependent reactions, chlorophyll in the thylakoid membranes absorbs light and splits water, releasing oxygen and storing energy in ATP and NADPH.",
+   "In the Calvin cycle, the enzyme RuBisCO fixes carbon dioxide, and the cell uses ATP and NADPH to build glucose. Plants in Sweden and Finland, from Åland to Lappland, slow this down in the cold winter months."],
   ["Right: the Calvin cycle runs on the ATP and NADPH made in the light reactions, so it only needs light indirectly.",
    "Question 1: Which enzyme fixes carbon dioxide? Question 2: Where do the light reactions take place?"],
 ]
@@ -132,18 +142,18 @@ func chat(name: String, dark: Bool, placeholder: String, out: String) {
       y += 24
     }
     y += 26
-    for (k, line) in assistantTurns[turn].enumerated() {
-      let parts = c.wrap(line, body, width: colR - colL)
-      for p in parts {
-        c.text(p, x: colL, y: y, font: body, color: fg, expect: "left", role: "assistant")
+    for paragraph in assistantTurns[turn] {
+      for line in c.wrap(paragraph, body, width: colR - colL) {
+        c.text(line, x: colL, y: y, font: body, color: fg, expect: "left", role: "assistant")
         y += 24
       }
-      if k % 2 == 1 { y += 12 }
+      y += 12
     }
-    y += 30
+    y += 18
   }
-  c.fill(CGRect(x: colL - 10, y: 668, width: colR - colL + 20, height: 52), dark ? NSColor(white: 0.19, alpha: 1) : .white,
-         radius: 26)
+  let composer = CGRect(x: colL - 10, y: 668, width: colR - colL + 20, height: 52)
+  c.fill(composer, dark ? NSColor(white: 0.19, alpha: 1) : .white, radius: 26)
+  if !dark { c.stroke(composer, NSColor(white: 0.85, alpha: 1), radius: 26) }
   c.text(placeholder, x: colL + 14, y: 684, font: body, color: dim)
   c.text("ChatGPT can make mistakes. Check important info.", x: (colL + colR) / 2, y: 732, font: small, color: dim,
          align: "center", expect: "center")
@@ -159,7 +169,7 @@ func document(out: String) {
     "Living cells obey the same laws of energy as engines. The first law says energy is conserved; the second law says every energy transfer increases the entropy of the universe. Cells stay ordered by releasing heat.",
     "Free energy tells us which reactions can run on their own. A reaction with a negative change in Gibbs free energy (written as delta G < 0) is spontaneous, while ATP hydrolysis drives reactions that are not.",
     "Svenska: Cellerna använder energi från maten. Kväve och syre är viktiga ämnen, och växterna på Åland växer långsamt på vintern.",
-    "Suomeksi: Solut käyttävät energiaa ruoasta. Kasvit Ahvenanmaalla kasvavat hitaasti talvella, ja yöt ovat pitkiä.",
+    "Suomeksi: Solut käyttävät energiaa ruoasta. Kesällä Ahvenanmaalla (Åland) ja Långvikissa yöt ovat valoisia, mutta talvella kasvit kasvavat hitaasti.",
     "Key terms: enthalpy (H), entropy (S), Gibbs free energy (G), exergonic, endergonic, coupled reactions, activation energy.",
   ]
   for p in paragraphs {
@@ -212,6 +222,48 @@ func twoColumn(out: String) {
   c.save("two-column", to: out)
 }
 
+/// A settings window: small UI text (10–13 pt), grey secondary labels, buttons, numbers.
+func uiSmall(out: String) {
+  let c = Canvas(w: 760, h: 520, background: NSColor(white: 0.965, alpha: 1))
+  let label = NSFont.systemFont(ofSize: 12)
+  let detail = NSFont.systemFont(ofSize: 11)
+  let tiny = NSFont.systemFont(ofSize: 10)
+  c.fill(CGRect(x: 0, y: 0, width: 760, height: 38), NSColor(white: 0.925, alpha: 1))
+  c.text("Dumbledore Settings", x: 380, y: 11, font: NSFont.systemFont(ofSize: 13, weight: .semibold), color: ink,
+         align: "center", expect: "center")
+  c.fill(CGRect(x: 0, y: 38, width: 190, height: 482), NSColor(white: 0.915, alpha: 1))
+  var y: CGFloat = 56
+  for item in ["General", "Appearance", "Privacy & Security", "Study subjects", "AI providers", "Keyboard shortcut",
+               "About"] {
+    c.text(item, x: 18, y: y, font: ui, color: ink)
+    y += 28
+  }
+  c.text("Privacy & Security", x: 214, y: 54, font: NSFont.boldSystemFont(ofSize: 17), color: ink)
+  let rows = [("Screen text capture", "On"), ("OCR fallback (Screen Recording)", "Allowed"),
+              ("Keep episode text for", "48 hours"), ("Excluded apps", "1Password, Keychain Access, Messages"),
+              ("Blocked websites", "12 sites")]
+  c.fill(CGRect(x: 206, y: 90, width: 538, height: CGFloat(rows.count) * 34 + 8), .white, radius: 8)
+  y = 104
+  for (i, row) in rows.enumerated() {
+    c.text(row.0, x: 222, y: y, font: label, color: ink)
+    c.text(row.1, x: 728, y: y + 1, font: detail, color: grey, align: "right")
+    if i < rows.count - 1 { c.fill(CGRect(x: 222, y: y + 25, width: 506, height: 1), NSColor(white: 0.9, alpha: 1)) }
+    y += 34
+  }
+  y += 22
+  for line in c.wrap("Screenshots never leave this Mac and are never written to disk. Only recognised text is kept, and only for the time shown above. Password managers, banking apps and private windows are always skipped.", detail, width: 520) {
+    c.text(line, x: 214, y: y, font: detail, color: grey)
+    y += 16
+  }
+  for (title, x, w) in [("Cancel", 548.0, 76.0), ("Save changes", 634.0, 110.0)] {
+    c.fill(CGRect(x: x, y: 440, width: w, height: 28), title == "Cancel" ? NSColor(white: 0.88, alpha: 1)
+           : NSColor(srgbRed: 0.0, green: 0.48, blue: 1.0, alpha: 1), radius: 6)
+    c.text(title, x: x + w / 2, y: 446, font: ui, color: title == "Cancel" ? ink : .white, align: "center")
+  }
+  c.text("Version 0.1.0 (build 42) · Last checked 24.10.2026 at 18:42", x: 214, y: 494, font: tiny, color: grey)
+  c.save("ui-small", to: out)
+}
+
 var outDir = "tests/fixtures/screens"
 if let i = CommandLine.arguments.firstIndex(of: "--out"), i + 1 < CommandLine.arguments.count {
   outDir = CommandLine.arguments[i + 1]
@@ -222,3 +274,4 @@ chat(name: "chat-light", dark: false, placeholder: "Ask anything", out: outDir)
 chat(name: "chat-dark", dark: true, placeholder: "Reply to Claude…", out: outDir)
 slide(out: outDir)
 twoColumn(out: outDir)
+uiSmall(out: outDir)

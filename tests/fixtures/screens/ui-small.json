@@ -1,0 +1,209 @@
+{
+  "height" : 520,
+  "lines" : [
+    {
+      "align" : "center",
+      "h" : 16,
+      "size" : 13,
+      "text" : "Dumbledore Settings",
+      "w" : 133.5251932144165,
+      "x" : 313.23740339279175,
+      "y" : 11
+    },
+    {
+      "h" : 16,
+      "size" : 13,
+      "text" : "General",
+      "w" : 47.0234375,
+      "x" : 18,
+      "y" : 56
+    },
+    {
+      "h" : 16,
+      "size" : 13,
+      "text" : "Appearance",
+      "w" : 72.87744140625,
+      "x" : 18,
+      "y" : 84
+    },
+    {
+      "h" : 16,
+      "size" : 13,
+      "text" : "Privacy & Security",
+      "w" : 110.423828125,
+      "x" : 18,
+      "y" : 112
+    },
+    {
+      "h" : 16,
+      "size" : 13,
+      "text" : "Study subjects",
+      "w" : 90.03515625,
+      "x" : 18,
+      "y" : 140
+    },
+    {
+      "h" : 16,
+      "size" : 13,
+      "text" : "AI providers",
+      "w" : 72.4013671875,
+      "x" : 18,
+      "y" : 168
+    },
+    {
+      "h" : 16,
+      "size" : 13,
+      "text" : "Keyboard shortcut",
+      "w" : 111.7822265625,
+      "x" : 18,
+      "y" : 196
+    },
+    {
+      "h" : 16,
+      "size" : 13,
+      "text" : "About",
+      "w" : 36.35302734375,
+      "x" : 18,
+      "y" : 224
+    },
+    {
+      "h" : 20,
+      "size" : 17,
+      "text" : "Privacy & Security",
+      "w" : 148.936767578125,
+      "x" : 214,
+      "y" : 54
+    },
+    {
+      "h" : 15,
+      "size" : 12,
+      "text" : "Screen text capture",
+      "w" : 111.03515625,
+      "x" : 222,
+      "y" : 104
+    },
+    {
+      "h" : 14,
+      "size" : 11,
+      "text" : "On",
+      "w" : 15.03369140625,
+      "x" : 712.96630859375,
+      "y" : 105
+    },
+    {
+      "h" : 15,
+      "size" : 12,
+      "text" : "OCR fallback (Screen Recording)",
+      "w" : 185.89453125,
+      "x" : 222,
+      "y" : 138
+    },
+    {
+      "h" : 14,
+      "size" : 11,
+      "text" : "Allowed",
+      "w" : 41.056640625,
+      "x" : 686.943359375,
+      "y" : 139
+    },
+    {
+      "h" : 15,
+      "size" : 12,
+      "text" : "Keep episode text for",
+      "w" : 120.62109375,
+      "x" : 222,
+      "y" : 172
+    },
+    {
+      "h" : 14,
+      "size" : 11,
+      "text" : "48 hours",
+      "w" : 46.943359375,
+      "x" : 681.056640625,
+      "y" : 173
+    },
+    {
+      "h" : 15,
+      "size" : 12,
+      "text" : "Excluded apps",
+      "w" : 82.423828125,
+      "x" : 222,
+      "y" : 206
+    },
+    {
+      "h" : 14,
+      "size" : 11,
+      "text" : "1Password, Keychain Access, Messages",
+      "w" : 208.7099609375,
+      "x" : 519.2900390625,
+      "y" : 207
+    },
+    {
+      "h" : 15,
+      "size" : 12,
+      "text" : "Blocked websites",
+      "w" : 98.490234375,
+      "x" : 222,
+      "y" : 240
+    },
+    {
+      "h" : 14,
+      "size" : 11,
+      "text" : "12 sites",
+      "w" : 39.78369140625,
+      "x" : 688.21630859375,
+      "y" : 241
+    },
+    {
+      "h" : 14,
+      "size" : 11,
+      "text" : "Screenshots never leave this Mac and are never written to disk. Only recognised text is kept, and",
+      "w" : 506.923828125,
+      "x" : 214,
+      "y" : 296
+    },
+    {
+      "h" : 14,
+      "size" : 11,
+      "text" : "only for the time shown above. Password managers, banking apps and private windows are always",
+      "w" : 513.50341796875,
+      "x" : 214,
+      "y" : 312
+    },
+    {
+      "h" : 14,
+      "size" : 11,
+      "text" : "skipped.",
+      "w" : 44.6982421875,
+      "x" : 214,
+      "y" : 328
+    },
+    {
+      "h" : 16,
+      "size" : 13,
+      "text" : "Cancel",
+      "w" : 41.59619140625,
+      "x" : 565.201904296875,
+      "y" : 446
+    },
+    {
+      "h" : 16,
+      "size" : 13,
+      "text" : "Save changes",
+      "w" : 83.99853515625,
+      "x" : 647.000732421875,
+      "y" : 446
+    },
+    {
+      "h" : 13,
+      "size" : 10,
+      "text" : "Version 0.1.0 (build 42) · Last checked 24.10.2026 at 18:42",
+      "w" : 283.57421875,
+      "x" : 214,
+      "y" : 494
+    }
+  ],
+  "name" : "ui-small",
+  "scale" : 2,
+  "width" : 760
+}

@@ -3,6 +3,7 @@
   "lines" : [
     {
       "h" : 30,
+      "size" : 26,
       "text" : "Chapter 4: Thermodynamics of Living Systems",
       "w" : 564.7948844134808,
       "x" : 60,
@@ -10,6 +11,7 @@
     },
     {
       "h" : 16,
+      "size" : 13,
       "text" : "Lecture notes · Biology 101 · Week 6",
       "w" : 218.8544921875,
       "x" : 60,
@@ -18,6 +20,7 @@
     {
       "align" : "left",
       "h" : 19,
+      "size" : 16,
       "text" : "Living cells obey the same laws of energy as engines. The first law says energy is conserved; the second",
       "w" : 754.8359375,
       "x" : 60,
@@ -26,6 +29,7 @@
     {
       "align" : "left",
       "h" : 19,
+      "size" : 16,
       "text" : "law says every energy transfer increases the entropy of the universe. Cells stay ordered by releasing heat.",
       "w" : 763.6015625,
       "x" : 60,
@@ -34,6 +38,7 @@
     {
       "align" : "left",
       "h" : 19,
+      "size" : 16,
       "text" : "Free energy tells us which reactions can run on their own. A reaction with a negative change in Gibbs free",
       "w" : 760.859375,
       "x" : 60,
@@ -42,6 +47,7 @@
     {
       "align" : "left",
       "h" : 19,
+      "size" : 16,
       "text" : "energy (written as delta G < 0) is spontaneous, while ATP hydrolysis drives reactions that are not.",
       "w" : 702.0546875,
       "x" : 60,
@@ -50,6 +56,7 @@
     {
       "align" : "left",
       "h" : 19,
+      "size" : 16,
       "text" : "Svenska: Cellerna använder energi från maten. Kväve och syre är viktiga ämnen, och växterna på Åland",
       "w" : 741.765625,
       "x" : 60,
@@ -58,6 +65,7 @@
     {
       "align" : "left",
       "h" : 19,
+      "size" : 16,
       "text" : "växer långsamt på vintern.",
       "w" : 190.421875,
       "x" : 60,
@@ -66,22 +74,25 @@
     {
       "align" : "left",
       "h" : 19,
-      "text" : "Suomeksi: Solut käyttävät energiaa ruoasta. Kasvit Ahvenanmaalla kasvavat hitaasti talvella, ja yöt ovat",
-      "w" : 738.65625,
+      "size" : 16,
+      "text" : "Suomeksi: Solut käyttävät energiaa ruoasta. Kesällä Ahvenanmaalla (Åland) ja Långvikissa yöt ovat valoisia,",
+      "w" : 770.328125,
       "x" : 60,
       "y" : 318
     },
     {
       "align" : "left",
       "h" : 19,
-      "text" : "pitkiä.",
-      "w" : 43.5625,
+      "size" : 16,
+      "text" : "mutta talvella kasvit kasvavat hitaasti.",
+      "w" : 271.125,
       "x" : 60,
       "y" : 343
     },
     {
       "align" : "left",
       "h" : 19,
+      "size" : 16,
       "text" : "Key terms: enthalpy (H), entropy (S), Gibbs free energy (G), exergonic, endergonic, coupled reactions,",
       "w" : 738.1640625,
       "x" : 60,
@@ -90,6 +101,7 @@
     {
       "align" : "left",
       "h" : 19,
+      "size" : 16,
       "text" : "activation energy.",
       "w" : 127.8125,
       "x" : 60,
@@ -98,6 +110,7 @@
     {
       "align" : "center",
       "h" : 15,
+      "size" : 12,
       "text" : "Figure 4.2 — Energy diagram of an exergonic reaction",
       "w" : 302.02734375,
       "x" : 298.986328125,

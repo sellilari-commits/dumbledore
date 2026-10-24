@@ -1,9 +1,11 @@
 /**
  * The mock chat page: a self-contained ChatGPT look-alike (sidebar, conversation column, composer
- * with a contenteditable input whose placeholder is "Ask anything", a send button). It reports the
- * composer text and sends to the mock server, and polls it for test commands (clear, close).
+ * with a contenteditable input whose placeholder is "Ask anything", a send button). It reports
+ * every composer change to the mock server (typing, paste, Accessibility insertion — a
+ * MutationObserver catches edits that fire no input event), posts sends, and polls the server for
+ * test commands (reset, clear, focus, close). Served by ./server.ts.
  */
-export const MOCK_CHAT_TITLE = 'Mock Chat — Dumbledore test page'
+export const MOCK_CHAT_TITLE = 'ChatGPT (mock) — Dumbledore test page'
 export const MOCK_CHAT_PLACEHOLDER = 'Ask anything'
 
 export const MOCK_CHAT_HTML = `<!doctype html>
@@ -37,7 +39,8 @@ export const MOCK_CHAT_HTML = `<!doctype html>
     padding: 12px 12px 12px 22px; box-shadow: 0 2px 10px rgba(0,0,0,.05); background: #fff; }
   #prompt-textarea { flex: 1; min-height: 28px; max-height: 200px; overflow-y: auto; outline: none; line-height: 28px;
     white-space: pre-wrap; word-break: break-word; }
-  #prompt-textarea:empty::before { content: attr(data-placeholder); color: #8f8f8f; pointer-events: none; }
+  #prompt-textarea.is-empty::before { content: attr(data-placeholder); color: #8f8f8f; pointer-events: none;
+    position: absolute; }
   #send { width: 36px; height: 36px; border-radius: 50%; border: 0; background: #0d0d0d; color: #fff; font-size: 18px;
     cursor: pointer; }
   #send:disabled { background: #d7d7d7; cursor: default; }
@@ -60,7 +63,7 @@ export const MOCK_CHAT_HTML = `<!doctype html>
   <div id="thread" role="log" aria-label="Conversation"><div class="col" id="messages"></div></div>
   <div class="composer-wrap"><div class="col">
     <form class="composer" id="composer">
-      <div id="prompt-textarea" contenteditable="true" role="textbox" aria-multiline="true"
+      <div id="prompt-textarea" class="is-empty" contenteditable="true" role="textbox" aria-multiline="true"
         aria-label="Message" aria-placeholder="${MOCK_CHAT_PLACEHOLDER}" data-placeholder="${MOCK_CHAT_PLACEHOLDER}"></div>
       <button id="send" type="submit" aria-label="Send prompt" data-testid="send-button" disabled>&#8593;</button>
     </form>
@@ -73,6 +76,8 @@ export const MOCK_CHAT_HTML = `<!doctype html>
   var send = document.getElementById('send');
   var list = document.getElementById('messages');
   var thread = document.getElementById('thread');
+  var reported = null;
+  var reporting = false;
   function text() { return input.innerText.replace(/\\u00a0/g, ' ').replace(/\\n$/, ''); }
   function post(path, body) {
     return fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
@@ -92,28 +97,42 @@ export const MOCK_CHAT_HTML = `<!doctype html>
     });
     thread.scrollTop = thread.scrollHeight;
   }
-  function sync() { send.disabled = text().trim() === ''; post('/api/input', { text: text() }); }
+  // One report in flight at a time, so the server never sees an older text after a newer one.
+  function report() {
+    var t = text();
+    var empty = t.trim() === '';
+    input.classList.toggle('is-empty', t === '');
+    send.disabled = empty;
+    if (reporting || t === reported) return;
+    reporting = true;
+    post('/api/input', { text: t }).then(function () { reported = t; }, function () {})
+      .then(function () { reporting = false; if (text() !== reported) report(); });
+  }
+  function clearInput() { input.textContent = ''; report(); }
   function submit() {
     var t = text().trim();
     if (!t) return;
-    input.textContent = '';
-    sync();
+    clearInput();
     post('/api/send', { text: t }).then(function (state) {
       render(state.messages, true);
       setTimeout(function () { render(state.messages, false); }, 300);
     });
   }
-  input.addEventListener('input', sync);
+  input.addEventListener('input', report);
+  new MutationObserver(report).observe(input, { childList: true, characterData: true, subtree: true });
   input.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit(); }
   });
   document.getElementById('composer').addEventListener('submit', function (e) { e.preventDefault(); submit(); });
   function poll() {
+    var again = 300;
     fetch('/api/command').then(function (r) { return r.json(); }).then(function (c) {
+      if (c.command) again = 0;
       if (c.command === 'close') { post('/api/closed', {}).finally(function () { window.close(); }); }
-      if (c.command === 'clear') { input.textContent = ''; sync(); }
-      if (c.command === 'reset') { input.textContent = ''; render([], false); sync(); }
-    }).catch(function () {}).finally(function () { setTimeout(poll, 300); });
+      if (c.command === 'clear') { clearInput(); }
+      if (c.command === 'reset') { clearInput(); render([], false); }
+      if (c.command === 'focus') { window.focus(); input.focus(); }
+    }).catch(function () {}).finally(function () { report(); setTimeout(poll, again); });
   }
   fetch('/state').then(function (r) { return r.json(); }).then(function (s) { render(s.messages, false); });
   poll();

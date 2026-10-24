@@ -3,6 +3,7 @@
   "lines" : [
     {
       "h" : 16,
+      "size" : 13,
       "text" : "New chat",
       "w" : 57.00830078125,
       "x" : 16,
@@ -10,6 +11,7 @@
     },
     {
       "h" : 15,
+      "size" : 12,
       "text" : "Today",
       "w" : 33.796875,
       "x" : 16,
@@ -17,6 +19,7 @@
     },
     {
       "h" : 16,
+      "size" : 13,
       "text" : "Photosynthesis basics",
       "w" : 135.08447265625,
       "x" : 16,
@@ -24,6 +27,7 @@
     },
     {
       "h" : 16,
+      "size" : 13,
       "text" : "SN1 vs SN2 reactions",
       "w" : 129.61279296875,
       "x" : 16,
@@ -31,6 +35,7 @@
     },
     {
       "h" : 15,
+      "size" : 12,
       "text" : "Previous 7 days",
       "w" : 88.55859375,
       "x" : 16,
@@ -38,6 +43,7 @@
     },
     {
       "h" : 16,
+      "size" : 13,
       "text" : "Eigenvalues and eigenvectors",
       "w" : 179.50537109375,
       "x" : 16,
@@ -45,6 +51,7 @@
     },
     {
       "h" : 16,
+      "size" : 13,
       "text" : "French Revolution essay plan",
       "w" : 175.98876953125,
       "x" : 16,
@@ -52,6 +59,7 @@
     },
     {
       "h" : 16,
+      "size" : 13,
       "text" : "Mitosis vs meiosis",
       "w" : 109.75732421875,
       "x" : 16,
@@ -59,6 +67,7 @@
     },
     {
       "h" : 17,
+      "size" : 14,
       "text" : "ChatGPT 4o",
       "w" : 81.51603293418884,
       "x" : 264,
@@ -68,6 +77,7 @@
       "align" : "right",
       "h" : 19,
       "role" : "user",
+      "size" : 16,
       "text" : "Can you explain how photosynthesis turns light into",
       "w" : 371.9765625,
       "x" : 630.0234375,
@@ -77,6 +87,7 @@
       "align" : "right",
       "h" : 19,
       "role" : "user",
+      "size" : 16,
       "text" : "chemical energy?",
       "w" : 126.828125,
       "x" : 875.171875,
@@ -86,6 +97,7 @@
       "align" : "left",
       "h" : 19,
       "role" : "assistant",
+      "size" : 16,
       "text" : "Photosynthesis happens in two stages. In the light-dependent reactions, chlorophyll in the",
       "w" : 651.625,
       "x" : 340,
@@ -95,8 +107,9 @@
       "align" : "left",
       "h" : 19,
       "role" : "assistant",
-      "text" : "thylakoid membranes",
-      "w" : 155.15625,
+      "size" : 16,
+      "text" : "thylakoid membranes absorbs light and splits water, releasing oxygen and storing energy in",
+      "w" : 658.296875,
       "x" : 340,
       "y" : 168
     },
@@ -104,8 +117,9 @@
       "align" : "left",
       "h" : 19,
       "role" : "assistant",
-      "text" : "absorbs light and splits water, releasing oxygen and storing energy in ATP and NADPH.",
-      "w" : 626.5859375,
+      "size" : 16,
+      "text" : "ATP and NADPH.",
+      "w" : 123.4453125,
       "x" : 340,
       "y" : 192
     },
@@ -113,6 +127,7 @@
       "align" : "left",
       "h" : 19,
       "role" : "assistant",
+      "size" : 16,
       "text" : "In the Calvin cycle, the enzyme RuBisCO fixes carbon dioxide, and the cell uses ATP and",
       "w" : 636.6328125,
       "x" : 340,
@@ -122,8 +137,9 @@
       "align" : "left",
       "h" : 19,
       "role" : "assistant",
-      "text" : "NADPH to build",
-      "w" : 113.0859375,
+      "size" : 16,
+      "text" : "NADPH to build glucose. Plants in Sweden and Finland, from Åland to Lappland, slow this",
+      "w" : 643.453125,
       "x" : 340,
       "y" : 252
     },
@@ -131,53 +147,59 @@
       "align" : "left",
       "h" : 19,
       "role" : "assistant",
-      "text" : "glucose. Plants in Sweden and Finland, from Åland to Lappland, slow this down in the cold",
-      "w" : 649.5,
+      "size" : 16,
+      "text" : "down in the cold winter months.",
+      "w" : 231.1171875,
       "x" : 340,
       "y" : 276
     },
     {
-      "align" : "left",
-      "h" : 19,
-      "role" : "assistant",
-      "text" : "winter months.",
-      "w" : 107.796875,
-      "x" : 340,
-      "y" : 300
-    },
-    {
       "align" : "right",
       "h" : 19,
       "role" : "user",
+      "size" : 16,
       "text" : "So the Calvin cycle does not need light directly?",
       "w" : 346.921875,
       "x" : 655.078125,
-      "y" : 366
+      "y" : 330
     },
     {
       "align" : "right",
       "h" : 19,
       "role" : "user",
+      "size" : 16,
       "text" : "Quiz me on it.",
       "w" : 99.75,
       "x" : 902.25,
-      "y" : 390
+      "y" : 354
     },
     {
       "align" : "left",
       "h" : 19,
       "role" : "assistant",
+      "size" : 16,
       "text" : "Right: the Calvin cycle runs on the ATP and NADPH made in the light reactions, so it only",
       "w" : 639.3984375,
       "x" : 340,
-      "y" : 440
+      "y" : 404
     },
     {
       "align" : "left",
       "h" : 19,
       "role" : "assistant",
+      "size" : 16,
       "text" : "needs light indirectly.",
       "w" : 153.9140625,
+      "x" : 340,
+      "y" : 428
+    },
+    {
+      "align" : "left",
+      "h" : 19,
+      "role" : "assistant",
+      "size" : 16,
+      "text" : "Question 1: Which enzyme fixes carbon dioxide? Question 2: Where do the light reactions take",
+      "w" : 679.9609375,
       "x" : 340,
       "y" : 464
     },
@@ -185,22 +207,15 @@
       "align" : "left",
       "h" : 19,
       "role" : "assistant",
-      "text" : "Question 1: Which enzyme fixes carbon dioxide? Question 2: Where do the light reactions take",
-      "w" : 679.9609375,
+      "size" : 16,
+      "text" : "place?",
+      "w" : 47.0625,
       "x" : 340,
       "y" : 488
     },
     {
-      "align" : "left",
       "h" : 19,
-      "role" : "assistant",
-      "text" : "place?",
-      "w" : 47.0625,
-      "x" : 340,
-      "y" : 512
-    },
-    {
-      "h" : 19,
+      "size" : 16,
       "text" : "Reply to Claude…",
       "w" : 126.515625,
       "x" : 354,
@@ -209,6 +224,7 @@
     {
       "align" : "center",
       "h" : 15,
+      "size" : 12,
       "text" : "ChatGPT can make mistakes. Check important info.",
       "w" : 290.244140625,
       "x" : 534.8779296875,
