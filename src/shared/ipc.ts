@@ -14,6 +14,7 @@ import {
   ExamSpec,
   Id,
   InboxState,
+  Profile,
   Quiz,
   QuizResult,
   Settings,
@@ -52,14 +53,22 @@ export const ipcInvoke = {
   'settings.update': { req: SettingsPatch, res: Settings },
   /** Stores an API key in the macOS Keychain (Electron safeStorage). Never echoed back. */
   'secrets.set': {
-    req: z.object({ key: z.enum(['groq', 'mistral']), value: z.string() }),
+    req: z.object({ key: z.enum(['gemini', 'groq', 'mistral']), value: z.string() }),
     res: Void,
   },
+  'profile.get': { req: Void, res: Profile },
+  'profile.update': {
+    req: Profile.pick({ aboutMe: true, level: true, promptLanguage: true }).partial(),
+    res: Profile,
+  },
+  /** Writes a JSON export of all data and returns its path (shown in Finder by main). */
+  'data.export': { req: Void, res: z.object({ path: z.string() }) },
+  'data.deleteAll': { req: z.object({ confirm: z.literal(true) }), res: Void },
   'capture.setEnabled': { req: z.boolean(), res: Void },
   'permissions.status': { req: Void, res: PermissionsStatus },
   'permissions.open': { req: z.enum(['accessibility', 'screenRecording']), res: Void },
   'providers.test': {
-    req: z.enum(['apple', 'groq', 'ovh', 'mistral']),
+    req: z.enum(['gemini', 'apple', 'groq', 'ovh', 'mistral']),
     res: z.object({ ok: z.boolean(), latencyMs: z.number().nullable(), error: z.string().nullable() }),
   },
   'providers.usage': { req: Void, res: UsageSummary },
@@ -153,6 +162,11 @@ export const ipcEvents = {
   }),
   /** Main asks a window to show a route (e.g. open the app on an exam). */
   navigate: z.object({ route: z.string() }),
+  /** Trigger-key gestures, forwarded to the app window (onboarding teaches the key with it). */
+  'key.gesture': z.object({
+    gesture: z.enum(['tap', 'doubleTap', 'holdStart', 'holdEnd']),
+    key: z.string(),
+  }),
 } as const
 
 export type InvokeChannel = keyof typeof ipcInvoke

@@ -402,6 +402,7 @@ export const Settings = z.object({
   }),
   privacy: z.object({ episodeRetentionHours: z.number().int(), redact: z.boolean() }),
   ai: z.object({
+    geminiKeySet: z.boolean(),
     groqKeySet: z.boolean(),
     mistralKeySet: z.boolean(),
     useOnDevice: z.boolean(),
@@ -439,7 +440,13 @@ export const DEFAULT_SETTINGS: Settings = {
     eveningWrap: true,
   },
   privacy: { episodeRetentionHours: 48, redact: true },
-  ai: { groqKeySet: false, mistralKeySet: false, useOnDevice: true, modelOverrides: {} },
+  ai: {
+    geminiKeySet: false,
+    groqKeySet: false,
+    mistralKeySet: false,
+    useOnDevice: true,
+    modelOverrides: {},
+  },
   autoSend: false,
   theme: 'system',
   focusSubjectId: null,
