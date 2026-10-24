@@ -20,6 +20,9 @@ extraFiles:
 mac:
   target: dir
   category: public.app-category.education
+  # Electron's own helper processes must not share the Swift helper's bundle id
+  # (org.stuhi.dumbledore.helper), or macOS mixes up their permissions and launches.
+  helperBundleId: org.stuhi.dumbledore.electron-helper
   # Local ad-hoc signing (scripts sign after packaging); no Developer ID yet.
   identity: null
   extendInfo:
