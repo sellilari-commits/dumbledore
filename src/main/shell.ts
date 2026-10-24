@@ -15,6 +15,7 @@ import { chatContext, coachContextText } from './flows/context'
 import { NudgeActions } from './flows/nudges'
 import { PromptWriter } from './flows/prompt-writer'
 import { RoadmapAdjust } from './flows/roadmap-adjust'
+import { TypedNotes } from './flows/typed-notes'
 import { SessionFlow } from './flows/session-flow'
 import { Thinking } from './flows/thinking'
 import { OverlayController } from './overlay/controller'
@@ -114,7 +115,10 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     surfaces,
     overlay,
   })
+  const typedNotes = new TypedNotes({ repos, bus })
   const actions = new CoachActions({
+    notes: typedNotes,
+    feedback: repos.feedback,
     sessions,
     quizzes: services.quizzes,
     settings: repos.settings,
@@ -151,6 +155,8 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     contextText,
     runAction,
     emitDelta: hooks.onChatDelta,
+    notes: typedNotes,
+    feedback: repos.feedback,
   })
   const promptWriter = new PromptWriter({ sessions, study, perception, surfaces, thinking })
   const chat = new CoachChat({

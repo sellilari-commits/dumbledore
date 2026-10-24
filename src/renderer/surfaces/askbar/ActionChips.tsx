@@ -6,9 +6,12 @@ import {
   LibraryBig,
   type LucideIcon,
   Map as MapIcon,
+  MessageSquare,
   RotateCcw,
   Route,
+  StickyNote,
   Target,
+  Undo2,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -36,6 +39,12 @@ export function describeAction(action: CoachAction): { label: string; Icon: Luci
       return { label: 'Open subject', Icon: LibraryBig }
     case 'adjust_roadmap':
       return { label: `Update roadmap: ${short(action.instruction)}`, Icon: Route }
+    case 'add_note':
+      return { label: `Save note: ${short(action.text)}`, Icon: StickyNote }
+    case 'undo_note':
+      return { label: 'Undo', Icon: Undo2 }
+    case 'give_feedback':
+      return { label: `Send feedback: ${short(action.text)}`, Icon: MessageSquare }
   }
 }
 

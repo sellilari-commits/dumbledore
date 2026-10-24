@@ -349,6 +349,20 @@ export type QuizResult = z.infer<typeof QuizResult>
 
 // ─── Coaching ───────────────────────────────────────────────────────────────────────────────
 
+/** What a piece of student feedback is about, so it reaches the prompts it concerns. */
+export const FeedbackScope = z.enum(['study_plan', 'quizzes', 'prompts', 'memory', 'general'])
+export type FeedbackScope = z.infer<typeof FeedbackScope>
+
+/** Feedback the student gave Dumbledore in the chat ("your quizzes are too easy"). */
+export const Feedback = z.object({
+  id: Id,
+  scope: FeedbackScope,
+  subjectId: Id.nullable(),
+  text: z.string(),
+  createdAt: IsoDate,
+})
+export type Feedback = z.infer<typeof Feedback>
+
 export const CoachAction = z.discriminatedUnion('type', [
   z.object({ type: z.literal('start_roadmap'), subjectId: Id.nullable(), goal: z.string() }),
   z.object({ type: z.literal('create_exam'), spec: ExamSpec }),
@@ -358,6 +372,22 @@ export const CoachAction = z.discriminatedUnion('type', [
   z.object({ type: z.literal('open_subject'), subjectId: Id }),
   /** The student's own words on what a subject's roadmap should cover ("SN1, not SN2"). */
   z.object({ type: z.literal('adjust_roadmap'), subjectId: Id, instruction: z.string() }),
+  /** A note the student typed in the chat; saved at once (null ids = the current topic). */
+  z.object({
+    type: z.literal('add_note'),
+    text: z.string(),
+    subjectId: Id.nullable(),
+    conceptId: Id.nullable(),
+  }),
+  /** The "Undo" chip after a typed note: deletes that note. */
+  z.object({ type: z.literal('undo_note'), noteId: Id }),
+  /** Feedback about Dumbledore itself, stored and fed into the prompts of its scope. */
+  z.object({
+    type: z.literal('give_feedback'),
+    text: z.string(),
+    scope: FeedbackScope,
+    subjectId: Id.nullable(),
+  }),
 ])
 export type CoachAction = z.infer<typeof CoachAction>
 

@@ -40,6 +40,7 @@ export function buildExport(repos: Repos, meta: ExportMeta) {
     encounters: repos.encounters.list({}),
     notes: repos.notes.list({ status: null }),
     conceptEdges: subjects.flatMap((s) => repos.edges.list(s.id)),
+    feedback: repos.feedback.recent({ limit: 10_000 }).reverse(),
     episodes: repos.episodes.recent({ sinceIso: EPOCH }),
     quizzes: repos.quizzes.list({}),
     assignments: repos.assignments.list({}),

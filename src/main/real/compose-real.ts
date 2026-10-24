@@ -80,6 +80,7 @@ export function composeReal(opts: RealComposeOptions = {}): RealComposition {
     keys,
     redact: (text) => (repos.settings.get().privacy.redact ? redact(text) : text),
     settings: () => repos.settings.get(),
+    feedback: (scopes) => repos.feedback.recent({ scopes, limit: 5 }).map((f) => f.text),
     spendCapEur: opts.spendCapEur ?? capFromEnv(env),
     ...opts.brainDeps,
   }

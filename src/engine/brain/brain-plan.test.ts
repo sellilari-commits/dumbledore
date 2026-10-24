@@ -202,3 +202,28 @@ describe('Brain.writeStep', () => {
     expect(took).toBeLessThan(3500)
   }, 10_000)
 })
+
+describe('student feedback in prompts', () => {
+  it('adds the last study_plan and general feedback to the roadmap prompt, nothing else', async () => {
+    const asked: string[][] = []
+    const h = brainHarness([R.gemini], {
+      feedback: (scopes) => {
+        asked.push(scopes)
+        return ['Shorter roadmaps please', 'I study in Finnish on weekends']
+      },
+    })
+    h.gemini.queue({ json: plan([learn('Carbocations', 'Carbocation stability', 'predict')]) })
+    await h.brain.buildRoadmap(roadmapInput())
+    expect(asked).toEqual([['study_plan', 'general']])
+    const user = h.userOf(h.gemini)
+    expect(user).toContain('<student_feedback>')
+    expect(user).toContain('- Shorter roadmaps please')
+  })
+
+  it('leaves the prompt unchanged when there is no feedback', async () => {
+    const h = brainHarness([R.gemini], { feedback: () => [] })
+    h.gemini.queue({ json: plan([learn('Carbocations', 'Carbocation stability', 'predict')]) })
+    await h.brain.buildRoadmap(roadmapInput())
+    expect(h.userOf(h.gemini)).not.toContain('student_feedback')
+  })
+})

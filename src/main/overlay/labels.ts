@@ -17,6 +17,12 @@ export function coachActionLabel(action: CoachAction): string {
       return 'Open subject'
     case 'adjust_roadmap':
       return 'Update roadmap'
+    case 'add_note':
+      return 'Save note'
+    case 'undo_note':
+      return 'Undo'
+    case 'give_feedback':
+      return 'Send feedback'
   }
 }
 

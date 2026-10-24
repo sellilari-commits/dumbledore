@@ -14,6 +14,7 @@ export type IdPrefix =
   | 'qst' // question
   | 'ndg' // nudge
   | 'msg' // chat message
+  | 'fbk' // student feedback
   | 'tst' // toast
 
 export function newId(prefix: IdPrefix): string {

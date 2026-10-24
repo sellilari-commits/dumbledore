@@ -14,6 +14,8 @@ import type {
   Encounter,
   Episode,
   ExamSpec,
+  Feedback,
+  FeedbackScope,
   Id,
   InboxState,
   IsoDate,
@@ -345,12 +347,28 @@ export interface SearchRepo {
   query(q: string, limit: number): SearchHit[]
 }
 
+export interface NewFeedbackInput {
+  scope: FeedbackScope
+  subjectId: Id | null
+  text: string
+}
+
+/** The student's feedback to Dumbledore (chat), fed into the prompts of its scope. */
+export interface FeedbackRepo {
+  /** Trimmed and cut at 300 characters. */
+  add(input: NewFeedbackInput): Feedback
+  /** Newest first; `scopes` absent = every scope. */
+  recent(filter: { scopes?: FeedbackScope[]; limit: number }): Feedback[]
+  remove(id: Id): void
+}
+
 export interface Repos {
   subjects: SubjectRepo
   concepts: ConceptRepo
   encounters: EncounterRepo
   notes: NoteRepo
   edges: EdgeRepo
+  feedback: FeedbackRepo
   episodes: EpisodeRepo
   roadmaps: RoadmapRepo
   quizzes: QuizRepo

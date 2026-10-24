@@ -57,6 +57,32 @@ export function tag(
   return `<${name}${a}>\n${content.trim()}\n</${name}>`
 }
 
+/** At most this many feedback lines reach one prompt. */
+export const FEEDBACK_LINES = 5
+
+/**
+ * Adds the student's recent feedback (chat, give_feedback) to a prompt's user message. The cache
+ * key is built from the final text, so new feedback never reuses an older answer.
+ */
+export function withFeedback<I, L, O>(
+  spec: PromptSpec<I, L, O>,
+  lines: readonly string[],
+): PromptSpec<I, L, O> {
+  const kept = lines.map((l) => l.trim()).filter(Boolean).slice(0, FEEDBACK_LINES)
+  if (kept.length === 0) return spec
+  const block = tag(
+    'student_feedback',
+    `What the student told you about this kind of work (newest first); follow it where it fits:\n${kept.map((l) => `- ${l}`).join('\n')}`,
+  )
+  return {
+    ...spec,
+    build(input, ctx) {
+      const built = spec.build(input, ctx)
+      return { ...built, user: `${built.user}\n${block}` }
+    },
+  }
+}
+
 export function languageName(code: string): string {
   const c = code.toLowerCase().slice(0, 2)
   return (

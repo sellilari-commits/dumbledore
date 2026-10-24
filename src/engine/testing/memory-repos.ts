@@ -13,6 +13,7 @@ import {
   DEFAULT_SETTINGS,
   type Encounter,
   type Episode,
+  type Feedback,
   type Id,
   type Note,
   type Nudge,
@@ -56,6 +57,7 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
   const consolidated = new Map<Id, string>()
   const preferences = new Map<Id, StudyPreferences>()
   let edges: ConceptEdge[] = []
+  let feedback: Feedback[] = []
   const episodes = new Map<Id, Episode>()
   const roadmaps = new Map<Id, Roadmap>()
   const quizzes = new Map<Id, Quiz>()
@@ -441,6 +443,33 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
         return text?.trim()
           ? repos.notes.update(intoId, { text })
           : clone(must(notes.get(intoId), 'note'))
+      },
+    },
+
+    feedback: {
+      add(input) {
+        const text = input.text.trim().slice(0, 300)
+        if (!text) throw new Error('Feedback needs text')
+        const item: Feedback = {
+          id: newId('fbk'),
+          scope: input.scope,
+          subjectId: input.subjectId,
+          text,
+          createdAt: now(),
+        }
+        feedback.push(item)
+        return clone(item)
+      },
+      recent({ scopes, limit }) {
+        return clone(
+          feedback
+            .filter((f) => !scopes?.length || scopes.includes(f.scope))
+            .slice(-limit)
+            .reverse(),
+        )
+      },
+      remove(id) {
+        feedback = feedback.filter((f) => f.id !== id)
       },
     },
 

@@ -36,7 +36,7 @@ import {
   type TriageOutput,
   type VerifyResult,
 } from '@engine/brain-contract'
-import type { Settings } from '@shared/domain'
+import type { FeedbackScope, Settings } from '@shared/domain'
 import type { LlmTier, ModelRoute, ProviderId, ProviderLimits } from '@shared/llm'
 import { z } from 'zod'
 import { type Clock, systemClock } from '../clock'
@@ -66,6 +66,7 @@ import { nudgePrompt } from './prompts/p11-nudge'
 import { profilePrompt } from './prompts/p12-profile'
 import { consolidatePrompt } from './prompts/p13-consolidate'
 import { preferencesPrompt } from './prompts/p14-preferences'
+import { withFeedback } from './prompts/shared'
 
 export interface BrainDeps {
   clock?: Clock
@@ -88,6 +89,12 @@ export interface BrainDeps {
   /** Hard cap on paid (Gemini) spend in EUR; default DUMBLEDORE_BUDGET_EUR or 10. */
   spendCapEur?: number
   fetch?: typeof globalThis.fetch
+  /**
+   * The student's recent feedback for these scopes (newest first), added to the prompts of that
+   * kind of work: memory → extraction and consolidation, study_plan → roadmaps, prompts → written
+   * prompts, quizzes → checkpoints and exams. 'general' goes everywhere.
+   */
+  feedback?: (scopes: FeedbackScope[]) => string[]
 }
 
 export interface BrainHandle extends Brain {
@@ -161,6 +168,14 @@ export function createBrain(deps: BrainDeps = {}): BrainHandle {
     today: () => today(clock),
   }
 
+  const feedback = (scope: FeedbackScope): string[] => {
+    try {
+      return deps.feedback?.([scope, 'general']) ?? []
+    } catch {
+      return [] // feedback never blocks a call
+    }
+  }
+
   /** True when extraction for this language would start on the on-device model. */
   async function onDeviceFirst(language: string): Promise<boolean> {
     if (language === 'fi') return false
@@ -190,28 +205,44 @@ export function createBrain(deps: BrainDeps = {}): BrainHandle {
       if (input.episodes.length === 0) return { results: [] }
       const deadline = deadlineFor('extract', clock, opts)
       const onDevice = await onDeviceFirst(extractPrompt.language(input))
+      const spec = withFeedback(extractPrompt, feedback('memory'))
       const results: ExtractOutput['results'] = []
       for (const group of groupEpisodes(input, onDevice)) {
-        const out = await runStructured(runner, extractPrompt, group, { ...opts, deadline })
+        const out = await runStructured(runner, spec, group, { ...opts, deadline })
         results.push(...out.results)
       }
       return { results }
     },
 
     consolidate: (raw: ConsolidateInput, opts?: CallOptions): Promise<ConsolidateOutput> =>
-      runStructured(runner, consolidatePrompt, ConsolidateInput.parse(raw), opts),
+      runStructured(
+        runner,
+        withFeedback(consolidatePrompt, feedback('memory')),
+        ConsolidateInput.parse(raw),
+        opts,
+      ),
 
     mapPreferences: (raw: PreferencesInput, opts?: CallOptions): Promise<PreferencesOutput> =>
       runStructured(runner, preferencesPrompt, PreferencesInput.parse(raw), opts),
 
     buildRoadmap: (raw: RoadmapInput, opts?: CallOptions): Promise<RoadmapPlan> =>
-      runStructured(runner, roadmapPrompt, RoadmapInput.parse(raw), opts),
+      runStructured(
+        runner,
+        withFeedback(roadmapPrompt, feedback('study_plan')),
+        RoadmapInput.parse(raw),
+        opts,
+      ),
 
     writeStep: (raw: StepInput, opts?: CallOptions): Promise<StepOutput> =>
-      runStructured(runner, stepPrompt, StepInput.parse(raw), opts),
+      runStructured(runner, withFeedback(stepPrompt, feedback('prompts')), StepInput.parse(raw), opts),
 
     makeCheckpoint: (raw: CheckpointInput, opts?: CallOptions): Promise<QuestionDraft[]> =>
-      runStructured(runner, checkpointPrompt, CheckpointInput.parse(raw), opts),
+      runStructured(
+        runner,
+        withFeedback(checkpointPrompt, feedback('quizzes')),
+        CheckpointInput.parse(raw),
+        opts,
+      ),
 
     async verifyQuestions(raw: QuestionDraft[], opts?: CallOptions): Promise<VerifyResult[]> {
       const questions = z.array(QuestionDraft).parse(raw)
@@ -228,12 +259,13 @@ export function createBrain(deps: BrainDeps = {}): BrainHandle {
     async makeExam(raw: ExamInput, opts?: CallOptions): Promise<QuestionDraft[]> {
       const input = ExamInput.parse(raw)
       const deadline = deadlineFor('makeExam', clock, opts)
+      const spec = withFeedback(examBatchPrompt, feedback('quizzes'))
       const questions: QuestionDraft[] = []
       for (const batch of planExam(input)) {
         try {
           const qs = await runStructured(
             runner,
-            examBatchPrompt,
+            spec,
             { ...batch, avoid: questions.map((q) => q.stem) },
             { ...opts, deadline },
           )
@@ -253,10 +285,20 @@ export function createBrain(deps: BrainDeps = {}): BrainHandle {
     },
 
     improvePrompt: (raw: ImproveInput, opts?: CallOptions): Promise<PromptWithTip> =>
-      runStructured(runner, improvePrompt, ImproveInput.parse(raw), opts),
+      runStructured(
+        runner,
+        withFeedback(improvePrompt, feedback('prompts')),
+        ImproveInput.parse(raw),
+        opts,
+      ),
 
     suggestPrompt: (raw: SuggestInput, opts?: CallOptions): Promise<SuggestOutput> =>
-      runStructured(runner, suggestPrompt, SuggestInput.parse(raw), opts),
+      runStructured(
+        runner,
+        withFeedback(suggestPrompt, feedback('prompts')),
+        SuggestInput.parse(raw),
+        opts,
+      ),
 
     coach: (raw: CoachInput, opts?: CallOptions): AsyncIterable<CoachEvent> =>
       runCoach(router, clock, CoachInput.parse(raw), opts),

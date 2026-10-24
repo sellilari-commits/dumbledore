@@ -10,17 +10,24 @@
  * (`since`), and the reply streams as 'chat.delta' on that thread when `emitDelta` is wired.
  * A topic selected in the Ask bar (`subjectId`) leads the coach context: "Topic: <name>" plus that
  * subject's goal, deadline, roadmap step and struggling concepts.
+ *
+ * The chat also takes notes and feedback. "note: …" (or "n: …") is saved at once, with no LLM
+ * call; a note or feedback the coach recognises (add_note, give_feedback) is applied right away
+ * too. A saved note answers "Saved to <topic>" with an Undo chip (undo_note); feedback is stored
+ * and reaches the prompts of its scope (brain `feedback`).
  */
 import type { Brain } from '@engine/brain-contract'
 import type { PerceptionService, Repos } from '@engine/contracts'
 import type { ChatMessage, CoachAction } from '@shared/domain'
 import type { EventPayload } from '@shared/ipc'
 import type { AskResult } from '@shared/state'
+import type { FeedbackRepo } from '@engine/contracts'
 import type { ChatWriter, FieldSnapshot } from '../chat/chat-writer'
 import { coachActionLabel } from '../overlay/labels'
 import type { ToastSpec } from '../overlay/toasts'
 import type { SessionFlow } from './session-flow'
 import type { Thinking } from './thinking'
+import { notePrefixText, type TypedNotes } from './typed-notes'
 
 export const ASK_THREAD = 'ask'
 const HISTORY_LIMIT = 10
@@ -37,6 +44,10 @@ export interface AskFlowDeps {
   runAction: (action: CoachAction) => Promise<void>
   /** Streams the reply to the windows (thread 'ask'); optional, the result carries it too. */
   emitDelta?: (delta: EventPayload<'chat.delta'>) => void
+  /** Typed notes in the chat; without it notes become a plain coach turn. */
+  notes?: Pick<TypedNotes, 'save' | 'notesContext'>
+  /** Feedback store; without it give_feedback is ignored. */
+  feedback?: Pick<FeedbackRepo, 'add'>
 }
 
 export interface AskOptions {
@@ -100,15 +111,65 @@ export class AskFlow {
   /** Ask bar (double tap): reply + actions as chips. Chat only: nothing is ever pasted. */
   async submit(text: string, opts: AskOptions = {}): Promise<AskResult> {
     this.noteReset(opts.since)
-    const { reply, actions } = await this.converse(text, opts.signal, opts.subjectId, CHAT_MODE)
-    const remaining = actions.filter((a) => a.type !== 'insert_prompt')
+    const quick = this.deps.notes ? notePrefixText(text) : null
+    if (quick !== null) return this.quickNote(text, quick)
+    const mode = [CHAT_MODE, this.deps.notes?.notesContext()].filter(Boolean).join('\n')
+    const { reply, actions } = await this.converse(text, opts.signal, opts.subjectId, mode)
+    const applied = this.applyInChat(
+      actions.filter((a) => a.type !== 'insert_prompt'),
+      reply,
+    )
+    const content = [reply, ...applied.lines].filter(Boolean).join('\n\n')
     this.deps.repos.chat.append({
       thread: ASK_THREAD,
       role: 'assistant',
-      content: reply,
-      actions: remaining,
+      content,
+      actions: applied.actions,
     })
-    return { reply, actions: remaining, pasted: false }
+    return { reply: content, actions: applied.actions, pasted: false }
+  }
+
+  /** "note: …": saved at once, answered without the coach. */
+  private quickNote(message: string, text: string): AskResult {
+    const { repos, notes } = this.deps
+    repos.chat.append({ thread: ASK_THREAD, role: 'user', content: message, actions: [] })
+    const saved = notes?.save({ text, subjectId: null, conceptId: null })
+    const reply = saved ? `Saved to ${saved.where}.` : 'I could not save that note.'
+    const actions: CoachAction[] = saved ? [{ type: 'undo_note', noteId: saved.noteId }] : []
+    repos.chat.append({ thread: ASK_THREAD, role: 'assistant', content: reply, actions })
+    return { reply, actions, pasted: false }
+  }
+
+  /**
+   * Notes and feedback from the coach are applied now: a note becomes an Undo chip and a
+   * "Saved to …" line, feedback a "Got it" line when the coach said nothing about it.
+   */
+  private applyInChat(
+    actions: CoachAction[],
+    reply: string,
+  ): { actions: CoachAction[]; lines: string[] } {
+    const { notes, feedback } = this.deps
+    const out: CoachAction[] = []
+    const lines: string[] = []
+    for (const action of actions) {
+      if (action.type === 'add_note' && notes) {
+        try {
+          const saved = notes.save(action)
+          out.push({ type: 'undo_note', noteId: saved.noteId })
+          lines.push(`Saved to ${saved.where}.`)
+        } catch {
+          // An empty note is dropped; the coach's reply still stands.
+        }
+      } else if (action.type === 'give_feedback') {
+        if (feedback && action.text.trim()) {
+          feedback.add({ scope: action.scope, subjectId: action.subjectId, text: action.text })
+          if (!reply) lines.push('Got it, I’ll keep that in mind from now on.')
+        }
+      } else {
+        out.push(action)
+      }
+    }
+    return { actions: out, lines }
   }
 
   /** `/d …` turn: a roadmap or prompt the coach proposes is pasted into the chat box at once. */

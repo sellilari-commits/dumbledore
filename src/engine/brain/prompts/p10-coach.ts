@@ -1,12 +1,12 @@
 /**
- * P10 Coach (tier `chat`, tools): the panel / Ask-bar chat persona plus the seven action tools
+ * P10 Coach (tier `chat`, tools): the panel / Ask-bar chat persona plus the nine action tools
  * (start_roadmap, create_exam, start_review, insert_prompt, set_focus, open_subject,
- * adjust_roadmap) and the
+ * adjust_roadmap, add_note, give_feedback) and the
  * mapping from a model tool call to a validated CoachAction. Text only — no schema — because
  * Groq cannot combine tools with a response schema.
  */
 import type { CoachInput } from '@engine/brain-contract'
-import { CoachAction } from '@shared/domain'
+import { CoachAction, FeedbackScope } from '@shared/domain'
 import { z } from 'zod'
 import { toProviderSchema } from '../llm/json'
 import { clip } from '../llm/text'
@@ -43,6 +43,24 @@ const ToolInputs = {
       .string()
       .describe('What the roadmap should cover or skip, in the student’s words'),
   }),
+  add_note: z.object({
+    text: z.string().describe('The note in the student’s words, ≤ 200 characters'),
+    subjectId: z
+      .string()
+      .nullable()
+      .describe('Subject id from the context when the note names another subject, else null'),
+    conceptId: z
+      .string()
+      .nullable()
+      .describe('conceptId of the topic from the context it belongs to, else null (current topic)'),
+  }),
+  give_feedback: z.object({
+    text: z.string().describe('The feedback in the student’s words, one sentence'),
+    scope: FeedbackScope.describe(
+      'study_plan (roadmaps), quizzes, prompts (written prompts), memory (what you note or remember), general',
+    ),
+    subjectId: z.string().nullable().describe('Subject id when it is about one subject, else null'),
+  }),
 } as const
 
 type ToolName = keyof typeof ToolInputs
@@ -59,6 +77,10 @@ const DESCRIPTIONS: Record<ToolName, string> = {
   open_subject: "Open a subject's page in the app.",
   adjust_roadmap:
     "Change what a subject's roadmap covers: focus on or skip topics, go deeper or lighter, in the student's words. The roadmap is planned again; nothing is pasted.",
+  add_note:
+    'Save a note the student wants to keep (a fact, definition, reminder or their own summary). It is saved at once on the right topic; they can undo it.',
+  give_feedback:
+    'Store feedback about Dumbledore itself (its study plans, quizzes, prompts or what it remembers) so later answers follow it.',
 }
 
 export const COACH_TOOLS: ToolDef[] = (Object.keys(ToolInputs) as ToolName[]).map((name) => ({
@@ -107,6 +129,17 @@ export function toCoachAction(name: string, input: unknown): CoachAction | null 
     case 'adjust_roadmap':
       action = { type: tool, subjectId: v.subjectId, instruction: v.instruction }
       break
+    case 'add_note':
+      action = {
+        type: tool,
+        text: v.text,
+        subjectId: v.subjectId || null,
+        conceptId: v.conceptId || null,
+      }
+      break
+    case 'give_feedback':
+      action = { type: tool, text: v.text, scope: v.scope, subjectId: v.subjectId || null }
+      break
   }
   const ok = CoachAction.safeParse(action)
   return ok.success ? ok.data : null
@@ -121,6 +154,8 @@ You know the learner profile, their subjects with mastery and deadlines, due rev
 - When they want to understand or learn something — even something you have no record of — call start_roadmap first (one short sentence, then the tool call).
 - When they say what to focus on or skip in a subject ("on chemistry I want SN1, not SN2", "skip the history part"), call adjust_roadmap with that subject's id and their wish in their words.
 - If the context says "Mode: chat", this is a conversation with you: nothing is pasted into their AI chat, so never call insert_prompt; offer the other actions instead.
+- When the student writes something to keep — "remember that …", "note that …", a fact, definition or summary in their own words meant as a note, not a question — call add_note at once (no need to ask), then answer in one short sentence. Leave subjectId and conceptId null for the current topic; use the ids of another topic or subject from the context only when the note is clearly about it.
+- When the student gives feedback about you — your study plans, quizzes, prompts or what you note ("your quizzes are too easy", "I prefer short prompts", "stop asking me about X", "this topic is wrong") — call give_feedback with the right scope and reply "Got it, I'll …" saying what changes. A wish about what one subject's roadmap covers is adjust_roadmap (also call give_feedback with scope study_plan only for a general preference about all study plans).
 - Act through the tools. Use ids exactly as written in the context. Call a tool only when the student asked for it or clearly agreed, except start_roadmap for learning requests.
 - A prompt you insert is written as the student, in first person: one line of their context, a short numbered ask, the sentence "${brevityRule('en')}" (in the student's language), ≤ 110 words.
 - Plain text; short bullet lists are fine; no markdown headings. Answer in the student's language.
