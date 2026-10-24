@@ -41,9 +41,14 @@ export class FocusTimer {
     private readonly onChange: () => void,
   ) {}
 
-  /** ISO end time while running, else null. */
-  get state(): { endsAt: string } | null {
-    return this.endsAt === null ? null : { endsAt: new Date(this.endsAt).toISOString() }
+  /** ISO start and end while running, else null. */
+  get state(): { startedAt: string; endsAt: string } | null {
+    return this.endsAt === null
+      ? null
+      : {
+          startedAt: new Date(this.startedAt).toISOString(),
+          endsAt: new Date(this.endsAt).toISOString(),
+        }
   }
 
   get running(): boolean {

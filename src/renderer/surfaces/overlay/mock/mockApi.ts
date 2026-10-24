@@ -134,14 +134,17 @@ function createOverlayMock(params: URLSearchParams): DumbledoreApi {
           now + 180 * 60_000,
           Math.max(now + 60_000, Date.parse(state.timer.endsAt) + action.deltaMinutes * 60_000),
         )
-        set({ ...state, timer: { endsAt: new Date(end).toISOString() } })
+        set({ ...state, timer: { ...state.timer, endsAt: new Date(end).toISOString() } })
         return
       }
       case 'timerStart':
         set({
           ...state,
           timerMinutes: action.minutes,
-          timer: { endsAt: new Date(Date.now() + action.minutes * 60_000).toISOString() },
+          timer: {
+            startedAt: new Date().toISOString(),
+            endsAt: new Date(Date.now() + action.minutes * 60_000).toISOString(),
+          },
         })
         return
       case 'quizClose': {

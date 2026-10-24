@@ -4,7 +4,9 @@
  * length picked last at once. Running, the square shows the minutes left; a click opens a small
  * chooser to add or take off minutes (−5 / −1 / +1 / +5, never below one minute left) or stop it,
  * and a right click stops it at once. The chooser closes when the pointer leaves or after 5 s
- * without a click. Main owns the timer, remembers the length and sends a macOS notification.
+ * without a click. While it runs, a white edge grows around the square (clockwise from the top
+ * centre) to show how much of the time has gone. Main owns the timer, remembers the length and
+ * sends a macOS notification.
  * Long press opens the Ask bar, like the orb. The overlay window never takes keyboard focus, so
  * the custom length is a stepper (− / + and the scroll wheel), not a text field.
  */
@@ -41,6 +43,17 @@ interface Props {
 /** Whole minutes left, rounded up so "1" shows until the end. */
 export function minutesLeft(endsAt: string, now: number): number {
   return Math.max(0, Math.ceil((Date.parse(endsAt) - now) / 60_000))
+}
+
+/**
+ * Share of the timer that has gone (0 at the start, 1 at the end), against the current total:
+ * adding or taking off minutes moves endsAt, so the edge rescales at once.
+ */
+export function timerElapsed(timer: { startedAt: string; endsAt: string }, now: number): number {
+  const start = Date.parse(timer.startedAt)
+  const total = Date.parse(timer.endsAt) - start
+  if (!(total > 0)) return 1
+  return Math.min(1, Math.max(0, (now - start) / total))
 }
 
 /** One stepper step: by 1 up to 10 minutes, then by 5, kept within 1–180. */
@@ -113,6 +126,7 @@ export function TimerButton({
         ) : (
           <span className="ov-sq__count">{left}</span>
         )}
+        {timer && <TimerEdge value={timerElapsed(timer, now)} />}
         {!open && (
           <span className="ov-sq__label" aria-hidden>
             {label}
@@ -135,6 +149,65 @@ export function TimerButton({
       )}
     </div>
   )
+}
+
+/** Square size and corner radius (satellites.css .ov-sq), and the edge's stroke. */
+const SQ = 28
+const SQ_RADIUS = 8
+const EDGE_STROKE = 2
+
+/**
+ * The progress edge: a white stroke along the square's rounded outline, drawn from the top centre
+ * clockwise over the share of time gone. The path starts at the top centre so the dash does too.
+ */
+export function TimerEdge({ value }: { value: number }) {
+  const i = EDGE_STROKE / 2
+  const r = SQ_RADIUS - i
+  const a = i
+  const b = SQ - i
+  const m = SQ / 2
+  const d = [
+    `M ${m} ${a}`,
+    `H ${b - r}`,
+    `A ${r} ${r} 0 0 1 ${b} ${a + r}`,
+    `V ${b - r}`,
+    `A ${r} ${r} 0 0 1 ${b - r} ${b}`,
+    `H ${a + r}`,
+    `A ${r} ${r} 0 0 1 ${a} ${b - r}`,
+    `V ${a + r}`,
+    `A ${r} ${r} 0 0 1 ${a + r} ${a}`,
+    'Z',
+  ].join(' ')
+  return (
+    <svg
+      className="ov-sq__edge"
+      data-testid="timer-edge"
+      data-value={value.toFixed(3)}
+      data-reduced={prefersReducedMotion() || undefined}
+      width={SQ}
+      height={SQ}
+      viewBox={`0 0 ${SQ} ${SQ}`}
+      aria-hidden
+    >
+      <path
+        className="ov-sq__edge-value"
+        d={d}
+        pathLength={1}
+        fill="none"
+        strokeWidth={EDGE_STROKE}
+        strokeLinecap="round"
+        strokeDasharray="1 1"
+        strokeDashoffset={1 - value}
+      />
+    </svg>
+  )
+}
+
+/** Reduced motion: the edge jumps once a second instead of gliding. */
+export function prefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function'
+    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    : false
 }
 
 /** The running timer: minutes left, −5 / −1 / +1 / +5 and Stop. Closes after 5 s untouched. */

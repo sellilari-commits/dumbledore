@@ -271,3 +271,27 @@
   margin-top: 2px;
   text-align: center;
 }
+
+/* ── Timer progress edge ──────────────────────────────────────────────
+   A white (dark mode) stroke around the running square, growing clockwise from the top centre as the time
+   goes. It moves every second with a 1 s linear transition, so it reads as continuous. */
+
+.ov-sq__edge {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.ov-sq__edge-value {
+  /* The text colour: white in dark mode, ink on the light theme, where white would vanish. */
+  stroke: var(--c-texPri);
+  transition: stroke-dashoffset 1s linear;
+}
+
+/* Reduced motion: no glide, the edge jumps once a second. */
+.ov-sq__edge[data-reduced] .ov-sq__edge-value {
+  transition: none;
+}

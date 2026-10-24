@@ -193,6 +193,17 @@ describe('satellites', () => {
     expect(running.getAttribute('aria-label')).toBe('18 min left · click to change')
   })
 
+  it('timer square: a white progress edge only while running, at the share of time gone', async () => {
+    const { local } = await mount('idle')
+    expect(screen.queryByTestId('timer-edge')).toBeNull()
+    act(() => local.emit('overlay.changed', state('timer')))
+    const edge = screen.getByTestId('timer-edge')
+    // The scene: 25 minutes, 7 gone → about 0.28 of the outline.
+    expect(Number(edge.getAttribute('data-value'))).toBeCloseTo(0.28, 1)
+    act(() => local.emit('overlay.changed', state('idle')))
+    expect(screen.queryByTestId('timer-edge')).toBeNull()
+  })
+
   it('running timer: a click opens −5 / −1 / +1 / +5 and Stop; right click stops at once', async () => {
     const { local } = await mount('timer')
     fireEvent.click(screen.getByTestId('timer'), { detail: 0 })

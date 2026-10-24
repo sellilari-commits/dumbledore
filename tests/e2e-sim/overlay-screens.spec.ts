@@ -134,6 +134,7 @@ for (const theme of ['light', 'dark'] as const) {
       await page.getByRole('button', { name: '15 min' }).click()
       await expect(page.getByTestId('timer-chooser')).toHaveCount(0)
       await expect(page.getByTestId('timer')).toHaveText(/15/)
+      await expect(page.getByTestId('timer-edge')).toBeVisible()
       await page.getByTestId('timer').click()
       await expect(page.getByTestId('timer-running')).toBeVisible()
       await shoot(page, 'timer-running', theme)

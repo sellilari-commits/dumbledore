@@ -176,7 +176,14 @@ export function sceneState(name: SceneName, vp: Size): OverlayState {
         quiz: { quizId: DEMO_QUIZ_ID },
       }
     case 'timer':
-      return { ...s, timer: { endsAt: new Date(Date.now() + 18 * 60_000 - 5_000).toISOString() } }
+      return {
+        ...s,
+        // 25 minutes, 7 gone: the progress edge stands at about 28%.
+        timer: {
+          startedAt: new Date(Date.now() - 7 * 60_000 + 5_000).toISOString(),
+          endsAt: new Date(Date.now() + 18 * 60_000 - 5_000).toISOString(),
+        },
+      }
     case 'left':
       return {
         ...session(s, 2, 6),

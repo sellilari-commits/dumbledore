@@ -102,8 +102,11 @@ export const OverlayState = z.object({
   toasts: z.array(Toast),
   quiz: z.object({ quizId: Id }).nullable(),
   aiChat: z.object({ provider: z.string() }).nullable(),
-  /** The timer square under the orb: when it runs out (null = idle). */
-  timer: z.object({ endsAt: IsoDate }).nullable(),
+  /**
+   * The timer square under the orb: when it started and when it runs out (null = idle). The
+   * square's progress edge is the elapsed share of startedAt → endsAt, so +/− minutes rescale it.
+   */
+  timer: z.object({ startedAt: IsoDate, endsAt: IsoDate }).nullable(),
   /** The timer length picked last (minutes); the chooser preselects it. */
   timerMinutes: z.number().int(),
 })

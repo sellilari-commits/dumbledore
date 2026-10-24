@@ -39,6 +39,7 @@ describe('timer square', () => {
     const t = setup()
     t.controller.startTimer(45)
     expect(t.controller.state.timer).toEqual({
+      startedAt: new Date(t.clock.now()).toISOString(),
       endsAt: new Date(t.clock.now() + 45 * MIN).toISOString(),
     })
     expect(t.controller.state.timerMinutes).toBe(45)
@@ -69,10 +70,14 @@ describe('timer square', () => {
     t.controller.startTimer(25)
     const start = t.clock.now()
     t.controller.adjustTimer(5)
-    expect(t.controller.state.timer).toEqual({ endsAt: new Date(start + 30 * MIN).toISOString() })
+    expect(t.controller.state.timer).toEqual({
+      startedAt: new Date(start).toISOString(),
+      endsAt: new Date(start + 30 * MIN).toISOString(),
+    })
     t.controller.adjustTimer(-5)
     t.controller.adjustTimer(-1)
-    expect(t.controller.state.timer).toEqual({ endsAt: new Date(start + 24 * MIN).toISOString() })
+    expect(t.controller.state.timer?.endsAt).toBe(new Date(start + 24 * MIN).toISOString())
+    expect(t.controller.state.timer?.startedAt).toBe(new Date(start).toISOString())
     expect(t.repos.settings.get().timerMinutes).toBe(25)
     t.clock.advance(24 * MIN - 1000)
     expect(t.notices).toEqual([])
@@ -88,9 +93,7 @@ describe('timer square', () => {
     expect(t.controller.state.timer).toBeNull()
     t.controller.startTimer(5)
     t.controller.adjustTimer(-5)
-    expect(t.controller.state.timer).toEqual({
-      endsAt: new Date(t.clock.now() + MIN).toISOString(),
-    })
+    expect(t.controller.state.timer?.endsAt).toBe(new Date(t.clock.now() + MIN).toISOString())
     t.clock.advance(30_000)
     const before = t.controller.state.timer
     t.controller.adjustTimer(-1)
