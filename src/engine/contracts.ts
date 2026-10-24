@@ -10,12 +10,16 @@ import type {
   Assignment,
   ChatMessage,
   Concept,
+  ConceptEdge,
   Encounter,
   Episode,
   ExamSpec,
   Id,
   InboxState,
   IsoDate,
+  Note,
+  NoteKind,
+  NoteStatus,
   NotionColor,
   Nudge,
   Profile,
@@ -94,7 +98,8 @@ export interface SubjectRepo {
   merge(fromId: Id, intoId: Id): void
   /**
    * Deletes a subject and everything remembered about it: its concepts, encounters (and their
-   * screen text), roadmaps, assignments, chat, nudges and the exams that cover only it.
+   * screen text), notes, prerequisite edges, roadmaps, assignments, chat, nudges and the exams
+   * that cover only it.
    */
   remove(id: Id): void
 }
@@ -146,6 +151,73 @@ export interface EncounterRepo {
   setInboxState(id: Id, state: InboxState, subjectId?: Id | null): Encounter
   /** Distinct open questions of recent encounters, newest first. */
   openQuestions(subjectId: Id, limit: number): string[]
+}
+
+export interface NewNoteInput {
+  subjectId: Id | null
+  conceptId: Id | null
+  encounterId: Id | null
+  kind: NoteKind
+  text: string
+  keywords?: string[]
+  source: Note['source']
+}
+
+/** Atomic notes (docs/NOTES.md §3). Lists return active notes unless a status is given. */
+export interface NoteRepo {
+  /**
+   * Adds a note, trimmed and cut at 200 characters. If an active note in the same place (same
+   * concept; else same subject without concept; else the loose notes) says the same thing
+   * (note-key.ts), nothing is added: that note gains the new keywords, its updatedAt is touched
+   * and it comes back with `created: false`. Keywords are trimmed, deduped and capped at 5.
+   */
+  add(input: NewNoteInput): { note: Note; created: boolean }
+  get(id: Id): Note | null
+  /** Oldest first. `subjectId: null` = loose notes; `status: null` = every status. */
+  list(filter: {
+    subjectId?: Id | null
+    conceptId?: Id
+    encounterId?: Id
+    status?: NoteStatus | null
+    limit?: number
+  }): Note[]
+  update(
+    id: Id,
+    patch: Partial<
+      Pick<
+        Note,
+        | 'text'
+        | 'kind'
+        | 'keywords'
+        | 'subjectId'
+        | 'conceptId'
+        | 'status'
+        | 'mergedInto'
+        | 'pinned'
+      >
+    >,
+  ): Note
+  /** Soft delete: status 'deleted' (it leaves lists, search and the memory file). */
+  remove(id: Id): void
+  /** `fromId` becomes status 'merged' pointing at `intoId`; `text` rewrites the survivor. */
+  merge(fromId: Id, intoId: Id, text?: string): Note
+}
+
+/** Prerequisite edges between concepts of one subject (docs/NOTES.md §6). */
+export interface EdgeRepo {
+  /** Edges whose concepts belong to the subject, oldest first. */
+  list(subjectId: Id): ConceptEdge[]
+  /**
+   * Adds `fromId → toId`. Returns null (and adds nothing) for a self-loop, concepts of different
+   * subjects, an edge that exists already or one that would close a cycle.
+   */
+  add(input: {
+    fromId: Id
+    toId: Id
+    why?: string
+    source?: ConceptEdge['source']
+  }): ConceptEdge | null
+  remove(fromId: Id, toId: Id): void
 }
 
 export interface EpisodeRepo {
@@ -245,6 +317,8 @@ export interface Repos {
   subjects: SubjectRepo
   concepts: ConceptRepo
   encounters: EncounterRepo
+  notes: NoteRepo
+  edges: EdgeRepo
   episodes: EpisodeRepo
   roadmaps: RoadmapRepo
   quizzes: QuizRepo

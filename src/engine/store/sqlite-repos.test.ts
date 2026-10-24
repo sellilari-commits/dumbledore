@@ -1,12 +1,13 @@
 /** SQLite-only behaviour: persistence, pragmas, migrations, rollback, integrity and relinking. */
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import Database from 'better-sqlite3'
 import { afterEach, describe, expect, it } from 'vitest'
 import { FakeClock } from '../clock'
 import { encounterInput, episode, quiz, roadmap } from './conformance/fixtures'
 import { openDatabase } from './db'
-import { currentSchemaVersion, LATEST_SCHEMA_VERSION, migrate } from './migrations'
+import { currentSchemaVersion, LATEST_SCHEMA_VERSION, MIGRATIONS, migrate } from './migrations'
 import { createSqliteRepos, type SqliteRepos } from './sqlite-repos'
 
 const open: SqliteRepos[] = []
@@ -61,11 +62,61 @@ describe('createSqliteRepos', () => {
     make(path).close()
     const db = openDatabase(path)
     expect(currentSchemaVersion(db)).toBe(LATEST_SCHEMA_VERSION)
-    expect(db.prepare('SELECT COUNT(*) FROM schema_version').pluck().get()).toBe(1)
+    expect(db.prepare('SELECT COUNT(*) FROM schema_version').pluck().get()).toBe(MIGRATIONS.length)
     expect(migrate(db, '2026-10-24T09:00:00.000Z')).toEqual([])
     db.prepare('INSERT INTO schema_version VALUES (?, ?, ?)').run(999, 'future', 'x')
     db.close()
     expect(() => openDatabase(path)).toThrow(/newer/)
+  })
+
+  it('upgrades a v1 database: rows kept, search rows renumbered, notes usable', () => {
+    const path = tempDb()
+    mkdirSync(dirname(path), { recursive: true })
+    const raw = new Database(path)
+    migrate(raw, '2026-10-01T00:00:00.000Z', MIGRATIONS.slice(0, 1))
+    const at = '2026-10-01T00:00:00.000Z'
+    raw
+      .prepare(
+        `INSERT INTO subjects (id, name, name_key, emoji, color, description, goal, deadline, status, focus, created_at, updated_at)
+         VALUES ('sub_old', 'History', 'history', '📘', 'default', 'Old towns', NULL, NULL, 'active', 'normal', ?, ?)`,
+      )
+      .run(at, at)
+    raw
+      .prepare(
+        `INSERT INTO concepts (id, subject_id, parent_id, name, name_key, summary, mastery, box, next_review_at, status, struggle_count, last_seen_at)
+         VALUES ('con_old', 'sub_old', NULL, 'Tampere', 'tampere', 'Founded 1779', 0, 0, NULL, 'new', 0, NULL)`,
+      )
+      .run()
+    // v1 search rows: rowid = seq * 4 + kind (subject 0, concept 1).
+    raw
+      .prepare('INSERT INTO search_fts (rowid, f1, f2, f3) VALUES (4, ?, ?, NULL)')
+      .run('history', 'old towns')
+    raw
+      .prepare('INSERT INTO search_fts (rowid, f1, f2, f3) VALUES (5, ?, ?, NULL)')
+      .run('tampere', 'founded 1779')
+    raw.close()
+
+    const repos = make(path)
+    expect(currentSchemaVersion(repos.db)).toBe(LATEST_SCHEMA_VERSION)
+    expect(repos.subjects.get('sub_old')?.name).toBe('History')
+    expect(repos.search.query('tampere', 5).map((h) => [h.kind, h.id])).toEqual([
+      ['concept', 'con_old'],
+    ])
+    expect(repos.search.query('old towns', 5).map((h) => h.id)).toEqual(['sub_old'])
+    const note = repos.notes.add({
+      subjectId: 'sub_old',
+      conceptId: 'con_old',
+      encounterId: null,
+      kind: 'fact',
+      text: 'Finlayson founded a cotton mill in 1820',
+      source: { app: 'Chrome', bundleId: null, url: null, title: 'Tampere' },
+    }).note
+    expect(repos.notes.list({ conceptId: 'con_old' }).map((n) => n.id)).toEqual([note.id])
+    expect(repos.search.query('cotton mill', 5).map((h) => [h.kind, h.id])).toEqual([
+      ['concept', 'con_old'],
+    ])
+    const cols = repos.db.prepare("SELECT name FROM pragma_table_info('concepts')").pluck().all()
+    expect(cols).toContain('summary_pinned')
   })
 
   it('rolls back a transaction that throws', () => {

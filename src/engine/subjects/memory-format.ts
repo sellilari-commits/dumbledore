@@ -1,9 +1,10 @@
 /**
  * Renders a subject's human-readable "memory file" (PLAN §6.7): a header with goal, mastery and
- * last study date, the concept tree with status, mastery and next review, and the encounters
- * newest first with Seen / Big picture / Understanding / Open questions. Pure: data in, text out.
+ * last study date, the concept tree with status, mastery and next review and each concept's notes
+ * (docs/NOTES.md), the subject's unplaced notes, and the encounters newest first with Seen / Big
+ * picture / Understanding / Open questions. Pure: data in, text out.
  */
-import type { Concept, Encounter, MasteryStatus, Quiz, SubjectSummary } from '@shared/domain'
+import type { Concept, Encounter, MasteryStatus, Note, Quiz, SubjectSummary } from '@shared/domain'
 import { struggleReason } from '../queries/struggle'
 import { isDateOnly } from '../queries/time'
 
@@ -14,6 +15,8 @@ export interface MemoryFileInput {
   encounters: readonly Encounter[]
   /** Newest first; used to explain struggling concepts. */
   quizzes: readonly Quiz[]
+  /** Active notes of the subject, oldest first (shown under their concept). */
+  notes?: readonly Note[]
 }
 
 export interface MemoryFormatOptions {
@@ -75,8 +78,17 @@ function headerLine(s: SubjectSummary, tz?: string): string {
   return parts.join(' · ')
 }
 
+function noteLine(n: Note, indent: string, tz?: string): string {
+  const where = n.source.title ? oneLine(n.source.title) : n.source.app
+  const label = n.kind === 'highlight' ? 'highlighted, ' : ''
+  return `${indent}- “${oneLine(n.text)}” (${label}${where}, ${localParts(n.createdAt, tz).date})`
+}
+
 function conceptLines(input: MemoryFileInput, tz?: string): string[] {
   const { concepts } = input
+  const notesOf = new Map<string, Note[]>()
+  for (const n of input.notes ?? [])
+    if (n.conceptId) notesOf.set(n.conceptId, [...(notesOf.get(n.conceptId) ?? []), n])
   if (concepts.length === 0) return ['_No concepts yet._']
   const ids = new Set(concepts.map((c) => c.id))
   const children = new Map<string | null, Concept[]>()
@@ -101,6 +113,7 @@ function conceptLines(input: MemoryFileInput, tz?: string): string[] {
         if (c.nextReviewAt) line += ` · review due ${localParts(c.nextReviewAt, tz).date}`
       }
       lines.push(line)
+      for (const n of notesOf.get(c.id) ?? []) lines.push(noteLine(n, '  '.repeat(depth + 1), tz))
       walk(c.id, depth + 1)
     }
   }
@@ -137,9 +150,11 @@ export function formatMemoryFile(input: MemoryFileInput, opts: MemoryFormatOptio
     '',
     '## Concept map',
     ...conceptLines(input, tz),
-    '',
-    '## Encounters',
   ]
+  const ids = new Set(input.concepts.map((c) => c.id))
+  const unplaced = (input.notes ?? []).filter((n) => !n.conceptId || !ids.has(n.conceptId))
+  if (unplaced.length) lines.push('', '## Other notes', ...unplaced.map((n) => noteLine(n, '', tz)))
+  lines.push('', '## Encounters')
   if (shown.length === 0) lines.push('_Nothing seen yet._')
   shown.forEach((e, i) => {
     if (i > 0) lines.push('')

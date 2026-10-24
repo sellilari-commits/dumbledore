@@ -129,6 +129,9 @@ export function createConceptRepo(ctx: StoreCtx): SqliteConceptRepo {
           newParent?.id ?? null,
           id,
         )
+        // Its notes follow; prerequisite edges never cross subjects, so its edges go.
+        stmt('UPDATE notes SET subject_id = ? WHERE concept_id = ?').run(subjectId, id)
+        stmt('DELETE FROM concept_edges WHERE from_id = ? OR to_id = ?').run(id, id)
       })()
       return must(repo.get(id), `concept ${id}`)
     },

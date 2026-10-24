@@ -132,6 +132,7 @@ function mergeSubjects(ctx: StoreCtx, fromId: string, intoId: string): void {
   stmt('UPDATE encounters SET subject_id = ? WHERE subject_id = ?').run(intoId, fromId)
   stmt('UPDATE roadmaps SET subject_id = ? WHERE subject_id = ?').run(intoId, fromId)
   stmt('UPDATE assignments SET subject_id = ? WHERE subject_id = ?').run(intoId, fromId)
+  stmt('UPDATE notes SET subject_id = ? WHERE subject_id = ?').run(intoId, fromId)
   const quizzes = stmt(
     'SELECT q.id, q.subject_ids FROM quizzes q WHERE EXISTS (SELECT 1 FROM json_each(q.subject_ids) j WHERE j.value = ?)',
   ).all(fromId) as { id: string; subject_ids: string }[]
@@ -164,6 +165,10 @@ function removeSubject(ctx: StoreCtx, id: string): void {
       'DELETE FROM episodes WHERE id = ? AND NOT EXISTS (SELECT 1 FROM encounters WHERE episode_id = ?)',
     ).run(e.episode_id, e.episode_id)
   }
+  // Notes and edges go with the subject (foreign keys cascade); their search rows go here.
+  const noteSeqs = stmt('SELECT seq FROM notes WHERE subject_id = ?').pluck().all(id) as number[]
+  for (const seq of noteSeqs) index.remove('note', Number(seq))
+  stmt('DELETE FROM notes WHERE subject_id = ?').run(id)
   const conceptSeqs = stmt('SELECT seq FROM concepts WHERE subject_id = ?')
     .pluck()
     .all(id) as number[]

@@ -80,6 +80,7 @@ export function createMemoryMirror(opts: MemoryMirrorOptions): MemoryMirrorHandl
         concepts: repos.concepts.listBySubject(subject.id),
         encounters: repos.encounters.list({ subjectId: subject.id, limit: 500 }),
         quizzes: repos.quizzes.list({ subjectId: subject.id, limit: 20 }),
+        notes: repos.notes.list({ subjectId: subject.id }),
       },
       { timeZone: opts.timeZone },
     )

@@ -4,13 +4,15 @@
  * in-memory twin's `includes()` search. Queries shorter than 3 characters can't use trigrams and
  * fall back to a scan with instr().
  *
- * Row ids encode the source: rowid = seq * 4 + kind, where seq is the entity's INTEGER PRIMARY KEY.
+ * Row ids encode the source: rowid = seq * 8 + kind, where seq is the entity's INTEGER PRIMARY KEY
+ * (schema v2 renumbered the v1 rows, which used seq * 4).
  */
 
 import { normalizeName } from './codec'
 import type { Db } from './db'
 
-export const SEARCH_KINDS = ['subject', 'concept', 'encounter', 'exam'] as const
+export const SEARCH_KINDS = ['subject', 'concept', 'encounter', 'exam', 'note'] as const
+const ROW_STRIDE = 8
 export type SearchKind = (typeof SEARCH_KINDS)[number]
 
 export interface SearchRef {
@@ -22,11 +24,12 @@ export interface SearchIndex {
   /** Indexes up to three text fields of an entity (replacing what was there). */
   put(kind: SearchKind, seq: number, fields: readonly (string | null | undefined)[]): void
   remove(kind: SearchKind, seq: number): void
-  /** Matching entities ordered by kind (subject, concept, encounter, exam), then insertion. */
+  /** Matching entities ordered by kind (subject, concept, encounter, exam, note), then insertion. */
   match(q: string): SearchRef[]
 }
 
-const rowIdOf = (kind: SearchKind, seq: number): number => seq * 4 + SEARCH_KINDS.indexOf(kind)
+const rowIdOf = (kind: SearchKind, seq: number): number =>
+  seq * ROW_STRIDE + SEARCH_KINDS.indexOf(kind)
 
 export function createSearchIndex(db: Db): SearchIndex {
   const del = db.prepare('DELETE FROM search_fts WHERE rowid = ?')
@@ -60,7 +63,8 @@ export function createSearchIndex(db: Db): SearchIndex {
       return rowids
         .map((rowid) => {
           const r = Number(rowid)
-          return { kind: SEARCH_KINDS[r % 4] as SearchKind, seq: Math.floor(r / 4), order: r % 4 }
+          const order = r % ROW_STRIDE
+          return { kind: SEARCH_KINDS[order] as SearchKind, seq: Math.floor(r / ROW_STRIDE), order }
         })
         .sort((a, b) => a.order - b.order || a.seq - b.seq)
         .map(({ kind, seq }) => ({ kind, seq }))

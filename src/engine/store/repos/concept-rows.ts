@@ -1,14 +1,16 @@
 /**
  * Row-level helpers for the `concepts` table: the codec, `findConceptSeq` (the oldest concept of a
  * subject with a given conceptKey) and `foldConcept`, which merges one concept row into another
- * and re-points everything that referenced it: child concepts, encounters, quiz questions, review
- * actions in chat messages and nudges, the search index (see concept-fold.ts).
+ * and re-points everything that referenced it: child concepts, encounters, notes, prerequisite
+ * edges, quiz questions, review actions in chat messages and nudges, the search index (see
+ * concept-fold.ts).
  */
 import type { CoachAction, Concept, Id } from '@shared/domain'
 import { codec, normalizeName } from '../codec'
 import { foldConcepts, relinkAction, survivorParent } from '../concept-fold'
 import { conceptKey } from '../concept-key'
 import { must, type StoreCtx } from '../context'
+import { reaches } from './notes'
 
 export const conceptCodec = codec<Concept>({
   id: 'text',
@@ -59,6 +61,35 @@ function relinkActions(ctx: StoreCtx, fromId: Id, intoId: Id): void {
   }
 }
 
+/** Re-points `fromId`'s edges at `intoId`, dropping self-loops, duplicates and cycles. */
+function moveEdges(ctx: StoreCtx, fromId: Id, intoId: Id): void {
+  const { stmt } = ctx
+  const moved = stmt(
+    'SELECT from_id, to_id, why, source, created_at FROM concept_edges WHERE from_id = ? OR to_id = ?',
+  ).all(fromId, fromId) as {
+    from_id: string
+    to_id: string
+    why: string
+    source: string
+    created_at: string
+  }[]
+  if (moved.length === 0) return
+  stmt('DELETE FROM concept_edges WHERE from_id = ? OR to_id = ?').run(fromId, fromId)
+  const subjectId = stmt('SELECT subject_id FROM concepts WHERE id = ?').pluck().get(intoId)
+  for (const e of moved) {
+    const from = e.from_id === fromId ? intoId : e.from_id
+    const to = e.to_id === fromId ? intoId : e.to_id
+    if (from === to) continue
+    const edges = stmt(
+      'SELECT e.from_id AS fromId, e.to_id AS toId FROM concept_edges e JOIN concepts c ON c.id = e.from_id WHERE c.subject_id = ?',
+    ).all(subjectId) as { fromId: string; toId: string }[]
+    if (edges.some((x) => x.fromId === from && x.toId === to) || reaches(edges, to, from)) continue
+    stmt(
+      'INSERT INTO concept_edges (from_id, to_id, why, source, created_at) VALUES (?, ?, ?, ?, ?)',
+    ).run(from, to, e.why, e.source, e.created_at)
+  }
+}
+
 /**
  * Folds concept `fromId` into `intoId` and deletes `fromId`. Callers run it inside a transaction;
  * the two may live in different subjects (SubjectRepo.merge folds before re-homing the rest).
@@ -78,6 +109,12 @@ export function foldConcept(ctx: StoreCtx, fromId: Id, intoId: Id): Concept {
     intoId,
   )
   stmt('UPDATE encounters SET concept_id = ? WHERE concept_id = ?').run(intoId, fromId)
+  stmt('UPDATE notes SET concept_id = ?, subject_id = ? WHERE concept_id = ?').run(
+    intoId,
+    into.concept.subjectId,
+    fromId,
+  )
+  moveEdges(ctx, fromId, intoId)
   stmt('UPDATE questions SET concept_id = ? WHERE concept_id = ?').run(intoId, fromId)
   relinkActions(ctx, fromId, intoId)
   stmt('DELETE FROM concepts WHERE id = ?').run(fromId)

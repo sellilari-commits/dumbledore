@@ -38,6 +38,8 @@ export function buildExport(repos: Repos, meta: ExportMeta) {
     concepts: subjects.flatMap((s) => repos.concepts.listBySubject(s.id)),
     roadmaps: subjects.flatMap((s) => repos.roadmaps.listBySubject(s.id)),
     encounters: repos.encounters.list({}),
+    notes: repos.notes.list({ status: null }),
+    conceptEdges: subjects.flatMap((s) => repos.edges.list(s.id)),
     episodes: repos.episodes.recent({ sinceIso: EPOCH }),
     quizzes: repos.quizzes.list({}),
     assignments: repos.assignments.list({}),

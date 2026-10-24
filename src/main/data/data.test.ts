@@ -26,7 +26,21 @@ describe('data export', () => {
     const repos = createMemoryRepos(clock)
     seedDemo(repos, clock)
     repos.chat.append({ thread: 'ask', role: 'user', content: 'Why SN1?', actions: [] })
+    const [first] = repos.subjects.list()
+    const [c1, c2] = first ? repos.concepts.listBySubject(first.id) : []
+    if (!first || !c1 || !c2) throw new Error('demo seed has no concepts')
+    const source = { app: 'Chrome', bundleId: null, url: null, title: 'Notes' }
+    const kept = { subjectId: first.id, conceptId: c1.id, encounterId: null, source }
+    repos.notes.add({ ...kept, kind: 'fact', text: 'A kept fact' })
+    const gone = repos.notes.add({ ...kept, kind: 'fact', text: 'A deleted fact' }).note
+    repos.notes.remove(gone.id)
+    repos.edges.add({ fromId: c1.id, toId: c2.id })
     const data = buildExport(repos, { appVersion: '1.2.3', exportedAt: clock.nowIso() })
+    expect(data.notes.map((n) => [n.text, n.status])).toEqual([
+      ['A kept fact', 'active'],
+      ['A deleted fact', 'deleted'],
+    ])
+    expect(data.conceptEdges).toEqual([expect.objectContaining({ fromId: c1.id, toId: c2.id })])
     expect(data).toMatchObject({ format: 'dumbledore-export', version: 1, appVersion: '1.2.3' })
     expect(data.subjects.map((s) => s.status).sort()).toContain('suggested')
     expect(data.subjects.length).toBe(repos.subjects.list().length)

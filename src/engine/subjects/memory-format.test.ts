@@ -1,4 +1,4 @@
-import type { Concept, Encounter, SubjectSummary } from '@shared/domain'
+import type { Concept, Encounter, Note, SubjectSummary } from '@shared/domain'
 import { describe, expect, it } from 'vitest'
 import { encounterInput, quiz } from '../store/conformance/fixtures'
 import { formatMemoryFile } from './memory-format'
@@ -128,6 +128,47 @@ Goal: pass the midterm (2026-12-12) · Mastery 62% · Last studied 2026-10-24
 - **Understanding:** struggling — re-read the stability paragraph 3×; asked ChatGPT "why are tertiary carbocations more stable".
 - **Open questions:** How does hyperconjugation stabilise a carbocation?
 `)
+  })
+
+  it('lists notes under their concept and the unplaced ones under Other notes', () => {
+    const note = (over: Partial<Note>): Note => ({
+      id: 'not_1',
+      subjectId: 'sub_1',
+      conceptId: 'con_sn1',
+      encounterId: null,
+      kind: 'fact',
+      text: 'Tertiary substrates favour SN1',
+      keywords: [],
+      source: { app: 'Chrome', bundleId: null, url: null, title: 'SN1 reaction' },
+      status: 'active',
+      mergedInto: null,
+      pinned: false,
+      createdAt: '2026-10-24T14:32:00.000Z',
+      updatedAt: '2026-10-24T14:32:00.000Z',
+      ...over,
+    })
+    const text = formatMemoryFile(
+      {
+        subject,
+        concepts,
+        encounters: [],
+        quizzes: [checkpoint],
+        notes: [
+          note({}),
+          note({ id: 'not_2', kind: 'highlight', text: 'the rate depends only on [R–X]' }),
+          note({ id: 'not_3', conceptId: null, text: 'Midterm covers chapters 7–9' }),
+        ],
+      },
+      { timeZone: 'UTC' },
+    )
+    expect(text).toContain(`  - SN1 — Learning (0.45) · review due 2026-10-26
+    - “Tertiary substrates favour SN1” (SN1 reaction, 2026-10-24)
+    - “the rate depends only on [R–X]” (highlighted, SN1 reaction, 2026-10-24)
+  - SN2 — Mastered (0.90)`)
+    expect(text).toContain(`## Other notes
+- “Midterm covers chapters 7–9” (SN1 reaction, 2026-10-24)
+
+## Encounters`)
   })
 
   it('uses the time zone, handles empty sections and caps long histories', () => {

@@ -1,15 +1,18 @@
 /**
  * SQLite SearchRepo: FTS5 matches (search-index.ts) turned into SearchHits with the same titles,
- * snippets, routes and ordering as the in-memory twin (subjects, concepts, encounters, exams).
+ * snippets, routes and ordering as the in-memory twin (subjects, concepts, encounters, exams, then
+ * notes shown as their concept or encounter; see note-hit.ts).
  */
 import type { SearchHit } from '@shared/state'
 import { APP_ROUTES } from '@shared/state'
 import type { SearchRepo } from '../../contracts'
 import type { Row } from '../codec'
 import type { StoreCtx } from '../context'
+import { noteSearchHit } from '../note-hit'
 import type { SearchKind } from '../search-index'
 import { conceptCodec } from './concepts'
 import { encounterCodec } from './encounters'
+import { noteCodec } from './notes'
 import { quizCodec } from './quizzes'
 import { subjectCodec } from './subjects'
 
@@ -77,6 +80,16 @@ export function createSearchRepo(ctx: StoreCtx): SearchRepo {
           route: APP_ROUTES.exam(q.id),
         }
       }
+      case 'note': {
+        const r = bySeq('notes', seq)
+        if (!r) return null
+        const n = noteCodec.decode(r)
+        if (n.status !== 'active') return null
+        const c = n.conceptId
+          ? (stmt('SELECT * FROM concepts WHERE id = ?').get(n.conceptId) as Row | undefined)
+          : undefined
+        return noteSearchHit(n, c ? conceptCodec.decode(c) : null)
+      }
     }
   }
 
@@ -86,7 +99,7 @@ export function createSearchRepo(ctx: StoreCtx): SearchRepo {
       if (!(limit > 0)) return hits
       for (const ref of ctx.index.match(q)) {
         const hit = hitFor(ref.kind, ref.seq)
-        if (!hit) continue
+        if (!hit || hits.some((h) => h.kind === hit.kind && h.id === hit.id)) continue
         hits.push(hit)
         if (hits.length >= limit) break
       }

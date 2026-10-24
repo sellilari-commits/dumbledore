@@ -1,6 +1,6 @@
 # Structured notes — design
 
-Status: draft for Ilari · 2026-10-24 · builds on PLAN.md §6.7 (data model) and §6.6 (roadmaps)
+Status: approved 2026-10-24 (decisions in §10), phase 1 built · builds on PLAN.md §6.7 (data model) and §6.6 (roadmaps)
 
 ## Summary
 
@@ -197,14 +197,33 @@ notes listed underneath with their source (page title, time).
 - F: `renderer/pages/subject/ConceptsView.tsx` (tree, notes, edit and delete), `SeenView.tsx`
   (delete encounter), `subject.css`.
 
-## 10. Open questions for Ilari
+## 10. Decisions (2026-10-24)
 
-1. Should highlights also become **quiz material** right away (a review card per highlight), or only
-   after consolidation?
-2. Consolidation timing: is "after 10 new notes, or nightly" right, or should it also run when you
-   open a subject?
-3. Should prerequisite edges be visible and editable in the UI (draw "A before B"), or stay
-   internal to the roadmap?
-4. Notes on pages with **no subject** (casual reading, e.g. Tampere history): auto-create a
-   suggested subject, as today, or keep them in a "Loose notes" area until you file them?
-5. Language: write notes in the page's language, or always in your prompt language?
+Ilari approved the defaults:
+
+1. **Highlights are quiz material right away.** Each highlight is stored as a `highlight` note
+   (verbatim) at once, so quizzes and reviews can use it without waiting for consolidation.
+2. **Consolidation timing:** after about 10 new or changed notes, nightly, **and** when the student
+   opens the subject (phase 2).
+3. **Prerequisite edges are visible but read-only** in the UI for now (phase 3); only consolidation
+   writes them.
+4. **Loose notes.** Casual reading that matches no subject does not create a suggested subject. Its
+   notes stay unfiled (`subjectId` and `conceptId` null), with their encounter in the Memory/Inbox
+   view, until the student files them. A suggested subject is still created when there is real
+   study evidence: an assignment or deadline on the page, an AI chat about the topic, or the same
+   topic coming back (an earlier loose encounter with the same subject name).
+5. **Language:** notes are written in the page's language.
+
+Also decided the same day: active capture checks for screen changes every second
+(`DEFAULT_SETTINGS.cadence.activeMs = 1000`).
+
+## 11. Phase 1 as built
+
+- Storage as in §8, with `notes.subject_id` nullable for loose notes; search rows renumbered to
+  `seq * 8 + kind`. Search shows a matching note as its concept (snippet = the note) or, when
+  unplaced, as its encounter, because the app's search groups don't have a note kind yet (phase 3).
+- `ConceptRepo.remove` and `EncounterRepo.remove` (§8) come with the delete UI in phase 3.
+- Merge candidates for ambiguous placements (§4 step 2) are not stored; consolidation (phase 2)
+  finds them from concept names with the same rule.
+- The memory file shows notes under their concept and unplaced notes under "Other notes";
+  encounters keep the existing cap (100), not 20.

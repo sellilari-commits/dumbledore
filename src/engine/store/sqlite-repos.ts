@@ -14,6 +14,7 @@ import type { StoreCtx } from './context'
 import { type Db, openDatabase, statementCache } from './db'
 import { createConceptRepo } from './repos/concepts'
 import { createEncounterRepo, createEpisodeRepo } from './repos/encounters'
+import { createEdgeRepo, createNoteRepo } from './repos/notes'
 import { createProfileRepo, createSettingsRepo, createUsageRepo } from './repos/profile'
 import { createQuizRepo } from './repos/quizzes'
 import { createAssignmentRepo, createChatRepo, createNudgeRepo } from './repos/records'
@@ -62,6 +63,8 @@ export function createSqliteRepos(
     subjects: createSubjectRepo(ctx),
     concepts,
     encounters,
+    notes: createNoteRepo(ctx),
+    edges: createEdgeRepo(ctx),
     episodes: createEpisodeRepo(ctx),
     roadmaps: createRoadmapRepo(ctx),
     quizzes: createQuizRepo(ctx),

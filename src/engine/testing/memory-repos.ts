@@ -9,10 +9,12 @@ import {
   type Assignment,
   type ChatMessage,
   type Concept,
+  type ConceptEdge,
   DEFAULT_SETTINGS,
   type Encounter,
   type Episode,
   type Id,
+  type Note,
   type Nudge,
   type Profile,
   type Quiz,
@@ -26,6 +28,9 @@ import type { LlmCallRecord, Repos } from '../contracts'
 import { newId } from '../ids'
 import { foldConcepts, relinkAction, survivorParent } from '../store/concept-fold'
 import { conceptKey, isNicerName } from '../store/concept-key'
+import { noteSearchHit } from '../store/note-hit'
+import { cleanKeywords, clipNote, sameNote } from '../store/note-key'
+import { reaches } from '../store/repos/notes'
 
 export const normalizeName = (s: string): string => s.trim().toLowerCase().replace(/\s+/g, ' ')
 const clone = <T>(value: T): T => structuredClone(value)
@@ -47,6 +52,8 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
   const subjects = new Map<Id, Subject>()
   const concepts = new Map<Id, Concept>()
   const encounters = new Map<Id, Encounter>()
+  const notes = new Map<Id, Note>()
+  let edges: ConceptEdge[] = []
   const episodes = new Map<Id, Episode>()
   const roadmaps = new Map<Id, Roadmap>()
   const quizzes = new Map<Id, Quiz>()
@@ -65,6 +72,26 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
   let settings: Settings = clone(DEFAULT_SETTINGS)
   const now = () => clock.nowIso()
 
+  const edgesOf = (subjectId: Id) =>
+    edges.filter((e) => concepts.get(e.fromId)?.subjectId === subjectId)
+
+  /** Same as the SQLite moveEdges (store/repos/concept-rows.ts). */
+  const moveEdges = (fromId: Id, intoId: Id) => {
+    const moved = edges.filter((e) => e.fromId === fromId || e.toId === fromId)
+    if (moved.length === 0) return
+    edges = edges.filter((e) => e.fromId !== fromId && e.toId !== fromId)
+    const subjectId = must(concepts.get(intoId), `concept ${intoId}`).subjectId
+    for (const e of moved) {
+      const from = e.fromId === fromId ? intoId : e.fromId
+      const to = e.toId === fromId ? intoId : e.toId
+      if (from === to) continue
+      const current = edgesOf(subjectId)
+      if (current.some((x) => x.fromId === from && x.toId === to) || reaches(current, to, from))
+        continue
+      edges.push({ ...e, fromId: from, toId: to })
+    }
+  }
+
   /** Same as the SQLite foldConcept (store/repos/concept-rows.ts). */
   const foldConcept = (fromId: Id, intoId: Id) => {
     const from = must(concepts.get(fromId), `concept ${fromId}`)
@@ -73,6 +100,9 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
     for (const c of concepts.values())
       if (c.parentId === fromId && c.id !== intoId) c.parentId = intoId
     for (const e of encounters.values()) if (e.conceptId === fromId) e.conceptId = intoId
+    for (const n of notes.values())
+      if (n.conceptId === fromId) Object.assign(n, { conceptId: intoId, subjectId: into.subjectId })
+    moveEdges(fromId, intoId)
     for (const q of quizzes.values())
       for (const question of q.questions)
         if (question.conceptId === fromId) question.conceptId = intoId
@@ -146,6 +176,7 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
           q.subjectIds = [...new Set(q.subjectIds.map((s) => (s === fromId ? intoId : s)))]
         }
         for (const a of assignments.values()) if (a.subjectId === fromId) a.subjectId = intoId
+        for (const n of notes.values()) if (n.subjectId === fromId) n.subjectId = intoId
         subjects.delete(fromId)
       },
       remove(id) {
@@ -167,6 +198,10 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
         for (const e of encounters.values())
           if (e.conceptId && conceptIds.has(e.conceptId)) e.conceptId = null
         for (const cid of conceptIds) concepts.delete(cid)
+        edges = edges.filter((e) => !conceptIds.has(e.fromId) && !conceptIds.has(e.toId))
+        for (const n of [...notes.values()]) if (n.subjectId === id) notes.delete(n.id)
+        for (const n of notes.values())
+          if (n.conceptId && conceptIds.has(n.conceptId)) n.conceptId = null
         for (const r of [...roadmaps.values()]) if (r.subjectId === id) roadmaps.delete(r.id)
         for (const a of [...assignments.values()]) if (a.subjectId === id) assignments.delete(a.id)
         for (const q of [...quizzes.values()]) {
@@ -291,6 +326,106 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
           }
         }
         return out
+      },
+    },
+
+    notes: {
+      add(input) {
+        const text = clipNote(input.text)
+        if (!text) throw new Error('A note needs text')
+        const twin = [...notes.values()].find(
+          (n) =>
+            n.status === 'active' &&
+            (input.conceptId
+              ? n.conceptId === input.conceptId
+              : n.conceptId === null && n.subjectId === input.subjectId) &&
+            sameNote(n.text, text),
+        )
+        if (twin) {
+          twin.keywords = cleanKeywords(twin.keywords, input.keywords)
+          twin.updatedAt = now()
+          return { note: clone(twin), created: false }
+        }
+        const t = now()
+        const note: Note = {
+          id: newId('not'),
+          subjectId: input.subjectId,
+          conceptId: input.conceptId,
+          encounterId: input.encounterId,
+          kind: input.kind,
+          text,
+          keywords: cleanKeywords(input.keywords),
+          source: clone(input.source),
+          status: 'active',
+          mergedInto: null,
+          pinned: false,
+          createdAt: t,
+          updatedAt: t,
+        }
+        notes.set(note.id, note)
+        return { note: clone(note), created: true }
+      },
+      get: (id) => clone(notes.get(id) ?? null),
+      list(filter) {
+        const status = filter.status === undefined ? 'active' : filter.status
+        const list = [...notes.values()].filter(
+          (n) =>
+            (filter.subjectId === undefined || n.subjectId === filter.subjectId) &&
+            (filter.conceptId === undefined || n.conceptId === filter.conceptId) &&
+            (filter.encounterId === undefined || n.encounterId === filter.encounterId) &&
+            (status === null || n.status === status),
+        )
+        return list.slice(0, filter.limit ?? list.length).map(clone)
+      },
+      update(id, patch) {
+        const current = must(notes.get(id), `note ${id}`)
+        const { id: _i, createdAt: _c, updatedAt: _u, ...rest } = patch as Partial<Note>
+        if (typeof rest.text === 'string') {
+          rest.text = clipNote(rest.text)
+          if (!rest.text) throw new Error('A note needs text')
+        }
+        if (rest.keywords) rest.keywords = cleanKeywords(rest.keywords)
+        const next: Note = { ...current, ...rest, id, updatedAt: now() }
+        notes.set(id, next)
+        return clone(next)
+      },
+      remove(id) {
+        repos.notes.update(id, { status: 'deleted' })
+      },
+      merge(fromId, intoId, text) {
+        must(notes.get(fromId), `note ${fromId}`)
+        must(notes.get(intoId), `note ${intoId}`)
+        if (fromId === intoId) return clone(must(notes.get(intoId), `note ${intoId}`))
+        repos.notes.update(fromId, { status: 'merged', mergedInto: intoId })
+        return text?.trim()
+          ? repos.notes.update(intoId, { text })
+          : clone(must(notes.get(intoId), 'note'))
+      },
+    },
+
+    edges: {
+      list: (subjectId) => clone(edgesOf(subjectId)),
+      add(input) {
+        const { fromId, toId } = input
+        if (fromId === toId) return null
+        const from = must(concepts.get(fromId), `concept ${fromId}`)
+        const to = must(concepts.get(toId), `concept ${toId}`)
+        if (from.subjectId !== to.subjectId) return null
+        const current = edgesOf(from.subjectId)
+        if (current.some((e) => e.fromId === fromId && e.toId === toId)) return null
+        if (reaches(current, toId, fromId)) return null
+        const edge: ConceptEdge = {
+          fromId,
+          toId,
+          why: input.why?.trim() ?? '',
+          source: input.source ?? 'llm',
+          createdAt: now(),
+        }
+        edges.push(edge)
+        return clone(edge)
+      },
+      remove(fromId, toId) {
+        edges = edges.filter((e) => !(e.fromId === fromId && e.toId === toId))
       },
     },
 
@@ -540,6 +675,14 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
               subjectId: quiz.subjectIds[0] ?? null,
               route: `/exams/${quiz.id}`,
             })
+        }
+        for (const note of notes.values()) {
+          if (note.status !== 'active' || !has(note.text)) continue
+          const hit = noteSearchHit(
+            note,
+            note.conceptId ? (concepts.get(note.conceptId) ?? null) : null,
+          )
+          if (hit && !hits.some((h) => h.kind === hit.kind && h.id === hit.id)) hits.push(hit)
         }
         return hits.slice(0, limit)
       },

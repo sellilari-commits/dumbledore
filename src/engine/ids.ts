@@ -5,6 +5,7 @@ export type IdPrefix =
   | 'sub' // subject
   | 'con' // concept
   | 'enc' // encounter
+  | 'not' // note
   | 'epi' // episode
   | 'asg' // assignment
   | 'rdm' // roadmap

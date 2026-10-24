@@ -7,6 +7,7 @@
  */
 import type BetterSqlite3 from 'better-sqlite3'
 import { SCHEMA_V1 } from './schema-v1'
+import { SCHEMA_V2 } from './schema-v2'
 
 type Db = BetterSqlite3.Database
 
@@ -18,6 +19,7 @@ export interface Migration {
 
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial schema', sql: SCHEMA_V1 },
+  { version: 2, name: 'notes and concept edges', sql: SCHEMA_V2 },
 ]
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0)

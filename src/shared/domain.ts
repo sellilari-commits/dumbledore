@@ -109,6 +109,53 @@ export const Encounter = z.object({
 })
 export type Encounter = z.infer<typeof Encounter>
 
+/** One fact, definition, formula, example, highlighted passage or question, short enough to quiz on. */
+export const NoteKind = z.enum([
+  'fact',
+  'definition',
+  'formula',
+  'example',
+  'highlight',
+  'question',
+])
+export type NoteKind = z.infer<typeof NoteKind>
+
+export const NoteStatus = z.enum(['active', 'merged', 'deleted'])
+export type NoteStatus = z.infer<typeof NoteStatus>
+
+/**
+ * An atomic note (docs/NOTES.md §3). `subjectId` null = a loose note (casual reading that matched
+ * no subject) until the student files it; `conceptId` null = not placed in the tree yet.
+ * `pinned` = edited by the student: consolidation never rewrites or merges it.
+ */
+export const Note = z.object({
+  id: Id,
+  subjectId: Id.nullable(),
+  conceptId: Id.nullable(),
+  encounterId: Id.nullable(),
+  kind: NoteKind,
+  text: z.string(),
+  /** 1–5 keywords from the extractor, for linking notes later (A-MEM style). */
+  keywords: z.array(z.string()),
+  source: SourceRef,
+  status: NoteStatus,
+  mergedInto: Id.nullable(),
+  pinned: z.boolean(),
+  createdAt: IsoDate,
+  updatedAt: IsoDate,
+})
+export type Note = z.infer<typeof Note>
+
+/** "`fromId` comes before `toId`": `toId` can't be understood without `fromId` (same subject). */
+export const ConceptEdge = z.object({
+  fromId: Id,
+  toId: Id,
+  why: z.string(),
+  source: z.enum(['llm', 'user']),
+  createdAt: IsoDate,
+})
+export type ConceptEdge = z.infer<typeof ConceptEdge>
+
 export const Assignment = z.object({
   id: Id,
   subjectId: Id.nullable(),

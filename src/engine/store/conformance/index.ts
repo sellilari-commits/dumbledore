@@ -8,6 +8,7 @@ import { conceptMatchingSuite } from './concept-matching'
 import { encounterSuite, episodeSuite } from './encounters'
 import type { ConformanceTarget, ReposFactory } from './fixtures'
 import { learningSuite } from './learning'
+import { edgeSuite, noteSuite } from './notes'
 import { recordSuite } from './records'
 import { searchSuite } from './search'
 import { conceptSuite, subjectSuite } from './subjects'
@@ -38,6 +39,8 @@ export function describeReposConformance(label: string, factory: ReposFactory): 
     conceptSuite(current)
     conceptMatchingSuite(current)
     encounterSuite(current)
+    noteSuite(current)
+    edgeSuite(current)
     episodeSuite(current)
     learningSuite(current)
     recordSuite(current)
