@@ -9,7 +9,8 @@ import { keys, useAction } from '@renderer/lib/queries'
 import type { Question, Quiz } from '@shared/domain'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { KIND_ICON, metaLine, minutesFor } from './exam-utils'
+import { metaLine, minutesFor } from './exam-utils'
+import { KindIcon } from './KindIcon'
 import './exam-page.css'
 
 export interface ExamTakingProps {
@@ -117,7 +118,7 @@ export function ExamTaking({ quiz, subjectLine }: ExamTakingProps) {
   return (
     <>
       <PageHeader
-        icon={KIND_ICON[quiz.kind]}
+        icon={<KindIcon kind={quiz.kind} size={44} />}
         title={quiz.title}
         subtitle={metaLine([`${total} questions`, subjectLine, `about ${minutesFor(total)} min`])}
       >

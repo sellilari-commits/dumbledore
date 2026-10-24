@@ -6,6 +6,7 @@ import { EmptyState, ErrorState, LoadingState, ProgressBar } from '@renderer/des
 import { formatTokens } from '@renderer/lib/format'
 import { useUsage } from '@renderer/lib/queries'
 import type { UsageSummary } from '@shared/state'
+import { ChartColumn } from 'lucide-react'
 
 const PROVIDER_NAME: Record<string, string> = {
   gemini: 'Gemini',
@@ -109,7 +110,11 @@ export function UsageMeters() {
   const rows = usage.data?.rows ?? []
   if (rows.length === 0)
     return (
-      <EmptyState compact icon="📊" title="No AI calls yet today">
+      <EmptyState
+        compact
+        icon={<ChartColumn size={28} strokeWidth={1.5} />}
+        title="No AI calls yet today"
+      >
         Usage shows up here as Dumbledore reads, plans and writes prompts.
       </EmptyState>
     )

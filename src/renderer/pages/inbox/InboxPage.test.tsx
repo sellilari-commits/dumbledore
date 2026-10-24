@@ -153,7 +153,7 @@ describe('InboxPage', () => {
 
   it('shows an error with a retry when the inbox fails to load', async () => {
     render('error')
-    expect(await screen.findByText('Couldn’t load your inbox')).toBeTruthy()
+    expect(await screen.findByText('Couldn’t load your memory')).toBeTruthy()
     expect(screen.getByRole('button', { name: /try again/i })).toBeTruthy()
   })
 })

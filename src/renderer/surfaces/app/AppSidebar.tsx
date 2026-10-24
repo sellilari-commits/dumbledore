@@ -1,6 +1,6 @@
 /**
  * The app's left rail: traffic-light row (with a hover-only collapse button), the
- * "Dumbledore" workspace row, Search / Home / Inbox / Exams / Settings, the Subjects list
+ * "Dumbledore" workspace row, Search / Home / Memory / Exams / Settings, the Subjects list
  * (+ New subject; a trash button on hover deletes one) and a capture status row at the bottom.
  */
 import {
@@ -18,10 +18,10 @@ import { useShell } from '@renderer/lib/shell'
 import { DeleteSubjectDialog } from '@renderer/pages/subject/DeleteSubjectDialog'
 import type { SubjectSummary } from '@shared/domain'
 import {
+  Brain,
   ChevronsLeft,
   FilePenLine,
   House,
-  Inbox,
   Plus,
   Search,
   Settings,
@@ -145,8 +145,8 @@ export function AppSidebar({ collapsed }: { collapsed: boolean }) {
             active={location === '/home'}
           />
           <SidebarItem
-            icon={<Inbox {...ICON} />}
-            label="Inbox"
+            icon={<Brain {...ICON} />}
+            label="Memory"
             href="/inbox"
             active={location === '/inbox'}
             badge={newCount}

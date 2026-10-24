@@ -85,7 +85,7 @@ for (const theme of ['light', 'dark'] as const) {
 
     test('inbox', async ({ page }) => {
       await open(page, '/inbox', theme)
-      await expect(page.getByRole('heading', { name: 'What Dumbledore knows' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Memory', exact: true })).toBeVisible()
       await expect(page.getByRole('article').first()).toBeVisible()
       await shoot(page, `ui-inbox-${theme}`)
     })
@@ -109,7 +109,7 @@ test.describe('home & inbox states', () => {
     await shoot(page, 'ui-inbox-empty-light')
 
     await open(page, '/inbox', 'light', 'error')
-    await expect(page.getByText('Couldn’t load your inbox')).toBeVisible()
+    await expect(page.getByText('Couldn’t load your memory')).toBeVisible()
     await shoot(page, 'ui-inbox-error-light')
   })
 

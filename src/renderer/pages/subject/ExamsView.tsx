@@ -7,19 +7,12 @@ import { Button, type Column, DatabaseTable, EmptyState, Tag } from '@renderer/d
 import { formatRelative } from '@renderer/lib/format'
 import { useShell } from '@renderer/lib/shell'
 import { QUIZ_KIND, scoreColor } from '@renderer/lib/status'
-import type { QuizKind } from '@shared/domain'
 import type { QuizSummary } from '@shared/state'
-import { ALargeSmall, Calendar, CircleChevronDown, Hash, Plus, Target } from 'lucide-react'
+import { ALargeSmall, Calendar, CircleChevronDown, FilePen, Hash, Plus, Target } from 'lucide-react'
 import { useLocation } from 'wouter'
+import { KindIcon } from '../exams/KindIcon'
 
 const HEAD = { size: 14, strokeWidth: 1.75 } as const
-
-const KIND_ICON: Record<QuizKind, string> = {
-  exam: '📝',
-  review: '🔁',
-  checkpoint: '🎯',
-  placement: '🧭',
-}
 
 /** "Weak-spots exam · Organic Chemistry" → "Weak-spots exam" (the page already names it). */
 function shortTitle(title: string, subjectName: string): string {
@@ -40,7 +33,9 @@ function columns(subjectName: string): Column<QuizSummary>[] {
       icon: <ALargeSmall {...HEAD} />,
       render: (q) => (
         <span className="dd-table__title-cell" title={q.title}>
-          <span aria-hidden>{KIND_ICON[q.kind]}</span>
+          <span aria-hidden>
+            <KindIcon kind={q.kind} />
+          </span>
           <span>{shortTitle(q.title, subjectName)}</span>
         </span>
       ),
@@ -121,7 +116,7 @@ export function ExamsView({
   if (exams.length === 0)
     return (
       <EmptyState
-        icon="📝"
+        icon={<FilePen size={28} strokeWidth={1.5} />}
         title="No exams for this subject yet"
         actions={canCreate ? <NewExamButton subjectId={subjectId} size="md" /> : null}
       >

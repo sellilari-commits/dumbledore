@@ -1,5 +1,5 @@
 /**
- * Inbox (/inbox) — "What Dumbledore knows": new extractions with their three parts and source,
+ * Memory (/inbox) — what Dumbledore knows: new extractions with their three parts and source,
  * to keep, file under a subject or ignore (inbox.act); suggested subjects (suggested.act);
  * filters by state and subject; a capture line with today's count. Acted-on rows leave the
  * view at once (optimistic) and come back with an error toast if the call fails.
@@ -15,6 +15,7 @@ import {
 } from '@renderer/design-system'
 import { useAction, useAppState, useInbox, useSubjects } from '@renderer/lib/queries'
 import type { Encounter, SubjectSummary } from '@shared/domain'
+import { Archive, Brain, CheckCheck, EyeOff, Search } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { PageFrame } from '../PageFrame'
 import { EncounterRow } from './EncounterRow'
@@ -76,33 +77,33 @@ function ListSkeleton() {
 function emptyCopy(
   state: StateFilter,
   filtered: boolean,
-): { icon: string; title: string; body: string } {
+): { icon: ReactNode; title: string; body: string } {
   if (filtered)
     return {
-      icon: '🔍',
+      icon: <Search size={28} strokeWidth={1.5} />,
       title: 'Nothing here for this subject',
       body: 'Try another subject or show all subjects.',
     }
   if (state === 'new')
     return {
-      icon: '✨',
+      icon: <CheckCheck size={28} strokeWidth={1.5} />,
       title: 'You’re all caught up',
       body: 'New things Dumbledore notices while you study land here first, so you decide what it keeps.',
     }
   if (state === 'accepted')
     return {
-      icon: '📚',
+      icon: <Archive size={28} strokeWidth={1.5} />,
       title: 'Nothing kept yet',
       body: 'Items you keep feed your roadmaps, reviews and exams.',
     }
   if (state === 'ignored')
     return {
-      icon: '🙈',
+      icon: <EyeOff size={28} strokeWidth={1.5} />,
       title: 'Nothing ignored',
       body: 'Ignored items stay out of your roadmaps and reviews.',
     }
   return {
-    icon: '👓',
+    icon: <Brain size={28} strokeWidth={1.5} />,
     title: 'Nothing captured yet',
     body: 'Study the way you normally do. Dumbledore picks up what you read and asks you here before it files anything.',
   }
@@ -155,7 +156,7 @@ export function InboxPage() {
   else if (list.isError)
     body = (
       <ErrorState
-        title="Couldn’t load your inbox"
+        title="Couldn’t load your memory"
         error={list.error}
         onRetry={() => void list.refetch()}
       />
@@ -185,11 +186,11 @@ export function InboxPage() {
     )
 
   return (
-    <PageFrame crumbs={[{ label: 'Inbox' }]}>
+    <PageFrame crumbs={[{ label: 'Memory' }]}>
       <PageHeader
-        icon="📥"
-        title="What Dumbledore knows"
-        subtitle="Picked up while you studied. Keep what’s right, file it under a subject, or ignore it."
+        icon={<Brain size={44} strokeWidth={1.5} />}
+        title="Memory"
+        subtitle="What Dumbledore picked up while you studied. Keep what’s right, file it under a subject, or ignore it."
       >
         <CaptureLine newItems={fresh.data} />
       </PageHeader>

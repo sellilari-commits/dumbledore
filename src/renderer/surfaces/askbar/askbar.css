@@ -196,7 +196,7 @@ body {
 }
 
 .ask__topic[aria-pressed="true"] {
-  color: var(--c-blue-text);
+  color: var(--c-accent);
   background: var(--c-accentTint);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-accent) 45%, transparent);
 }

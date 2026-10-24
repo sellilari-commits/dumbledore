@@ -5,7 +5,7 @@
  */
 import { Button, Callout, toast } from '@renderer/design-system'
 import { useAction } from '@renderer/lib/queries'
-import { Copy, Send } from 'lucide-react'
+import { Copy, Lightbulb, Send } from 'lucide-react'
 import type { GapRow } from './exam-utils'
 import './exam-page.css'
 
@@ -54,7 +54,7 @@ export function ExamGaps({ rows, prompt, assistant, onShowQuestion }: ExamGapsPr
   }
 
   return (
-    <Callout icon="💡" title="Your gaps">
+    <Callout icon={<Lightbulb size={18} strokeWidth={1.75} />} title="Your gaps">
       <ul className="ex-gaps">
         {rows.map((g) => {
           const detail = gapDetail(g)

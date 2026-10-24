@@ -22,10 +22,11 @@ import { useAppState } from '@renderer/lib/queries'
 import { MASTERY, scoreColor } from '@renderer/lib/status'
 import type { Quiz, QuizResult } from '@shared/domain'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, CalendarClock } from 'lucide-react'
+import { ArrowRight, CalendarClock, CircleCheck } from 'lucide-react'
 import { useState } from 'react'
 import { ExamGaps } from './ExamGaps'
-import { barColor, gapRows, KIND_ICON, metaLine } from './exam-utils'
+import { barColor, gapRows, metaLine } from './exam-utils'
+import { KindIcon } from './KindIcon'
 import './exam-page.css'
 
 type ConceptRow = QuizResult['byConcept'][number]
@@ -90,7 +91,7 @@ export function ExamResults({ quiz, subjectLine }: ExamResultsProps) {
     : 'Finished'
   const header = (
     <PageHeader
-      icon={KIND_ICON[quiz.kind]}
+      icon={<KindIcon kind={quiz.kind} size={44} />}
       title={quiz.title}
       subtitle={metaLine([finished, subjectLine])}
     />
@@ -151,7 +152,11 @@ export function ExamResults({ quiz, subjectLine }: ExamResultsProps) {
 
       <div className="ex-fix">
         {perfect || r.gaps.length === 0 ? (
-          <Callout icon="🎉" color="green" title="No gaps this time">
+          <Callout
+            icon={<CircleCheck size={18} strokeWidth={1.75} />}
+            color="green"
+            title="No gaps this time"
+          >
             Dumbledore will space out the next review of these concepts.
           </Callout>
         ) : (

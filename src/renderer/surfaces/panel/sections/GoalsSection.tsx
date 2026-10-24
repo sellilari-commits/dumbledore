@@ -8,7 +8,7 @@ import { daysUntil, formatDate } from '@renderer/lib/format'
 import { useAction, useHome, useSettings, useSubjects } from '@renderer/lib/queries'
 import type { HomeData } from '@shared/state'
 import { APP_ROUTES } from '@shared/state'
-import { FileCheck2 } from 'lucide-react'
+import { CalendarDays, FileCheck2, RotateCcw } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { openApp, report, useRunAction } from '../panel-actions'
 import { Note, Section, SectionError, SectionLoading } from '../Section'
@@ -42,7 +42,7 @@ function DeadlineRow({ deadline }: { deadline: Deadline }) {
         onClick={() => subjectId && openApp(APP_ROUTES.subject(subjectId))}
       >
         <span className="pn-row__icon" aria-hidden>
-          {deadline.subjectEmoji ?? '🗓'}
+          {deadline.subjectEmoji ?? <CalendarDays size={16} strokeWidth={1.75} />}
         </span>
         <span className="pn-row__label">{deadline.title}</span>
         <span className={cx('pn-row__aside', due.tone && `pn-due--${due.tone}`)}>{due.text}</span>
@@ -57,7 +57,7 @@ function DueReviews({ due }: { due: HomeData['dueReviews'] }) {
   return (
     <div className="pn-reviews">
       <span className="pn-row__icon" aria-hidden>
-        🔁
+        <RotateCcw size={16} strokeWidth={1.75} />
       </span>
       <div className="pn-reviews__text">
         <div className="pn-reviews__count">

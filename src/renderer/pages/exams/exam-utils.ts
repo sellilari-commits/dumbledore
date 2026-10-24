@@ -4,14 +4,7 @@
  */
 
 import { scoreColor } from '@renderer/lib/status'
-import type { Probe, Quiz, QuizKind, SubjectSummary } from '@shared/domain'
-
-export const KIND_ICON: Record<QuizKind, string> = {
-  exam: '📝',
-  review: '🔁',
-  checkpoint: '🎯',
-  placement: '🧭',
-}
+import type { Probe, Quiz, SubjectSummary } from '@shared/domain'
 
 /** About 0.8 minutes per question, never less than a minute. */
 export function minutesFor(questions: number): number {

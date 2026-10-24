@@ -353,3 +353,14 @@
   flex: none;
   color: currentColor;
 }
+
+/* Ink line icons in the emoji slots: centred, in the icon colour. */
+.dd-callout__icon > svg,
+.dd-page-header__icon > svg {
+  margin: 1px auto 0;
+  color: var(--c-icoPri);
+}
+
+.dd-empty__icon > svg {
+  margin-inline: auto;
+}

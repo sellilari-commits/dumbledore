@@ -4,7 +4,7 @@
  * pointer and the active one scrolls into view.
  */
 import { cx, Spinner, Tag } from '@renderer/design-system'
-import { CornerDownLeft, CornerDownRight } from 'lucide-react'
+import { CornerDownLeft, CornerDownRight, PenLine } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import type { PickerOption } from './picker-options'
 
@@ -26,7 +26,7 @@ function Content({ option }: { option: PickerOption }) {
       return (
         <>
           <span className="pn-opt__icon" aria-hidden>
-            ✨
+            <PenLine size={16} strokeWidth={1.75} />
           </span>
           <span className="pn-opt__label">
             Learn <strong>“{option.text}”</strong>

@@ -1,6 +1,6 @@
 /**
  * Subjects: each active subject with its emoji, name and a thin progress bar (share of its
- * roadmap done). A row opens the subject in the full app; suggested subjects point to the Inbox.
+ * roadmap done). A row opens the subject in the full app; suggested subjects point to Memory.
  */
 import { ProgressBar } from '@renderer/design-system'
 import { useSubjects } from '@renderer/lib/queries'
@@ -48,7 +48,7 @@ export function SubjectsSection() {
         )}
         {suggested > 0 ? (
           <button type="button" className="pn-link" onClick={() => openApp(APP_ROUTES.inbox)}>
-            {suggested} suggested {suggested === 1 ? 'subject' : 'subjects'} · Review in Inbox
+            {suggested} suggested {suggested === 1 ? 'subject' : 'subjects'} · Review in Memory
           </button>
         ) : null}
       </>

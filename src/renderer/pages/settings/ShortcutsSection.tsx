@@ -7,6 +7,7 @@
  */
 import { Button, Callout, Kbd, toast } from '@renderer/design-system'
 import type { Settings, TriggerKey } from '@shared/domain'
+import { Keyboard } from 'lucide-react'
 import { chordKeys, TRIGGER_KEY_ORDER, TRIGGER_KEYS } from './keys'
 import { SelectMenu, SettingsRow, SettingsSection } from './ui'
 import { useSettingsPatch } from './useSettingsPatch'
@@ -96,7 +97,10 @@ export function KeyConflictNote({
   if (shortcut.key !== 'rightOption') return null
   const chord = chordKeys(shortcut.fallbackChord).join('')
   return (
-    <Callout icon="🐟" title="Another app may use right ⌥ too">
+    <Callout
+      icon={<Keyboard size={18} strokeWidth={1.75} />}
+      title="Another app may use right ⌥ too"
+    >
       <span>
         Goldfish listens to right ⌥, and Claude Desktop to a double-tap of ⌥. If one of them runs on
         this Mac, give Dumbledore another key — {chord} always works.

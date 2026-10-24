@@ -1,5 +1,6 @@
-/** Callout: Notion's tinted block with an emoji, a bold title line and free content. */
+/** Callout: a tinted block with an ink icon, a bold title line and free content. */
 import type { NotionColor } from '@shared/domain'
+import { Lightbulb } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cx } from '../cx'
 import '../styles/display.css'
@@ -14,7 +15,7 @@ export interface CalloutProps {
 }
 
 export function Callout({
-  icon = '💡',
+  icon = <Lightbulb size={18} strokeWidth={1.75} />,
   title,
   color = 'default',
   children,

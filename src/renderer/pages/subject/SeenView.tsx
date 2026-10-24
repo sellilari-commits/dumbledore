@@ -7,16 +7,22 @@ import { EmptyState, Tag } from '@renderer/design-system'
 import { formatSeconds, formatTime, hostOf } from '@renderer/lib/format'
 import { UNDERSTANDING } from '@renderer/lib/status'
 import type { Encounter } from '@shared/domain'
+import { Eye, FileText, Globe, MessageSquare, Monitor, Play } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { groupByDay } from './subject-utils'
 
-function sourceIcon(e: Encounter): string {
-  if (e.source.url) return '🌐'
+function sourceIcon(e: Encounter): ReactNode {
   const app = e.source.app.toLowerCase()
-  if (app.includes('chatgpt') || app.includes('claude')) return '💬'
-  if (app.includes('youtube') || app.includes('video')) return '▶️'
-  if (app.includes('preview') || app.includes('pdf')) return '📄'
-  return '🖥️'
+  const Icon = e.source.url
+    ? Globe
+    : app.includes('chatgpt') || app.includes('claude')
+      ? MessageSquare
+      : app.includes('youtube') || app.includes('video')
+        ? Play
+        : app.includes('preview') || app.includes('pdf')
+          ? FileText
+          : Monitor
+  return <Icon size={16} strokeWidth={1.75} />
 }
 
 function Part({ label, children }: { label: string; children: ReactNode }) {
@@ -81,7 +87,7 @@ function EncounterBlock({ e }: { e: Encounter }) {
 export function SeenView({ encounters }: { encounters: Encounter[] }) {
   if (encounters.length === 0)
     return (
-      <EmptyState icon="👀" title="Nothing seen yet">
+      <EmptyState icon={<Eye size={28} strokeWidth={1.5} />} title="Nothing seen yet">
         When you read, watch or ask an AI about this subject, Dumbledore notes what you saw, why it
         mattered and whether it clicked — right here.
       </EmptyState>

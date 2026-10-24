@@ -19,14 +19,8 @@ import { useLocation, useParams } from 'wouter'
 import { PageFrame } from '../PageFrame'
 import { ExamResults } from './ExamResults'
 import { ExamTaking } from './ExamTaking'
-import {
-  KIND_ICON,
-  metaLine,
-  minutesFor,
-  subjectLine,
-  subjectNames,
-  subjectsFor,
-} from './exam-utils'
+import { metaLine, minutesFor, subjectLine, subjectNames, subjectsFor } from './exam-utils'
+import { KindIcon } from './KindIcon'
 import './exam-page.css'
 
 /** While an exam is being written: re-read it this often in case the push event is missed. */
@@ -50,7 +44,7 @@ function Generating({ quiz, list }: { quiz: Quiz; list: SubjectSummary[] }) {
   return (
     <>
       <PageHeader
-        icon={KIND_ICON[quiz.kind]}
+        icon={<KindIcon kind={quiz.kind} size={44} />}
         title={quiz.title}
         subtitle={metaLine([
           n > 0 ? `${n} questions` : null,

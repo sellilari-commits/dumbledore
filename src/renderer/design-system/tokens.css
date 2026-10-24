@@ -1,5 +1,6 @@
 /*
- * Dumbledore design tokens — Notion's 2026 values (PLAN §3.2) as CSS variables.
+ * Dumbledore design tokens — Notion's 2026 structure (PLAN §3.2) in Dumbledore's ink & paper
+ * colours: warm paper backgrounds, ink for every accent, colour only where it carries meaning.
  *
  * Light lives on :root. Dark applies when the system is dark (unless the page forces light with
  * <html data-theme="light">) or when <html data-theme="dark"> is set. Every surface (app, panel,
@@ -14,16 +15,16 @@
 
   /* ── Text ─────────────────────────────────────────────────────────────── */
   --c-texPri: #2c2c2b;
-  --c-texSec: #73706b; /* Notion #7D7A75, nudged to pass WCAG AA (4.9:1) */
+  --c-texSec: #65615b; /* AA (≥ 4.6:1) on every parchment background */
   --c-texTer: #a19e99; /* placeholders and decoration only — never meaningful text */
   --c-texDis: #bcbab6;
 
   /* ── Backgrounds ──────────────────────────────────────────────────────── */
-  --c-bacPri: #ffffff; /* page */
-  --c-bacSec: #f9f8f7; /* sidebar, table headers */
-  --c-bacTer: #f0efed; /* pressed, chips */
-  --c-bacInt: #f4f3f3; /* hover */
-  --c-popBac: #ffffff; /* popovers, menus, dialogs */
+  --c-bacPri: #f8f4ec; /* page: parchment */
+  --c-bacSec: #f1ebdf; /* sidebar, cards, table headers */
+  --c-bacTer: #e8e0cf; /* pressed, chips */
+  --c-bacInt: #f3eee4; /* hover */
+  --c-popBac: #fbf8f2; /* popovers, menus, dialogs */
   --c-overlay: rgba(15, 15, 15, 0.36); /* dialog scrim */
   --c-hover: rgba(55, 53, 47, 0.06); /* hover over any background (Notion) */
   --c-pressed: rgba(55, 53, 47, 0.12);
@@ -31,31 +32,31 @@
   --c-tooltipBg: #0f0f0f;
   --c-tooltipText: #ffffff;
   --c-tooltipSub: rgba(255, 255, 255, 0.62);
-  --c-choiceSelected: #ffffff; /* selected Choices chip, raised on its --c-bacTer track */
-  --c-buttonBg: #ffffff; /* secondary/danger buttons and keycaps */
+  --c-choiceSelected: #fbf8f2; /* selected Choices chip, raised on its --c-bacTer track */
+  --c-buttonBg: #fbf8f2; /* secondary/danger buttons and keycaps */
 
   /* ── Borders & icons ──────────────────────────────────────────────────── */
-  --c-borPri: #e6e5e3; /* dividers, tables */
-  --c-borStr: #d4d3cf; /* inputs */
+  --c-borPri: #e4dccb; /* dividers, tables */
+  --c-borStr: #d2c8b4; /* inputs */
   --c-icoPri: #383836;
   --c-icoSec: #8e8b86;
 
-  /* ── Accent (buttons, links, focus) — same in both themes ─────────────── */
-  --c-accent: #2383e2; /* Notion --c-palUiBlu600 */
-  --c-accentHover: #0077d4;
-  --c-accentPressed: #006bc7;
-  --c-accentText: #ffffff;
-  --c-accentFill: #0077d4; /* primary button fill: white text at 4.6:1 (Notion's hover blue) */
-  --c-accentFillHover: #006bc7;
-  --c-accentFillPressed: #005fb3;
-  --c-link: #0077d4;
-  --c-accentTint: rgba(35, 131, 226, 0.14); /* selected rows */
-  --c-selection: rgba(35, 131, 226, 0.28);
+  /* ── Accent (buttons, links, focus, rings) — ink on paper; dark flips to paper on ink ── */
+  --c-accent: #2c2c2b;
+  --c-accentHover: #1c1c1b;
+  --c-accentPressed: #0f0f0f;
+  --c-accentText: #f8f4ec;
+  --c-accentFill: #2c2c2b; /* primary button fill: parchment text at 12:1 */
+  --c-accentFillHover: #1c1c1b;
+  --c-accentFillPressed: #0f0f0f;
+  --c-link: #2c2c2b; /* underlined in base.css, since it shares the text colour */
+  --c-accentTint: rgba(44, 44, 43, 0.08); /* selected rows */
+  --c-selection: rgba(44, 44, 43, 0.16);
 
   /* ── Colour pairs (tags, callouts, status) ────────────────────────────── */
   /* text = Notion's coloured text · bg = tinted background · ink = text on bg at ≥ 4.5:1 */
   --c-gray-text: #7d7a75;
-  --c-gray-bg: #f0efed;
+  --c-gray-bg: #ebe4d6;
   --c-gray-ink: #5f5d59;
   --c-brown-text: #9f765a;
   --c-brown-bg: #f5ede9;
@@ -90,7 +91,7 @@
   --c-warning: var(--c-orange-text);
   --c-warningBg: var(--c-orange-bg);
   --c-progress: #50946e; /* thin progress bars fill green */
-  --c-progressTrack: #ebeae8;
+  --c-progressTrack: #e6dfd0;
 
   /* ── Shadows ──────────────────────────────────────────────────────────── */
   --c-shaOutline: #2a1c0012;
@@ -98,7 +99,7 @@
   --shadow-md: 0 8px 12px #19191907, 0 2px 6px #19191907, 0 0 0 1px var(--c-shaOutline);
   --shadow-lg: 0 20px 24px #1919190d, 0 5px 8px #19191907, 0 0 0 1px var(--c-shaOutline);
   --shadow-button: inset 0 0 0 1px #0f0f0f1a, 0 1px 2px #0f0f0f1a;
-  --shadow-focus: #2383e291 0 0 0 1px inset, #2383e259 0 0 0 2px;
+  --shadow-focus: rgba(44, 44, 43, 0.6) 0 0 0 1px inset, rgba(44, 44, 43, 0.22) 0 0 0 2px;
 
   /* ── Typography ───────────────────────────────────────────────────────── */
   --font-sans:
@@ -172,11 +173,11 @@
     --c-texSec: #ada9a3;
     --c-texTer: #7d7a75;
     --c-texDis: #5f5e59;
-    --c-bacPri: #191919;
-    --c-bacSec: #202020;
-    --c-bacTer: #383836;
-    --c-bacInt: #262626;
-    --c-popBac: #252525;
+    --c-bacPri: #1b1a18;
+    --c-bacSec: #22201e;
+    --c-bacTer: #3a3835;
+    --c-bacInt: #282624;
+    --c-popBac: #262422;
     --c-overlay: rgba(0, 0, 0, 0.6);
     --c-hover: rgba(255, 255, 255, 0.055);
     --c-pressed: rgba(255, 255, 255, 0.1);
@@ -190,9 +191,17 @@
     --c-borStr: #5f5e59;
     --c-icoPri: #e6e5e3;
     --c-icoSec: #ada9a3;
-    --c-accentTint: rgba(35, 131, 226, 0.22);
-    --c-link: #4c9be8;
-    --c-selection: rgba(35, 131, 226, 0.4);
+    --c-accent: #f0efed;
+    --c-accentHover: #ffffff;
+    --c-accentPressed: #dcdad6;
+    --c-accentText: #1b1a18;
+    --c-accentFill: #ece9e3;
+    --c-accentFillHover: #ffffff;
+    --c-accentFillPressed: #d6d3cd;
+    --c-accentTint: rgba(240, 239, 237, 0.1);
+    --shadow-focus: rgba(240, 239, 237, 0.6) 0 0 0 1px inset, rgba(240, 239, 237, 0.22) 0 0 0 2px;
+    --c-link: #f0efed;
+    --c-selection: rgba(240, 239, 237, 0.22);
     --c-gray-text: #ada9a3;
     --c-gray-bg: #383836;
     --c-gray-ink: #d4d2ce;
@@ -236,11 +245,11 @@
   --c-texSec: #ada9a3;
   --c-texTer: #7d7a75;
   --c-texDis: #5f5e59;
-  --c-bacPri: #191919;
-  --c-bacSec: #202020;
-  --c-bacTer: #383836;
-  --c-bacInt: #262626;
-  --c-popBac: #252525;
+  --c-bacPri: #1b1a18;
+  --c-bacSec: #22201e;
+  --c-bacTer: #3a3835;
+  --c-bacInt: #282624;
+  --c-popBac: #262422;
   --c-overlay: rgba(0, 0, 0, 0.6);
   --c-hover: rgba(255, 255, 255, 0.055);
   --c-pressed: rgba(255, 255, 255, 0.1);
@@ -254,9 +263,17 @@
   --c-borStr: #5f5e59;
   --c-icoPri: #e6e5e3;
   --c-icoSec: #ada9a3;
-  --c-accentTint: rgba(35, 131, 226, 0.22);
-  --c-link: #4c9be8;
-  --c-selection: rgba(35, 131, 226, 0.4);
+  --c-accent: #f0efed;
+  --c-accentHover: #ffffff;
+  --c-accentPressed: #dcdad6;
+  --c-accentText: #1b1a18;
+  --c-accentFill: #ece9e3;
+  --c-accentFillHover: #ffffff;
+  --c-accentFillPressed: #d6d3cd;
+  --c-accentTint: rgba(240, 239, 237, 0.1);
+  --shadow-focus: rgba(240, 239, 237, 0.6) 0 0 0 1px inset, rgba(240, 239, 237, 0.22) 0 0 0 2px;
+  --c-link: #f0efed;
+  --c-selection: rgba(240, 239, 237, 0.22);
   --c-gray-text: #ada9a3;
   --c-gray-bg: #383836;
   --c-gray-ink: #d4d2ce;

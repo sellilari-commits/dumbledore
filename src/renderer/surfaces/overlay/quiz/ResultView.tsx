@@ -4,7 +4,7 @@
  */
 import type { MasteryStatus, QuizResult } from '@shared/domain'
 import type { DumbledoreApi } from '@shared/ipc'
-import { Check } from 'lucide-react'
+import { Check, Lightbulb } from 'lucide-react'
 import { useState } from 'react'
 import { errorMessage } from '../lib/bridge'
 import './result.css'
@@ -85,7 +85,9 @@ export function ResultView({ api, result, onDone, primaryRef }: Props) {
 
       {result.gaps.length > 0 && (
         <div className="ov-gaps">
-          <span aria-hidden>💡</span>
+          <span aria-hidden>
+            <Lightbulb size={16} strokeWidth={1.75} />
+          </span>
           <div>
             <strong className="ov-gaps__title">Your gaps</strong>
             <ul>

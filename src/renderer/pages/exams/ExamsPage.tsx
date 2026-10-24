@@ -20,11 +20,20 @@ import { useShell } from '@renderer/lib/shell'
 import { QUIZ_KIND, scoreColor } from '@renderer/lib/status'
 import type { SubjectSummary } from '@shared/domain'
 import type { QuizSummary } from '@shared/state'
-import { ALargeSmall, Calendar, CircleChevronDown, Layers, Plus, Target } from 'lucide-react'
+import {
+  ALargeSmall,
+  Calendar,
+  CircleChevronDown,
+  FilePen,
+  Layers,
+  Plus,
+  Target,
+} from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useLocation } from 'wouter'
 import { PageFrame } from '../PageFrame'
-import { KIND_ICON, scoreText, shortTitle, subjectsFor } from './exam-utils'
+import { scoreText, shortTitle, subjectsFor } from './exam-utils'
+import { KindIcon } from './KindIcon'
 import './exams.css'
 
 const HEAD = { size: 14, strokeWidth: 1.75 } as const
@@ -56,7 +65,7 @@ function columns(subjects: SubjectSummary[] | undefined): Column<QuizSummary>[] 
       render: (q) => (
         <span className="ex-title-cell" title={q.title}>
           <span className="ex-title-cell__icon" aria-hidden>
-            {KIND_ICON[q.kind]}
+            <KindIcon kind={q.kind} />
           </span>
           <span className="ex-title-cell__text">
             {shortTitle(q.title, subjectsFor(q.subjectIds, subjects))}
@@ -202,7 +211,7 @@ export function ExamsPage() {
   return (
     <PageFrame crumbs={[{ label: 'Exams' }]} actions={empty ? null : newExam} width="wide">
       <PageHeader
-        icon="📝"
+        icon={<FilePen size={44} strokeWidth={1.5} />}
         title="Exams"
         subtitle="Checks Dumbledore wrote from what you studied. Misses come back in later reviews."
       />

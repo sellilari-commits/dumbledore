@@ -15,7 +15,7 @@ import { greeting } from '@renderer/lib/format'
 import { useHome } from '@renderer/lib/queries'
 import { useShell } from '@renderer/lib/shell'
 import type { HomeData } from '@shared/state'
-import { Plus } from 'lucide-react'
+import { BookOpen, Plus } from 'lucide-react'
 import { PageFrame } from '../PageFrame'
 import { ContinueSection } from './ContinueSection'
 import { DeadlinesSection } from './DeadlinesSection'
@@ -52,7 +52,7 @@ function FirstDay() {
   return (
     <EmptyState
       className="hm-first-day"
-      icon="👓"
+      icon={<BookOpen size={28} strokeWidth={1.5} />}
       title="Nothing here yet — and that’s fine"
       actions={
         <Button variant="primary" icon={<Plus size={16} />} onClick={() => setNewSubject(true)}>

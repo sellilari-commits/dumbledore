@@ -6,7 +6,7 @@ import { Button } from '@renderer/design-system'
 import { formatMinutes, hostOf } from '@renderer/lib/format'
 import { useAction, useAppState, useSession, useSubjects } from '@renderer/lib/queries'
 import type { NowContext } from '@shared/state'
-import { AppWindow, BookOpen, MessageSquare } from 'lucide-react'
+import { AppWindow, BookOpen, Lightbulb, MessageSquare } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { suggestionLabel } from '../chat/actions'
 import { report, useRunAction } from '../panel-actions'
@@ -50,7 +50,7 @@ function Suggestion({
   return (
     <div className="pn-suggest">
       <span className="pn-suggest__icon" aria-hidden>
-        ✨
+        <Lightbulb size={16} strokeWidth={1.75} />
       </span>
       <div className="pn-suggest__body">
         <p className="pn-suggest__text">{suggestion.label}</p>

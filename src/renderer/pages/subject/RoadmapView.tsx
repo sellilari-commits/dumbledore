@@ -30,7 +30,7 @@ function NoRoadmap({ detail }: { detail: SubjectDetail }) {
     )
   return (
     <EmptyState
-      icon="🗺️"
+      icon={<MapIcon size={28} strokeWidth={1.5} />}
       title="No roadmap yet — start one in ChatGPT or here"
       actions={
         <Button

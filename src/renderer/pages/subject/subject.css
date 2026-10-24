@@ -146,7 +146,7 @@ button.sp-edit:hover {
 }
 
 .sp-focus[data-on="true"] {
-  color: var(--c-blue-text);
+  color: var(--c-accent);
 }
 
 /* ── Tabs & views ───────────────────────────────────────────────────────── */

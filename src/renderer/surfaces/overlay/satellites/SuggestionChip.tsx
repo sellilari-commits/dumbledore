@@ -1,8 +1,9 @@
 /**
- * Suggestion chip beside the docked orb. Empty chat box: "✨ <first ~50 chars of the suggested
+ * Suggestion chip beside the docked orb. Empty chat box: "<pen icon> <first ~50 chars of the suggested
  * prompt> ⌥". Typed text: "Rewrite prompt · ⌥". Click (or a tap of right ⌥) inserts / rewrites.
  */
 import type { OverlayState } from '@shared/state'
+import { PenLine } from 'lucide-react'
 import { type Anchor, anchorStyle } from '../lib/layout'
 import './satellites.css'
 
@@ -41,7 +42,7 @@ export function SuggestionChip({ chip, anchor, onClick }: Props) {
     >
       {!improve && (
         <span className="ov-chip__spark" aria-hidden>
-          ✨
+          <PenLine size={14} strokeWidth={1.75} />
         </span>
       )}
       <span className="ov-chip__text">{text}</span>

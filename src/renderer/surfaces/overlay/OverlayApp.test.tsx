@@ -130,7 +130,7 @@ describe('satellites', () => {
   it('suggestion chip → chipClick, with the prompt preview', async () => {
     const { local } = await mount('docked')
     const chip = screen.getByTestId('suggestion-chip')
-    expect(chip.textContent).toBe('✨Explain carbocation stability like I am new to…⌥')
+    expect(chip.textContent).toBe('Explain carbocation stability like I am new to…⌥')
     fireEvent.click(chip)
     expect(sentTypes(local)).toEqual(['chipClick'])
   })

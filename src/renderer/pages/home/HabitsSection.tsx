@@ -5,7 +5,7 @@
 import { Callout, ProgressBar, Section } from '@renderer/design-system'
 import { formatPercent } from '@renderer/lib/format'
 import type { PromptHabits } from '@shared/domain'
-import { MessageSquareText } from 'lucide-react'
+import { Lightbulb, MessageSquareText } from 'lucide-react'
 import { habitRows, weakestHabit } from './home-utils'
 
 export function HabitsSection({ habits }: { habits: PromptHabits }) {
@@ -42,7 +42,7 @@ export function HabitsSection({ habits }: { habits: PromptHabits }) {
             ))}
           </ul>
           {weakest ? (
-            <Callout icon="💡" className="hm-tip">
+            <Callout icon={<Lightbulb size={18} strokeWidth={1.75} />} className="hm-tip">
               <span>
                 <strong>{weakest.label}.</strong> {weakest.tip}
               </span>

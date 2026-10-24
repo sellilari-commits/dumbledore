@@ -26,6 +26,7 @@ import {
   CircleChevronDown,
   Clock,
   Gauge,
+  Puzzle,
 } from 'lucide-react'
 import {
   type ConceptSort,
@@ -158,7 +159,7 @@ export function ConceptSortMenu({
 export function ConceptsView({ concepts, sort }: { concepts: Concept[]; sort: ConceptSort }) {
   if (concepts.length === 0)
     return (
-      <EmptyState icon="🧩" title="No concepts yet">
+      <EmptyState icon={<Puzzle size={28} strokeWidth={1.5} />} title="No concepts yet">
         Dumbledore adds concepts as you read, watch and chat about this subject — each with a
         mastery score and a review date.
       </EmptyState>

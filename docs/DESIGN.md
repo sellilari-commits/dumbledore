@@ -1,6 +1,7 @@
 # Dumbledore design system — as built
 
-Notion's look (PLAN §3.2, §5.5): white space, one font, grey hierarchy, colour only for meaning.
+Notion's structure (PLAN §3.2, §5.5) in Dumbledore's ink & parchment: warm parchment backgrounds,
+one font, grey hierarchy, ink for every accent, colour only for meaning.
 Code: `src/renderer/design-system/` (tokens, base, components, styles). Screens:
 `npx playwright test tests/e2e-sim/ui-screens.spec.ts` → `tests/e2e-sim/__screenshots__/route-*.png`
 (every route, light and dark) and `ui-exams-*.png`; page lanes keep their own `ui-<page>-*.png`.
@@ -32,7 +33,7 @@ Code: `src/renderer/design-system/` (tokens, base, components, styles). Screens:
 | `--c-popBac`                | menus, popovers, dialogs                                              |
 | `--c-borPri` / `--c-borStr` | dividers and table grid / input borders                               |
 | `--c-icoPri` / `--c-icoSec` | icons; UI icons are Lucide at 1.5–1.75 stroke in `--c-icoSec`         |
-| `--c-accent*`, `--c-link`   | primary buttons, links, focus, selection — the only blue              |
+| `--c-accent*`, `--c-link`   | primary buttons, links, focus, selection, orb rings — ink, no blue    |
 
 **Colour pairs** `--c-<colour>-{text,bg,ink}` for gray, brown, orange, yellow, green, blue, purple,
 pink, red (`ink` = AA text on `bg`). Fixed meanings — use the maps in `lib/status.ts`
@@ -63,12 +64,12 @@ quiz card, ask bar (`--radius-panel`). **Shadows** — `--shadow-sm` cards · `-
 
 | Component                                                               | Use for                                                                    | Notes                                                       |
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `Button` primary                                                        | the one main action of a surface                                           | blue; `shortcut="⌘E"` shows the hint                        |
+| `Button` primary                                                        | the one main action of a surface                                           | ink; `shortcut="⌘E"` shows the hint                         |
 | `Button` secondary / ghost                                              | other actions / quiet actions in bars and footers                          | `danger` for destructive; `loading` keeps width             |
 | `IconButton`                                                            | icon-only actions                                                          | `label` is required (tooltip + screen reader)               |
 | `Tag`                                                                   | status, type, score                                                        | colour = meaning (table above)                              |
 | `ProgressBar`                                                           | mastery, exam progress                                                     | thin 4 px, green default; give it a `label`                 |
-| `Callout`                                                               | something to act on or notice (gaps, struggling, tips)                     | emoji + bold title; `color` tints it                        |
+| `Callout`                                                               | something to act on or notice (gaps, struggling, tips)                     | ink line icon + bold title; `color` tints it                |
 | `ToggleBlock`                                                           | detail people open on demand (review answers, step prompts)                | controlled or not                                           |
 | `Choices`                                                               | 2–4 short exclusive options in one line (5/10/20, difficulty)              | segmented control                                           |
 | `RadioGroup` + `RadioRow`                                               | options that need a hint line; quiz answers                                | arrow keys; `tone` correct/wrong; `keyHint`                 |
@@ -93,10 +94,10 @@ quiz card, ask bar (`--radius-panel`). **Shadows** — `--shadow-sm` cards · `-
 - Every page renders `PageFrame` (pages/PageFrame.tsx): 44 px top bar with breadcrumbs left and at
   most one primary + a few ghost actions right; the page column scrolls under it.
 - Page column (`Page`): `default` 708 px reading column — subject, exam, settings, onboarding;
-  `wide` 900 px — tables (exams list, inbox); `full` — rare. Gutters `clamp(24px, 8vw, 96px)`, so at
+  `wide` 900 px — tables (exams list, memory); `full` — rare. Gutters `clamp(24px, 8vw, 96px)`, so at
   1200 px a `wide` table really has 768 px: give the name column the slack and fixed widths
   to the rest; long names truncate with a `title` tooltip.
-- `PageHeader`: 64 px top padding, 78 px emoji icon, 40 px title, one secondary subtitle line built
+- `PageHeader`: 64 px top padding, 78 px icon (subject emoji, or a Lucide icon at 44 px), 40 px title, one secondary subtitle line built
   with " · " separators (e.g. "10 questions · 🧪 Organic Chemistry · about 8 min"), then
   properties or a tip. First content block ~28 px below; `Section`s 36 px apart with a small grey
   title and a hairline. The icon is decorative; to make it a control (Notion's "Change icon") pass
@@ -104,7 +105,8 @@ quiz card, ask bar (`--radius-panel`). **Shadows** — `--shadow-sm` cards · `-
   (subject page). Don't render a second icon above the header or override its padding.
 - Spacing inside blocks 8–16 px; between blocks 24–36 px; question blocks 32 px with a hairline
   between. Sticky strips (exam progress) sit on `--c-bacPri` with a bottom hairline.
-- Emoji for subjects and page icons; Lucide line icons for UI. Never mix both in one row.
+- Emoji only for subjects (the student picks them). Everything else, page icons, callouts and empty
+  states included, uses Lucide line icons in ink. Never mix both in one row.
 
 ## States (every page has all of them)
 
@@ -135,7 +137,7 @@ ellipsis (…). Prompts are pasted, never sent — say so ("read it, then press 
 
 ## Do / Don't
 
-- Do keep one primary (blue) button per surface; everything else secondary or ghost.
+- Do keep one primary (ink) button per surface; everything else secondary or ghost.
 - Do use colour only through the meaning map; grey for everything else.
 - Do label icon buttons and progress bars; keep focus rings (`--shadow-focus`, keyboard only).
 - Do test both themes — `ui-screens.spec.ts` shoots every route light and dark.

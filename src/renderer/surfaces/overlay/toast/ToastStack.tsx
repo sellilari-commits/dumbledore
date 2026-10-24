@@ -5,7 +5,7 @@
  * The newest toast sits nearest the orb; at most three show at once.
  */
 import type { OverlayAction, Toast } from '@shared/state'
-import { X } from 'lucide-react'
+import { Lightbulb, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { type Anchor, anchorStyle } from '../lib/layout'
 import { useCountdown } from './useCountdown'
@@ -105,7 +105,7 @@ function ToastCard({ toast, origin, onAction, onDismiss, onGone }: CardProps) {
       <div className="ov-toast__head">
         {toast.kind === 'tip' && (
           <span className="ov-toast__icon" aria-hidden>
-            💡
+            <Lightbulb size={16} strokeWidth={1.75} />
           </span>
         )}
         <span className="ov-toast__title">{toast.title}</span>

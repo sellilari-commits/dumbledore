@@ -6,6 +6,7 @@
 import { Button, Callout, toast } from '@renderer/design-system'
 import { useAction } from '@renderer/lib/queries'
 import { APP_ROUTES, type HomeData } from '@shared/state'
+import { CircleAlert } from 'lucide-react'
 import { RouteLink } from './RouteLink'
 
 type Item = HomeData['struggling'][number]
@@ -54,7 +55,7 @@ export function StrugglingSection({ items }: { items: HomeData['struggling'] }) 
     <section className="hm-struggle-section" aria-labelledby="home-struggling">
       <Callout
         color="red"
-        icon="🧗"
+        icon={<CircleAlert size={18} strokeWidth={1.75} />}
         className="hm-struggle"
         title={
           <h2 className="hm-struggle__title" id="home-struggling">

@@ -7,18 +7,7 @@ import { useAction, useAppState, useSearch, useSubjects } from '@renderer/lib/qu
 import { useShell } from '@renderer/lib/shell'
 import { applyTheme, nextTheme } from '@renderer/lib/theme'
 import type { SearchHit } from '@shared/state'
-import {
-  Brain,
-  Eye,
-  FilePenLine,
-  House,
-  Inbox,
-  Moon,
-  Pause,
-  Play,
-  Plus,
-  Settings,
-} from 'lucide-react'
+import { Brain, Eye, FilePenLine, House, Moon, Pause, Play, Plus, Settings } from 'lucide-react'
 import { useDeferredValue, useState } from 'react'
 import { useLocation } from 'wouter'
 
@@ -53,10 +42,36 @@ export function AppCommandMenu() {
 
   const go = (route: string) => () => navigate(route)
   const statics: PaletteItem[] = [
-    { id: 'go-home', group: 'Jump to', title: 'Home', icon: <House {...ICON} />, onSelect: go('/home') },
-    { id: 'go-inbox', group: 'Jump to', title: 'Inbox', subtitle: 'What Dumbledore knows', icon: <Inbox {...ICON} />, onSelect: go('/inbox') },
-    { id: 'go-exams', group: 'Jump to', title: 'Exams', icon: <FilePenLine {...ICON} />, onSelect: go('/exams') },
-    { id: 'go-settings', group: 'Jump to', title: 'Settings', icon: <Settings {...ICON} />, shortcut: '⌘,', onSelect: go('/settings/general') },
+    {
+      id: 'go-home',
+      group: 'Jump to',
+      title: 'Home',
+      icon: <House {...ICON} />,
+      onSelect: go('/home'),
+    },
+    {
+      id: 'go-inbox',
+      group: 'Jump to',
+      title: 'Memory',
+      subtitle: 'What Dumbledore knows',
+      icon: <Brain {...ICON} />,
+      onSelect: go('/inbox'),
+    },
+    {
+      id: 'go-exams',
+      group: 'Jump to',
+      title: 'Exams',
+      icon: <FilePenLine {...ICON} />,
+      onSelect: go('/exams'),
+    },
+    {
+      id: 'go-settings',
+      group: 'Jump to',
+      title: 'Settings',
+      icon: <Settings {...ICON} />,
+      shortcut: '⌘,',
+      onSelect: go('/settings/general'),
+    },
     ...(subjects.data ?? [])
       .filter((s) => s.status !== 'archived')
       .map((s) => ({
@@ -66,8 +81,23 @@ export function AppCommandMenu() {
         icon: <span>{s.emoji}</span>,
         onSelect: go(`/subjects/${s.id}/roadmap`),
       })),
-    { id: 'new-subject', group: 'Actions', title: 'New subject', icon: <Plus {...ICON} />, shortcut: '⌘N', onSelect: () => shell.setNewSubject(true) },
-    { id: 'new-exam', group: 'Actions', title: 'New exam', icon: <FilePenLine {...ICON} />, shortcut: '⌘E', keywords: ['quiz', 'test'], onSelect: () => shell.openNewExam() },
+    {
+      id: 'new-subject',
+      group: 'Actions',
+      title: 'New subject',
+      icon: <Plus {...ICON} />,
+      shortcut: '⌘N',
+      onSelect: () => shell.setNewSubject(true),
+    },
+    {
+      id: 'new-exam',
+      group: 'Actions',
+      title: 'New exam',
+      icon: <FilePenLine {...ICON} />,
+      shortcut: '⌘E',
+      keywords: ['quiz', 'test'],
+      onSelect: () => shell.openNewExam(),
+    },
     {
       id: 'theme',
       group: 'Actions',

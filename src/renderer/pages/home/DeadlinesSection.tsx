@@ -6,7 +6,7 @@
 import { Button, Section, Tag } from '@renderer/design-system'
 import { formatDue } from '@renderer/lib/format'
 import { APP_ROUTES, type HomeData } from '@shared/state'
-import { CalendarClock, Plus } from 'lucide-react'
+import { CalendarClock, CalendarDays, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { AddDeadline } from './AddDeadline'
 import { dueColor } from './home-utils'
@@ -24,7 +24,7 @@ function DeadlineRow({ item }: { item: Item }) {
   const body = (
     <>
       <span className="hm-row__emoji" aria-hidden>
-        {item.subjectEmoji ?? '🗓️'}
+        {item.subjectEmoji ?? <CalendarDays size={16} strokeWidth={1.75} />}
       </span>
       <span className="hm-row__title">{item.title}</span>
       <DueLabel iso={item.dueAt} />

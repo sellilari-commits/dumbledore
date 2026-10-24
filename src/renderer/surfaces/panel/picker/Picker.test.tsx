@@ -68,7 +68,7 @@ describe('Picker', () => {
     fireEvent.change(input(), { target: { value: 'eigen' } })
     const texts = screen.getAllByRole('option').map((o) => o.textContent)
     expect(texts).toEqual([
-      '✨Learn “eigen”New roadmap',
+      'Learn “eigen”New roadmap',
       '📐Linear AlgebraResume1 due',
       'Why does a rotation have no real eigenvectors?',
     ])
