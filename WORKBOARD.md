@@ -19,7 +19,7 @@ Newest first; keep about the last 20 entries.
 
 | Finished (UTC) | Who / agent | Work | Commit |
 |---|---|---|---|
-| 2026-10-25 | Ilari / Claude | Chat box can be moved by its header; position remembered per display | 5411676 |
+| 2026-10-25 | Ilari / Claude | Chat box can be moved by its header; position remembered per display | 5411676, build fix 7eba6d5 |
 | 2026-10-25 | Ilari / Claude | Double-tap (or orb long press) closes the open chat | e317da2 |
 | 2026-10-25 | Ilari / Claude | No pop-up boxes except the selection menu and the /d reply; timer notification stays | 6364d96 |
 | 2026-10-25 | Ilari / Claude | Timer: change the time while it runs (−5/−1/+1/+5, Stop) | 52edb77 |
