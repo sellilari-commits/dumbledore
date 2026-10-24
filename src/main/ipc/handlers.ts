@@ -133,14 +133,12 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
     'settings.get': () => repos.settings.get(),
     'settings.update': (patch) => {
       repos.settings.update(patch)
-      memory('settings', Object.keys(patch))
-      return settingsChanged()
+      return settingsChanged() // also tells every window (memory.changed scope 'settings')
     },
     'secrets.set': ({ key, value }) => {
       services.secrets.set(key, value)
       const ai = repos.settings.get().ai
       repos.settings.update({ ai: { ...ai, [KEY_FLAGS[key]]: services.secrets.has(key) } })
-      memory('settings', ['ai'])
       settingsChanged()
     },
     'profile.get': () => repos.profile.get(),
@@ -160,7 +158,6 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
     'capture.setEnabled': (enabled) => {
       repos.settings.update({ captureEnabled: enabled })
       services.perception.setEnabled(enabled)
-      memory('settings', ['captureEnabled'])
       settingsChanged()
     },
     'permissions.status': () => core.permissions.refresh(),
