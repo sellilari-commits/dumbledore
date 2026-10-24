@@ -127,6 +127,16 @@ function createOverlayMock(params: URLSearchParams): DumbledoreApi {
       case 'timerClick':
         set({ ...state, timer: null })
         return
+      case 'timerAdjust': {
+        if (!state.timer) return
+        const now = Date.now()
+        const end = Math.min(
+          now + 180 * 60_000,
+          Math.max(now + 60_000, Date.parse(state.timer.endsAt) + action.deltaMinutes * 60_000),
+        )
+        set({ ...state, timer: { endsAt: new Date(end).toISOString() } })
+        return
+      }
       case 'timerStart':
         set({
           ...state,

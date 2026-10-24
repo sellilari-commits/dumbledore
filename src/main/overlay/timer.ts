@@ -1,6 +1,7 @@
 /**
  * The timer square under the orb: the student picks a length (5–60 min or a custom 1–180), the
- * square counts down, and a click while it runs stops it. When it runs out, a macOS notification
+ * square counts down, and while it runs the student can add or take off minutes (never below one
+ * minute left) or stop it. When it runs out, a macOS notification
  * says so (no box beside the orb) and the square goes back to idle. Lives in main, so it keeps
  * running when the overlay page reloads.
  */
@@ -9,6 +10,7 @@ import type { Cancel, Clock } from '@engine/clock'
 export const DEFAULT_TIMER_MINUTES = 25
 export const MIN_TIMER_MINUTES = 1
 export const MAX_TIMER_MINUTES = 180
+const MINUTE = 60_000
 
 export interface TimerNotice {
   title: string
@@ -30,7 +32,7 @@ export function timerDone(minutes: number): TimerNotice {
 
 export class FocusTimer {
   private endsAt: number | null = null
-  private minutes = 0
+  private startedAt = 0
   private cancel: Cancel | null = null
 
   constructor(
@@ -50,12 +52,23 @@ export class FocusTimer {
 
   /** Starts (or restarts) a timer of `minutes` (clamped to 1–180). */
   start(minutes: number): void {
-    this.cancel?.()
-    this.minutes = clampTimerMinutes(minutes)
-    const ms = this.minutes * 60_000
-    this.endsAt = this.clock.now() + ms
-    this.cancel = this.clock.setTimeout(() => this.finish(), ms)
-    this.onChange()
+    this.startedAt = this.clock.now()
+    this.schedule(this.startedAt + clampTimerMinutes(minutes) * MINUTE)
+  }
+
+  /**
+   * Moves the end by `deltaMinutes` while running: at least one minute stays, and the time left
+   * never exceeds the longest length (180 min). Does nothing when idle.
+   */
+  adjust(deltaMinutes: number): void {
+    if (this.endsAt === null || !Number.isFinite(deltaMinutes)) return
+    const now = this.clock.now()
+    const target = this.endsAt + Math.round(deltaMinutes) * MINUTE
+    // Taking time off stops at one minute left (or where it is, if less is left already).
+    const floor = Math.min(this.endsAt, now + MINUTE)
+    const end = Math.min(now + MAX_TIMER_MINUTES * MINUTE, Math.max(floor, target))
+    if (end === this.endsAt) return
+    this.schedule(end)
   }
 
   stop(): void {
@@ -71,11 +84,19 @@ export class FocusTimer {
     this.cancel = null
   }
 
+  private schedule(endsAt: number): void {
+    this.cancel?.()
+    this.endsAt = endsAt
+    this.cancel = this.clock.setTimeout(() => this.finish(), endsAt - this.clock.now())
+    this.onChange()
+  }
+
   private finish(): void {
+    const minutes = Math.max(1, Math.round(((this.endsAt ?? 0) - this.startedAt) / MINUTE))
     this.cancel = null
     this.endsAt = null
     try {
-      this.notify(timerDone(this.minutes))
+      this.notify(timerDone(minutes))
     } finally {
       this.onChange()
     }

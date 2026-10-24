@@ -64,6 +64,51 @@ describe('timer square', () => {
     expect(t.notices).toHaveLength(1)
   })
 
+  it('adds and takes off minutes while running; the notification fires at the new end', () => {
+    const t = setup()
+    t.controller.startTimer(25)
+    const start = t.clock.now()
+    t.controller.adjustTimer(5)
+    expect(t.controller.state.timer).toEqual({ endsAt: new Date(start + 30 * MIN).toISOString() })
+    t.controller.adjustTimer(-5)
+    t.controller.adjustTimer(-1)
+    expect(t.controller.state.timer).toEqual({ endsAt: new Date(start + 24 * MIN).toISOString() })
+    expect(t.repos.settings.get().timerMinutes).toBe(25)
+    t.clock.advance(24 * MIN - 1000)
+    expect(t.notices).toEqual([])
+    t.clock.advance(1000)
+    expect(t.notices).toEqual([
+      { title: 'Time’s up', body: '24 minutes done. Take a short break.' },
+    ])
+  })
+
+  it('never goes below one minute left, never lengthens on a minus, and ignores adjust when idle', () => {
+    const t = setup()
+    t.controller.adjustTimer(5)
+    expect(t.controller.state.timer).toBeNull()
+    t.controller.startTimer(5)
+    t.controller.adjustTimer(-5)
+    expect(t.controller.state.timer).toEqual({
+      endsAt: new Date(t.clock.now() + MIN).toISOString(),
+    })
+    t.clock.advance(30_000)
+    const before = t.controller.state.timer
+    t.controller.adjustTimer(-1)
+    expect(t.controller.state.timer).toEqual(before)
+    t.controller.adjustTimer(500)
+    expect(Date.parse(t.controller.state.timer?.endsAt ?? '') - t.clock.now()).toBe(180 * MIN)
+  })
+
+  it('a stop from the running chooser clears it with no notification', () => {
+    const t = setup()
+    t.controller.startTimer(15)
+    t.controller.adjustTimer(5)
+    t.controller.stopTimer()
+    expect(t.controller.state.timer).toBeNull()
+    t.clock.advance(30 * MIN)
+    expect(t.notices).toEqual([])
+  })
+
   it('clamps custom lengths to 1–180 whole minutes', () => {
     expect(clampTimerMinutes(0)).toBe(1)
     expect(clampTimerMinutes(500)).toBe(180)

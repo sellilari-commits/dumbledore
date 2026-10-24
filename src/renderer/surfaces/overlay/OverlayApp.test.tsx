@@ -181,7 +181,7 @@ describe('satellites', () => {
     ])
   })
 
-  it('timer square: right click starts the last length; running shows minutes left and a click stops it', async () => {
+  it('timer square: right click starts the last length; running shows minutes left', async () => {
     const { local } = await mount('idle')
     fireEvent.contextMenu(screen.getByTestId('timer'))
     expect(sent(local).filter((a) => a.type === 'timerStart')).toEqual([
@@ -190,10 +190,38 @@ describe('satellites', () => {
     act(() => local.emit('overlay.changed', state('timer')))
     const running = screen.getByTestId('timer')
     expect(running.textContent).toContain('18')
-    expect(running.getAttribute('aria-label')).toBe('18 min left · click to stop')
-    fireEvent.click(running, { detail: 0 })
+    expect(running.getAttribute('aria-label')).toBe('18 min left · click to change')
+  })
+
+  it('running timer: a click opens −5 / −1 / +1 / +5 and Stop; right click stops at once', async () => {
+    const { local } = await mount('timer')
+    fireEvent.click(screen.getByTestId('timer'), { detail: 0 })
+    expect(screen.getByTestId('timer-left').textContent).toBe('18 min left')
+    fireEvent.click(screen.getByRole('button', { name: 'Add 5 min' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Take off 1 min' }))
+    expect(sent(local).filter((a) => a.type === 'timerAdjust')).toEqual([
+      { type: 'timerAdjust', deltaMinutes: 5 },
+      { type: 'timerAdjust', deltaMinutes: -1 },
+    ])
+    expect(sentTypes(local)).not.toContain('timerClick')
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
     expect(sentTypes(local)).toContain('timerClick')
-    expect(screen.queryByTestId('timer-chooser')).toBeNull()
+    expect(screen.queryByTestId('timer-running')).toBeNull()
+    fireEvent.contextMenu(screen.getByTestId('timer'))
+    expect(sentTypes(local).filter((t) => t === 'timerClick')).toHaveLength(2)
+  })
+
+  it('running timer chooser closes after 5 s without a click', async () => {
+    await mount('timer')
+    vi.useFakeTimers()
+    fireEvent.click(screen.getByTestId('timer'), { detail: 0 })
+    expect(screen.getByTestId('timer-running')).toBeTruthy()
+    act(() => vi.advanceTimersByTime(4000))
+    fireEvent.click(screen.getByRole('button', { name: 'Add 1 min' }))
+    act(() => vi.advanceTimersByTime(4000))
+    expect(screen.getByTestId('timer-running')).toBeTruthy()
+    act(() => vi.advanceTimersByTime(1100))
+    expect(screen.queryByTestId('timer-running')).toBeNull()
   })
 
   it('hides the timer square while docked beside a chat box', async () => {

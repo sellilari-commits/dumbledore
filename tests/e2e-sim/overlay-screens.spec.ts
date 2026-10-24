@@ -134,6 +134,13 @@ for (const theme of ['light', 'dark'] as const) {
       await page.getByRole('button', { name: '15 min' }).click()
       await expect(page.getByTestId('timer-chooser')).toHaveCount(0)
       await expect(page.getByTestId('timer')).toHaveText(/15/)
+      await page.getByTestId('timer').click()
+      await expect(page.getByTestId('timer-running')).toBeVisible()
+      await shoot(page, 'timer-running', theme)
+      await page.getByRole('button', { name: 'Add 5 min' }).click()
+      await expect(page.getByTestId('timer-left')).toHaveText(/20 min left/)
+      await page.getByRole('button', { name: 'Stop' }).click()
+      await expect(page.getByTestId('timer-running')).toHaveCount(0)
     })
 
     test('quiz card: question, feedback, result', async ({ page }) => {

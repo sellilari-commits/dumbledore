@@ -268,9 +268,14 @@ export class OverlayController {
     this.timer.start(m)
   }
 
-  /** A click on the running timer square stops it. */
+  /** The running timer's chooser (or a right click on the running square) stops it. */
   stopTimer(): void {
     this.timer.stop()
+  }
+
+  /** The running timer's chooser: add or take off minutes. The remembered length stays. */
+  adjustTimer(deltaMinutes: number): void {
+    this.timer.adjust(deltaMinutes)
   }
 
   private onSettings(settings: Settings): void {

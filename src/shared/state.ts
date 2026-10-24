@@ -118,8 +118,10 @@ export const OverlayAction = z.discriminatedUnion('type', [
   z.object({ type: z.literal('chipClick') }),
   z.object({ type: z.literal('sideNext') }),
   z.object({ type: z.literal('sideQuiz') }),
-  /** The timer square while running: stop it. */
+  /** The running timer: stop it. */
   z.object({ type: z.literal('timerClick') }),
+  /** The running timer: add (or take off) minutes; at least one minute stays. */
+  z.object({ type: z.literal('timerAdjust'), deltaMinutes: z.number().int().min(-180).max(180) }),
   /** The timer chooser: start a timer of this many minutes (remembered as the next default). */
   z.object({ type: z.literal('timerStart'), minutes: z.number().int().min(1).max(180) }),
   z.object({ type: z.literal('toastAction'), toastId: z.string(), actionId: z.string() }),

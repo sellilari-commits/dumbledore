@@ -70,6 +70,9 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
       case 'timerStart':
         core.overlay.startTimer(action.minutes)
         break
+      case 'timerAdjust':
+        core.overlay.adjustTimer(action.deltaMinutes)
+        break
       case 'orbContextMenu':
         extras.showOrbMenu()
         break

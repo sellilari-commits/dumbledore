@@ -1,8 +1,10 @@
 /**
  * The timer square under the orb. Idle, a click opens a small chooser beside it (5 / 15 / 25 / 45
  * / 60 min or a custom length, 1–180) and picking one starts the timer; a right click starts the
- * length picked last at once. Running, the square shows the minutes left and a click stops it.
- * Main owns the timer, remembers the length and sends a macOS notification when it runs out.
+ * length picked last at once. Running, the square shows the minutes left; a click opens a small
+ * chooser to add or take off minutes (−5 / −1 / +1 / +5, never below one minute left) or stop it,
+ * and a right click stops it at once. The chooser closes when the pointer leaves or after 5 s
+ * without a click. Main owns the timer, remembers the length and sends a macOS notification.
  * Long press opens the Ask bar, like the orb. The overlay window never takes keyboard focus, so
  * the custom length is a stepper (− / + and the scroll wheel), not a text field.
  */
@@ -16,6 +18,9 @@ import './satellites.css'
 const TICK_MS = 1000
 /** The chooser closes this long after the pointer leaves it and the square. */
 const CLOSE_AFTER_MS = 1200
+/** The running timer's chooser closes after this long without a click. */
+const RUNNING_IDLE_MS = 5000
+export const TIMER_STEPS = [-5, -1, 1, 5] as const
 export const TIMER_PRESETS = [5, 15, 25, 45, 60] as const
 export const MIN_MINUTES = 1
 export const MAX_MINUTES = 180
@@ -28,6 +33,8 @@ interface Props {
   up: boolean
   onStart: (minutes: number) => void
   onStop: () => void
+  /** The running timer: add (or take off) minutes. */
+  onAdjust: (deltaMinutes: number) => void
   onLongPress: () => void
 }
 
@@ -44,27 +51,35 @@ export function stepMinutes(value: number, direction: 1 | -1): number {
   return Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, snapped))
 }
 
-export function TimerButton({ timer, minutes, anchor, up, onStart, onStop, onLongPress }: Props) {
+export function TimerButton({
+  timer,
+  minutes,
+  anchor,
+  up,
+  onStart,
+  onStop,
+  onAdjust,
+  onLongPress,
+}: Props) {
   const now = useNow(timer !== null)
   const [open, setOpen] = useState(false)
   const close = useCloseLater(() => setOpen(false))
   const running = timer !== null
-  useEffect(() => {
-    if (running) setOpen(false)
-  }, [running])
+  // Starting or ending the timer closes whichever chooser was open.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs on every start and end
+  useEffect(() => setOpen(false), [running])
+  const toggle = () => setOpen((o) => !o)
   const gesture = usePointerGesture(
     { x: 0, y: 0 },
     {
-      onClick: () => (running ? onStop() : setOpen((o) => !o)),
+      onClick: toggle,
       onLongPress,
-      onContextMenu: () => {
-        if (!running) onStart(minutes)
-      },
+      onContextMenu: () => (running ? onStop() : onStart(minutes)),
     },
   )
   const left = timer ? minutesLeft(timer.endsAt, now) : null
   const label =
-    left === null ? `Timer · right click: ${minutes} min` : `${left} min left · click to stop`
+    left === null ? `Timer · right click: ${minutes} min` : `${left} min left · click to change`
   const start = (m: number) => {
     setOpen(false)
     onStart(m)
@@ -87,10 +102,10 @@ export function TimerButton({ timer, minutes, anchor, up, onStart, onStop, onLon
         data-open={open || undefined}
         data-pressed={gesture.pressed || undefined}
         aria-label={left === null ? 'Set a timer' : label}
-        aria-expanded={left === null ? open : undefined}
+        aria-expanded={open}
         {...gesture.bind}
         onClick={(e) => {
-          if (e.detail === 0) (running ? onStop : () => setOpen((o) => !o))()
+          if (e.detail === 0) toggle()
         }}
       >
         {left === null ? (
@@ -107,6 +122,78 @@ export function TimerButton({ timer, minutes, anchor, up, onStart, onStop, onLon
       {open && !running && (
         <TimerChooser minutes={minutes} onStart={start} onClose={() => setOpen(false)} />
       )}
+      {open && left !== null && (
+        <RunningChooser
+          left={left}
+          onAdjust={onAdjust}
+          onStop={() => {
+            setOpen(false)
+            onStop()
+          }}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+/** The running timer: minutes left, −5 / −1 / +1 / +5 and Stop. Closes after 5 s untouched. */
+function RunningChooser({
+  left,
+  onAdjust,
+  onStop,
+  onClose,
+}: {
+  left: number
+  onAdjust: (deltaMinutes: number) => void
+  onStop: () => void
+  onClose: () => void
+}) {
+  const [touched, setTouched] = useState(0)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: each click restarts the 5 s wait
+  useEffect(() => {
+    const id = window.setTimeout(onClose, RUNNING_IDLE_MS)
+    return () => window.clearTimeout(id)
+  }, [onClose, touched])
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  return (
+    // biome-ignore lint/a11y/useSemanticElements: a floating group of buttons, not a form
+    <div
+      className="ov-timer ov-timer--running"
+      data-hit=""
+      data-testid="timer-running"
+      role="group"
+      aria-label="Change the timer"
+    >
+      <div className="ov-timer__left" data-testid="timer-left">
+        {left} min left
+      </div>
+      <div className="ov-timer__steps">
+        {TIMER_STEPS.map((d) => (
+          <button
+            key={d}
+            type="button"
+            className="ov-timer__opt ov-timer__delta"
+            aria-label={d > 0 ? `Add ${d} min` : `Take off ${-d} min`}
+            disabled={d < 0 && left <= 1}
+            onClick={() => {
+              setTouched((n) => n + 1)
+              onAdjust(d)
+            }}
+          >
+            {d > 0 ? `+${d}` : `−${-d}`}
+          </button>
+        ))}
+      </div>
+      <button type="button" className="ov-timer__opt ov-timer__stop" onClick={onStop}>
+        Stop
+      </button>
     </div>
   )
 }

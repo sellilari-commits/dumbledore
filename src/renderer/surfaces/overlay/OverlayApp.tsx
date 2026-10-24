@@ -124,6 +124,7 @@ function OverlayScene({ api, state, viewport, send, onDragging }: SceneProps) {
           up={verticalToward(orb, state.edge, viewport) === 'up'}
           onStart={(minutes) => send({ type: 'timerStart', minutes })}
           onStop={() => send({ type: 'timerClick' })}
+          onAdjust={(deltaMinutes) => send({ type: 'timerAdjust', deltaMinutes })}
           onLongPress={() => send({ type: 'orbLongPress' })}
         />
       )}
