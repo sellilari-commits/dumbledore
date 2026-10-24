@@ -63,8 +63,10 @@ const RULES: readonly Rule[] = [
   },
   {
     kind: 'secret',
+    // Also prefixed names, as in .env files: OPENAI_API_KEY=…, NEO4J_PASSWORD=…, and a bare KEY
+    // only after a prefix (AWS_SECRET_ACCESS_KEY=…), so prose like "key = 5" stays readable.
     re: new RegExp(
-      `\\b(${KEY_NAMES})\\b(\\s*[:=]\\s*)(["']?)(?!\\[secret\\])([^\\s"',;]{4,})\\3`,
+      `\\b((?:[A-Za-z0-9]+[_.-])*(?:${KEY_NAMES})|(?:[A-Za-z0-9]+[_.-])+key)\\b(\\s*[:=]\\s*)(["']?)(?!\\[secret\\])([^\\s"',;]{4,})\\3`,
       'gi',
     ),
     replace: (_m, key, sep, quote) => `${key}${sep}${quote}${SECRET}${quote}`,

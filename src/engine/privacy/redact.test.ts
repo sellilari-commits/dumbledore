@@ -17,6 +17,37 @@ describe('checksums', () => {
 })
 
 describe('redact', () => {
+  it('masks .env lines with prefixed secret names, keeps harmless settings', () => {
+    const env = [
+      'OPENAI_API_KEY=abcd1234efgh5678',
+      'NEO4J_PASSWORD=hunter2hunter2',
+      'SLACK_BOT_TOKEN=abcdefghij12345',
+      'META_APP_SECRET=0123456789abcdef',
+      'SNOWFLAKE_PRIVATE_KEY_PASSPHRASE=correct-horse',
+      'AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMIK7MDENG',
+      'SNOWFLAKE_ROLE=ANALYST',
+      'SNOWFLAKE_PRIVATE_KEY_PATH=/keys/rsa.p8',
+    ].join('\n')
+    const out = redact(env)
+    for (const name of [
+      'OPENAI_API_KEY',
+      'NEO4J_PASSWORD',
+      'SLACK_BOT_TOKEN',
+      'META_APP_SECRET',
+      'SNOWFLAKE_PRIVATE_KEY_PASSPHRASE',
+      'AWS_SECRET_ACCESS_KEY',
+    ]) {
+      expect(out).toContain(`${name}=[secret]`)
+    }
+    expect(out).toContain('SNOWFLAKE_ROLE=ANALYST')
+    expect(out).toContain('SNOWFLAKE_PRIVATE_KEY_PATH=/keys/rsa.p8')
+    expect(out).not.toMatch(/hunter2|abcd1234|wJalrXUt|correct-horse/)
+  })
+
+  it('leaves prose about keys readable', () => {
+    expect(redact('The primary key = id column')).toBe('The primary key = id column')
+  })
+
   it('masks e-mail addresses', () => {
     expect(redact('Mail me at maija.meikalainen@aalto.fi today')).toBe('Mail me at [email] today')
   })
