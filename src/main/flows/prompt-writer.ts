@@ -56,14 +56,6 @@ export class PromptWriter {
       target: 'chat',
       signal: opts.signal,
     })
-    if (out.ok && result.coachTip) {
-      overlay.showToast({
-        kind: 'tip',
-        title: 'Why this prompt works',
-        body: result.coachTip,
-        ttlMs: 12_000,
-      })
-    }
     return { pasted: out.ok, prompt }
   }
 }

@@ -211,13 +211,6 @@ export class ShortcutRouter {
           })
           if (!out.ok) return
           suggestions.invalidate()
-          if (s.coachTip)
-            overlay.showToast({
-              kind: 'tip',
-              title: 'Why this prompt works',
-              body: s.coachTip,
-              ttlMs: 12_000,
-            })
         })
         return
       case 'improve':
@@ -233,14 +226,6 @@ export class ShortcutRouter {
             expect: snapshot,
             signal,
           })
-          if (out.ok && r.coachTip) {
-            overlay.showToast({
-              kind: 'tip',
-              title: 'Prompt rewritten',
-              body: `${r.coachTip} ⌘Z undoes it.`,
-              ttlMs: 12_000,
-            })
-          }
         })
         return
       case 'selection':

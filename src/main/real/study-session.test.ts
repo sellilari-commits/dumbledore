@@ -80,7 +80,9 @@ describe('composeReal: study session in an AI chat', () => {
       expectPid: CHATGPT.pid,
       target: { ref: 'ax-501-chat' },
     })
-    expect(shell.core.overlay.state.toasts.map((t) => t.title)).toContain('Why this prompt works')
+    expect(shell.core.overlay.state.toasts.map((t) => t.title)).not.toContain(
+      'Why this prompt works',
+    )
     const session = services.study.current()
     expect(session).toMatchObject({ subjectId: subject.id, phase: 'step', index: 0, total: 5 })
     expect(session?.assistant).toBe('ChatGPT')

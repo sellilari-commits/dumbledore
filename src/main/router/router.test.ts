@@ -54,7 +54,7 @@ describe('ShortcutRouter', () => {
     expect(h.helper.callsTo('input.write')).toHaveLength(0)
   })
 
-  it('the chip writes the suggested prompt into an empty AI-chat box, with a coach tip', async () => {
+  it('the chip writes the suggested prompt into an empty AI-chat box, with no tip toast', async () => {
     const h = await harness()
     await inChatGPT(h)
     const decision = await h.core.router.chipClick()
@@ -62,7 +62,7 @@ describe('ShortcutRouter', () => {
     expect(h.helper.state.fieldValue).toMatch(/No greetings or small talk/)
     expect(h.helper.callsTo('ax.readFocusedValue')).toHaveLength(1)
     expect(h.helper.callsTo('ax.selectedText')).toHaveLength(0)
-    expect(h.core.overlay.state.toasts.map((t) => t.title)).toContain('Why this prompt works')
+    expect(h.core.overlay.state.toasts.map((t) => t.title)).not.toContain('Why this prompt works')
   })
 
   it('(c) a tap rewrites typed text in place', async () => {
@@ -77,7 +77,7 @@ describe('ShortcutRouter', () => {
     )
     const write = h.helper.callsTo('input.write')[0] as { mode: string; expectPid: number }
     expect(write).toMatchObject({ mode: 'replaceAll', expectPid: 501 })
-    expect(titles(h)).toContain('Prompt rewritten')
+    expect(titles(h)).not.toContain('Prompt rewritten')
   })
 
   it('a rewriting tap shows the thinking state until the rewrite lands', async () => {

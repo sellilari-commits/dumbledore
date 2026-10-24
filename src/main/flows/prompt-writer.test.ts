@@ -76,7 +76,7 @@ describe('PromptWriter (right ⌥ hold → prompt box)', () => {
       chatExcerpt: '',
       pageContext: 'Subject: Organic Chemistry\nSN1 lecture slides',
     })
-    expect(t.toasts.map((x) => x.title)).toEqual(['Why this prompt works'])
+    expect(t.toasts).toEqual([])
   })
 
   it('leaves the page context alone when no subject is known', async () => {

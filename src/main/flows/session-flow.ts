@@ -94,14 +94,6 @@ export class SessionFlow {
         } finally {
           if (!write?.ok) study.pasteFailed(instruction.itemId)
         }
-        if (write.ok && instruction.coachTip) {
-          overlay.showToast({
-            kind: 'tip',
-            title: 'Why this prompt works',
-            body: instruction.coachTip,
-            ttlMs: 12_000,
-          })
-        }
         break
       }
       case 'quiz':
