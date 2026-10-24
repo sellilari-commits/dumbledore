@@ -8,7 +8,7 @@
  *
  * A key tap waits out the double-tap window first (TapGuard), so a double-tap only opens the
  * chat window. A tap that rewrites shows the orb thinking while the rewrite runs. A hold only
- * opens the chat window (with subject choices); its release does nothing.
+ * opens the prompt box (ask bar route 'prompt'); its release does nothing.
  */
 import type {
   HelperClient,
@@ -161,8 +161,8 @@ export class ShortcutRouter {
       case 'focusAskbar':
         await surfaces.open('askbar')
         return
-      case 'chooseSubject':
-        await surfaces.open('askbar', { route: 'choose' })
+      case 'promptBox':
+        await surfaces.open('askbar', { route: 'prompt' })
         return
       case 'studyLast': {
         const subjectId = lastStudiedSubject(this.deps.repos)

@@ -1,8 +1,8 @@
 /**
  * The Ask bar as a chat with Dumbledore, in a plain browser with its mock driver (no Electron):
- * screenshots of the compact bar, a 3-turn chat, a long scrolled chat and the choose view in
+ * screenshots of the compact bar, a 3-turn chat, a long scrolled chat and the prompt box in
  * light and dark to __screenshots__/askbar-<state>-<theme>.png, plus multi-turn, Shift+Enter,
- * New chat and choose checks. Starts its own Vite server (port 5187).
+ * New chat and prompt-box checks. Starts its own Vite server (port 5187).
  */
 import { resolve } from 'node:path'
 import { expect, type Page, test } from '@playwright/test'
@@ -100,10 +100,10 @@ for (const theme of ['light', 'dark'] as const) {
       await shoot(page, `long-${theme}`)
     })
 
-    test('choose view', async ({ page }) => {
-      await page.goto(`${base}/askbar.html?theme=${theme}#/choose`)
-      await expect(page.locator('.ask__choice')).toHaveCount(5)
-      await shoot(page, `choose-${theme}`)
+    test('prompt box', async ({ page }) => {
+      await page.goto(`${base}/askbar.html?theme=${theme}#/prompt`)
+      await expect(page.locator('.ask__prompt-note')).toContainText('ChatGPT')
+      await shoot(page, `prompt-${theme}`)
     })
   })
 }
@@ -137,12 +137,15 @@ test.describe('ask bar chat interactions', () => {
     await expect(page.locator('.ask__log')).toHaveCount(0)
   })
 
-  test('choose: a subject starts its session and closes the bar', async ({ page }) => {
-    await page.goto(`${base}/askbar.html#/choose`)
-    await page.getByRole('button', { name: /Linear Algebra/ }).click()
-    expect(await calls(page, 'session.start')).toEqual([
-      { subjectId: 'sub_lin', goal: null, question: null },
+  test('prompt box: Enter sends the wish as prompt.write', async ({ page }) => {
+    await page.goto(`${base}/askbar.html#/prompt`)
+    const box = page.getByRole('textbox', { name: 'What should the prompt ask?' })
+    await box.pressSequentially('explain SN1 simply, I have an exam Friday')
+    await page.keyboard.press('Enter')
+    await expect(page.getByText('Writing your prompt…')).toBeVisible()
+    expect(await calls(page, 'prompt.write')).toEqual([
+      { context: 'explain SN1 simply, I have an exam Friday' },
     ])
-    expect(await calls(page, 'window.close')).toEqual(['askbar'])
+    expect(await calls(page, 'ask.submit')).toEqual([])
   })
 })

@@ -1,17 +1,20 @@
 /**
  * Browser mock for the Ask bar (no Electron, or `?mock=1`): a tiny fake main with thread 'ask' in
  * memory. `ask.submit` stores both turns and streams the canned reply as 'chat.delta';
- * `chat.history` serves the thread; the choose view gets demo subjects. URL options:
- * `?seed=<turns>` starts with an earlier conversation, `?theme=dark|light` forces a theme,
- * `#/choose` opens the choose view. `window.__ddMock.calls` logs every call (Playwright reads it).
+ * `chat.history` serves the thread; `prompt.write` "writes" a canned prompt after a short wait.
+ * URL options: `?seed=<turns>` starts with an earlier conversation, `?theme=dark|light` forces a
+ * theme, `#/prompt` opens the prompt box (right ⌥ hold). `window.__ddMock.calls` logs every call (Playwright reads it).
  */
+
+import { demoAppState } from '@renderer/lib/mock/demo-misc'
 import type { ChatMessage } from '@shared/domain'
 import type { DumbledoreApi } from '@shared/ipc'
 import { createLocalApi } from '../../overlay/lib/localApi'
 import { ASK_THREAD } from '../askHistory'
-import { cannedReply, demoPicker, SEED_QUESTIONS } from './askReplies'
+import { cannedPrompt, cannedReply, SEED_QUESTIONS } from './askReplies'
 
 const CHUNK_MS = 35
+const PROMPT_MS = 900
 
 export function createAskMock(search: string = window.location.search): DumbledoreApi {
   const params = new URLSearchParams(search)
@@ -58,9 +61,10 @@ export function createAskMock(search: string = window.location.search): Dumbledo
       add('assistant', result.reply, { actions: result.actions })
       return result
     },
-    'session.picker': () => demoPicker(),
-    'session.start': () => {
-      throw new Error('The mock has no study sessions')
+    'app.getState': () => ({ ...demoAppState(true), aiChat: { provider: 'ChatGPT' } }),
+    'prompt.write': async ({ context }) => {
+      await new Promise((r) => window.setTimeout(r, PROMPT_MS))
+      return { pasted: true, prompt: cannedPrompt(context) }
     },
     'coach.runAction': () => undefined,
     'window.close': () => undefined,

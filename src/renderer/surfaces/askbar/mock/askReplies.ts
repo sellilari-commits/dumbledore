@@ -1,10 +1,10 @@
 /**
  * Fixtures for the Ask bar's browser mock: canned Dumbledore replies picked by keywords, an
- * earlier conversation to seed (`?seed=<turns>`) for the long-chat screenshots, and the recent
- * subjects of the choose view.
+ * earlier conversation to seed (`?seed=<turns>`) for the long-chat screenshots, and the prompt
+ * the prompt box "writes".
  */
-import type { CoachAction, NotionColor } from '@shared/domain'
-import type { AskResult, PickerData } from '@shared/state'
+import type { CoachAction } from '@shared/domain'
+import type { AskResult } from '@shared/state'
 import { ASK_RESULT } from '../../overlay/mock/fixtures'
 
 interface Canned {
@@ -87,80 +87,7 @@ export const SEED_QUESTIONS = [
   'quiz me on moles',
 ]
 
-interface DemoSubject {
-  id: string
-  name: string
-  emoji: string
-  color: NotionColor
-  daysAgo: number | null
-  questions: string[]
-  roadmap: boolean
-}
-
-const SUBJECTS: DemoSubject[] = [
-  {
-    id: 'sub_bio',
-    name: 'Cell Biology',
-    emoji: '🧬',
-    color: 'green',
-    daysAgo: 4,
-    questions: ['Why does the Calvin cycle need ATP?'],
-    roadmap: false,
-  },
-  {
-    id: 'sub_chem',
-    name: 'Organic Chemistry',
-    emoji: '🧪',
-    color: 'purple',
-    daysAgo: 0,
-    questions: [],
-    roadmap: true,
-  },
-  {
-    id: 'sub_lin',
-    name: 'Linear Algebra',
-    emoji: '📐',
-    color: 'blue',
-    daysAgo: 1,
-    questions: ['What is an eigenvector, really?', 'When is a matrix diagonalisable?'],
-    roadmap: false,
-  },
-  {
-    id: 'sub_hist',
-    name: 'European History',
-    emoji: '🏛️',
-    color: 'brown',
-    daysAgo: null,
-    questions: [],
-    roadmap: false,
-  },
-]
-
-export function demoPicker(now = Date.now()): PickerData {
-  const iso = (days: number) => new Date(now - days * 86_400_000).toISOString()
-  return {
-    subjects: SUBJECTS.map((s) => ({
-      subject: {
-        id: s.id,
-        name: s.name,
-        emoji: s.emoji,
-        color: s.color,
-        description: '',
-        goal: null,
-        deadline: null,
-        status: 'active',
-        focus: 'normal',
-        createdAt: iso(30),
-        updatedAt: iso(s.daysAgo ?? 30),
-        progress: s.roadmap ? 0.5 : 0,
-        mastery: 0.4,
-        dueReviews: 0,
-        openQuestions: s.questions.length,
-        studyMinutesWeek: 0,
-        lastStudiedAt: s.daysAgo === null ? null : iso(s.daysAgo),
-      },
-      questions: s.questions,
-      hasActiveRoadmap: s.roadmap,
-    })),
-  }
+/** The prompt box's canned result: the student's wish, written up as a prompt. */
+export function cannedPrompt(context: string): string {
+  return `I'm a second-year chemistry student. ${context.trim()} Explain it step by step with one worked example, then ask me one question to check I understood.`
 }

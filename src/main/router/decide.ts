@@ -10,9 +10,10 @@
  * A click on the suggestion chip is a tap, except that it inserts the suggested prompt into an
  * empty box.
  *
- * Long press (holdStart) and double-tap open the chat window: the hold with subject choices on
- * top, the double-tap plain; both focus it when it is already open. A quiz card swallows the
- * hold. holdEnd → nothing.
+ * Long press (holdStart) opens the prompt box: the ask bar with route 'prompt', where the student
+ * says what they want and Dumbledore writes the prompt and pastes it into the AI chat (the
+ * 'prompt.write' channel). Double-tap opens the chat with Dumbledore, plain. Both focus the ask
+ * bar when it is already open. A quiz card swallows the hold. holdEnd → nothing.
  *
  * The field value and the selection are read from the helper only on an explicit gesture, and
  * only when the table needs them: `decide` returns `need` until the caller supplies them.
@@ -45,8 +46,8 @@ export type Decision =
   | { kind: 'ignore' }
   | { kind: 'askbar' }
   | { kind: 'focusAskbar' }
-  /** The chat window with subject choices on top (ask bar route 'choose'). */
-  | { kind: 'chooseSubject' }
+  /** The prompt box: the ask bar with route 'prompt' ("tell Dumbledore what you want"). */
+  | { kind: 'promptBox' }
   /** Resume or start the subject worked on last (the router finds it). */
   | { kind: 'studyLast' }
   | { kind: 'enter'; surface: 'askbar' | 'overlay' }
@@ -107,7 +108,7 @@ function draftOf(ctx: RouteContext): { draft: string } | 'unreadable' | 'empty' 
 
 function decideHold(ctx: RouteContext): Decision {
   if (ctx.quizOpen) return { kind: 'ignore' }
-  return ctx.askbarOpen ? { kind: 'focusAskbar' } : { kind: 'chooseSubject' }
+  return ctx.askbarOpen ? { kind: 'focusAskbar' } : { kind: 'promptBox' }
 }
 
 function decideTap(input: 'tap' | 'chip', ctx: RouteContext): Decision {

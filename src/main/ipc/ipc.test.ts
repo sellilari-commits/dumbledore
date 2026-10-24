@@ -153,6 +153,11 @@ describe('IPC handlers', () => {
     await call('prompt.copy', 'copied text')
     expect(h.platform.clipboard).toBe('copied text')
     expect(await call('prompt.sendToChat', 'hello chat')).toMatchObject({ ok: true })
+    await h.surfaces.open('askbar', { route: 'prompt' })
+    const written = await call('prompt.write', { context: 'explain SN1 simply, exam Friday' })
+    expect(written).toMatchObject({ pasted: true })
+    expect(written.prompt).toContain('explain SN1 simply, exam Friday')
+    expect(h.surfaces.isOpen('askbar')).toBe(false)
 
     expect((await call('overlay.getState')).displayId).toBe(1)
     await call('overlay.action', { type: 'hover', inside: true }, OVERLAY)
@@ -182,6 +187,16 @@ describe('IPC handlers', () => {
     expect(calls).toContain('deleteAll')
 
     expect([...seen].sort()).toEqual([...INVOKE_CHANNELS].sort())
+  })
+
+  it('prompt.write closes the ask bar, pastes the written prompt, and refuses an empty wish', async () => {
+    await inChatGPT(h)
+    await h.surfaces.open('askbar', { route: 'prompt' })
+    const out = await call('prompt.write', { context: 'quiz me on SN1 vs SN2' })
+    expect(out.pasted).toBe(true)
+    expect(h.surfaces.log.slice(-2)).toEqual(['open:askbar:prompt', 'close:askbar'])
+    expect(h.helper.callsTo('input.write').at(-1)).toMatchObject({ text: out.prompt })
+    await expect(call('prompt.write', { context: '' })).rejects.toThrow(IpcValidationError)
   })
 
   it('refuses data.deleteAll without the explicit confirmation', async () => {

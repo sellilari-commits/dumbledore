@@ -210,6 +210,10 @@ export const coreHandlers: HandlerMap<CoreChannel> = {
     ctx.db.appState.aiChat
       ? { ok: true, reason: null }
       : { ok: false, reason: 'No AI chat is open. Open ChatGPT and try again.' },
+  'prompt.write': (ctx, { context }) => ({
+    pasted: ctx.db.appState.aiChat !== null,
+    prompt: `I'm a student. ${context.trim()} Explain it step by step with one example.`,
+  }),
 
   'overlay.getState': (ctx) => ({
     displayId: 1,

@@ -13,10 +13,12 @@ import { CoachActions } from './flows/coach-actions'
 import { CoachChat } from './flows/coach-chat'
 import { chatContext, coachContextText } from './flows/context'
 import { NudgeActions } from './flows/nudges'
+import { PromptWriter } from './flows/prompt-writer'
 import { SessionFlow } from './flows/session-flow'
 import { Thinking } from './flows/thinking'
 import { OverlayController } from './overlay/controller'
 import type { ShellPlatform, SurfaceControl } from './platform'
+import { lastStudiedSubject } from './router/last-subject'
 import { PendingWork } from './router/pending'
 import { ShortcutRouter } from './router/shortcut-router'
 import { SuggestionCache } from './router/suggestions'
@@ -43,6 +45,8 @@ export interface ShellCore {
   thinking: Thinking
   sessions: SessionFlow
   ask: AskFlow
+  /** The prompt box (right ⌥ hold): writes a prompt from what the student asked for. */
+  promptWriter: PromptWriter
   chat: CoachChat
   actions: CoachActions
   nudges: NudgeActions
@@ -137,6 +141,18 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     runAction,
     emitDelta: hooks.onChatDelta,
   })
+  const promptWriter = new PromptWriter({
+    prompts: services.prompts,
+    perception,
+    writer,
+    surfaces,
+    thinking,
+    overlay,
+    subjectName: () => {
+      const id = lastStudiedSubject(repos)
+      return id ? (repos.subjects.get(id)?.name ?? null) : null
+    },
+  })
   const chat = new CoachChat({
     brain: services.brain,
     repos,
@@ -202,6 +218,7 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     thinking,
     sessions,
     ask,
+    promptWriter,
     chat,
     actions,
     nudges,

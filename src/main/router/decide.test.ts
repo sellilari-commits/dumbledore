@@ -147,30 +147,30 @@ describe('decide — the F4 tap table', () => {
   })
 })
 
-describe('decide — hold opens the chat with choices, double-tap opens it plain', () => {
+describe('decide — hold opens the prompt box, double-tap opens the chat plain', () => {
   const typed = { aiChat: CHAT, focused: chatBox(15), fieldText: 'what is osmosis' }
 
-  it('hold opens the chat window with subject choices, without reading anything', () => {
-    expect(decide('holdStart', ctx())).toEqual({ kind: 'chooseSubject' })
+  it('hold opens the prompt box, without reading anything', () => {
+    expect(decide('holdStart', ctx())).toEqual({ kind: 'promptBox' })
     expect(decide('holdStart', ctx({ aiChat: CHAT, focused: chatBox(15) }))).toEqual({
-      kind: 'chooseSubject',
+      kind: 'promptBox',
     })
-    expect(decide('holdStart', ctx({ focused: notesField }))).toEqual({ kind: 'chooseSubject' })
+    expect(decide('holdStart', ctx({ focused: notesField }))).toEqual({ kind: 'promptBox' })
   })
 
   it('hold never rewrites, runs instructions or pastes the next step', () => {
     expect(decide('holdStart', ctx({ ...typed, sessionActive: true }))).toEqual({
-      kind: 'chooseSubject',
+      kind: 'promptBox',
     })
     expect(
       decide('holdStart', ctx({ aiChat: CHAT, focused: chatBox(9), fieldText: '/d simpler' })),
-    ).toEqual({ kind: 'chooseSubject' })
+    ).toEqual({ kind: 'promptBox' })
     expect(decide('holdStart', ctx({ ...typed, secureInput: true }))).toEqual({
-      kind: 'chooseSubject',
+      kind: 'promptBox',
     })
   })
 
-  it('hold focuses the chat window when it is already open; a quiz card swallows it', () => {
+  it('hold focuses the ask bar when it is already open; a quiz card swallows it', () => {
     expect(decide('holdStart', ctx({ ...typed, askbarOpen: true }))).toEqual({
       kind: 'focusAskbar',
     })

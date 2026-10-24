@@ -214,7 +214,7 @@ describe('orb tooltip', () => {
     expect(screen.queryByRole('tooltip')).toBeNull()
     act(() => vi.advanceTimersByTime(500))
     expect(screen.getByRole('tooltip').textContent).toBe(
-      'Dumbledore· right ⌥ · tap: prompt · hold or double-tap: chat',
+      'Dumbledore· right ⌥ · tap: prompt · hold: tell it what you want, it writes the prompt · double-tap: chat',
     )
     fireEvent.pointerLeave(screen.getByTestId('orb'))
     expect(screen.queryByRole('tooltip')).toBeNull()

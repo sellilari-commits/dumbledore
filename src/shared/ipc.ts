@@ -8,6 +8,7 @@
 import { z } from 'zod'
 import {
   AnswerResult,
+  Assignment,
   ChatMessage,
   CoachAction,
   Encounter,
@@ -21,7 +22,6 @@ import {
   SettingsPatch,
   Subject,
   SubjectSummary,
-  Assignment,
 } from './domain'
 import {
   AppState,
@@ -69,7 +69,11 @@ export const ipcInvoke = {
   'permissions.open': { req: z.enum(['accessibility', 'screenRecording']), res: Void },
   'providers.test': {
     req: z.enum(['gemini', 'apple', 'groq', 'ovh', 'mistral']),
-    res: z.object({ ok: z.boolean(), latencyMs: z.number().nullable(), error: z.string().nullable() }),
+    res: z.object({
+      ok: z.boolean(),
+      latencyMs: z.number().nullable(),
+      error: z.string().nullable(),
+    }),
   },
   'providers.usage': { req: Void, res: UsageSummary },
 
@@ -141,11 +145,22 @@ export const ipcInvoke = {
     req: z.string(),
     res: z.object({ ok: z.boolean(), reason: z.string().nullable() }),
   },
+  /**
+   * The prompt box (right ⌥ hold): Dumbledore writes a prompt from what the student asked for and
+   * pastes it into the AI chat box (the ask bar closes before the paste). `pasted: false`: copied.
+   */
+  'prompt.write': {
+    req: z.object({ context: z.string().min(1) }),
+    res: z.object({ pasted: z.boolean(), prompt: z.string() }),
+  },
 
   // Overlay & windows
   'overlay.getState': { req: Void, res: OverlayState },
   'overlay.action': { req: OverlayAction, res: Void },
-  'window.open': { req: z.object({ surface: WindowSurface, route: z.string().nullable() }), res: Void },
+  'window.open': {
+    req: z.object({ surface: WindowSurface, route: z.string().nullable() }),
+    res: Void,
+  },
   'window.close': { req: WindowSurface, res: Void },
   'window.setSize': {
     req: z.object({ surface: z.enum(['panel', 'askbar']), width: z.number(), height: z.number() }),
@@ -180,7 +195,9 @@ export type EventChannel = keyof typeof ipcEvents
 export type EventPayload<E extends EventChannel> = z.output<(typeof ipcEvents)[E]>
 
 /** Arguments tuple: channels whose request is void take no argument. */
-export type InvokeArgs<C extends InvokeChannel> = [InvokeReq<C>] extends [void] ? [] : [InvokeReq<C>]
+export type InvokeArgs<C extends InvokeChannel> = [InvokeReq<C>] extends [void]
+  ? []
+  : [InvokeReq<C>]
 
 /** The API the preload exposes as `window.dumbledore`. */
 export interface DumbledoreApi {

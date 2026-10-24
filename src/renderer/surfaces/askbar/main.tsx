@@ -1,7 +1,7 @@
 /**
  * Ask bar entry (askbar.html). In Electron the card fills its small window; in a plain browser
  * (or with `?mock=1`) it floats on a fake desktop and talks to the Ask bar's own mock driver
- * (./mock/askMock: multi-turn chat, `?seed=<turns>`, `?theme=`, `#/choose`).
+ * (./mock/askMock: multi-turn chat, `?seed=<turns>`, `?theme=`, `#/prompt`).
  */
 import '@renderer/design-system/tokens.css'
 import '../overlay/styles/ui.css'

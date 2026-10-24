@@ -1,7 +1,8 @@
 /**
  * Settings → Shortcuts: the Dumbledore key (with the ⌥-conflict note), the fallback chord,
  * gesture timings, and a reference of the key's gestures (tap = the prompt: for what you studied
- * last, the next step, or yours rewritten; hold = the chat, subjects on top; double-tap = the chat)
+ * last, the next step, or yours rewritten; hold = tell Dumbledore what you want, it writes the
+ * prompt; double-tap = the chat)
  * plus in-app and global shortcuts.
  */
 import { Button, Callout, Kbd, toast } from '@renderer/design-system'
@@ -44,7 +45,10 @@ export function gestureGroup(key: TriggerKey): KeyGroup {
         label: 'The prompt: studied last · next step · rewrite yours',
         keys: [{ sep: 'tap' }, glyph],
       },
-      { label: 'Chat with Dumbledore, subjects on top', keys: [{ sep: 'hold' }, glyph] },
+      {
+        label: 'Tell Dumbledore what you want, it writes the prompt',
+        keys: [{ sep: 'hold' }, glyph],
+      },
       { label: 'Chat with Dumbledore', keys: [{ sep: 'double-tap' }, glyph] },
     ],
   }
@@ -125,7 +129,7 @@ export function ShortcutsSection({ settings }: { settings: Settings }) {
       >
         <SettingsRow
           label="Key"
-          description="Tap: the prompt — one for what you studied last, the next step, or yours rewritten (⌘Z undoes). Hold: chat with Dumbledore, subjects on top. Double-tap: chat with Dumbledore."
+          description="Tap: the prompt — one for what you studied last, the next step, or yours rewritten (⌘Z undoes). Hold: tell Dumbledore what you want, it writes the prompt. Double-tap: chat with Dumbledore."
         >
           <SelectMenu<TriggerKey>
             label="Dumbledore key"

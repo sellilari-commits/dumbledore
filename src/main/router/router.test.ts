@@ -108,18 +108,18 @@ describe('ShortcutRouter', () => {
     expect(h.helper.state.fieldValue).toMatch(/why is it unimolecular/)
   })
 
-  it('hold opens the chat with subject choices, in or outside an AI chat, and writes nothing', async () => {
+  it('hold opens the prompt box, in or outside an AI chat, and writes nothing', async () => {
     const h = await harness()
     await inChatGPT(h, 'typed text stays as it is')
-    expect(await h.core.router.gesture('holdStart')).toEqual({ kind: 'chooseSubject' })
-    expect(h.surfaces.log).toEqual(['open:askbar:choose'])
+    expect(await h.core.router.gesture('holdStart')).toEqual({ kind: 'promptBox' })
+    expect(h.surfaces.log).toEqual(['open:askbar:prompt'])
     expect(h.helper.callsTo('ax.readFocusedValue')).toHaveLength(0)
     expect(await h.core.router.gesture('holdEnd')).toEqual({ kind: 'ignore' })
     await h.surfaces.close('askbar')
     h.helper.activateApp(NOTES)
     await flush()
     h.helper.state.focused = makeFocused(NOTES, { role: 'AXWebArea', editable: false })
-    expect(await h.core.router.gesture('holdStart')).toEqual({ kind: 'chooseSubject' })
+    expect(await h.core.router.gesture('holdStart')).toEqual({ kind: 'promptBox' })
     expect(h.helper.callsTo('input.write')).toHaveLength(0)
     expect(h.helper.state.fieldValue).toBe('typed text stays as it is')
     expect(h.services.study.current()).toBeNull()

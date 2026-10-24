@@ -215,6 +215,7 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
       const out = await core.writer.write({ text, mode: 'insert', target: 'chat' })
       return { ok: out.ok, reason: out.reason }
     },
+    'prompt.write': ({ context }) => core.promptWriter.write(context),
 
     // Overlay & windows
     'overlay.getState': () => overlay.state,

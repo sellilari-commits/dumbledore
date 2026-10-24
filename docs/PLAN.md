@@ -284,7 +284,7 @@ Machine: macOS 26.4.1, Apple M1 Pro, 16 GB · Node 24.20 / npm 11.19 · Swift 6.
 | D5 | **Free AI in three layers:** Apple's on-device model for extraction; Groq's free tier for roadmaps, quizzes and prompts; keyless OVHcloud (EU) as the fallback. All sit behind one router with budgets and a local prefilter. | Free tiers shrank in 2026 (§3.3). On-device extraction removes the biggest token load and keeps most screen text on the Mac. |
 | D6 | **Paste, never auto-send** (setting, off by default). | The student stays in control and reads every prompt before sending. |
 | D7 | **The orb never takes keyboard focus** (verified in 14 of 14 runs). Surfaces you type into (Ask bar, panel chat, picker search) briefly activate Dumbledore. They then hand focus back to the exact chat box, checked, before anything is pasted. | Otherwise pasting into ChatGPT breaks. Electron can't yet take typing without activating the app. If the hand-back proves flaky, the Ask bar moves into the helper as a native panel. |
-| D8 | **Right ⌥: tap = the prompt (empty box: write one for what you studied last; in a session: the next step; your text: rewrite it in place, ⌘Z restores), hold = chat window with your subjects on top, double-tap = chat window.** Changed 2026-10-24 at Ilari's request (final): the rewrite moved from hold to tap, and hold now opens the chat; earlier, hold or double-tap = Ask bar. Only a clean tap counts. Detected by polling the modifier state, as Goldfish does. | ⌥ is a character modifier on many layouts (Finnish: ⌥2 = @), so a press combined with another key is ignored. Polling avoids the extra Input Monitoring permission. The key is remappable and has a fallback chord. |
+| D8 | **Right ⌥: tap = the prompt (empty box: write one for what you studied last; in a session: the next step; your text: rewrite it in place, ⌘Z restores), hold = tell Dumbledore what you want, it writes the prompt (a small box; Enter writes the prompt and pastes it into the AI chat), double-tap = chat window.** Changed 2026-10-24 at Ilari's request (final): the rewrite moved from hold to tap, and hold now opens the prompt box (briefly it opened the chat with subjects on top); earlier, hold or double-tap = Ask bar. Only a clean tap counts. Detected by polling the modifier state, as Goldfish does. | ⌥ is a character modifier on many layouts (Finnish: ⌥2 = @), so a press combined with another key is ignored. Polling avoids the extra Input Monitoring permission. The key is remappable and has a fallback chord. |
 | D9 | **Dumbledore quizzes; the student's AI teaches.** Checkpoints run in Dumbledore's own quiz card. | Reliable scoring, instant feedback, clean carry-over. Teaching happens in the student's tool of choice, which is the skill we want to build. |
 | D10 | **Own Notion-clone design system**: Radix primitives for behaviour, our CSS for looks. No UI kit. | A UI kit would fight the Notion look. |
 | D11 | **Quizzes are generated just in time** (one step ahead), not when the roadmap is made. | Questions then match what the AI actually explained and include the latest misses. |
@@ -356,7 +356,7 @@ Machine: macOS 26.4.1, Apple M1 Pro, 16 GB · Node 24.20 / npm 11.19 · Swift 6.
 4. Focus leaves → the orb returns home.
 
 **F4 — Right-⌥ and orb-click routing**
-- Tap = press + release in < 350 ms with no other key between. Hold (≥ 500 ms) or double-tap → Ask bar. ⌥ combined with any other key is ignored. A fallback chord (default ⌃⌥D) covers setups where right ⌥ is taken. The full map is in §5.6.
+- Tap = press + release in < 350 ms with no other key between. Hold (≥ 500 ms) → the prompt box (tell Dumbledore what you want, it writes the prompt); double-tap → the chat with Dumbledore. ⌥ combined with any other key is ignored. A fallback chord (default ⌃⌥D) covers setups where right ⌥ is taken. The full map is in §5.6.
 - While Dumbledore works, a small spinner sits by the caret. The field stays untouched until the text is ready. Esc cancels. If you switch app or field meanwhile, nothing is written. Password fields are refused.
 - Tap / click resolves in this order:
   - (a) Active session in an AI chat → paste the next step, or open the quiz.
@@ -477,7 +477,7 @@ Exam results:
 | Tap | Text selected anywhere | Attach the selection: "Explain this with ChatGPT · Add to a roadmap · Quiz me on this" |
 | Tap | AI chat open, no session | Open the subject picker |
 | Tap | Anywhere else | Open the mini panel; tap again to close it |
-| Hold ≥ 500 ms | Anywhere | Chat window with Dumbledore, your subjects on top to pick from |
+| Hold ≥ 500 ms | Anywhere | Prompt box: tell Dumbledore what you want ("explain SN1 simply, I have an exam Friday"), it writes the prompt (using the subject, the AI chat in front and the page) and pastes it into the AI chat box; no subject list. If the paste fails, the prompt is copied ("press ⌘V") |
 | Double-tap | Anywhere | Chat window: a multi-turn chat with Dumbledore |
 | Tap | Ask bar or quiz card open | Acts as Enter: send / next question |
 | Esc | Any Dumbledore surface or pending action | Cancel or close; nothing is written |

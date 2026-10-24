@@ -42,8 +42,7 @@ body {
   padding: 14px 16px 14px 15px;
 }
 
-.ask[data-mode="chat"] .ask__composer,
-.ask[data-choosing] .ask__composer {
+.ask[data-mode="chat"] .ask__composer {
   border-top: 1px solid var(--c-borPri);
 }
 
@@ -92,6 +91,21 @@ body {
 .ask__new[aria-disabled] {
   opacity: 0.4;
   pointer-events: none;
+}
+
+/* ── Prompt box (route 'prompt', right ⌥ hold) ───────────────────── */
+
+/* One quiet line under the input: where the prompt goes, "Writing your prompt…", or the error. */
+.ask__prompt-note {
+  margin: -6px 0 0;
+  padding: 0 16px 12px 49px; /* lines up with the input text, past the glyph */
+  font-size: var(--text-meta);
+  color: var(--c-texSec);
+  animation: ask-fade-in var(--dur-base) var(--ease-out);
+}
+
+.ask__prompt-note--error {
+  color: var(--c-red-ink);
 }
 
 /* ── Conversation ───────────────────────────────────────────────────── */
