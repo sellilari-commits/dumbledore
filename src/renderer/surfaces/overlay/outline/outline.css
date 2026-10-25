@@ -1,8 +1,7 @@
 /*
- * Outline marks: drawn over other apps, so colours are fixed (not themed) and nothing takes
- * clicks. Calm to read through, like a highlighter in a book: a soft translucent fill that keeps
- * the text crisp, a thin amber bar in the margin to find the passages at a glance, quiet margin
- * labels, and the page itself never dimmed.
+ * Outline marks, "Soft glow": drawn over other apps, so colours are fixed per theme (a whisper
+ * of tint on dark) and nothing takes clicks. One calm shape per passage to read — a faint warm tint, a hairline edge and a soft
+ * lift — with its number and reason on a small tab; the text itself is never covered or dimmed.
  */
 .ov-outline {
   position: fixed;
@@ -18,56 +17,39 @@
   overflow: hidden;
 }
 
-/* A soft highlight on one line of text, fading in line by line. */
-.ov-hl {
-  position: absolute;
-  border-radius: 4px;
-  background: rgba(255, 214, 10, 0.24);
-  opacity: 0;
-  animation: ov-appear 320ms ease-out var(--sweep-delay, 0ms) forwards;
-}
-
-/* The passage's bar in the margin. */
-.ov-readbar {
-  position: absolute;
-  width: 3px;
-  border-radius: 2px;
-  background: rgba(232, 172, 0, 0.75);
-  opacity: 0;
-  animation: ov-appear 320ms ease-out var(--sweep-delay, 0ms) forwards;
-}
-
 @keyframes ov-fade-in {
   from {
     opacity: 0;
   }
 }
 
-@keyframes ov-appear {
-  from {
-    opacity: 0;
-  }
+/* A passage to read: one soft rounded shape around its lines. */
+.ov-glow {
+  position: absolute;
+  border-radius: 12px;
+  background: rgba(255, 221, 120, 0.2);
+  box-shadow:
+    0 0 0 1px rgba(232, 172, 0, 0.18),
+    0 10px 24px -16px rgba(170, 110, 0, 0.45);
+  opacity: 0;
+  transform: scale(0.985);
+  animation: ov-glow-in 360ms cubic-bezier(0.2, 0.7, 0.2, 1) var(--appear-delay, 0ms) forwards;
+}
+
+@keyframes ov-glow-in {
   to {
     opacity: 1;
+    transform: none;
   }
 }
 
-/* Margin: the reason, then the reading-order number, left of the bar. */
-.ov-margin {
+/* Its reading-order number, on the shape's left edge beside the first line (never over text). */
+.ov-glow__num {
   position: absolute;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: -22px;
-  transform: translate(-100%, -50%);
-  opacity: 0;
-  animation: ov-appear 320ms ease-out var(--sweep-delay, 0ms) forwards;
-}
-
-.ov-margin__num {
-  flex: none;
+  left: -9px;
   width: 18px;
   height: 18px;
+  margin-top: -9px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
@@ -76,60 +58,36 @@
     600 11px / 1 -apple-system,
     system-ui,
     sans-serif;
-  color: #6b4e00;
-  background: #fde68a;
+  color: #ffffff;
+  background: #e8ac00;
+  box-shadow:
+    0 0 0 2px #ffffff,
+    0 2px 6px rgba(232, 172, 0, 0.35);
 }
 
-.ov-margin__why {
-  max-width: 170px;
-  padding: 2px 7px;
-  border-radius: 6px;
+/* Skim: a faint line in the margin. */
+.ov-skim {
+  position: absolute;
+  width: 2px;
+  border-radius: 2px;
+  background: rgba(120, 120, 120, 0.22);
+  animation: ov-fade-in 320ms ease-out both;
+}
+
+/* Skip: only a quiet note beside the passage; its text stays as it is. */
+.ov-skip {
+  position: absolute;
+  transform: translateX(-100%);
+  max-width: 200px;
   font:
-    500 11px / 15px -apple-system,
+    500 12px / 16px -apple-system,
     system-ui,
     sans-serif;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #4a4535;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.08),
-    0 0 0 1px rgba(0, 0, 0, 0.06);
-}
-
-/* Skim: a thin grey line in the margin. */
-.ov-skim {
-  position: absolute;
-  width: 2px;
-  border-radius: 2px;
-  background: rgba(120, 120, 120, 0.35);
+  color: #9aa0a6;
   animation: ov-fade-in 320ms ease-out both;
-}
-
-/* Skip: a faint dashed line in the margin, with the reason; the text stays as it is. */
-.ov-skip {
-  position: absolute;
-  width: 0;
-  border-left: 2px dashed rgba(120, 120, 120, 0.3);
-  animation: ov-fade-in 320ms ease-out both;
-}
-
-.ov-skip__why {
-  position: absolute;
-  right: 100%;
-  top: 0;
-  margin-right: 10px;
-  padding: 2px 7px;
-  border-radius: 6px;
-  font:
-    500 11px / 15px -apple-system,
-    system-ui,
-    sans-serif;
-  white-space: nowrap;
-  color: #77736c;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
 /* Edge cues: where the passages that aren't on screen are; they go once those scroll into view. */
@@ -139,7 +97,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 5px 10px;
+  padding: 5px 12px;
   border-radius: 999px;
   font:
     600 12px / 16px -apple-system,
@@ -148,8 +106,8 @@
   color: #6b4e00;
   background: #fff6cc;
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.12),
-    0 0 0 1px rgba(232, 172, 0, 0.35);
+    0 0 0 1px rgba(232, 172, 0, 0.35),
+    0 6px 16px -8px rgba(0, 0, 0, 0.25);
   animation: ov-fade-in 260ms ease-out both;
 }
 
@@ -185,57 +143,142 @@
   }
 }
 
-/* The guide card, out of the reading area. */
+/* The guide: a slim frosted pill, out of the reading area (a rounder card when it has reasons). */
 .ov-outline__card {
   position: absolute;
   left: 50%;
-  bottom: 28px;
+  bottom: 26px;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 10px;
-  max-width: 560px;
-  padding: 9px 14px 9px 10px;
-  border-radius: 14px;
+  gap: 12px;
+  /* left: 50% alone would cap it at half the screen; size to the text instead. */
+  width: max-content;
+  max-width: min(820px, calc(100vw - 48px));
+  padding: 9px 18px 9px 10px;
+  border-radius: 22px;
   font:
-    400 12px / 17px -apple-system,
+    400 13px / 18px -apple-system,
     system-ui,
     sans-serif;
-  color: #ffffff;
-  background: rgba(30, 30, 30, 0.86);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  color: #2b2b2b;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(16px);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 10px 30px -12px rgba(0, 0, 0, 0.25);
   animation: ov-fade-in 260ms ease-out both;
 }
 
 .ov-outline__badge {
   flex: none;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
+  color: #ffffff;
+  background: #e8ac00;
+}
+
+.ov-outline__summary {
+  color: #6e6e6e;
+}
+
+/* Each passage's reason by its number, a quiet second row. */
+.ov-outline__whys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin-top: 3px;
+  color: #6e6e6e;
+}
+
+.ov-outline__why {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ov-outline__n {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font:
+    600 10px / 1 -apple-system,
+    system-ui,
+    sans-serif;
   color: #6b4e00;
   background: #fde68a;
 }
 
-.ov-outline__summary {
-  color: rgba(255, 255, 255, 0.75);
-}
-
 .ov-outline__hint {
   flex: none;
-  color: rgba(255, 255, 255, 0.5);
+  color: #8a8a8a;
+}
+
+/* Dark: the overlay follows the app's theme, and dark-theme students mostly read dark pages, so the
+   glow turns to a faint gold edge with a whisper of tint, and the guide to dark frosted glass. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ov-glow {
+    background: rgba(255, 214, 10, 0.07);
+    box-shadow:
+      0 0 0 1px rgba(255, 214, 10, 0.38),
+      0 10px 24px -16px rgba(0, 0, 0, 0.6);
+  }
+
+  :root:not([data-theme="light"]) .ov-glow__num {
+    box-shadow: 0 0 0 2px #1c1c1e;
+  }
+
+  :root:not([data-theme="light"]) .ov-outline__card {
+    color: #f2f2f2;
+    background: rgba(32, 32, 34, 0.86);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.1),
+      0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  }
+
+  :root:not([data-theme="light"]) .ov-outline__summary,
+  :root:not([data-theme="light"]) .ov-outline__whys {
+    color: #b0b0b0;
+  }
+}
+
+:root[data-theme="dark"] .ov-glow {
+  background: rgba(255, 214, 10, 0.07);
+  box-shadow:
+    0 0 0 1px rgba(255, 214, 10, 0.38),
+    0 10px 24px -16px rgba(0, 0, 0, 0.6);
+}
+
+:root[data-theme="dark"] .ov-glow__num {
+  box-shadow: 0 0 0 2px #1c1c1e;
+}
+
+:root[data-theme="dark"] .ov-outline__card {
+  color: #f2f2f2;
+  background: rgba(32, 32, 34, 0.86);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 10px 30px -12px rgba(0, 0, 0, 0.6);
+}
+
+:root[data-theme="dark"] .ov-outline__summary,
+:root[data-theme="dark"] .ov-outline__whys {
+  color: #b0b0b0;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ov-hl,
-  .ov-readbar,
-  .ov-margin {
+  .ov-glow {
     animation: none;
     opacity: 1;
+    transform: none;
   }
 
   .ov-skim,

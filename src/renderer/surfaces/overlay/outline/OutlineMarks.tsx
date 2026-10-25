@@ -1,12 +1,13 @@
 /**
- * The outline over the page the student is reading, calm enough to read through:
- *   · passages to READ get a soft translucent highlight on each line (fading in one line after
- *     another), a thin amber bar in the margin, and a small reading-order number with the reason;
- *   · SKIM passages get a thin grey margin line, SKIP passages a faint dashed one with the reason;
- *     the page itself is never dimmed or washed out;
- *   · a small card at the bottom says how many passages, for which subject, about how long, and
- *     how many more are further up or down (they light up when scrolled to), on the display
- *     showing the page; holding the Dumbledore key again clears it all.
+ * The outline over the page the student is reading, in the "Soft glow" look (Olle's pick):
+ *   · each passage to READ is one soft rounded shape around its lines — a faint warm tint and a
+ *     gentle lift, the text untouched — with its reading-order number on its left edge, beside
+ *     the first line (never over text); neighbouring passages keep a small gap between them;
+ *   · SKIM passages get a faint line in the margin; SKIP passages only a quiet note beside them;
+ *     the page is never dimmed or washed out;
+ *   · a slim frosted pill at the bottom says how many passages, for which subject and about how
+ *     long, with each passage's reason by its number; an edge cue points to passages further up
+ *     or down (they light up when scrolled to); holding the Dumbledore key again clears it all.
  * Marks come in global screen points, clipped to the page's window; each overlay window (one per
  * display) draws them relative to its own origin. Never takes clicks.
  */
@@ -26,58 +27,68 @@ export function windowOrigin(): Origin {
   return { x: window.screenX, y: window.screenY }
 }
 
-const PAD_X = 3
-const PAD_Y = 2
-/** Delay between highlighted lines as they sweep in (ms). */
-const STAGGER = 90
+/** How far the shape reaches beyond the passage's text. */
+const PAD_X = 12
+const PAD_Y = 7
+/** Delay between passages as they appear (ms). */
+const STAGGER = 140
 
 function local(r: { x: number; y: number; width: number; height: number }, o: Origin) {
   return { left: r.x - o.x, top: r.y - o.y, width: r.width, height: r.height }
 }
 
-function ReadMark({ mark, origin, start }: { mark: OutlineMark; origin: Origin; start: number }) {
-  const boxes = mark.lines?.length ? mark.lines : [mark.rect]
-  const first = boxes[0] ?? mark.rect
-  const all = local(mark.rect, origin)
+/** Room left between two neighbouring passages' shapes. */
+const GAP = 6
+
+/** Top and bottom padding per passage, shrunk where a neighbour is close, so shapes never touch. */
+export function paddings(
+  rects: readonly { y: number; height: number }[],
+): { top: number; bottom: number }[] {
+  return rects.map((r, i) => {
+    let top = PAD_Y
+    let bottom = PAD_Y
+    rects.forEach((o, j) => {
+      if (j === i) return
+      const below = o.y - (r.y + r.height) // space from this one's bottom to the other's top
+      const above = r.y - (o.y + o.height)
+      if (below >= 0 && below < PAD_Y * 2 + GAP)
+        bottom = Math.min(bottom, Math.max(0, (below - GAP) / 2))
+      if (above >= 0 && above < PAD_Y * 2 + GAP) top = Math.min(top, Math.max(0, (above - GAP) / 2))
+    })
+    return { top, bottom }
+  })
+}
+
+function ReadMark({
+  mark,
+  origin,
+  start,
+  pad,
+}: {
+  mark: OutlineMark
+  origin: Origin
+  start: number
+  pad: { top: number; bottom: number }
+}) {
+  const p = local(mark.rect, origin)
+  const first = mark.lines?.[0] ?? mark.rect
+  const style = {
+    left: p.left - PAD_X,
+    top: p.top - pad.top,
+    width: p.width + PAD_X * 2,
+    height: p.height + pad.top + pad.bottom,
+    '--appear-delay': `${start}ms`,
+  } as CSSProperties
+  // The number sits on the shape's left edge, centred on the first line.
+  const numTop = first.y - mark.rect.y + pad.top + first.height / 2
   return (
-    <>
-      <span
-        className="ov-readbar"
-        style={
-          {
-            left: all.left - 12,
-            top: all.top - PAD_Y,
-            height: all.height + PAD_Y * 2,
-            '--sweep-delay': `${start}ms`,
-          } as CSSProperties
-        }
-      />
-      {boxes.map((b, i) => {
-        const p = local(b, origin)
-        const style = {
-          left: p.left - PAD_X,
-          top: p.top - PAD_Y,
-          width: p.width + PAD_X * 2,
-          height: p.height + PAD_Y * 2,
-          '--sweep-delay': `${start + i * STAGGER}ms`,
-        } as CSSProperties
-        // biome-ignore lint/suspicious/noArrayIndexKey: a passage's lines keep their order as it scrolls
-        return <span key={i} className="ov-hl" style={style} />
-      })}
-      <div
-        className="ov-margin"
-        style={
-          {
-            left: first.x - origin.x,
-            top: first.y - origin.y + first.height / 2,
-            '--sweep-delay': `${start}ms`,
-          } as CSSProperties
-        }
-      >
-        {mark.why ? <span className="ov-margin__why">{mark.why}</span> : null}
-        {mark.order ? <span className="ov-margin__num">{mark.order}</span> : null}
-      </div>
-    </>
+    <div className="ov-glow" style={style}>
+      {mark.order ? (
+        <span className="ov-glow__num" style={{ top: numTop }}>
+          {mark.order}
+        </span>
+      ) : null}
+    </div>
   )
 }
 
@@ -89,21 +100,17 @@ function SkimMark({ mark, origin }: { mark: OutlineMark; origin: Origin }) {
 function SkipMark({ mark, origin }: { mark: OutlineMark; origin: Origin }) {
   const p = local(mark.rect, origin)
   return (
-    <div className="ov-skip" style={{ left: p.left - 12, top: p.top, height: p.height }}>
-      <span className="ov-skip__why">{mark.why || 'Skip'}</span>
-    </div>
+    <span className="ov-skip" style={{ left: p.left - 16, top: p.top }}>
+      {mark.why ? `Skip · ${mark.why}` : 'Skip'}
+    </span>
   )
 }
 
 /** Where the passages that aren't on screen are, for the card. */
 export function elsewhereText(above: number, below: number): string {
-  const n = (k: number) => (k === 1 ? '1 more passage' : `${k} more passages`)
-  if (below > 0 && above > 0)
-    return `${n(above + below)} further up and down light up as you scroll.`
-  if (below > 0)
-    return `↓ ${n(below)} further down — ${below === 1 ? 'it lights' : 'they light'} up as you scroll.`
-  if (above > 0)
-    return `↑ ${n(above)} further up — ${above === 1 ? 'it lights' : 'they light'} up as you scroll.`
+  if (below > 0 && above > 0) return `${above + below} more further up and down.`
+  if (below > 0) return `↓ ${below} more further down.`
+  if (above > 0) return `↑ ${above} more further up.`
   return ''
 }
 
@@ -141,6 +148,7 @@ export function OutlineMarks({
   // Inside the clip, positions are relative to the page's window.
   const inner = frame ? { x: frame.x, y: frame.y } : origin
   const reads = outline.marks.filter((m) => m.verdict === 'read')
+  const pads = paddings(reads.map((m) => m.rect))
   const elsewhere = elsewhereText(outline.above ?? 0, outline.below ?? 0)
   let delay = 0
   return (
@@ -152,8 +160,9 @@ export function OutlineMarks({
           if (m.verdict === 'skim') return <SkimMark key={key} mark={m} origin={inner} />
           if (m.verdict === 'skip') return <SkipMark key={key} mark={m} origin={inner} />
           const start = delay
-          delay += (m.lines?.length ?? 1) * STAGGER + 120
-          return <ReadMark key={key} mark={m} origin={inner} start={start} />
+          delay += STAGGER
+          const pad = pads[reads.indexOf(m)] ?? { top: PAD_Y, bottom: PAD_Y }
+          return <ReadMark key={key} mark={m} origin={inner} start={start} pad={pad} />
         })}
         {outline.above ? (
           <div className="ov-edge ov-edge--up">
@@ -186,8 +195,17 @@ export function OutlineMarks({
               <strong>What to read for {outline.subjectName} is further on.</strong>
             )}
             {elsewhere ? <span className="ov-outline__summary"> {elsewhere}</span> : null}
-            {outline.summary && reads.length > 0 && !elsewhere ? (
-              <span className="ov-outline__summary"> {outline.summary}</span>
+            {reads.some((m) => m.why) ? (
+              <span className="ov-outline__whys">
+                {reads.map((m) =>
+                  m.why ? (
+                    <span key={`${m.order}|${m.why}`} className="ov-outline__why">
+                      {m.order ? <span className="ov-outline__n">{m.order}</span> : null}
+                      {m.why}
+                    </span>
+                  ) : null,
+                )}
+              </span>
             ) : null}
           </span>
           <span className="ov-outline__hint">hold {TRIGGER_KEYS[triggerKey].short} to clear</span>

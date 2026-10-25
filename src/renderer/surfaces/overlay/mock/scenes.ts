@@ -235,15 +235,15 @@ export function sceneState(name: SceneName, vp: Size): OverlayState {
           marks: [
             { rect: span(lines, 1, 2), verdict: 'skim', why: 'Background' },
             {
-              rect: span(lines, 4, 5),
-              lines: [4, 5].map((i) => lines[i]?.rect).filter((r) => r !== undefined),
+              rect: span(lines, 4, 6),
+              lines: [4, 5, 6].map((i) => lines[i]?.rect).filter((r) => r !== undefined),
               verdict: 'read',
               why: 'Your gap: carbocation stability',
               order: 1,
             },
             {
-              rect: span(lines, 6, 7),
-              lines: [6, 7].map((i) => lines[i]?.rect).filter((r) => r !== undefined),
+              rect: span(lines, 7, 7),
+              lines: [7].map((i) => lines[i]?.rect).filter((r) => r !== undefined),
               verdict: 'read',
               why: 'Why 3° cations form fastest',
               order: 2,

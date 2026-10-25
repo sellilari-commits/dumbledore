@@ -222,7 +222,7 @@
   font:
     400 14px / 20px Georgia,
     serif;
-  color: #202122;
+  color: var(--mk-text);
   white-space: nowrap;
 }
 
