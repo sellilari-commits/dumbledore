@@ -36,6 +36,8 @@ export interface BackendRequest {
   maxOutputTokens: number
   reasoningEffort: ReasoningEffort | null
   tools?: ToolDef[]
+  /** 'none': the tools are listed but may not be called, so the model must answer in text. */
+  toolChoice?: 'auto' | 'none'
   /** Set by the router; backends may tune to it (Gemini picks its thinking level per tier). */
   tier?: LlmTier
   signal: AbortSignal

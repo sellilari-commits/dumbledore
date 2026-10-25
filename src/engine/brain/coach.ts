@@ -94,6 +94,10 @@ export async function* runCoach(
         temperature: 0.6,
         maxOutputTokens,
         reasoningEffort: 'low',
+        // Listed but not callable: a model told to act through tools, given none, answers with
+        // an empty "malformed function call" (Gemini did); with tools it may not call, it answers.
+        tools: COACH_TOOLS,
+        toolChoice: 'none',
       },
     )) {
       if (part.type === 'text' && part.delta) {

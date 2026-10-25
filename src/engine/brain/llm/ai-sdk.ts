@@ -97,6 +97,7 @@ export async function sdkGenerate(req: BackendRequest, c: SdkCall): Promise<Back
       abortSignal: req.signal,
       output: output(req, c.schemaMode),
       tools: tools(req),
+      ...(req.tools?.length && req.toolChoice ? { toolChoice: req.toolChoice } : {}),
       providerOptions: c.providerOptions,
     })
     return {
@@ -133,6 +134,7 @@ export async function* sdkStream(req: BackendRequest, c: SdkCall): AsyncIterable
       maxRetries: 0,
       abortSignal: req.signal,
       tools: tools(req),
+      ...(req.tools?.length && req.toolChoice ? { toolChoice: req.toolChoice } : {}),
       providerOptions: c.providerOptions,
     })
     for await (const part of result.fullStream) {
