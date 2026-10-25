@@ -1,13 +1,18 @@
 /**
  * The Ask bar's topic chips (chat mode): every topic the mini panel lists (shared/topics.ts: the
- * top-level concepts of every active or suggested subject, newest information first), reloaded
- * whenever the window comes back. One topic can be selected; its subject goes with every question
+ * top-level concepts of every active or suggested subject, newest information first), kept as live
+ * as the panel's list: reloaded when memory changes (`memory.changed` for a scope that touches
+ * subjects or concepts, as lib/live.ts invalidates the panel's queries, and `session.changed`) and
+ * every time the bar is shown (main reuses the hidden window and sends it `navigate` on each open;
+ * a window `focus` is not guaranteed then). A selected topic stays selected while it still exists.
+ * One topic can be selected; its subject goes with every question
  * as context (`ask.submit` `subjectId`), and ↵ on an empty input studies it the way a tap studies
  * a locked topic (`session.start` with the topic's name as the goal; main pastes the next prompt
  * into the AI chat) and closes the bar.
  */
 import type { SubjectSummary } from '@shared/domain'
 import type { DumbledoreApi } from '@shared/ipc'
+import type { MemoryScope } from '@shared/state'
 import { listTopics, type Topic, topicSubjects } from '@shared/topics'
 import { useCallback, useEffect, useState } from 'react'
 import { errorMessage, report } from '../overlay/lib/bridge'
@@ -43,6 +48,14 @@ export async function loadTopics(api: DumbledoreApi): Promise<Topic[]> {
   return listTopics(pool, (id) => concepts.get(id) ?? [])
 }
 
+/** Memory scopes whose changes reach the topic list (the ones lib/live.ts maps to subjects.list/get). */
+export const TOPIC_SCOPES: ReadonlySet<MemoryScope> = new Set([
+  'subjects',
+  'concepts',
+  'inbox',
+  'roadmaps',
+])
+
 /** The index `step` away from `current` (-1 = none), kept inside the row. */
 export function moveIndex(current: number, step: -1 | 1, count: number): number {
   if (count === 0) return -1
@@ -60,7 +73,16 @@ export function useTopics(api: DumbledoreApi, close: () => void, enabled = true)
   useEffect(() => {
     if (!enabled) return
     let live = true
+    // One load at a time; a change during a load reloads once more after it, so the last
+    // answer always reflects the latest memory.
+    let loading = false
+    let again = false
     const load = () => {
+      if (loading) {
+        again = true
+        return
+      }
+      loading = true
       loadTopics(api)
         .then((next) => {
           if (!live) return
@@ -68,11 +90,26 @@ export function useTopics(api: DumbledoreApi, close: () => void, enabled = true)
           setSelectedId((id) => (id && next.some((t) => t.id === id) ? id : null))
         })
         .catch((e: unknown) => report(e, 'subjects.list'))
+        .finally(() => {
+          loading = false
+          if (live && again) {
+            again = false
+            load()
+          }
+        })
     }
     load()
+    const offs = [
+      api.on('memory.changed', ({ scope }) => {
+        if (TOPIC_SCOPES.has(scope)) load()
+      }),
+      api.on('session.changed', () => load()),
+      api.on('navigate', () => load()),
+    ]
     window.addEventListener('focus', load)
     return () => {
       live = false
+      for (const off of offs) off()
       window.removeEventListener('focus', load)
     }
   }, [api, enabled])

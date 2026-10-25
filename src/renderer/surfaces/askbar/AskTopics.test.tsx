@@ -210,6 +210,66 @@ describe('AskBar topic chips', () => {
   })
 })
 
+describe('AskBar topic chips stay live, like the panel', () => {
+  /** subjects.get with the named topics left out (consolidation merged or moved them). */
+  function liveTopics() {
+    const gone = new Set<string>()
+    const local = topicsApi({
+      'subjects.get': (id) => {
+        const s = demoSubject(id, NOW)
+        return { ...s, concepts: s.concepts.filter((c) => !gone.has(c.name)) }
+      },
+    })
+    render(<AskBar api={local.api} />)
+    return { local, gone }
+  }
+
+  it('a memory change removes a topic that no longer exists and clears its selection', async () => {
+    const { local, gone } = liveTopics()
+    await flush()
+    fireEvent.click(chip('Taylor series'))
+    expect(pressed()).toEqual(['Taylor series'])
+    gone.add('Taylor series')
+    act(() => local.emit('memory.changed', { scope: 'concepts', ids: [] }))
+    await flush()
+    expect(names()).toHaveLength(18)
+    expect(names()).not.toContain('Taylor series')
+    expect(pressed()).toEqual([])
+  })
+
+  it('a memory change keeps the selected topic while it still exists', async () => {
+    const { local, gone } = liveTopics()
+    await flush()
+    fireEvent.click(chip('Mitosis'))
+    gone.add('Quicksort')
+    act(() => local.emit('memory.changed', { scope: 'subjects', ids: [] }))
+    await flush()
+    expect(names()).not.toContain('Quicksort')
+    expect(pressed()).toEqual(['Mitosis'])
+  })
+
+  it('showing the bar again (navigate on open) reloads the topics, with no focus event', async () => {
+    const { local, gone } = liveTopics()
+    await flush()
+    expect(names()).toContain('Utilitarianism')
+    gone.add('Utilitarianism')
+    act(() => local.emit('navigate', { route: '/' }))
+    await flush()
+    expect(names()).toHaveLength(18)
+    expect(names()).not.toContain('Utilitarianism')
+  })
+
+  it('changes that cannot touch topics (chat, settings) load nothing', async () => {
+    const { local } = liveTopics()
+    await flush()
+    const before = callsTo(local, 'subjects.list').length
+    act(() => local.emit('memory.changed', { scope: 'chat', ids: [] }))
+    act(() => local.emit('memory.changed', { scope: 'settings', ids: [] }))
+    await flush()
+    expect(callsTo(local, 'subjects.list')).toHaveLength(before)
+  })
+})
+
 describe('AskBar theme', () => {
   it('follows the theme in Settings, like the orb and the mini panel', async () => {
     await mount({ 'settings.get': () => ({ ...DEFAULT_SETTINGS, theme: 'dark' }) })
