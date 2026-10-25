@@ -98,7 +98,9 @@ describe('Brain.coachLoop', () => {
     )
     const { tools } = shellTools({ read: [{ id: 'sub_1' }] })
     const events = await collect(loopOf(h)(input('what do I study?'), tools, { maxSteps: 2 }))
-    expect(h.groq.requests.map((r) => r.tools === undefined)).toEqual([false, true])
+    // The last step lists the tools but may not call them (toolChoice 'none').
+    expect(h.groq.requests.map((r) => r.toolChoice)).toEqual(['auto', 'none'])
+    expect(h.groq.requests[1]?.tools?.map((t) => t.name)).toEqual(['read', 'act'])
     expect(textOf(events)).toBe('You have one subject.')
   })
 

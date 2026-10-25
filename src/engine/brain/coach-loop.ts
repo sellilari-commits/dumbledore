@@ -4,7 +4,9 @@
  * call (text output, the shell's tools as ToolDefs, the loop's overall deadline), so a step falls
  * through to the next chat model only before its first part arrives. Yields text deltas, one
  * 'tool' event per call that ran, then 'done'. No chips or actions: the shell turns its own tool
- * outcomes into receipts and chips.
+ * outcomes into receipts and chips. The last step lists the tools with toolChoice 'none' (as
+ * coach.ts does since d162b54): with no declarations at all, Gemini tries a call it cannot make
+ * and returns no text.
  */
 import type { CoachEvent, CoachInput, CoachLoopOptions, CoachTools } from '@engine/brain-contract'
 import type { Clock } from '../clock'
@@ -59,9 +61,7 @@ export async function* runCoachLoop(
           deadline: ctx.deadline,
           signal: ctx.signal,
           estimatedTokens:
-            estimateMessagesTokens(system, messages) +
-            (stepTools ? toolTokens : 0) +
-            maxOutputTokens,
+            estimateMessagesTokens(system, messages) + toolTokens + maxOutputTokens,
           outputTokens: maxOutputTokens,
           language: finnish ? 'fi' : 'en',
           onDeviceOk: false,
@@ -73,7 +73,9 @@ export async function* runCoachLoop(
           temperature: 0.5,
           maxOutputTokens,
           reasoningEffort: 'low',
-          tools: stepTools,
+          // The final step: listed but not callable, so the model answers in text.
+          tools: stepTools ?? toolDefs,
+          toolChoice: stepTools ? 'auto' : 'none',
         },
       ),
   })
