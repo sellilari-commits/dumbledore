@@ -19,7 +19,8 @@ const FALLBACK_TEXT: Record<string, string> = {
   insert_prompt: "I've put a prompt in your chat box — read it, then send.",
   set_focus: 'Focus updated.',
   open_subject: 'Opening it now.',
-  save_question: 'Good question — saved. Tap the Dumbledore key in your AI chat for a prompt that explains it.',
+  save_question:
+    'Good question — saved. Tap the Dumbledore key in your AI chat for a prompt that explains it.',
   update_subject: 'Got it.',
   add_note: 'Saved.',
   give_feedback: 'Got it, I’ll keep that in mind.',
