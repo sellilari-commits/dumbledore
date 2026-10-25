@@ -15,6 +15,8 @@ enum Perceiver {
   ]
   static let minAXChars = 200
   static let ocrMaxAgeMs = 30_000.0
+  /// A whole-page read walks the text above and below the view too (a long article: ~1 s).
+  static let wholePageBudgetMs = 3000.0
 
   static func frontmost() -> FrontmostInfo? {
     guard let app = Apps.frontmost() else { return nil }
@@ -91,8 +93,15 @@ enum Perceiver {
       frame = frame ?? AX.frame(position: v[kAXPositionAttribute], size: v[kAXSizeAttribute])
       let focused = isFront ? FocusReader.focused(pid: t.app.pid)?.element : nil
       let walkStart = monoMs()
-      let text = AXTextReader.read(window: axWin, windowFrame: frame, focused: focused, maxChars: p.maxChars,
-                                   budgetMs: p.fresh ? 500 : 150, visibleOnly: p.fresh)
+      var text = AXTextReader.read(window: axWin, windowFrame: frame, focused: focused, maxChars: p.maxChars,
+                                   budgetMs: p.wholePage ? wholePageBudgetMs : p.fresh ? 500 : 150,
+                                   visibleOnly: p.fresh && !p.wholePage, wholePage: p.wholePage)
+      // A page too long for the budget may end before the screen: then what is on screen.
+      if p.wholePage, !text.lines.contains(where: { $0.box != nil }) {
+        Log.debug("whole-page walk reached nothing on screen (\(text.chars) chars): reading the screen")
+        text = AXTextReader.read(window: axWin, windowFrame: frame, focused: focused, maxChars: p.maxChars,
+                                 budgetMs: 500, visibleOnly: true)
+      }
       Log.debug("ax walk \(t.app.bundleId): \(text.visited) nodes, \(text.chars) chars, "
         + "\(Int(monoMs() - walkStart)) ms\(text.timedOut ? " (budget hit)" : ""), "
         + "kept \(text.trim.rawValue), dropped \(text.droppedChars) chars")

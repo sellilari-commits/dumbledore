@@ -6,7 +6,8 @@
  *   · SKIM passages get a faint line in the margin; SKIP passages only a quiet note beside them;
  *     the page is never dimmed or washed out;
  *   · a slim frosted pill at the bottom says how many passages, for which subject and about how
- *     long, with each passage's reason by its number; an edge cue points to passages further up
+ *     long, with each passage's reason by its number, and what the choice is based on (the goal,
+ *     the gaps, and whether the whole page was read); an edge cue points to passages further up
  *     or down (they light up when scrolled to); holding the Dumbledore key again clears it all.
  * Marks come in global screen points, clipped to the page's window; each overlay window (one per
  * display) draws them relative to its own origin. Never takes clicks.
@@ -114,6 +115,28 @@ export function elsewhereText(above: number, below: number): string {
   return ''
 }
 
+const short = (text: string, max: number) =>
+  text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`
+
+/**
+ * What the choice is based on, in one short line: "For your goal and gaps (A, B) · read the whole
+ * page". The goal is quoted only when it is all there is; open questions are named when there
+ * are no gaps.
+ */
+export function basisText(basis: NonNullable<OutlineOverlay['basis']>): string {
+  const { goal, gaps, questions } = basis
+  const n = (k: number, word: string) => `${k} open ${word}${k === 1 ? '' : 's'}`
+  const what =
+    gaps.length > 0
+      ? `${goal ? 'your goal and gaps' : 'your gaps'} (${gaps.join(', ')})`
+      : questions > 0
+        ? `${goal ? 'your goal and ' : ''}${n(questions, 'question')}`
+        : goal
+          ? `your goal “${short(goal, 48)}”`
+          : 'this subject'
+  return `For ${what} · ${basis.offScreen > 0 ? 'read the whole page' : 'read what’s on screen'}`
+}
+
 /** Whether the page's centre is on this window's display (the card shows there only). */
 function showsPage(frame: OutlineOverlay['frame'], origin: Origin): boolean {
   if (!frame) return true
@@ -206,6 +229,9 @@ export function OutlineMarks({
                   ) : null,
                 )}
               </span>
+            ) : null}
+            {outline.basis ? (
+              <span className="ov-outline__basis">{basisText(outline.basis)}</span>
             ) : null}
           </span>
           <span className="ov-outline__hint">hold {TRIGGER_KEYS[triggerKey].short} to clear</span>

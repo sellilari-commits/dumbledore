@@ -4,6 +4,8 @@
 // focused field, single-line form fields (search boxes, logins) or secure fields — what the user
 // is typing is only read on an explicit request (ax.readFocusedValue). Off-window subtrees are
 // pruned; text scrolled out of a web page's viewport is pruned only on request (visibleOnly).
+// A whole-page read (the outline) keeps all of it instead: text out of view comes without a box,
+// one line per paragraph (its fragments joined by the block they sit in).
 //
 // Region trimming: web content (browsers, Electron apps) labels its landmarks (main, navigation,
 // sidebar, header, footer). When the main region holds the page's real text, only that is kept;
@@ -27,6 +29,11 @@ struct AXFragment {
   var text: String
   var frame: CGRect?
   var region: PageRegion = .none
+  /// The block (paragraph, heading, list item…) it sits in: out-of-view fragments of one block
+  /// join into one line, since their frames can't place them on visual lines.
+  var block = 0
+  /// Scrolled out of view (whole-page reads keep it, without a box).
+  var outOfView = false
 }
 
 struct AXTextResult {
@@ -53,6 +60,8 @@ enum AXTextReader {
   /// The main region needs this much text, and this share of the text outside chrome, to stand alone.
   static let minContentChars = 80
   static let minMainShare = 0.2
+  /// Inline roles stay in their parent's block; every other element starts a block of its own.
+  private static let inlineRoles: Set<String> = ["AXLink", "AXStaticText"]
   private static let attrs = [
     kAXRoleAttribute, kAXSubroleAttribute, kAXValueAttribute, kAXChildrenAttribute, kAXPositionAttribute, kAXSizeAttribute,
   ]
@@ -67,13 +76,26 @@ enum AXTextReader {
   /// `visibleOnly` (an explicit request: the outline) also drops text scrolled out of view
   /// (`isOffscreenClamp`), so a long page scrolled down yields the lines on screen, not its top
   /// (with a larger budget, since the walk still passes the text above the view).
+  /// `wholePage` (the outline's first read) keeps the text out of view, also off the window
+  /// (Safari gives it real frames above or below), as lines without a box, so the page is read
+  /// whole while only what is on screen can be marked.
   static func read(window: AXUIElement, windowFrame: CGRect?, focused: AXUIElement?, maxChars: Int,
-                   budgetMs: Double = 150, maxDepth: Int = 64, visibleOnly: Bool = false) -> AXTextResult {
+                   budgetMs: Double = 150, maxDepth: Int = 64, visibleOnly: Bool = false,
+                   wholePage: Bool = false) -> AXTextResult {
     let deadline = monoMs() + budgetMs
     var result = AXTextResult()
     var frags: [AXFragment] = []
+    var blocks = 0
 
-    func add(_ text: String, _ frame: CGRect?, _ region: PageRegion) {
+    func outOfView(_ frame: CGRect?) -> Bool {
+      guard let f = frame else { return false }
+      if isOffscreenClamp(f) { return true }
+      if let wf = windowFrame, f.width > 0, !f.intersects(wf) { return true }
+      return false
+    }
+
+    func add(_ text: String, _ frame: CGRect?, _ region: PageRegion, block: Int) {
+      let away = wholePage && outOfView(frame)
       var remaining = maxChars - result.chars
       for raw in text.split(whereSeparator: \.isNewline) {
         guard remaining > 0 else { return }
@@ -82,11 +104,11 @@ enum AXTextReader {
         if t.count > remaining { t = String(t.prefix(remaining)) }
         remaining -= t.count
         result.chars += t.count
-        frags.append(AXFragment(text: t, frame: frame, region: region))
+        frags.append(AXFragment(text: t, frame: away ? nil : frame, region: region, block: block, outOfView: away))
       }
     }
 
-    func visit(_ el: AXUIElement, depth: Int, region parent: PageRegion) -> Bool {
+    func visit(_ el: AXUIElement, depth: Int, region parent: PageRegion, block parentBlock: Int) -> Bool {
       if result.chars >= maxChars { return false }
       if monoMs() > deadline {
         result.timedOut = true
@@ -97,7 +119,14 @@ enum AXTextReader {
       let role = AX.str(v[kAXRoleAttribute]) ?? ""
       if skipRoles.contains(role) { return true }
       let frame = AX.frame(position: v[kAXPositionAttribute], size: v[kAXSizeAttribute])
-      if let f = frame, let wf = windowFrame, f.width > 0, f.height > 0, !f.intersects(wf) { return true }
+      if !wholePage, let f = frame, let wf = windowFrame, f.width > 0, f.height > 0, !f.intersects(wf) { return true }
+      let block: Int
+      if inlineRoles.contains(role) {
+        block = parentBlock
+      } else {
+        blocks += 1
+        block = blocks
+      }
       let subrole = AX.str(v[kAXSubroleAttribute])
       let region: PageRegion = subrole == "AXLandmarkMain" ? .main
         : subrole.map(chromeSubroles.contains) == true ? .chrome : parent
@@ -109,12 +138,12 @@ enum AXTextReader {
       let offscreen = visibleOnly && frame.map(isOffscreenClamp) == true
       switch role {
       case "AXStaticText":
-        if !offscreen, let s = AX.str(v[kAXValueAttribute]) { add(s, frame, region) }
+        if !offscreen, let s = AX.str(v[kAXValueAttribute]) { add(s, frame, region, block: block) }
         return true
       case "AXTextArea":
         let isFocused = focused.map { CFEqual($0, el) } ?? false
         if !isFocused, !offscreen, !FocusReader.isSecure(role: role, subrole: subrole), let s = AX.str(v[kAXValueAttribute]) {
-          add(s, frame, region)
+          add(s, frame, region, block: block)
         }
         return true  // children repeat the value (or the user's draft): never descend
       case "AXTextField", "AXSearchField", "AXComboBox", "AXSecureTextField":
@@ -124,12 +153,12 @@ enum AXTextReader {
       }
       guard depth < maxDepth else { return true }
       for child in AX.uiElements(v[kAXChildrenAttribute]) {
-        if !visit(child, depth: depth + 1, region: region) { return false }
+        if !visit(child, depth: depth + 1, region: region, block: block) { return false }
       }
       return true
     }
 
-    _ = visit(window, depth: 0, region: .none)
+    _ = visit(window, depth: 0, region: .none, block: 0)
     let trimmed = trimToContent(frags)
     result.trim = trimmed.trim
     result.droppedChars = frags.reduce(0) { $0 + $1.text.count } - trimmed.frags.reduce(0) { $0 + $1.text.count }
@@ -154,10 +183,22 @@ enum AXTextReader {
     return (frags, .all)
   }
 
-  /// Joins inline fragments (links, bold runs) that sit on the same visual line.
+  /// Joins inline fragments (links, bold runs) that sit on the same visual line; out of view (no
+  /// frame), the fragments of one block join into one line.
   static func merge(_ frags: [AXFragment]) -> [TextLine] {
     var out: [(text: String, frame: CGRect?)] = []
+    var lastAway: (block: Int, index: Int)?
     for f in frags {
+      if f.outOfView {
+        if let a = lastAway, a.block == f.block, a.index == out.count - 1 {
+          out[a.index] = (joinRun(out[a.index].text, f.text), nil)
+        } else {
+          out.append((f.text, nil))
+          lastAway = (f.block, out.count - 1)
+        }
+        continue
+      }
+      lastAway = nil
       if let last = out.last, let lf = last.frame, let ff = f.frame, ff.height > 0,
          ff.midY >= lf.minY, ff.midY <= lf.maxY, ff.minX >= lf.minX - 1, ff.height <= lf.height * 1.6 {
         let needsSpace = !(last.text.last?.isWhitespace ?? true) && !(f.text.first?.isWhitespace ?? true)
@@ -174,6 +215,13 @@ enum AXTextReader {
     return out.enumerated().map { i, f in
       TextLine(text: f.text, conf: 1, box: f.frame.map(Rect.init), align: align[i])
     }
+  }
+
+  /// Two runs of one paragraph: a space between words, none before closing punctuation.
+  static func joinRun(_ a: String, _ b: String) -> String {
+    guard let first = b.first, let last = a.last else { return a + b }
+    if ".,;:!?)]}%”’".contains(first) || "([{“‘/".contains(last) { return a + b }
+    return a + " " + b
   }
 
   static func clean(_ s: String) -> String {

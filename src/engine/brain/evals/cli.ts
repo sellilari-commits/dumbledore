@@ -2,14 +2,19 @@
  * Eval CLI body (launched by tools/eval-prompts.ts under tsconfig.node.json so aliases resolve).
  *   eval-prompts [extraction|roadmaps|quizzes|prompts|all] [--limit N] [--only <id prefix>]
  *                [--provider gemini|ovh|groq|mistral] [--route tier=provider:model[,provider:model]]
- *                [--concurrency N] [--timeout ms] [--max-eur N] [--no-write]
+ *                [--concurrency N] [--timeout ms] [--max-eur N] [--no-write] [--via-app <data dir>]
  * Calls real providers: Gemini (paid; GEMINI_API_KEY via env, .env.local or DUMBLEDORE_ENV_FILES),
  * OVHcloud (keyless), Groq / Mistral when their keys exist. --max-eur (default 0.50) is the spend
  * cap for the whole invocation: once reached, paid routes are skipped as over-budget.
+ * --via-app runs P15 (the outline suite) through a running app started with DUMBLEDORE_CONTROL=1
+ * and that data dir: its own routes and keys, its own spend cap; the key never leaves the app.
  */
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import type { OutlineOutput } from '@engine/brain-contract'
 import type { LlmTier, ModelRoute, ProviderId } from '@shared/llm'
 import type { LlmCallRecord, UsageRepo } from '../../contracts'
-import { createBrain } from '../brain'
+import { type BrainHandle, createBrain } from '../brain'
 import { costEur, formatEur } from '../llm/prices'
 import { parseRouteList, resolveRoutes } from '../llm/routes'
 import { extractPrompt } from '../prompts/p01-extract'
@@ -17,9 +22,11 @@ import { roadmapPrompt } from '../prompts/p03-roadmap'
 import { stepPrompt } from '../prompts/p04-step'
 import { checkpointPrompt, verifyPrompt } from '../prompts/p05-quiz'
 import { improvePrompt } from '../prompts/p08-improve'
+import { outlinePrompt } from '../prompts/p15-outline'
 import type { EvalContext, SuiteResult } from './common'
 import { type RunMeta, renderReport, writeReport } from './report'
 import { runExtraction } from './suite-extraction'
+import { runOutline } from './suite-outline'
 import { runPrompts } from './suite-prompts'
 import { runQuizzes } from './suite-quizzes'
 import { runRoadmaps } from './suite-roadmaps'
@@ -29,6 +36,7 @@ const SUITES: Record<string, (ctx: EvalContext) => Promise<SuiteResult>> = {
   roadmaps: runRoadmaps,
   quizzes: runQuizzes,
   prompts: runPrompts,
+  outline: runOutline,
 }
 const TIERS: LlmTier[] = ['triage', 'extract', 'reason', 'write', 'chat']
 
@@ -42,6 +50,8 @@ interface Args {
   timeoutMs: number
   maxEur: number
   write: boolean
+  /** A running app's data dir (DUMBLEDORE_CONTROL=1): P15 goes through it. */
+  viaApp: string | null
 }
 
 export function parseArgs(argv: string[]): Args {
@@ -55,6 +65,7 @@ export function parseArgs(argv: string[]): Args {
     timeoutMs: 600_000,
     maxEur: 0.5,
     write: true,
+    viaApp: null,
   }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i] as string
@@ -66,6 +77,7 @@ export function parseArgs(argv: string[]): Args {
     else if (a === '--timeout') args.timeoutMs = Number(next())
     else if (a === '--max-eur') args.maxEur = Math.max(0, Number(next()) || 0)
     else if (a === '--no-write') args.write = false
+    else if (a === '--via-app') args.viaApp = next() || null
     else if (a === '--route') {
       const [tier, list] = next().split('=')
       if (tier && list && TIERS.includes(tier as LlmTier))
@@ -110,6 +122,23 @@ function recordingUsage(records: LlmCallRecord[]): UsageRepo {
   }
 }
 
+/** P15 through a running app's test-control server (its routes, keys and spend cap). */
+function appOutline(dataDir: string): BrainHandle['outline'] {
+  const { port, token } = JSON.parse(
+    readFileSync(join(dataDir, 'run', 'test-control.json'), 'utf8'),
+  ) as { port: number; token: string }
+  return async (input) => {
+    const res = await fetch(`http://127.0.0.1:${port}/brain/outline`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input }),
+    })
+    const body = (await res.json()) as OutlineOutput & { error?: string }
+    if (!res.ok) throw new Error(body.error ?? `app answered ${res.status}`)
+    return body
+  }
+}
+
 export async function main(argv: string[], root = process.cwd()): Promise<number> {
   const args = parseArgs(argv)
   const records: LlmCallRecord[] = []
@@ -117,19 +146,22 @@ export async function main(argv: string[], root = process.cwd()): Promise<number
     const base = args.routes[tier] ?? resolveRoutes(tier, null)
     return args.provider ? base.filter((r) => r.provider === args.provider) : base
   }
-  const brain = createBrain({
+  const local = createBrain({
     usage: recordingUsage(records),
     cache: null,
     helper: null,
     routes: routeFor,
     spendCapEur: args.maxEur,
   })
-  const routesText = TIERS.map(
-    (t) =>
-      `${t}: ${routeFor(t)
-        .map((r) => `${r.provider}:${r.model}`)
-        .join(' → ')}`,
-  ).join(' · ')
+  const brain = args.viaApp ? { ...local, outline: appOutline(args.viaApp) } : local
+  const routesText = args.viaApp
+    ? `outline via the app in ${args.viaApp} (its own routes and keys)`
+    : TIERS.map(
+        (t) =>
+          `${t}: ${routeFor(t)
+            .map((r) => `${r.provider}:${r.model}`)
+            .join(' → ')}`,
+      ).join(' · ')
   const versions = [
     extractPrompt,
     roadmapPrompt,
@@ -137,6 +169,7 @@ export async function main(argv: string[], root = process.cwd()): Promise<number
     checkpointPrompt,
     verifyPrompt,
     improvePrompt,
+    outlinePrompt,
   ]
     .map((p) => `${p.id}v${p.version}`)
     .join(' ')

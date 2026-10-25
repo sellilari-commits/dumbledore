@@ -143,11 +143,16 @@ struct PerceiveParams: Decodable {
   /// An explicit request (the outline): the lines on screen now (text scrolled out of view left
   /// out), even when the window is unchanged; perception's change state is left alone.
   let fresh: Bool
+  /// With `fresh` (the outline's first read): all of the page's text, the lines out of view without
+  /// a box, so the page is chosen from whole.
+  let wholePage: Bool
 
-  enum CodingKeys: String, CodingKey { case scope, minChange, allowOcr, forceOcr, maxChars, excludeBundleIds, fresh }
+  enum CodingKeys: String, CodingKey {
+    case scope, minChange, allowOcr, forceOcr, maxChars, excludeBundleIds, fresh, wholePage
+  }
 
   init(scope: PerceiveScope, minChange: Int = 6, allowOcr: Bool = true, forceOcr: Bool = false,
-       maxChars: Int = 20000, excludeBundleIds: [String] = [], fresh: Bool = false) {
+       maxChars: Int = 20000, excludeBundleIds: [String] = [], fresh: Bool = false, wholePage: Bool = false) {
     self.scope = scope
     self.minChange = minChange
     self.allowOcr = allowOcr
@@ -155,6 +160,7 @@ struct PerceiveParams: Decodable {
     self.maxChars = maxChars
     self.excludeBundleIds = excludeBundleIds
     self.fresh = fresh
+    self.wholePage = wholePage
   }
 
   init(from decoder: Decoder) throws {
@@ -166,6 +172,7 @@ struct PerceiveParams: Decodable {
     maxChars = try c.decodeIfPresent(Int.self, forKey: .maxChars) ?? 20000
     excludeBundleIds = try c.decodeIfPresent([String].self, forKey: .excludeBundleIds) ?? []
     fresh = try c.decodeIfPresent(Bool.self, forKey: .fresh) ?? false
+    wholePage = try c.decodeIfPresent(Bool.self, forKey: .wholePage) ?? false
   }
 }
 

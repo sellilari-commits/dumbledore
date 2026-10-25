@@ -3,6 +3,8 @@
  * gestures through the real router, overlay actions and invokes through the real IPC handlers,
  * and (while fakes are in use) lets E2E tests drive the fake helper and perception.
  */
+
+import { OutlineInput } from '@engine/brain-contract'
 import {
   FocusedElement,
   FrontmostInfo,
@@ -36,6 +38,7 @@ const ActionBody = z.object({
   displayId: z.number().int().nullable().optional(),
 })
 const InvokeBody = z.object({ channel: z.string(), payload: z.unknown().optional() })
+const BrainOutlineBody = z.object({ input: OutlineInput })
 const KeyBody = z.object({ key: z.enum(['1', '2', '3', '4', 'Return', 'Escape']) })
 const HelperEventBody = z.object({
   event: z.enum(Object.keys(helperEvents) as [HelperEvent, ...HelperEvent[]]),
@@ -101,6 +104,10 @@ export function createTestControlApi(d: TestControlDeps): TestControlApi {
       return { result: result ?? null }
     },
     cancel: () => ({ cancelled: core.router.cancel() }),
+    async brainOutline(body) {
+      const b = BrainOutlineBody.parse(body)
+      return core.services.brain.outline(b.input, { timeoutMs: 120_000 })
+    },
     key(body) {
       const b = KeyBody.parse(body)
       d.forwardKey(b.key)

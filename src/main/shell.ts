@@ -279,11 +279,14 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
   // boxes, read fresh and never from an excluded app or site, marked for its subject and saved to it.
   const outlineFlow = new OutlineFlow({
     repos,
-    frontWindow: async () => {
+    frontWindow: async (opts) => {
       const settings = repos.settings.get()
       const res = await helper.call('perceive', {
         scope: 'frontmost',
         fresh: true,
+        // The choice reads the whole page (a long article: ~1 s); following a scroll, the screen.
+        wholePage: opts?.wholePage ?? false,
+        maxChars: opts?.wholePage ? 150_000 : 20_000,
         excludeBundleIds: excludedBundleIds(settings),
         allowOcr: settings.ocrEnabled,
       })

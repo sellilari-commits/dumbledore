@@ -67,6 +67,7 @@ describe('SocketHelperClient', () => {
         maxChars: 20000,
         excludeBundleIds: [],
         fresh: false,
+        wholePage: false,
       },
     })
   })

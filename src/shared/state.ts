@@ -111,6 +111,18 @@ export const OutlineOverlay = z.object({
   /** Passages to read elsewhere on the page (they light up when scrolled to). */
   above: z.number().int().optional(),
   below: z.number().int().optional(),
+  /** What the marks are chosen from and for, said in the card. */
+  basis: z
+    .object({
+      goal: z.string().nullable(),
+      /** The first few gaps P15 got (it gets up to 12). */
+      gaps: z.array(z.string()),
+      questions: z.number().int(),
+      /** Lines read, and how many of them were out of view (0: only what is on screen). */
+      lines: z.number().int(),
+      offScreen: z.number().int(),
+    })
+    .optional(),
   marks: z.array(OutlineMark),
 })
 export type OutlineOverlay = z.infer<typeof OutlineOverlay>

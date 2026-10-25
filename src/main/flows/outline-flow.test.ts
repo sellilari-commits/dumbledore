@@ -5,7 +5,15 @@ import { createMemoryRepos } from '@engine/testing/memory-repos'
 import type { PerceivedWindow } from '@shared/helper-protocol'
 import type { OutlineOverlay } from '@shared/state'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { drawMarks, isCitation, OutlineFlow, pageLines, pageText, union } from './outline-flow'
+import {
+  drawMarks,
+  isCitation,
+  norm,
+  OutlineFlow,
+  pageLines,
+  pageText,
+  union,
+} from './outline-flow'
 
 const TEXT = [
   'Carbocation – Wikipedia',
@@ -32,6 +40,19 @@ function page(): PerceivedWindow {
     contentHash: 'h',
     capturedAt: '2026-10-25T09:00:00.000Z',
     lines: TEXT.map((text, i) => ({
+      text,
+      conf: 1,
+      box: { x: 100, y: 100 + i * 30, width: 500, height: 20 },
+      align: 'left' as const,
+    })),
+  }
+}
+
+/** A window showing just these lines, on screen, in page order. */
+function page0(texts: string[]): PerceivedWindow {
+  return {
+    ...page(),
+    lines: texts.map((text, i) => ({
       text,
       conf: 1,
       box: { x: 100, y: 100 + i * 30, width: 500, height: 20 },
@@ -210,14 +231,47 @@ describe('OutlineFlow', () => {
     // Each passage is found again by its text: only its lines still on screen are highlighted.
     expect(shown.at(-1)?.marks[0]?.rect.y).toBe(120)
 
-    // None of the marked lines on the page any more (a fresh read leaves out text out of view):
-    // the marks clear.
-    const gone = page()
-    gone.lines = gone.lines.slice(0, 1)
-    current = gone
+    // Scrolled back to the top, none of the marked lines on screen: still this page, so the
+    // marks wait and the card points down to the passage.
+    const top = page()
+    top.lines = top.lines.slice(0, 1)
+    current = top
+    tick()
+    await new Promise((r) => setImmediate(r))
+    expect(shown.at(-1)).toMatchObject({ marks: [], above: 0, below: 1 })
+
+    // Nothing on screen is on the outlined page any more (another page): the marks clear.
+    current = page0(['A different article', 'about something else entirely'])
     tick()
     await new Promise((r) => setImmediate(r))
     expect(shown.at(-1)).toBeNull()
+  })
+
+  it('chooses from the whole page, then follows the scroll with quick on-screen reads', async () => {
+    const asked: (boolean | undefined)[] = []
+    let tick: () => void = () => {}
+    const f = flow({
+      frontWindow: async (opts) => {
+        asked.push(opts?.wholePage)
+        return page()
+      },
+      every: (_ms, fn) => {
+        tick = fn
+        return () => {}
+      },
+    })
+    await f.run()
+    tick()
+    await new Promise((r) => setImmediate(r))
+    expect(asked).toEqual([true, undefined])
+    // The card can say what the marks are based on.
+    expect(shown.at(-1)?.basis).toEqual({
+      goal: 'Pass the midterm',
+      gaps: ['Carbocation stability'],
+      questions: 0,
+      lines: TEXT.length,
+      offScreen: 0,
+    })
   })
 
   it('clears the marks when another window comes to the front', async () => {
@@ -252,18 +306,65 @@ describe('pageLines', () => {
     })
     expect(pageLines(win).map((l) => l.text)).not.toContain(below)
     expect(pageText(win, false).map((l) => l.text)).toContain(below)
+    const onPage = pageText(win, false).map((l) => norm(l.text))
     const drawn = drawMarks(
       [
-        { verdict: 'read', why: 'On screen', order: 1, texts: [TEXT[1] ?? ''] },
-        { verdict: 'read', why: 'Further down', order: 2, texts: [below] },
+        { verdict: 'read', why: 'On screen', order: 1, texts: [TEXT[1] ?? ''], at: 1 },
+        { verdict: 'read', why: 'Further down', order: 2, texts: [below], at: onPage.length - 1 },
       ],
       win,
+      onPage,
     )
     expect(drawn.marks.map((m) => m.why)).toEqual(['On screen'])
     expect(drawn).toMatchObject({ above: 0, below: 1, found: true })
+    // Another page: nothing on screen is on the outlined one.
     expect(
-      drawMarks([{ verdict: 'read', why: 'x', order: 1, texts: ['not on this page'] }], win).found,
+      drawMarks([{ verdict: 'read', why: 'x', order: 1, texts: ['elsewhere'], at: 0 }], win, [
+        'another page entirely',
+      ]).found,
     ).toBe(false)
+  })
+
+  it('a paragraph read out of view lights up line by line when scrolled to', () => {
+    const paragraph =
+      'Hyperconjugation donates electron density from adjacent C–H bonds into the empty p orbital, which spreads the positive charge.'
+    // Chosen from the whole-page read: one line per paragraph, out of view (no box).
+    const onPage = ['Stability', paragraph, 'History'].map(norm)
+    const chosen = [
+      { verdict: 'read' as const, why: 'Your gap', order: 1, texts: [paragraph], at: 1 },
+    ]
+    // Scrolled to: the same text as visual lines, with boxes (and spacing that differs a little).
+    const win = page0([
+      'Hyperconjugation donates electron density from adjacent C–H bonds',
+      'into the empty p orbital , which spreads the positive charge.',
+      'History',
+    ])
+    const drawn = drawMarks(chosen, win, onPage)
+    expect(drawn.marks).toHaveLength(1)
+    expect(drawn.marks[0]?.lines).toHaveLength(2)
+    expect(drawn).toMatchObject({ above: 0, below: 0, found: true })
+    // Scrolled further down: the passage is above the screen now.
+    const after = drawMarks(chosen, page0(['History']), onPage)
+    expect(after).toMatchObject({ marks: [], above: 1, below: 0, found: true })
+  })
+
+  it('cuts a long page around what is on screen, not from its top', () => {
+    const win = page0(['On screen one', 'On screen two'])
+    const away = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({
+        text: `Paragraph ${i} out of view`,
+        conf: 1,
+        box: null,
+        align: null,
+      }))
+    win.lines = [...away(600), ...win.lines, ...away(600)]
+    const lines = pageText(win, false)
+    expect(lines.length).toBe(400)
+    expect(lines.map((l) => l.text)).toContain('On screen one')
+    // A third before the screen, the rest after it.
+    const first = lines.findIndex((l) => l.text === 'On screen one')
+    expect(first).toBeGreaterThan(100)
+    expect(first).toBeLessThan(160)
   })
 
   it('skips citation lines', () => {

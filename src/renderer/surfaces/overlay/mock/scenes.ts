@@ -232,6 +232,13 @@ export function sceneState(name: SceneName, vp: Size): OverlayState {
           minutes: 1,
           // Two more passages further down the page: the edge cue and the card point there.
           below: 2,
+          basis: {
+            goal: 'Pass the midterm',
+            gaps: ['Carbocation stability', 'SN1 mechanism'],
+            questions: 1,
+            lines: 312,
+            offScreen: 300,
+          },
           marks: [
             { rect: span(lines, 1, 2), verdict: 'skim', why: 'Background' },
             {

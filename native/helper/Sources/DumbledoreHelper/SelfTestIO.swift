@@ -150,6 +150,20 @@ enum SelfTestIO {
     expect(AXTextReader.isOffscreenClamp(CGRect(x: 333, y: 982, width: 1016, height: 0)), "clamped below the view")
     expect(AXTextReader.isOffscreenClamp(CGRect(x: 333, y: 154, width: 1006, height: 1)), "clamped above the view")
     expect(!AXTextReader.isOffscreenClamp(CGRect(x: 333, y: 505, width: 600, height: 4)), "a line cut by the edge stays")
+    // A whole-page read: out of view, a paragraph's runs (text, link, text) join into one line without a
+    // box; the next paragraph stays its own line, and on-screen lines keep their boxes.
+    let page = AXTextReader.merge([
+      AXFragment(text: "Carbocations are stabilised by", frame: nil, block: 3, outOfView: true),
+      AXFragment(text: "hyperconjugation", frame: nil, block: 3, outOfView: true),
+      AXFragment(text: ", as shown.", frame: nil, block: 3, outOfView: true),
+      AXFragment(text: "History", frame: nil, block: 4, outOfView: true),
+      AXFragment(text: "On screen", frame: CGRect(x: 0, y: 200, width: 70, height: 16), block: 5),
+    ])
+    expect(page.map(\.text) == ["Carbocations are stabilised by hyperconjugation, as shown.", "History", "On screen"],
+           "whole-page merge: \(page.map(\.text))")
+    expect(page[0].box == nil && page[2].box != nil, "out-of-view lines have no box")
+    expect(AXTextReader.joinRun("(see", "below)") == "(see below)" && AXTextReader.joinRun("x (", "y") == "x (y",
+           "run joining")
     regionTrim()
     let cli = CLIOptions(["serve", "--socket", "/x.sock", "--verbose", "--parent-pid", "42"])
     expect(cli.command == "serve" && cli.string("socket") == "/x.sock" && cli.bool("verbose") && cli.int("parent-pid") == 42,

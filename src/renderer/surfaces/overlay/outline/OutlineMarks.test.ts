@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { elsewhereText, paddings } from './OutlineMarks'
+import { basisText, elsewhereText, paddings } from './OutlineMarks'
 
 describe('paddings', () => {
   it('keeps the full padding when passages are far apart', () => {
@@ -40,5 +40,25 @@ describe('elsewhereText', () => {
     expect(elsewhereText(1, 0)).toBe('↑ 1 more further up.')
     expect(elsewhereText(1, 2)).toBe('3 more further up and down.')
     expect(elsewhereText(0, 0)).toBe('')
+  })
+})
+
+describe('basisText', () => {
+  it('says what the marks are chosen for and how much of the page was read', () => {
+    expect(
+      basisText({
+        goal: 'Pass the midterm',
+        gaps: ['Carbocation stability'],
+        questions: 2,
+        lines: 312,
+        offScreen: 280,
+      }),
+    ).toBe('For your goal and gaps (Carbocation stability) · read the whole page')
+    expect(basisText({ goal: null, gaps: [], questions: 0, lines: 40, offScreen: 0 })).toBe(
+      'For this subject · read what’s on screen',
+    )
+    expect(basisText({ goal: 'Pass', gaps: [], questions: 0, lines: 9, offScreen: 2 })).toBe(
+      'For your goal “Pass” · read the whole page',
+    )
   })
 })

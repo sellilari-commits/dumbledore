@@ -187,6 +187,15 @@
   color: #6e6e6e;
 }
 
+/* What the choice is based on: the quietest row. */
+.ov-outline__basis {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 16px;
+  color: #8a8a8a;
+}
+
 /* Each passage's reason by its number, a quiet second row. */
 .ov-outline__whys {
   display: flex;
@@ -248,6 +257,10 @@
   :root:not([data-theme="light"]) .ov-outline__whys {
     color: #b0b0b0;
   }
+
+  :root:not([data-theme="light"]) .ov-outline__basis {
+    color: #8e8e93;
+  }
 }
 
 :root[data-theme="dark"] .ov-glow {
@@ -272,6 +285,10 @@
 :root[data-theme="dark"] .ov-outline__summary,
 :root[data-theme="dark"] .ov-outline__whys {
   color: #b0b0b0;
+}
+
+:root[data-theme="dark"] .ov-outline__basis {
+  color: #8e8e93;
 }
 
 @media (prefers-reduced-motion: reduce) {

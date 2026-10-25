@@ -7,6 +7,7 @@
  *   GET  /health · /state/overlay · /state/session · /state/app · /state/frontmost · /state/windows
  *   POST /gesture {gesture, secureInput?} · /overlay/action {action, displayId?}
  *        /invoke {channel, payload} · /cancel · /key {key} (a quiz-card key, as forwarded)
+ *        /brain/outline {input} (P15 through the app's own routes and keys: the outline eval)
  *        /fake/helper/event {event, payload} · /fake/helper/state {…} · /fake/perception {…}
  */
 import { randomBytes, timingSafeEqual } from 'node:crypto'
@@ -25,6 +26,8 @@ export interface TestControlApi {
   invoke(body: unknown): Promise<unknown>
   cancel(): unknown
   key(body: unknown): unknown
+  /** P15 on a given page, for `npm run eval outline -- --via-app <data dir>`. */
+  brainOutline(body: unknown): Promise<unknown>
   /** Present only while the fake helper / perception are in use. */
   fakeHelperEvent?: (body: unknown) => unknown
   fakeHelperState?: (body: unknown) => unknown
@@ -158,6 +161,8 @@ export class TestControlServer {
         return api.cancel()
       case 'POST /key':
         return api.key(body)
+      case 'POST /brain/outline':
+        return api.brainOutline(body)
       case 'POST /fake/helper/event':
         return optional(api.fakeHelperEvent)
       case 'POST /fake/helper/state':

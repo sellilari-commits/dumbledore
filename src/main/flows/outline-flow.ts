@@ -6,7 +6,8 @@
  * only the assistant's answers are marked (P15 gets kind 'ai_chat'; the student's own
  * right-aligned bubbles are left out).
  *
- *   1. the front window's lines with their screen boxes (Accessibility or OCR),
+ *   1. the front window's whole text (Accessibility: the lines on screen with their boxes, the
+ *      rest of the page without; OCR: what is on screen),
  *   2. the page's subject (what perception linked it to, else the subject studied last),
  *   3. P15 with the subject's goal, gaps, mastered concepts and open questions → line ranges,
  *   4. ranges → one rectangle each (the union of their line boxes) → the overlay draws them,
@@ -16,10 +17,28 @@
 import type { OutlineInput, OutlineOutput } from '@engine/brain-contract'
 import type { Repos } from '@engine/contracts'
 import { openQuestionsOf } from '@engine/memory/questions'
+import {
+  MIN_MATCH,
+  norm,
+  onScreen,
+  pageLines,
+  pageText,
+  placeOn,
+} from '@engine/perception/outline-page'
 import type { Concept, Id } from '@shared/domain'
 import type { Rect } from '@shared/geometry'
 import type { PerceivedWindow } from '@shared/helper-protocol'
 import type { OutlineMark, OutlineOverlay } from '@shared/state'
+
+// The page's text helpers moved to the engine (the eval uses them too); kept importable here.
+export {
+  isCitation,
+  norm,
+  OUTLINE_CHARS,
+  OUTLINE_LINES,
+  pageLines,
+  pageText,
+} from '@engine/perception/outline-page'
 
 /** A page needs this many positioned lines to be worth outlining. */
 export const MIN_LINES = 6
@@ -36,8 +55,12 @@ export type OutlineResult =
 
 export interface OutlineFlowDeps {
   repos: Repos
-  /** The front window with line boxes in global screen points; 'private' when it must not be read. */
-  frontWindow: () => Promise<PerceivedWindow | 'private' | null>
+  /**
+   * The front window with line boxes in global screen points; 'private' when it must not be read.
+   * `wholePage`: all of the page's text (lines out of view have no box), for the choice; without
+   * it only what is on screen, for following a scroll.
+   */
+  frontWindow: (opts?: { wholePage?: boolean }) => Promise<PerceivedWindow | 'private' | null>
   /** The subject this page belongs to (perception's link, else the last one studied). */
   subjectFor: (window: PerceivedWindow) => Id | null
   /** Whether the window is a conversation with an AI assistant (ChatGPT, Claude, …). */
@@ -79,54 +102,8 @@ export function union(boxes: readonly Rect[]): Rect | null {
   return { x, y, width: right - x, height: bottom - y }
 }
 
-/** At most this many of the page's lines go to P15 (its own cap, OUTLINE_MAX_LINES, is 400). */
-export const OUTLINE_LINES = 400
 /** How often the marks re-read the page to follow a scroll (and light up passages scrolled to). */
 export const FOLLOW_MS = 500
-
-/** Reference-list lines: never worth reading for a gap (and never saved as notes). */
-export function isCitation(text: string): boolean {
-  return /\bISBN\b|\bdoi\b|\bRetrieved\s+\d|Archived from|^\s*\^|\bpp?\.\s*\d|\(\d{4}\)\.\s|^\s*\[\d+\]\s*$/i.test(
-    text,
-  )
-}
-
-type Boxed = PerceivedWindow['lines'][number] & { box: Rect }
-
-/**
- * On screen: a real box, mostly inside the window. Text scrolled out of view comes from Chrome's
- * Accessibility squeezed to the window's edge with no height; marking it would highlight nothing.
- */
-function onScreen(box: Rect, frame: Rect | null | undefined): boolean {
-  // Under 2 pt is squashed (scrolled out of view) or screen-reader-only text (Ilari, 4ccbd92).
-  if (box.height < 2 || box.width <= 0) return false
-  if (!frame) return true
-  const half = box.height / 2
-  return box.y >= frame.y - half && box.y + box.height <= frame.y + frame.height + half
-}
-
-/** On-screen lines worth marking: a real box, not a citation. */
-export function pageLines(win: PerceivedWindow): Boxed[] {
-  return win.lines.filter(
-    (l): l is Boxed =>
-      l.box !== null &&
-      l.text.trim().length > 0 &&
-      !isCitation(l.text) &&
-      onScreen(l.box, win.frame),
-  )
-}
-
-/**
- * The whole page's text, in page order, on screen or not (Chrome's Accessibility gives all of
- * it), so the choice is made over the entire page. In an AI chat the student's own right-aligned
- * messages are left out: only the answers count.
- */
-export function pageText(win: PerceivedWindow, aiChat: boolean): PerceivedWindow['lines'] {
-  return win.lines
-    .filter((l) => l.text.trim().length > 0 && !isCitation(l.text))
-    .filter((l) => !aiChat || l.align !== 'right')
-    .slice(0, OUTLINE_LINES)
-}
 
 /** A passage P15 chose, kept by its lines' text so it is found again wherever the page scrolls. */
 export interface Chosen {
@@ -134,50 +111,64 @@ export interface Chosen {
   why: string
   order: number | null
   texts: string[]
+  /** Its first line's index in the page's text (`page` below): above or below the screen. */
+  at: number
 }
 
 /**
- * Marks for the chosen passages that are on screen now, matched by text; the passages to read
- * that are elsewhere on the page are counted (above / below), so the card can say where to scroll.
- * `found` is false when none of the passages is on the page any more (another page).
+ * Marks for the chosen passages that are on screen now, matched by text (a screen line is matched
+ * as itself or inside a passage's paragraph read out of view); the passages to read that are
+ * elsewhere on the page are counted (above / below the screen, by where they sit in `page`, the
+ * page's text as `norm`ed lines), so the card can say where to scroll. `found` is false when
+ * neither a passage nor any line on screen is on that page any more (another page).
  */
 export function drawMarks(
   chosen: readonly Chosen[],
   win: PerceivedWindow,
+  page: readonly string[],
 ): { marks: OutlineMark[]; above: number; below: number; found: boolean } {
-  const visible = new Map<string, Rect[]>()
+  const shown = pageLines(win).map((l) => ({ box: l.box, text: norm(l.text) }))
+  // Boxed lines off screen (OCR, or Chrome's squashed ones): their height says up or down.
   const offAt = new Map<string, number>()
   for (const l of win.lines) {
-    if (!l.box) continue
-    if (onScreen(l.box, win.frame)) {
-      const list = visible.get(l.text) ?? []
-      list.push(l.box)
-      visible.set(l.text, list)
-    } else if (!offAt.has(l.text)) offAt.set(l.text, l.box.y)
+    if (l.box && !onScreen(l.box, win.frame) && !offAt.has(norm(l.text)))
+      offAt.set(norm(l.text), l.box.y)
   }
   const middle = win.frame ? win.frame.y + win.frame.height / 2 : 0
+  const at = shown.map((l) => placeOn(page, l.text)).filter((i) => i >= 0)
+  const top = at.length > 0 ? Math.min(...at) : null
+  const bottom = at.length > 0 ? Math.max(...at) : null
+  const taken = new Set<number>()
   const marks: OutlineMark[] = []
   let above = 0
   let below = 0
-  let found = false
+  let found = top !== null
   for (const c of chosen) {
+    const own = new Set(c.texts.map(norm))
+    const whole = norm(c.texts.join(' '))
     const boxes: Rect[] = []
-    for (const t of c.texts) {
-      const box = visible.get(t)?.shift()
-      if (box) boxes.push(box)
-    }
+    shown.forEach((l, i) => {
+      if (taken.has(i)) return
+      if (!own.has(l.text) && (l.text.length < MIN_MATCH || !whole.includes(l.text))) return
+      taken.add(i)
+      boxes.push(l.box)
+    })
     const rect = union(boxes)
     if (rect) {
       found = true
       marks.push({ rect, lines: boxes, verdict: c.verdict, why: c.why, order: c.order })
       continue
     }
-    const y = c.texts.map((t) => offAt.get(t)).find((v) => v !== undefined)
-    if (y === undefined) continue
-    found = true
+    const y = c.texts.map((t) => offAt.get(norm(t))).find((v) => v !== undefined)
+    if (y !== undefined) found = true
     if (c.verdict !== 'read') continue
-    if (y < middle) above++
-    else below++
+    if (top !== null && bottom !== null) {
+      if (c.at < top) above++
+      else if (c.at > bottom) below++
+    } else if (y !== undefined) {
+      if (y < middle) above++
+      else below++
+    }
   }
   return { marks, above, below, found }
 }
@@ -193,6 +184,8 @@ export const REMEMBER_MS = 15 * 60_000
 interface Remembered {
   at: number
   chosen: Chosen[]
+  /** The page's text the passages were chosen from, `norm`ed: where the screen is on it. */
+  page: string[]
   summary: string
   minutes: number
 }
@@ -213,13 +206,13 @@ export class OutlineFlow {
   async run(signal?: AbortSignal): Promise<OutlineResult> {
     const { repos } = this.deps
     if (this.follow) this.clear()
-    let front = await this.deps.frontWindow()
+    let front = await this.deps.frontWindow({ wholePage: true })
     if (front === 'private') return { kind: 'private' }
     // A browser or Electron app builds its text for Accessibility on the first read: read again.
     if (!front || pageText(front, false).length < MIN_LINES) {
       await (this.deps.sleep ?? sleep)(RETRY_MS)
       if (signal?.aborted) return { kind: 'cancelled' }
-      front = await this.deps.frontWindow()
+      front = await this.deps.frontWindow({ wholePage: true })
       if (front === 'private') return { kind: 'private' }
     }
     const win = front
@@ -271,6 +264,7 @@ export class OutlineFlow {
           why: r.why,
           order: r.verdict === 'read' ? ++order : null,
           texts: lines.slice(r.from, r.to + 1).map((l) => l.text),
+          at: r.from,
         }))
         .filter((c) => c.texts.length > 0)
       const readWords = chosen
@@ -280,12 +274,13 @@ export class OutlineFlow {
       memo = {
         at: now,
         chosen,
+        page: lines.map((l) => norm(l.text)),
         summary: out.summary,
         minutes: Math.max(1, Math.round(readWords / 200)),
       }
       this.remembered.set(key, memo)
     }
-    const { chosen } = memo
+    const { chosen, page } = memo
     if (chosen.length === 0) return { kind: 'nothing', subjectId: subject.id }
     const reads = chosen.filter((c) => c.verdict === 'read')
     const base: Omit<OutlineOverlay, 'marks' | 'above' | 'below'> = {
@@ -295,10 +290,17 @@ export class OutlineFlow {
       subjectName: subject.name,
       summary: memo.summary,
       minutes: memo.minutes,
+      basis: {
+        goal: subject.goal,
+        gaps: input.gaps.slice(0, 3).map((g) => g.name),
+        questions: input.openQuestions.length,
+        lines: lines.length,
+        offScreen: lines.filter((l) => !l.box || !onScreen(l.box, win.frame)).length,
+      },
     }
-    const drawn = drawMarks(chosen, win)
+    const drawn = drawMarks(chosen, win, page)
     this.deps.show({ ...base, marks: drawn.marks, above: drawn.above, below: drawn.below })
-    this.startFollow(base, chosen, win.windowId)
+    this.startFollow(base, chosen, page, win.windowId)
     if (!fresh) {
       return { kind: 'shown', read: reads.length, marks: drawn.marks.length, subjectId: subject.id }
     }
@@ -325,13 +327,15 @@ export class OutlineFlow {
   }
 
   /**
-   * Keeps the marks on their text: re-reads the page every FOLLOW_MS and finds each chosen passage
-   * again, so marks move with a scroll either way and passages light up as they come into view.
-   * Another window in front, or none of the passages left (another page), clears them.
+   * Keeps the marks on their text: re-reads what is on screen every FOLLOW_MS (quick, not the
+   * whole page) and finds each chosen passage again, so marks move with a scroll either way and
+   * passages light up as they come into view. Another window in front, or a screen that is not on
+   * the outlined page any more (another page), clears them.
    */
   private startFollow(
     base: Omit<OutlineOverlay, 'marks' | 'above' | 'below'>,
     chosen: readonly Chosen[],
+    page: readonly string[],
     windowId: number | null,
   ): void {
     let last = ''
@@ -343,7 +347,7 @@ export class OutlineFlow {
         const win = await this.deps.frontWindow()
         if (this.follow !== handle) return
         if (!win || win === 'private' || win.windowId !== windowId) return this.clear()
-        const drawn = drawMarks(chosen, win)
+        const drawn = drawMarks(chosen, win, page)
         if (!drawn.found) return this.clear()
         const next: OutlineOverlay = {
           ...base,

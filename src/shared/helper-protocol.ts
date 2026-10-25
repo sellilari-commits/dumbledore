@@ -125,6 +125,11 @@ export const helperMethods = {
       excludeBundleIds: z.array(z.string()).default([]),
       /** An explicit request (the outline): the lines on screen now, even when unchanged. */
       fresh: z.boolean().default(false),
+      /**
+       * With `fresh` (the outline's first read): all of the page's text, the lines out of view
+       * without a box (one per paragraph), so the page is chosen from whole.
+       */
+      wholePage: z.boolean().default(false),
     }),
     result: z.object({ windows: z.array(PerceivedWindow) }),
   },
