@@ -60,8 +60,7 @@ export async function* runCoachLoop(
           tier: 'chat',
           deadline: ctx.deadline,
           signal: ctx.signal,
-          estimatedTokens:
-            estimateMessagesTokens(system, messages) + toolTokens + maxOutputTokens,
+          estimatedTokens: estimateMessagesTokens(system, messages) + toolTokens + maxOutputTokens,
           outputTokens: maxOutputTokens,
           language: finnish ? 'fi' : 'en',
           onDeviceOk: false,
