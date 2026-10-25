@@ -246,6 +246,17 @@
   padding: 2px 0;
 }
 
+.dd-toast__text--act {
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.dd-toast__text--act:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .dd-toast__action {
   flex: none;
   height: 26px;

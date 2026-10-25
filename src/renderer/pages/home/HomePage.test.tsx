@@ -1,6 +1,6 @@
 /**
  * Home against the mock API: every section with demo data, the actions (open a roadmap, resume,
- * Start 5-min review, Study this, Add deadline) and the first-day / loading / error states.
+ * Start 5-min review, Make a roadmap, Add deadline) and the first-day / loading / error states.
  */
 import { useToasts } from '@renderer/design-system'
 import { useShell } from '@renderer/lib/shell'
@@ -56,7 +56,7 @@ describe('HomePage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Resume Eigenvalues from scratch' }))
     await waitFor(() => expect(r.api.db.sessionRoadmapId).toBe('rm_linalg'))
-    await waitFor(() => expect(toasts()[0]).toMatch(/^Resumed at step 3 of 6/))
+    await waitFor(() => expect(toasts().join('\n')).toMatch(/Step 3 of 6 is/))
   })
 
   it('starts a 5-minute review of everything due', async () => {
@@ -69,7 +69,9 @@ describe('HomePage', () => {
 
   it('builds a roadmap for something you struggle with', async () => {
     const r = renderWithApp(<HomePage />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Study Eigenvalues & eigenvectors' }))
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Make a roadmap for Eigenvalues & eigenvectors' }),
+    )
     await waitFor(() =>
       expect(r.api.db.roadmaps.some((m) => m.title === 'Eigenvalues & eigenvectors')).toBe(true),
     )

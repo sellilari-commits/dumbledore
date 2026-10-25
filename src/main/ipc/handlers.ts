@@ -280,10 +280,18 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
     'session.get': () => study.current(),
     'session.picker': () => study.picker(),
     'session.start': async (input) => {
-      const { session } = await core.sessions.start(input)
+      const { session, instruction, write } = await core.sessions.start(input, {
+        copyIfNoChat: input.copyIfNoChat,
+      })
       if (!session) throw new Error('The study session could not start')
       memory('roadmaps', [session.roadmapId])
-      return session
+      // Copied (no AI chat open, or the paste failed): the app says so and offers the usual AI.
+      if (write?.method !== 'clipboard' || instruction.kind !== 'paste') return session
+      const usual = usualFromCaptures()
+      return {
+        ...session,
+        copied: { text: instruction.text, usual: usual && { name: usual.name } },
+      }
     },
     'session.next': async () => (await core.sessions.next()).session,
     'session.end': () => {

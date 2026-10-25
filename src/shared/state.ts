@@ -204,8 +204,27 @@ export const StartSessionInput = z.object({
    * the replaced roadmap keeps them in the subject's roadmap history.
    */
   replan: z.string().optional(),
+  /**
+   * A click in the app window: with no AI chat open, switch to no other app; the step's prompt
+   * goes to the clipboard (it counts as handed over) and `SessionStarted.copied` says so, so the
+   * app can tell the student to paste it and offer to open their usual AI.
+   */
+  copyIfNoChat: z.boolean().optional(),
 })
 export type StartSessionInput = z.infer<typeof StartSessionInput>
+
+/** `session.start`'s answer: the session, and the prompt when it was copied rather than pasted. */
+export const SessionStarted = SessionState.extend({
+  copied: z
+    .object({
+      text: z.string(),
+      /** The AI the student usually studies with; null when Dumbledore hasn't seen one yet. */
+      usual: z.object({ name: z.string() }).nullable(),
+    })
+    .nullable()
+    .optional(),
+})
+export type SessionStarted = z.infer<typeof SessionStarted>
 
 /** What the shell should do next for the active session. The shell performs the paste. */
 export const StepInstruction = z.discriminatedUnion('kind', [

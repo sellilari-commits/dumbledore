@@ -1,26 +1,23 @@
 /**
  * Home → Struggling with: one red callout (Notion's block, the callout is the section) listing
- * concepts that keep not clicking, why Dumbledore thinks so, and "Study this"
- * (coach.runAction start_roadmap on that concept). Hidden when nothing is a struggle.
+ * topics that keep not clicking, why Dumbledore thinks so, and "Make a roadmap": a roadmap of a
+ * few steps on that topic (useStartRoadmap: says what happens, then opens the subject page where
+ * the roadmap shows). Hidden when nothing is a struggle.
  */
-import { Button, Callout, toast } from '@renderer/design-system'
-import { errorToast } from '@renderer/lib/errors'
-import { useAction } from '@renderer/lib/queries'
+import { Button, Callout } from '@renderer/design-system'
 import { APP_ROUTES, type HomeData } from '@shared/state'
 import { CircleAlert } from 'lucide-react'
+import { ROADMAP_HINT, useStartRoadmap } from '../study-start'
 import { RouteLink } from './RouteLink'
 
 type Item = HomeData['struggling'][number]
 
 function StruggleRow({ item }: { item: Item }) {
-  const run = useAction('coach.runAction')
+  const start = useStartRoadmap()
   const study = () =>
-    run.mutate(
-      { type: 'start_roadmap', subjectId: item.subjectId, goal: item.conceptName },
-      {
-        onSuccess: () => toast(`Building a roadmap for ${item.conceptName}…`),
-        onError: (err) => errorToast(err),
-      },
+    start.run(
+      { subjectId: item.subjectId, goal: item.conceptName },
+      { planning: `Planning a roadmap for ${item.conceptName}…`, show: true },
     )
   return (
     <li className="hm-struggle__row">
@@ -40,11 +37,12 @@ function StruggleRow({ item }: { item: Item }) {
         size="xs"
         variant="ghost"
         className="hm-struggle__action"
-        loading={run.isPending}
+        loading={start.pending}
         onClick={study}
-        aria-label={`Study ${item.conceptName}`}
+        title={ROADMAP_HINT}
+        aria-label={`Make a roadmap for ${item.conceptName}`}
       >
-        Study this
+        Make a roadmap
       </Button>
     </li>
   )

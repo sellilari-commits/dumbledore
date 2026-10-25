@@ -1,7 +1,7 @@
 import type { LearnItem } from '@shared/domain'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createHarness, type Harness, inChatGPT } from '../testing/harness'
-import { CHECKPOINT_QUESTION } from './session-flow'
+import { CHECKPOINT_QUESTION, NO_CHAT } from './session-flow'
 
 /** The lost-step bug: a step counts as delivered only once its paste is confirmed. */
 describe('SessionFlow — failed pastes', () => {
@@ -47,6 +47,28 @@ describe('SessionFlow — failed pastes', () => {
     const second = await h.core.sessions.next()
     expect(h.core.services.study.current()?.index).toBe(1)
     expect(second.write?.ok).toBe(true)
+  })
+
+  it('from the app with no AI chat open: copies the step, writes nothing, counts it handed over', async () => {
+    const first = await h.core.sessions.start(
+      { subjectId: orgoId(), goal: null, question: null },
+      { copyIfNoChat: true },
+    )
+    const text = first.instruction.kind === 'paste' ? first.instruction.text : ''
+    expect(first.write).toEqual({ ok: false, method: 'clipboard', reason: NO_CHAT })
+    expect(h.platform.clipboard).toBe(text)
+    expect(h.helper.callsTo('input.write')).toEqual([])
+    expect(currentItem()?.promptSent).toBe(text)
+    expect(h.core.overlay.toasts.list()).toEqual([])
+  })
+
+  it('from the app with an AI chat open: pastes as usual', async () => {
+    await inChatGPT(h)
+    const first = await h.core.sessions.start(
+      { subjectId: orgoId(), goal: null, question: null },
+      { copyIfNoChat: true },
+    )
+    expect(first.write?.ok).toBe(true)
   })
 
   it('a failed paste shows no box (the next tap retries it)', async () => {

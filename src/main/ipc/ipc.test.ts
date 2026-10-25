@@ -296,6 +296,25 @@ describe('IPC handlers', () => {
     await expect(call('prompt.write', { context: '' })).rejects.toThrow(IpcValidationError)
   })
 
+  it('session.start from the app with no AI chat open copies step 1 and switches to no app', async () => {
+    const orgo = h.services.repos.subjects.findByName('Organic Chemistry')
+    if (!orgo) throw new Error('seed subject missing')
+    const before = calls.length
+    const started = await call('session.start', {
+      subjectId: orgo.id,
+      goal: null,
+      question: null,
+      copyIfNoChat: true,
+    })
+    expect(started.copied?.text).toBeTruthy()
+    expect(h.platform.clipboard).toBe(started.copied?.text)
+    expect(h.helper.callsTo('input.write')).toEqual([])
+    expect(calls.slice(before).filter((c) => c.startsWith('open:'))).toEqual([])
+    // Copied counts as handed over: the app told the student to paste it.
+    const item = started.items[started.index]
+    expect(item?.kind === 'learn' && item.promptSent).toBe(started.copied?.text)
+  })
+
   it('pastes into the open AI chat and opens nothing', async () => {
     await inChatGPT(h)
     const before = calls.length

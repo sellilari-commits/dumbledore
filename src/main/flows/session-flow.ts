@@ -47,7 +47,15 @@ export interface StepOptions {
    * is pasted now (planning from the double-tap chat, while the student is talking to Dumbledore).
    */
   hold?: boolean
+  /**
+   * A click in the app window (StartSessionInput.copyIfNoChat): with no AI chat open, nothing
+   * switches apps; the prompt is copied (it counts as handed over: the app tells the student to
+   * paste it) and the result's `write` is `{ method: 'clipboard', reason: NO_CHAT }`.
+   */
+  copyIfNoChat?: boolean
 }
+
+export const NO_CHAT = 'No AI chat open'
 
 export interface StepResult {
   session: SessionState | null
@@ -100,6 +108,11 @@ export class SessionFlow {
       case 'paste': {
         if (opts.hold) {
           study.pasteFailed(instruction.itemId) // the next tap in the AI chat delivers it
+          break
+        }
+        if (opts.copyIfNoChat && !this.deps.perception.aiChat()) {
+          writer.copy(instruction.text)
+          write = { ok: false, method: 'clipboard', reason: NO_CHAT }
           break
         }
         try {

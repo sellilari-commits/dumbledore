@@ -424,6 +424,63 @@ button.sp-edit:hover {
   font-weight: var(--weight-medium);
 }
 
+/* Why Dumbledore made this roadmap (its startReason, written to the student). */
+.sp-progress-why {
+  margin: 0;
+  font-size: var(--text-body);
+  line-height: var(--leading-ui);
+  color: var(--c-texPri);
+}
+
+/* How the roadmap moves on, said once under it. */
+.sp-progress-how {
+  margin: 0;
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+  color: var(--c-texSec);
+}
+
+.sp-steps__list {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+}
+
+.sp-steps__item {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+  color: var(--c-texSec);
+}
+
+.sp-steps__item[data-status="current"] {
+  color: var(--c-texPri);
+  font-weight: var(--weight-medium);
+}
+
+.sp-steps__item[data-status="done"],
+.sp-steps__item[data-status="skipped"] {
+  text-decoration: line-through;
+  text-decoration-color: var(--c-texTer);
+}
+
+.sp-steps__mark {
+  flex: none;
+  width: 14px;
+  text-align: center;
+}
+
+.sp-gaps__intro {
+  margin-bottom: 8px;
+}
+
+.sp-gaps__intro strong {
+  color: var(--c-texPri);
+  font-weight: var(--weight-medium);
+}
+
 .sp-progress-mastery {
   margin: 14px 0 0;
   font-size: var(--text-ui);

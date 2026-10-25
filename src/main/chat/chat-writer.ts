@@ -139,6 +139,11 @@ export class ChatWriter {
     }
   }
 
+  /** Puts `text` on the clipboard, quietly: the caller tells the student. */
+  copy(text: string): void {
+    this.deps.platform.writeClipboard(text)
+  }
+
   /** Copies `text` and tells the user to paste it themselves, with an optional "Try again". */
   copyWithHint(text: string, retry?: () => Promise<unknown>): void {
     this.deps.platform.writeClipboard(text)

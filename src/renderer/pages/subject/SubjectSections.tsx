@@ -1,20 +1,22 @@
 /**
- * The subject page's two judgement sections. Progress: where the roadmap stands (step, bar,
- * the step you're on), how many concepts are mastered and which are strong, and the latest exam
- * results with "Test me"; without a roadmap (or once it is finished), a button that plans one.
- * Your gaps: see GapsSection.
+ * The subject page's two judgement sections. Progress: the roadmap — what it is for (its title and
+ * Dumbledore's reason), where it stands (step, bar, the step you're on), how Dumbledore walks you
+ * through it, and all its steps — then how many topics are mastered and which are strong, and the
+ * latest exam results with "Test me"; without a roadmap (or once it is finished), a button that
+ * plans one. Your gaps: see GapsSection.
  */
-import { Button, ProgressBar, Section, toast } from '@renderer/design-system'
+import { Button, ProgressBar, Section, ToggleBlock, toast } from '@renderer/design-system'
 import { errorToast } from '@renderer/lib/errors'
 import { formatMinutes, formatRelative } from '@renderer/lib/format'
-import { keys, useAction } from '@renderer/lib/queries'
+import { useSettings } from '@renderer/lib/queries'
 import { useShell } from '@renderer/lib/shell'
-import type { Concept } from '@shared/domain'
+import type { Concept, Roadmap } from '@shared/domain'
 import type { GapNote, SubjectDetail } from '@shared/state'
-import { useQueryClient } from '@tanstack/react-query'
 import { CircleAlert, FilePenLine, Map as MapIcon, TrendingUp } from 'lucide-react'
 import { useLocation } from 'wouter'
 import { NoChatChoice, useChatPrompt } from '../NoChatChoice'
+import { TRIGGER_KEYS } from '../settings/keys'
+import { QUICK_FIX_HINT, ROADMAP_HINT, useStartRoadmap } from '../study-start'
 import { RoadmapHistory } from './RoadmapHistory'
 import { roadmapProgress } from './subject-utils'
 
@@ -22,18 +24,11 @@ const HEAD = { size: 14, strokeWidth: 1.75 } as const
 
 function StartRoadmap({ detail, finished }: { detail: SubjectDetail; finished?: boolean }) {
   const { subject } = detail
-  const qc = useQueryClient()
-  const start = useAction('coach.runAction')
+  const start = useStartRoadmap()
   const run = () =>
-    start.mutate(
-      { type: 'start_roadmap', subjectId: subject.id, goal: subject.goal ?? subject.name },
-      {
-        onSuccess: () => {
-          void qc.invalidateQueries({ queryKey: keys.subject(subject.id) })
-          toast('Planning your roadmap…')
-        },
-        onError: (err) => errorToast(err),
-      },
+    start.run(
+      { subjectId: subject.id, goal: subject.goal ?? subject.name },
+      { planning: `Planning a roadmap for ${subject.name}…`, show: true },
     )
   return (
     <div className="sp-progress-empty">
@@ -42,7 +37,7 @@ function StartRoadmap({ detail, finished }: { detail: SubjectDetail; finished?: 
           ? 'Roadmap done. The next one starts from what you know now, gaps first.'
           : 'No roadmap yet. Dumbledore plans short steps from what you already know, with a quick check after every few.'}
       </p>
-      <Button size="sm" icon={<MapIcon size={14} />} loading={start.isPending} onClick={run}>
+      <Button size="sm" icon={<MapIcon size={14} />} loading={start.pending} onClick={run}>
         {finished ? 'Plan the next roadmap' : 'Start a roadmap'}
       </Button>
     </div>
@@ -72,12 +67,14 @@ export function ProgressSection({ detail }: { detail: SubjectDetail }) {
             </span>
           </div>
           <ProgressBar value={p.total ? p.done / p.total : 0} label="Roadmap progress" />
+          {roadmap.startReason ? <p className="sp-progress-why">{roadmap.startReason}</p> : null}
           {current ? (
             <div className="sp-progress-now">
               Up next: <strong>{current.title}</strong>
             </div>
           ) : null}
-          {roadmap.status === 'done' ? <StartRoadmap detail={detail} finished /> : null}
+          {roadmap.status === 'done' ? <StartRoadmap detail={detail} finished /> : <HowItWorks />}
+          <RoadmapSteps roadmap={roadmap} />
         </div>
       ) : (
         <StartRoadmap detail={detail} />
@@ -95,6 +92,46 @@ export function ProgressSection({ detail }: { detail: SubjectDetail }) {
       ) : null}
       <ExamResults detail={detail} />
     </Section>
+  )
+}
+
+/** How a running roadmap moves on: said once, under the roadmap, in the student's own key. */
+function HowItWorks() {
+  const settings = useSettings()
+  const key = TRIGGER_KEYS[settings.data?.shortcut.key ?? 'rightOption'].short
+  return (
+    <p className="sp-progress-how">
+      Dumbledore walks you through this in your AI chat: paste a step, read the answer, then tap{' '}
+      {key} in the chat for the next one. A short quiz comes every few steps.
+    </p>
+  )
+}
+
+const STEP_MARK: Record<Roadmap['items'][number]['status'], string> = {
+  done: '✓',
+  skipped: '–',
+  current: '→',
+  todo: '·',
+}
+
+/** Every step of the roadmap, folded: done, the one you're on, and what comes after. */
+function RoadmapSteps({ roadmap }: { roadmap: Roadmap }) {
+  return (
+    <ToggleBlock title={`All ${roadmap.items.length} steps`} className="sp-steps">
+      <ol className="sp-steps__list">
+        {roadmap.items.map((item) => (
+          <li key={item.id} className="sp-steps__item" data-status={item.status}>
+            <span className="sp-steps__mark" aria-hidden>
+              {STEP_MARK[item.status]}
+            </span>
+            <span>
+              {item.kind === 'checkpoint' ? `Quiz: ${item.title}` : item.title}
+              {item.status === 'current' ? <span className="sp-muted"> · you are here</span> : null}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </ToggleBlock>
   )
 }
 
@@ -192,15 +229,12 @@ function GapRow({
   notes: readonly GapNote[]
   subjectName: string
 }) {
-  const run = useAction('coach.runAction')
+  const start = useStartRoadmap()
   const chat = useChatPrompt()
   const study = () =>
-    run.mutate(
-      { type: 'start_roadmap', subjectId: concept.subjectId, goal: concept.name },
-      {
-        onSuccess: () => toast(`Building a roadmap for ${concept.name}…`),
-        onError: (err) => errorToast(err),
-      },
+    start.run(
+      { subjectId: concept.subjectId, goal: concept.name },
+      { planning: `Planning a roadmap for ${concept.name}…`, show: true },
     )
   const fix = () =>
     chat.send(fixPromptFor(subjectName, concept.name, notes), (r) =>
@@ -251,18 +285,20 @@ function GapRow({
           variant="ghost"
           loading={chat.sending}
           onClick={fix}
-          aria-label={`Fix ${concept.name} with your AI`}
+          title={QUICK_FIX_HINT}
+          aria-label={`Quick fix for ${concept.name}: one prompt for your AI`}
         >
-          Fix it
+          Quick fix
         </Button>
         <Button
           size="xs"
           variant="ghost"
-          loading={run.isPending}
+          loading={start.pending}
           onClick={study}
-          aria-label={`Study ${concept.name}`}
+          title={ROADMAP_HINT}
+          aria-label={`Make a roadmap for ${concept.name}`}
         >
-          Study this
+          Make a roadmap
         </Button>
       </div>
     </li>
@@ -272,9 +308,10 @@ function GapRow({
 /**
  * Your gaps: the topics that keep not clicking, weakest first, each with what an exam showed the
  * student believed ("You thought …") and what they asked Dumbledore ("You asked …"); then topics
- * with only an open question. "Fix it" pastes a prompt built from exactly that into the open AI
- * chat (with none open: "ChatGPT isn't open. [Open ChatGPT and paste] [Copy]" under the topic),
- * "Study this" plans a roadmap for the topic.
+ * with only an open question. "Quick fix" pastes one prompt built from exactly that into the open
+ * AI chat (with none open: "ChatGPT isn't open. [Open ChatGPT and paste] [Copy]" under the topic);
+ * "Make a roadmap" plans a few guided steps on the topic (useStartRoadmap). A line above the list
+ * says which is which.
  */
 export function GapsSection({ detail }: { detail: SubjectDetail }) {
   const notes = detail.gapNotes ?? []
@@ -294,30 +331,36 @@ export function GapsSection({ detail }: { detail: SubjectDetail }) {
           or you tell Dumbledore you don’t get it (double-tap right ⌥).
         </p>
       ) : (
-        <ul className="sp-gaps">
-          {rows.map((c) => (
-            <GapRow
-              key={c.id}
-              concept={c}
-              notes={notesOf(c.id)}
-              subjectName={detail.subject.name}
-            />
-          ))}
-          {loose.length > 0 ? (
-            <li className="sp-gap">
-              <div className="sp-gap__text">
-                <span className="sp-gap__name">Open questions</span>
-                <ul className="sp-gap__notes">
-                  {loose.slice(0, 5).map((n) => (
-                    <li key={n.id} title={n.source}>
-                      <span className="sp-gap__label">You asked</span> {n.text}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </li>
-          ) : null}
-        </ul>
+        <>
+          <p className="sp-quiet sp-gaps__intro">
+            <strong>Quick fix</strong>: one prompt for your AI about what you got wrong.{' '}
+            <strong>Make a roadmap</strong>: a few guided steps on the topic, with a short quiz.
+          </p>
+          <ul className="sp-gaps">
+            {rows.map((c) => (
+              <GapRow
+                key={c.id}
+                concept={c}
+                notes={notesOf(c.id)}
+                subjectName={detail.subject.name}
+              />
+            ))}
+            {loose.length > 0 ? (
+              <li className="sp-gap">
+                <div className="sp-gap__text">
+                  <span className="sp-gap__name">Open questions</span>
+                  <ul className="sp-gap__notes">
+                    {loose.slice(0, 5).map((n) => (
+                      <li key={n.id} title={n.source}>
+                        <span className="sp-gap__label">You asked</span> {n.text}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </li>
+            ) : null}
+          </ul>
+        </>
       )}
     </Section>
   )

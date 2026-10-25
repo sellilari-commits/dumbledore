@@ -2,31 +2,22 @@
  * Home → Continue: active roadmaps as small cards (subject emoji, roadmap title, subject, a thin
  * bar and "k/n"). The card opens the roadmap; "Resume" picks the study session up again.
  */
-import { Button, ProgressBar, Section, toast } from '@renderer/design-system'
-import { errorToast } from '@renderer/lib/errors'
-import { useAction } from '@renderer/lib/queries'
+import { Button, ProgressBar, Section } from '@renderer/design-system'
 import { APP_ROUTES, type HomeData } from '@shared/state'
 import { Milestone, Play } from 'lucide-react'
+import { useStartRoadmap } from '../study-start'
 import { RouteLink } from './RouteLink'
 
 type Item = HomeData['continue'][number]
 
 function ContinueCard({ item }: { item: Item }) {
-  const start = useAction('session.start')
+  const start = useStartRoadmap()
   const total = Math.max(item.total, 1)
   const finished = item.index >= item.total
   const step = Math.min(item.index + 1, item.total)
+  // The pop-up says where the step went (in the AI chat, or copied to paste there).
   const resume = () =>
-    start.mutate(
-      { subjectId: item.subjectId, goal: null, question: null },
-      {
-        onSuccess: () =>
-          toast(`Resumed at step ${step} of ${item.total} — tap right ⌥ in your AI chat`, {
-            tone: 'success',
-          }),
-        onError: (err) => errorToast(err),
-      },
-    )
+    start.run({ subjectId: item.subjectId, goal: null }, { planning: null, show: false })
   return (
     <li className="hm-card">
       <div className="hm-card__emoji" aria-hidden>
@@ -50,7 +41,7 @@ function ContinueCard({ item }: { item: Item }) {
           className="hm-card__resume"
           size="xs"
           icon={<Play size={12} strokeWidth={2} />}
-          loading={start.isPending}
+          loading={start.pending}
           onClick={resume}
           aria-label={`Resume ${item.title}`}
         >

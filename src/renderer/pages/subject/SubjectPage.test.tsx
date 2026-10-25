@@ -115,7 +115,9 @@ describe('SubjectPage', () => {
     const r = renderSubject()
     const invoke = vi.spyOn(r.api, 'invoke')
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Fix Carbocation stability with your AI' }),
+      await screen.findByRole('button', {
+        name: 'Quick fix for Carbocation stability: one prompt for your AI',
+      }),
     )
     await waitFor(() => expect(invoke.mock.calls.map((c) => c[0])).toContain('prompt.sendToChat'))
     const sent = invoke.mock.calls.find((c) => c[0] === 'prompt.sendToChat')?.[1] as string
@@ -124,13 +126,15 @@ describe('SubjectPage', () => {
     expect(sent).toContain('My question: Why does hyperconjugation')
   })
 
-  it('with no AI chat open, Fix it opens nothing and offers Open ChatGPT and paste / Copy', async () => {
+  it('with no AI chat open, Quick fix opens nothing and offers Open ChatGPT and paste / Copy', async () => {
     const r = renderSubject()
     r.api.db.appState.aiChat = null
     r.api.db.appState.assistant = { key: 'chatgpt', name: 'ChatGPT', open: false }
     const invoke = vi.spyOn(r.api, 'invoke')
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Fix Carbocation stability with your AI' }),
+      await screen.findByRole('button', {
+        name: 'Quick fix for Carbocation stability: one prompt for your AI',
+      }),
     )
     const choice = await screen.findByRole('group', { name: 'No AI chat open' })
     expect(within(choice).getByText('ChatGPT isn’t open.')).toBeTruthy()
@@ -149,7 +153,9 @@ describe('SubjectPage', () => {
     const r = renderSubject()
     r.api.db.appState.aiChat = null
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Fix Carbocation stability with your AI' }),
+      await screen.findByRole('button', {
+        name: 'Quick fix for Carbocation stability: one prompt for your AI',
+      }),
     )
     const choice = await screen.findByRole('group', { name: 'No AI chat open' })
     expect(within(choice).getByText('No AI chat is open.')).toBeTruthy()
@@ -157,12 +163,33 @@ describe('SubjectPage', () => {
     await waitFor(() => expect(toastTexts()).toContain('Prompt copied — paste it into your AI'))
   })
 
-  it('studies a gap', async () => {
-    renderSubject()
-    fireEvent.click(await screen.findByRole('button', { name: 'Study Carbocation stability' }))
-    await waitFor(() =>
-      expect(toastTexts()).toContain('Building a roadmap for Carbocation stability…'),
+  it('makes a roadmap for a gap: says so, then where the step went and offers the usual AI', async () => {
+    const r = renderSubject()
+    r.api.db.appState.aiChat = null
+    r.api.db.appState.assistant = { key: 'chatgpt', name: 'ChatGPT', open: false }
+    const invoke = vi.spyOn(r.api, 'invoke')
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Make a roadmap for Carbocation stability' }),
     )
+    expect(toastTexts()).toContain('Planning a roadmap for Carbocation stability…')
+    await waitFor(() =>
+      expect(
+        toastTexts().some((t) => /^Step \d+ of \d+ is copied — paste it into ChatGPT/.test(t)),
+      ).toBe(true),
+    )
+    expect(toastTexts()).not.toContain('Planning a roadmap for Carbocation stability…')
+    expect(invoke.mock.calls.map((c) => c[0])).not.toContain('prompt.openUsualAi')
+    // A click on the pop-up itself opens ChatGPT with the prompt.
+    fireEvent.click(screen.getByRole('button', { name: /^Step \d+ of \d+ is copied/ }))
+    await waitFor(() =>
+      expect(invoke.mock.calls.filter((c) => c[0] === 'prompt.openUsualAi')).toHaveLength(1),
+    )
+  })
+
+  it('shows why the roadmap was made, how it moves on, and all its steps', async () => {
+    renderSubject()
+    expect(await screen.findByText(/in your AI chat: paste a step, read the answer/)).toBeTruthy()
+    expect(screen.getByText(/^All \d+ steps$/)).toBeTruthy()
   })
 
   it('starts a roadmap for a suggested subject and keeps it', async () => {

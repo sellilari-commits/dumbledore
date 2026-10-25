@@ -273,8 +273,15 @@ function startSession(ctx: MockContext, subjectId: string | null, goal: string |
 export const studyHandlers: HandlerMap<StudyChannel> = {
   'session.get': (ctx) => sessionState(ctx.db),
   'session.picker': (ctx) => picker(ctx.db),
-  'session.start': (ctx, { subjectId, goal, question }) =>
-    startSession(ctx, subjectId, goal ?? question),
+  'session.start': (ctx, { subjectId, goal, question, copyIfNoChat }) => {
+    const state = startSession(ctx, subjectId, goal ?? question)
+    const { aiChat, assistant } = ctx.db.appState
+    if (!copyIfNoChat || aiChat) return state
+    // From the app with no AI chat open: the step's prompt is copied, the app says so.
+    const item = state.items[state.index]
+    const text = item?.kind === 'learn' ? item.promptDraft : state.title
+    return { ...state, copied: { text, usual: assistant ? { name: assistant.name } : null } }
+  },
   'session.next': (ctx) => {
     const r = ctx.db.roadmaps.find((x) => x.id === ctx.db.sessionRoadmapId)
     if (!r) return null

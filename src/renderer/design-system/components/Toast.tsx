@@ -14,6 +14,8 @@ export interface ToastItem {
   text: string
   tone: 'info' | 'success' | 'error'
   action?: { label: string; onClick: () => void }
+  /** A click anywhere on the toast's text runs the action too ("Open ChatGPT"). */
+  actOnClick?: boolean
   ttlMs: number
 }
 
@@ -37,12 +39,18 @@ export const useToasts = create<ToastStore>((set) => ({
 
 export function toast(
   text: string,
-  opts: { tone?: ToastItem['tone']; action?: ToastItem['action']; ttlMs?: number } = {},
+  opts: {
+    tone?: ToastItem['tone']
+    action?: ToastItem['action']
+    actOnClick?: boolean
+    ttlMs?: number
+  } = {},
 ): number {
   return useToasts.getState().push({
     text,
     tone: opts.tone ?? 'info',
     action: opts.action,
+    actOnClick: opts.actOnClick,
     ttlMs: opts.ttlMs ?? 4000,
   })
 }
@@ -55,6 +63,10 @@ function ToastView({ item }: { item: ToastItem }) {
   }
   const stop = () => {
     if (timer.current) clearTimeout(timer.current)
+  }
+  const act = () => {
+    item.action?.onClick()
+    dismiss(item.id)
   }
   // biome-ignore lint/correctness/useExhaustiveDependencies: start once per toast
   useEffect(() => {
@@ -74,16 +86,15 @@ function ToastView({ item }: { item: ToastItem }) {
           {item.tone === 'error' ? <CircleAlert size={16} /> : <CircleCheck size={16} />}
         </span>
       ) : null}
-      <span className="dd-toast__text">{item.text}</span>
+      {item.action && item.actOnClick ? (
+        <button type="button" className="dd-toast__text dd-toast__text--act" onClick={act}>
+          {item.text}
+        </button>
+      ) : (
+        <span className="dd-toast__text">{item.text}</span>
+      )}
       {item.action ? (
-        <button
-          type="button"
-          className="dd-toast__action"
-          onClick={() => {
-            item.action?.onClick()
-            dismiss(item.id)
-          }}
-        >
+        <button type="button" className="dd-toast__action" onClick={act}>
           {item.action.label}
         </button>
       ) : null}

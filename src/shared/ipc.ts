@@ -40,6 +40,7 @@ import {
   PickerData,
   QuizSummary,
   SearchHit,
+  SessionStarted,
   SessionState,
   StartSessionInput,
   SubjectDetail,
@@ -178,7 +179,7 @@ export const ipcInvoke = {
   // Study session (the shell performs pastes; see StepInstruction)
   'session.get': { req: Void, res: SessionState.nullable() },
   'session.picker': { req: Void, res: PickerData },
-  'session.start': { req: StartSessionInput, res: SessionState },
+  'session.start': { req: StartSessionInput, res: SessionStarted },
   'session.next': { req: Void, res: SessionState.nullable() },
   'session.end': { req: Void, res: Void },
 
