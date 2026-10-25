@@ -207,11 +207,13 @@ describe('OutlineFlow', () => {
     current = further
     tick()
     await new Promise((r) => setImmediate(r))
-    expect(shown.at(-1)?.marks[0]?.rect.y).toBe(90)
+    // Each passage is found again by its text: only its lines still on screen are highlighted.
+    expect(shown.at(-1)?.marks[0]?.rect.y).toBe(120)
 
-    // No marked line on screen any more: the marks clear.
+    // None of the marked lines on the page any more (a fresh read leaves out text out of view):
+    // the marks clear.
     const gone = page()
-    gone.lines = gone.lines.map((l) => (l.box ? { ...l, box: { ...l.box, y: 0, height: 0 } } : l))
+    gone.lines = gone.lines.slice(0, 1)
     current = gone
     tick()
     await new Promise((r) => setImmediate(r))

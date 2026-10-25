@@ -98,7 +98,8 @@ type Boxed = PerceivedWindow['lines'][number] & { box: Rect }
  * Accessibility squeezed to the window's edge with no height; marking it would highlight nothing.
  */
 function onScreen(box: Rect, frame: Rect | null | undefined): boolean {
-  if (box.height <= 0 || box.width <= 0) return false
+  // Under 2 pt is squashed (scrolled out of view) or screen-reader-only text (Ilari, 4ccbd92).
+  if (box.height < 2 || box.width <= 0) return false
   if (!frame) return true
   const half = box.height / 2
   return box.y >= frame.y - half && box.y + box.height <= frame.y + frame.height + half
