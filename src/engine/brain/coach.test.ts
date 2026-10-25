@@ -44,7 +44,7 @@ describe('Brain.coach', () => {
     ).toBe("Let's build a roadmap.")
     const actions = events.flatMap((e) => (e.type === 'action' ? [e.action] : []))
     expect(actions).toEqual([
-      { type: 'start_roadmap', goal: 'the Calvin cycle', subjectId: null },
+      { type: 'start_roadmap', goal: 'the Calvin cycle', subjectId: null, deadline: null },
       {
         type: 'create_exam',
         spec: { subjectIds: ['sub_1'], count: 10, focus: 'weak', difficulty: 'mixed' },

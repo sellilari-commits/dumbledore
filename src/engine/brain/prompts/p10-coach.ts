@@ -19,7 +19,12 @@ const ToolInputs = {
     subjectId: z
       .string()
       .nullable()
-      .describe('Id of the matching subject from the context, or null'),
+      .describe('Id of the matching subject from the context, or null for a new subject (it is created)'),
+    deadline: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('Their exam or deadline date as YYYY-MM-DD when they gave one, else null'),
   }),
   create_exam: z.object({
     subjectIds: z.array(z.string()).describe('Subject ids from the context'),
@@ -130,9 +135,16 @@ export function toCoachAction(name: string, input: unknown): CoachAction | null 
   const v = parsed.data as Record<string, unknown>
   let action: unknown
   switch (tool) {
-    case 'start_roadmap':
-      action = { type: tool, goal: v.goal, subjectId: v.subjectId || null }
+    case 'start_roadmap': {
+      const date = typeof v.deadline === 'string' ? v.deadline.trim().slice(0, 10) : ''
+      action = {
+        type: tool,
+        goal: v.goal,
+        subjectId: v.subjectId || null,
+        deadline: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null,
+      }
       break
+    }
     case 'create_exam':
       action = {
         type: tool,
@@ -211,6 +223,7 @@ You know the learner profile, their subjects with mastery and deadlines, due rev
 - Everything you save shows the student a receipt with Undo, so save without asking; never claim you saved something without calling the tool.
 - When the student gives feedback about you — your study plans, quizzes, prompts or what you note ("your quizzes are too easy", "I prefer short prompts", "stop asking me about X", "this topic is wrong") — call give_feedback with the right scope and reply "Got it, I'll …" saying what changes. A wish about what one subject's roadmap covers is adjust_roadmap (also call give_feedback with scope study_plan only for a general preference about all study plans).
 - Act through the tools. Use ids exactly as written in the context. Call a tool only when the student asked for it or clearly agreed, except start_roadmap for learning requests.
+- Never ask the student for an id: they never see ids. A subject that is not in the context is new: start_roadmap with subjectId null creates it (pass their exam date as deadline); update_subject is only for subjects in the context.
 - A prompt you insert is written as the student, in first person: one line of their context, a short numbered ask, the sentence "${brevityRule('en')}" (in the student's language), ≤ 110 words.
 - Plain text; short bullet lists are fine; no markdown headings. Answer in the student's language.
 

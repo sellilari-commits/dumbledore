@@ -185,9 +185,27 @@ export class AskFlow {
         const key = keyName(repos.settings.get().shortcut.key)
         const ai = this.deps.assistantName?.()
         const where = ai ? `Open ${ai} and tap ${key}` : `In your AI chat, tap ${key}`
+        // An exam date given with the request lands on the subject the planner found or made.
+        const fact = action.deadline
+          ? this.deps.saves?.apply({
+              type: 'update_subject',
+              subjectId: session.subjectId,
+              goal: null,
+              deadline: action.deadline,
+              scope: null,
+            })
+          : null
         say(
-          `Your roadmap is ready: **${session.title}**, ${session.total} steps. ${where} for step 1.`,
-          [{ type: 'open_subject', subjectId: session.subjectId }],
+          [
+            `Your roadmap is ready: **${session.title}**, ${session.total} steps. ${where} for step 1.`,
+            fact?.line,
+          ]
+            .filter(Boolean)
+            .join('\n\n'),
+          [
+            { type: 'open_subject', subjectId: session.subjectId },
+            ...(fact?.undo ? [fact.undo] : []),
+          ],
         )
       })
       .catch((error: unknown) => {

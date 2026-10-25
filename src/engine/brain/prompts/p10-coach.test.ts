@@ -41,6 +41,26 @@ describe('P10 saving tools', () => {
     expect(fact('12 December')).toMatchObject({ deadline: null })
   })
 
+  it('a plan request carries the exam date, and the coach never asks for ids', () => {
+    expect(
+      toCoachAction('start_roadmap', {
+        goal: 'SN1 vs SN2',
+        subjectId: null,
+        deadline: '2026-12-12',
+      }),
+    ).toEqual({
+      type: 'start_roadmap',
+      goal: 'SN1 vs SN2',
+      subjectId: null,
+      deadline: '2026-12-12',
+    })
+    expect(toCoachAction('start_roadmap', { goal: 'SN1', subjectId: null })).toMatchObject({
+      deadline: null,
+    })
+    const system = coachSystem({ profile: '', context: '', history: [], message: '' })
+    expect(system).toMatch(/Never ask the student for an id/)
+  })
+
   it('tells the coach to save questions and course facts, and never to claim a save', () => {
     const system = coachSystem({ profile: '', context: '', history: [], message: '' })
     expect(system).toMatch(/don't get something[^\n]*save_question/)

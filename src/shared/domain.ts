@@ -368,7 +368,13 @@ export const Feedback = z.object({
 export type Feedback = z.infer<typeof Feedback>
 
 export const CoachAction = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('start_roadmap'), subjectId: Id.nullable(), goal: z.string() }),
+  z.object({
+    type: z.literal('start_roadmap'),
+    subjectId: Id.nullable(),
+    goal: z.string(),
+    /** An exam or deadline date the student gave (YYYY-MM-DD), saved on the subject once planned. */
+    deadline: z.string().nullable().optional(),
+  }),
   z.object({ type: z.literal('create_exam'), spec: ExamSpec }),
   z.object({ type: z.literal('start_review'), conceptIds: z.array(Id) }),
   z.object({ type: z.literal('insert_prompt'), text: z.string() }),
