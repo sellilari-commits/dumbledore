@@ -38,7 +38,14 @@ else
   security list-keychains -d user -s "${SEARCH[@]}" "$DEV_KEYCHAIN"
 fi
 # (bash 3.2: an empty array under set -u needs the ${a[@]+…} form)
-sign() { codesign --force ${KEYCHAIN_ARGS[@]+"${KEYCHAIN_ARGS[@]}"} --sign "$IDENTITY" "$@"; }
+sign_once() { codesign --force ${KEYCHAIN_ARGS[@]+"${KEYCHAIN_ARGS[@]}"} --sign "$IDENTITY" "$@"; }
+# codesign can fail once with "internal error in Code Signing subsystem": unlock and try again.
+sign() {
+  sign_once "$@" && return 0
+  [ -n "${SIGN_IDENTITY:-}" ] || bash tools/dev-identity.sh >/dev/null
+  sleep 2
+  sign_once "$@"
+}
 
 # Inside out: the whole bundle, then the helper with its own identifier, then the outer app again.
 sign --deep "$APP"
