@@ -76,7 +76,7 @@ describe('MiniPanel', () => {
       /Carbocation stability/,
     )
     expect(items.some((li) => li.getAttribute('data-kind') === 'checkpoint')).toBe(true)
-    const flags = await screen.findByRole('list', { name: 'Flags' })
+    const flags = await screen.findByRole('list', { name: 'Your notes' })
     expect(flags.textContent).toMatch(/hyperconjugation/)
     expect(flags.textContent).toMatch(/LibreTexts/)
   })
@@ -93,7 +93,7 @@ describe('MiniPanel', () => {
     )
     expect(await screen.findByText(EMPTY_FLAGS)).toBeTruthy()
     expect(screen.queryByRole('list', { name: 'Roadmap steps' })).toBeNull()
-    expect(screen.queryByRole('heading', { name: /Flags/ })).toBeNull()
+    expect(screen.queryByRole('list', { name: 'Your notes' })).toBeNull()
   })
 
   it('✕ deletes a flag', async () => {
@@ -101,10 +101,10 @@ describe('MiniPanel', () => {
     fireEvent.click(
       (await rows()).find((b) => b.textContent?.startsWith('Carbocation stability')) as HTMLElement,
     )
-    const flags = await screen.findByRole('list', { name: 'Flags' })
-    fireEvent.click(within(flags).getAllByRole('button', { name: 'Delete flag' })[0] as HTMLElement)
+    const flags = await screen.findByRole('list', { name: 'Your notes' })
+    fireEvent.click(within(flags).getAllByRole('button', { name: 'Delete note' })[0] as HTMLElement)
     await waitFor(() => expect(r.calls('notes.delete')).toEqual(['note_cc2']))
-    await waitFor(() => expect(screen.queryByRole('list', { name: 'Flags' })).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('list', { name: 'Your notes' })).toBeNull())
   })
 
   it('locks a topic from its detail, and unlocks it again', async () => {

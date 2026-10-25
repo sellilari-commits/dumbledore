@@ -1,7 +1,9 @@
 /**
- * Read model for a topic's detail in the mini panel: the roadmap that covers the topic (if any)
- * with a plain state per step, and the topic's flags — the passages the student highlighted on
- * screen and the notes they typed themselves — newest first. Pure, so the panel stays a view.
+ * Read model for a topic's detail in the mini panel: its subtopics (child concepts, as a tree),
+ * the roadmap that covers the topic (if any) with a plain state per step, the student's own notes
+ * on it (what they highlighted on screen and what they typed) and what Dumbledore extracted about
+ * it (facts from pages, outline passages), newest first. Only the topic's own notes: a
+ * subtopic's are in its own detail. Pure, so the panel stays a view.
  */
 import type { Concept, Id, Note, Roadmap, RoadmapItem } from '@shared/domain'
 import type { SubjectTree } from '@shared/state'
@@ -25,6 +27,16 @@ export function topicConceptIds(concepts: readonly Concept[], topicId: Id): Set<
     }
   }
   return ids
+}
+
+/** The concept's direct children, newest information first (never seen last), then by name. */
+export function subtopicsOf(concepts: readonly Concept[], topicId: Id): Concept[] {
+  return concepts
+    .filter((c) => c.parentId === topicId && c.id !== topicId)
+    .sort(
+      (a, b) =>
+        (b.lastSeenAt ?? '').localeCompare(a.lastSeenAt ?? '') || a.name.localeCompare(b.name),
+    )
 }
 
 const itemNames = (item: RoadmapItem): string[] =>
@@ -68,41 +80,101 @@ export const STEP_LABEL: Record<StepState, string> = {
 const typedByStudent = (note: Note) =>
   note.source.bundleId === 'org.stuhi.dumbledore' || key(note.source.app) === 'dumbledore'
 
-/** A flag: a passage the student highlighted, or a note they typed or a question they asked (not an exam's misconception). */
-export const isFlag = (note: Note) =>
-  note.status === 'active' &&
-  note.kind !== 'misconception' &&
-  (note.kind === 'highlight' || typedByStudent(note))
+/**
+ * A passage the long-press outline marked as worth reading. outline-flow saves those as kind
+ * 'highlight' with keywords [why] and no encounter; the student's own highlights come from
+ * extraction with an encounter and no keywords, so the two can be told apart without a marker.
+ */
+export const isOutlinePassage = (note: Note) =>
+  note.kind === 'highlight' && note.encounterId === null && note.keywords.length > 0
 
-/** The topic's flags (its own and its subtopics'), newest first. */
-export function topicFlags(tree: SubjectTree | undefined, ids: ReadonlySet<Id>): Note[] {
+const shown = (note: Note) => note.status === 'active' && note.kind !== 'misconception'
+
+/** The student's own: a passage they highlighted, or a note they typed or a question they asked. */
+export const isYourNote = (note: Note) =>
+  shown(note) && (typedByStudent(note) || (note.kind === 'highlight' && !isOutlinePassage(note)))
+
+/** What Dumbledore extracted: facts and claims read from pages, and outline passages. */
+export const isExtracted = (note: Note) => shown(note) && !isYourNote(note)
+
+const newestFirst = (a: Note, b: Note) => b.createdAt.localeCompare(a.createdAt)
+
+function notesOn(tree: SubjectTree | undefined, ids: ReadonlySet<Id>): Note[] {
   if (!tree) return []
-  return tree.concepts
-    .filter((node) => ids.has(node.concept.id))
-    .flatMap((node) => node.notes)
-    .filter(isFlag)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  return tree.concepts.filter((node) => ids.has(node.concept.id)).flatMap((node) => node.notes)
+}
+
+/** The concepts' notes, split into the student's own and the extracted ones, newest first. */
+export function topicNotes(
+  tree: SubjectTree | undefined,
+  ids: ReadonlySet<Id>,
+): { yours: Note[]; extracted: Note[] } {
+  const notes = notesOn(tree, ids).sort(newestFirst)
+  return { yours: notes.filter(isYourNote), extracted: notes.filter(isExtracted) }
 }
 
 const SITE_SEP = /\s[–—-]\s/
 
-/** Where a flag came from, short: the site after "Title – Site", else the app. */
+/** Browser names as they end a window title ("… - Google Chrome", "… — Mozilla Firefox"). */
+const BROWSERS = new Set(
+  [
+    'Google Chrome',
+    'Google Chrome Beta',
+    'Google Chrome Canary',
+    'Chrome',
+    'Chromium',
+    'Safari',
+    'Safari Technology Preview',
+    'Arc',
+    'Microsoft Edge',
+    'Microsoft\u200b Edge',
+    'Edge',
+    'Mozilla Firefox',
+    'Mozilla Firefox Private Browsing',
+    'Firefox',
+    'Firefox Developer Edition',
+    'Brave',
+    'Brave Browser',
+    'Opera',
+    'Vivaldi',
+    'Orion',
+    'Zen Browser',
+    'Dia',
+  ].map(key),
+)
+
+/**
+ * The window title without the browser's own suffix: "Page - Site - Google Chrome - Ilari
+ * (stuhi.org)" → ["Page", "Site"]. The browser name and anything after it (a profile) go; so does
+ * the app's own name at the end.
+ */
+function titleParts(title: string, app: string): string[] {
+  const parts = title
+    .split(SITE_SEP)
+    .map((p) => p.trim())
+    .filter(Boolean)
+  const isBrowser = (p: string) => BROWSERS.has(key(p)) || key(p) === key(app)
+  const at = parts.findIndex((p, i) => i > 0 && isBrowser(p))
+  if (at > 0) return parts.slice(0, at)
+  return isBrowser(parts[0] ?? '') ? [] : parts
+}
+
+/** Where a flag came from, short: the site after "Title – Site" (browser and profile left out), else the page, else the app. */
 export function sourceLabel(note: Note): string {
   if (typedByStudent(note)) return 'Your note'
-  const parts = (note.source.title ?? '').split(SITE_SEP)
-  const site = parts.length > 1 ? parts.at(-1)?.trim() : null
-  return site || note.source.title?.trim() || note.source.app
+  const parts = titleParts(note.source.title ?? '', note.source.app)
+  return parts.at(-1) || note.source.app
 }
 
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
 
-/** "just now", "12 min ago", "5 h ago", "3 d ago". */
+/** "now", "12 min", "5 h", "3 d" (the quiet line under a note: "Wikipedia · 17 min"). */
 export function timeAgo(iso: string, now: number = Date.now()): string {
   const ms = Math.max(0, now - Date.parse(iso))
-  if (ms < MINUTE) return 'just now'
-  if (ms < HOUR) return `${Math.floor(ms / MINUTE)} min ago`
-  if (ms < DAY) return `${Math.floor(ms / HOUR)} h ago`
-  return `${Math.floor(ms / DAY)} d ago`
+  if (ms < MINUTE) return 'now'
+  if (ms < HOUR) return `${Math.floor(ms / MINUTE)} min`
+  if (ms < DAY) return `${Math.floor(ms / HOUR)} h`
+  return `${Math.floor(ms / DAY)} d`
 }

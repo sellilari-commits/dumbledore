@@ -30,6 +30,7 @@ import {
 import { demoEdges, demoGapNotes, demoNotes } from './demo-notes'
 import { demoQuizzes } from './demo-quizzes'
 import { demoConcepts, demoRoadmaps, demoSubjects } from './demo-subjects'
+import { addDemoSubtopics } from './demo-subtopics'
 
 export type MockScenario = 'demo' | 'empty' | 'error' | 'slow' | 'onboarding'
 
@@ -87,6 +88,8 @@ export interface CreateDbOptions {
    * `?chat=0`: no AI chat open, ChatGPT is the usual AI (the "ChatGPT isn't open" choice).
    */
   noChat?: boolean
+  /** `?subtopics=1`: subtopics under "Carbocation stability" (./demo-subtopics). */
+  subtopics?: boolean
 }
 
 export function createDb(scenario: MockScenario, opts: CreateDbOptions = {}): MockDb {
@@ -111,7 +114,7 @@ export function createDb(scenario: MockScenario, opts: CreateDbOptions = {}): Mo
     appState.assistant = { key: 'chatgpt', name: 'ChatGPT', open: false }
   }
   if (onboarding) appState.permissions = { accessibility: false, screenRecording: false }
-  return {
+  const db: MockDb = {
     settings,
     appState,
     profile:
@@ -140,4 +143,6 @@ export function createDb(scenario: MockScenario, opts: CreateDbOptions = {}): Mo
     envKeys: { gemini: opts.geminiEnvKey ?? true },
     rejectedKeys: [],
   }
+  if (opts.subtopics && !empty) addDemoSubtopics(db)
+  return db
 }

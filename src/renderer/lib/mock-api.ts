@@ -32,6 +32,8 @@ export interface MockOptions {
   geminiEnvKey?: boolean
   /** No AI chat open, ChatGPT the usual AI (`?chat=0`). */
   noChat?: boolean
+  /** Subtopics under "Carbocation stability" (`?subtopics=1`). */
+  subtopics?: boolean
 }
 
 export type KeyGestureKind = EventPayload<'key.gesture'>['gesture']
@@ -75,7 +77,11 @@ const handlers = {
 export function createMockApi(options: MockOptions = {}): MockApi {
   const surface = options.surface ?? 'app'
   const scenario = options.scenario ?? 'demo'
-  const db = createDb(scenario, { geminiEnvKey: options.geminiEnvKey, noChat: options.noChat })
+  const db = createDb(scenario, {
+    geminiEnvKey: options.geminiEnvKey,
+    noChat: options.noChat,
+    subtopics: options.subtopics,
+  })
   const listeners = new Map<EventChannel, Set<(payload: unknown) => void>>()
 
   const emit: MockApi['emit'] = (event, payload) => {

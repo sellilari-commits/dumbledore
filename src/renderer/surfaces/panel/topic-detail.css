@@ -1,0 +1,118 @@
+/*
+ * Topic detail: the subtopic tree (rows in the topic list's look, a chevron opens children in
+ * place), one-line notes that open in full on click, and one lock on screen.
+ */
+
+/* The detail has its own lock on the topic; the panel header's lock hides meanwhile. */
+.pn-card:has(.pn-body[data-pane="detail"]) .pn-header .pn-lock {
+  display: none;
+}
+
+.pn-subtopics {
+  padding-bottom: 4px;
+}
+
+.pn-tree__children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pn-tree__row {
+  display: flex;
+  align-items: center;
+  padding-left: calc(var(--pn-depth, 0) * 18px);
+}
+
+.pn-tree__row .pn-topic {
+  flex: 1;
+  min-width: 0;
+  padding-left: 4px;
+}
+
+.pn-tree__toggle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 28px;
+  border-radius: var(--radius-control);
+  color: var(--c-icoSec);
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+button.pn-tree__toggle:hover {
+  color: var(--c-texPri);
+}
+
+button.pn-tree__toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.pn-tree__toggle svg {
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.pn-tree__toggle[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+
+.pn-subtopics + .pn-sec {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--c-borPri);
+}
+
+/* A note: one line until clicked, then in full. */
+.pn-note__body {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.pn-note__body:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--shadow-focus);
+}
+
+.pn-note__text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  line-height: 19px;
+  color: var(--c-texPri);
+}
+
+.pn-note[data-open] .pn-note__text {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.pn-notes__all {
+  margin: 4px 0 2px;
+  padding: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--c-texSec);
+}
+
+.pn-notes__all:hover {
+  color: var(--c-texPri);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pn-tree__toggle svg {
+    transition: none;
+  }
+}
