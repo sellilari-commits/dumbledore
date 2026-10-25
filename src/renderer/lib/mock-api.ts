@@ -20,6 +20,7 @@ import { accountHandlers } from './mock/handlers-account'
 import { coreHandlers, openInBrowser } from './mock/handlers-core'
 import { materialsHandlers } from './mock/handlers-materials'
 import { memoryHandlers } from './mock/handlers-memory'
+import { roadmapsHandlers } from './mock/handlers-roadmaps'
 import { studyHandlers } from './mock/handlers-study'
 
 export interface MockOptions {
@@ -66,6 +67,7 @@ const handlers = {
   ...accountHandlers,
   ...memoryHandlers,
   ...materialsHandlers,
+  ...roadmapsHandlers,
 }
 
 export function createMockApi(options: MockOptions = {}): MockApi {

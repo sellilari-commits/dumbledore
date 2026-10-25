@@ -146,6 +146,15 @@ const AFFECTS: Partial<Record<InvokeChannel, InvokeChannel[]>> = {
     'home.get',
     'search.query',
   ],
+  // Roadmap history: "Bring back" swaps the subject's current roadmap for an earlier version.
+  'roadmaps.restore': [
+    'roadmaps.history',
+    'subjects.get',
+    'subjects.list',
+    'home.get',
+    'session.picker',
+    'session.get',
+  ],
   'session.start': ['session.get', 'home.get', 'subjects.get', 'subjects.list'],
   'session.next': ['session.get', 'home.get', 'subjects.get', 'subjects.list'],
   'session.end': ['session.get', 'home.get', 'subjects.get'],

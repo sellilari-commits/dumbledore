@@ -11,6 +11,7 @@ import { examList, homeData, search, subjectDetail, subjectList } from './derive
 import type { AccountChannel } from './handlers-account'
 import type { MaterialsChannel } from './handlers-materials'
 import type { MemoryChannel } from './handlers-memory'
+import type { RoadmapsChannel } from './handlers-roadmaps'
 import { mockId, nowIso } from './time'
 
 type CoreChannel = Exclude<
@@ -32,6 +33,7 @@ type CoreChannel = Exclude<
   | AccountChannel
   | MemoryChannel
   | MaterialsChannel
+  | RoadmapsChannel
 >
 
 type SecretKey = InvokeReq<'secrets.set'>['key']

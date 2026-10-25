@@ -19,6 +19,7 @@ export const SCOPE_CHANNELS: Record<MemoryScope, InvokeChannel[]> = {
     'home.get',
     'session.picker',
     'search.query',
+    'roadmaps.history',
   ],
   concepts: [
     'subjects.get',
@@ -37,7 +38,14 @@ export const SCOPE_CHANNELS: Record<MemoryScope, InvokeChannel[]> = {
     'home.get',
     'session.picker',
   ],
-  roadmaps: ['subjects.get', 'subjects.list', 'home.get', 'session.picker', 'session.get'],
+  roadmaps: [
+    'subjects.get',
+    'subjects.list',
+    'home.get',
+    'session.picker',
+    'session.get',
+    'roadmaps.history',
+  ],
   quizzes: ['exams.list', 'quiz.get', 'subjects.get', 'home.get'],
   assignments: ['home.get', 'subjects.get'],
   profile: ['home.get', 'profile.get'],
