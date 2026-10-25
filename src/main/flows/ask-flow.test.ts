@@ -115,19 +115,27 @@ const CHEM = {
   deadline: '2026-11-03T00:00:00.000Z',
 }
 const TOPIC_REPOS = {
-  subjects: { get: (id: string) => (id === CHEM.id ? CHEM : null) },
+  subjects: {
+    get: (id: string) => (id === CHEM.id ? CHEM : null),
+    findByName: (name: string) => (name === CHEM.name ? CHEM : null),
+    list: () => [{ ...CHEM, status: 'active' }],
+  },
   roadmaps: {
-    getActive: (id: string) =>
+    listBySubject: (id: string) =>
       id === CHEM.id
-        ? {
-            title: 'Moles from scratch',
-            items: [
-              { title: 'What a mole is', status: 'done' },
-              { title: 'Molar mass', status: 'current' },
-              { title: 'Checkpoint', status: 'todo' },
-            ],
-          }
-        : null,
+        ? [
+            {
+              title: 'Moles from scratch',
+              status: 'active',
+              updatedAt: at(0),
+              items: [
+                { title: 'What a mole is', status: 'done' },
+                { title: 'Molar mass', status: 'current' },
+                { title: 'Checkpoint', status: 'todo' },
+              ],
+            },
+          ]
+        : [],
   },
   concepts: {
     listBySubject: (id: string) =>
@@ -352,7 +360,9 @@ describe('AskFlow.submit with a topic (subjectId)', () => {
     expect(context.split('\n\n')[1]?.split('\n')[0]).toMatch(/^Topic: Chemistry\b/)
     expect(context).toContain('Goal: Pass the midterm')
     expect(context).toContain('Deadline: 2026-11-03')
-    expect(context).toContain('Roadmap: Moles from scratch (1/3 done; now: Molar mass)')
+    expect(context).toContain(
+      'Roadmap (active): Moles from scratch (step 2 of 3, 1 done; now: Molar mass)',
+    )
     expect(context).toContain('Struggling with: Molar mass')
     expect(context).not.toContain('Avogadro')
     expect(context.endsWith('Studying chemistry')).toBe(true)
@@ -371,7 +381,7 @@ describe('AskFlow.submit with a topic (subjectId)', () => {
   it('topicContext skips empty fields and a subject without a roadmap', () => {
     const repos = {
       subjects: { get: () => ({ ...CHEM, description: ' ', goal: null, deadline: null }) },
-      roadmaps: { getActive: () => null },
+      roadmaps: { listBySubject: () => [] },
       concepts: { listBySubject: () => [] },
     } as unknown as Parameters<typeof topicContext>[0]
     expect(topicContext(repos, CHEM.id)).toBe(

@@ -9,7 +9,9 @@
  * Turns live in thread 'ask'; the context is its last 10 messages after the latest "New chat"
  * (`since`), and the reply streams as 'chat.delta' on that thread when `emitDelta` is wired.
  * A topic selected in the Ask bar (`subjectId`) leads the coach context: "Topic: <name>" plus that
- * subject's goal, deadline, roadmap step and struggling concepts.
+ * subject's goal, deadline, open roadmap (active or paused) and step, and struggling concepts.
+ * A "Start roadmap" chip for a subject that already has an open roadmap becomes "Open subject"
+ * (`chatRoadmapActions`), so the chat never plans a second one.
  *
  * What the student tells Dumbledore is saved into their studying at once (ChatSaves): what they
  * ask or don't get (save_question), facts about a course (update_subject) and notes they ask to
@@ -27,6 +29,7 @@ import { coachActionLabel } from '../overlay/labels'
 import type { ToastSpec } from '../overlay/toasts'
 import { keyName } from '../router/hints'
 import type { ChatSaves } from './chat-saves'
+import { chatRoadmapActions, openRoadmaps, roadmapProgress } from './context'
 import type { SessionFlow } from './session-flow'
 import type { Thinking } from './thinking'
 
@@ -86,12 +89,11 @@ export function topicContext(
   if (subject.description.trim()) lines.push(`About: ${subject.description.trim()}`)
   if (subject.goal?.trim()) lines.push(`Goal: ${subject.goal.trim()}`)
   if (subject.deadline) lines.push(`Deadline: ${subject.deadline.slice(0, 10)}`)
-  const roadmap = repos.roadmaps.getActive(subject.id)
+  const roadmap = openRoadmaps(repos, subject.id)[0]
   if (roadmap) {
-    const done = roadmap.items.filter((i) => i.status === 'done').length
     const current = roadmap.items.find((i) => i.status === 'current')
     const step = current ? `; now: ${current.title}` : ''
-    lines.push(`Roadmap: ${roadmap.title} (${done}/${roadmap.items.length} done${step})`)
+    lines.push(`Roadmap (${roadmap.status}): ${roadmap.title} (${roadmapProgress(roadmap)}${step})`)
   }
   const struggling = repos.concepts
     .listBySubject(subject.id)
@@ -120,7 +122,10 @@ export class AskFlow {
     this.noteReset(opts.since)
     const { reply, actions } = await this.converse(text, opts.signal, opts.subjectId, CHAT_MODE)
     const applied = this.applyInChat(
-      actions.filter((a) => a.type !== 'insert_prompt'),
+      chatRoadmapActions(
+        this.deps.repos,
+        actions.filter((a) => a.type !== 'insert_prompt'),
+      ),
       reply,
     )
     const content = [reply, ...applied.lines].filter(Boolean).join('\n\n')

@@ -68,3 +68,16 @@ describe('P10 saving tools', () => {
     expect(system).toMatch(/never claim you saved something without calling the tool/)
   })
 })
+
+describe('P10 coach: existing roadmaps', () => {
+  it('answers from the roadmaps in the context and starts one only when none covers it', () => {
+    const system = coachSystem({ profile: '', context: '', history: [], message: '' })
+    expect(system).toMatch(/"what are the steps\?"[^\n]*list that roadmap's steps/)
+    expect(system).toMatch(/Never say a roadmap doesn't exist when the context lists one/)
+    expect(system).toMatch(
+      /already covers that subject or topic[^\n]*open_subject[^\n]*never start a second one/,
+    )
+    expect(system).toMatch(/Only when no roadmap covers it[^\n]*start_roadmap/)
+    expect(system).not.toMatch(/call start_roadmap first/)
+  })
+})
