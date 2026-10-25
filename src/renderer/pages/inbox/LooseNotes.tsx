@@ -1,7 +1,9 @@
 /**
  * Loose notes on the Memory page (docs/NOTES.md §10.4): notes from reading that matched no subject,
- * newest first, as compact rows with their source link, "File to…" ('notes.file') and ✕. Shown
- * only when there are any.
+ * newest first, as compact rows with their source link, "File to…" (a subject or one of its
+ * topics, NoteFileMenu) and ✕. Dumbledore files new and old loose notes on its own
+ * (engine/subjects/note-filing.ts), so only notes that fit nowhere stay here; the section is
+ * shown only when there are any.
  */
 
 import { IconButton, toast } from '@renderer/design-system'
@@ -9,21 +11,14 @@ import { errorToast } from '@renderer/lib/errors'
 import { useAction } from '@renderer/lib/queries'
 import { noteLead } from '@renderer/lib/status'
 import type { Note, SubjectSummary } from '@shared/domain'
-import { Flag, X } from 'lucide-react'
+import { ChevronDown, Flag, X } from 'lucide-react'
 import { SourceLine } from './MemoryNotes'
 import { sourceLink } from './memory-model'
-import { SubjectMenu } from './SubjectMenu'
+import { NoteFileMenu } from './NoteFileMenu'
 
 const report = (err: Error) => errorToast(err)
 
 function LooseNote({ note, subjects }: { note: Note; subjects: SubjectSummary[] }) {
-  const file = useAction('notes.file', {
-    onSuccess: (_n, { subjectId }) => {
-      const s = subjects.find((x) => x.id === subjectId)
-      toast(s ? `Filed under ${s.emoji} ${s.name}` : 'Filed', { tone: 'success' })
-    },
-    onError: report,
-  })
   const remove = useAction('notes.delete', {
     onSuccess: () => toast('Note deleted', { tone: 'info' }),
     onError: report,
@@ -42,18 +37,21 @@ function LooseNote({ note, subjects }: { note: Note; subjects: SubjectSummary[] 
         </span>
         <SourceLine source={sourceLink(note)} at={note.createdAt} />
       </div>
-      <SubjectMenu
-        label={`File “${note.text.slice(0, 40)}” to a subject`}
+      <NoteFileMenu
+        note={note}
         heading="File to"
-        subjects={subjects}
-        value={null}
-        disabled={file.isPending || subjects.length === 0}
-        align="end"
-        className="mem-loose__file"
-        onPick={(subjectId) => file.mutate({ id: note.id, subjectId, conceptId: null })}
-      >
-        File to…
-      </SubjectMenu>
+        trigger={
+          <button
+            type="button"
+            className="dd-btn dd-btn--ghost dd-btn--sm ib-select mem-loose__file"
+            aria-label={`File “${note.text.slice(0, 40)}” to a subject`}
+            disabled={subjects.length === 0}
+          >
+            <span className="ib-select__text">File to…</span>
+            <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
+          </button>
+        }
+      />
       <IconButton
         label="Delete note"
         size="sm"

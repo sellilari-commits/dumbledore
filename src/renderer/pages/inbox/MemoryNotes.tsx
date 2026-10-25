@@ -1,6 +1,6 @@
 /**
- * Notes on the Memory page: a note bullet (flag for a highlight, pen for a typed note) with ✏️ and ✕
- * on hover, its source line linking to the page it came from, and a page group that shows the
+ * Notes on the Memory page: a note bullet (flag for a highlight, pen for a typed note) with ✏️,
+ * "Move to…" (another subject or topic, NoteFileMenu; the move sticks) and ✕ on hover, its source line linking to the page it came from, and a page group that shows the
  * page once when several notes came from it. Links open in the default browser: the window's
  * open handler sends http(s) links to shell.openExternal (main/security.ts).
  */
@@ -10,9 +10,10 @@ import { errorToast } from '@renderer/lib/errors'
 import { useAction } from '@renderer/lib/queries'
 import { noteLead } from '@renderer/lib/status'
 import type { Note } from '@shared/domain'
-import { Flag, Pencil, PenLine, X } from 'lucide-react'
+import { Flag, FolderInput, Pencil, PenLine, X } from 'lucide-react'
 import { useState } from 'react'
 import { isTyped, type PageGroup, type SourceLink, shortAgo, sourceLink } from './memory-model'
+import { NoteFileMenu } from './NoteFileMenu'
 
 const report = (err: Error) => errorToast(err)
 
@@ -99,6 +100,15 @@ export function NoteItem({ note, showSource }: { note: Note; showSource: boolean
           <IconButton label="Edit note" size="sm" onClick={() => setEditing(true)}>
             <Pencil size={13} strokeWidth={1.75} />
           </IconButton>
+          <NoteFileMenu
+            note={note}
+            heading="Move to"
+            trigger={
+              <IconButton label="Move note to another topic" size="sm">
+                <FolderInput size={13} strokeWidth={1.75} />
+              </IconButton>
+            }
+          />
           <IconButton
             label="Delete note"
             size="sm"

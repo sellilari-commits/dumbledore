@@ -483,3 +483,13 @@ a.mem-entry__title {
     transition: none;
   }
 }
+
+/* "File to…" / "Move to…" menu of a note (NoteFileMenu): subjects with their topics, scrolls. */
+.mem-file-menu {
+  max-height: min(420px, 60vh);
+  overflow-y: auto;
+}
+
+.mem-file-menu__topic {
+  color: var(--c-texSec);
+}
