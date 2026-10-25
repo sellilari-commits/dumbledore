@@ -8,6 +8,7 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
+| 2026-10-25 00:05 | Olle / Claude | Permissions: a hint in "Waiting for macOS…" for a switch that is on but belongs to an earlier build (remove with − and add again) | `src/renderer/pages/settings/permissions.tsx` (+ new `permissions.test.tsx`) | main | |
 
 ## Done recently
 
