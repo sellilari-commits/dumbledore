@@ -14,6 +14,7 @@ import type { GapNote, SubjectDetail } from '@shared/state'
 import { useQueryClient } from '@tanstack/react-query'
 import { CircleAlert, FilePenLine, Map as MapIcon, TrendingUp } from 'lucide-react'
 import { useLocation } from 'wouter'
+import { RoadmapHistory } from './RoadmapHistory'
 import { roadmapProgress } from './subject-utils'
 
 const HEAD = { size: 14, strokeWidth: 1.75 } as const
@@ -80,6 +81,7 @@ export function ProgressSection({ detail }: { detail: SubjectDetail }) {
       ) : (
         <StartRoadmap detail={detail} />
       )}
+      <RoadmapHistory subjectId={detail.subject.id} />
       {concepts.length > 0 ? (
         <p className="sp-progress-mastery">
           {mastered} of {concepts.length} topics mastered
