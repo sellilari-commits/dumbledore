@@ -10,6 +10,7 @@ import {
   BackendError,
   type BackendRequest,
   type BackendResult,
+  type SourceLink,
   type StreamPart,
   type ToolCallOut,
 } from '../llm/types'
@@ -25,6 +26,8 @@ export interface FakeReplyData {
   delayMs?: number
   /** For stream(): text chunks to emit before the tool calls. */
   chunks?: string[]
+  /** For generate() on a grounded request: the pages the answer drew on. */
+  sources?: SourceLink[]
 }
 export type FakeReply = FakeReplyData | ((req: BackendRequest) => FakeReplyData)
 
@@ -96,6 +99,7 @@ export class FakeBackend implements Backend {
       headers: r.headers ?? {},
       toolCalls: r.toolCalls ?? [],
       finishReason: r.finishReason ?? 'stop',
+      ...(r.sources ? { sources: r.sources } : {}),
     }
   }
 

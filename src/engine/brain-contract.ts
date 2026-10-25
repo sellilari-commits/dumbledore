@@ -531,6 +531,22 @@ export interface CallOptions {
   timeoutMs?: number
 }
 
+/** A web page a web search answer drew on (http(s) only). */
+export interface WebSearchSource {
+  title: string
+  url: string
+}
+
+/** Brain.webSearch: a short grounded answer (≤ ~120 words) and its pages (deduped, ≤ 6). */
+export interface WebSearchResult {
+  answer: string
+  sources: WebSearchSource[]
+}
+
+/** Brain.webSearch without a Gemini key: nothing was sent (the search needs Gemini). */
+export const WEB_SEARCH_NO_KEY = 'no-key'
+export type WebSearchNoKey = typeof WEB_SEARCH_NO_KEY
+
 export class BrainTimeoutError extends Error {
   constructor(task: string) {
     super(`brain task "${task}" timed out`)
@@ -573,6 +589,14 @@ export interface Brain {
     tools: CoachTools,
     opts?: CoachLoopOptions,
   ): AsyncIterable<CoachEvent>
+  /**
+   * One Gemini call with Google Search grounding, separate from the chat (so built-in search
+   * never mixes with the chat's function tools). Gemini only, no fallback to models without
+   * search. Resolves 'no-key' without a Gemini key; throws BrainTimeoutError (default 20 s) or
+   * BrainUnavailableError (rate limit, spend cap, …) like the other tasks. Optional: fakes and
+   * older brains leave it out.
+   */
+  webSearch?(query: string, opts?: CallOptions): Promise<WebSearchResult | WebSearchNoKey>
   writeNudge(input: NudgeInput, opts?: CallOptions): Promise<NudgeOutput>
   buildProfile(input: ProfileInput, opts?: CallOptions): Promise<ProfileOutput>
   /** P15: which passages of the page being read to read / skim / skip for the student's gaps. */

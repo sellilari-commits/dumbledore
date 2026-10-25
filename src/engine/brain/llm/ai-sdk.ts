@@ -44,6 +44,9 @@ export interface SdkCall {
   temperature: number | undefined
   maxOutputTokens: number
   mapError: (err: unknown, signal: AbortSignal) => BackendError
+  /** Provider-executed tools (Gemini's google_search), added next to the request's own tools;
+   * when set, generate() also returns the answer's url sources. */
+  providerTools?: Record<string, Tool>
 }
 
 interface SdkUsage {
@@ -85,6 +88,11 @@ function output(req: BackendRequest, schemaMode: boolean) {
   return Output.json({ name: req.output.name })
 }
 
+function allTools(req: BackendRequest, c: SdkCall): Record<string, Tool> | undefined {
+  const own = tools(req)
+  return c.providerTools ? { ...own, ...c.providerTools } : own
+}
+
 export async function sdkGenerate(req: BackendRequest, c: SdkCall): Promise<BackendResult> {
   try {
     const result = await generateText({
@@ -96,7 +104,7 @@ export async function sdkGenerate(req: BackendRequest, c: SdkCall): Promise<Back
       maxRetries: 0,
       abortSignal: req.signal,
       output: output(req, c.schemaMode),
-      tools: tools(req),
+      tools: allTools(req, c),
       ...(req.tools?.length && req.toolChoice ? { toolChoice: req.toolChoice } : {}),
       providerOptions: c.providerOptions,
     })
@@ -106,6 +114,13 @@ export async function sdkGenerate(req: BackendRequest, c: SdkCall): Promise<Back
       headers: lowerCaseHeaders(result.response.headers),
       toolCalls: result.toolCalls.map((x) => ({ name: x.toolName, input: x.input })),
       finishReason: result.finishReason,
+      ...(c.providerTools
+        ? {
+            sources: result.sources.flatMap((s) =>
+              s.sourceType === 'url' ? [{ title: s.title ?? '', url: s.url }] : [],
+            ),
+          }
+        : {}),
     }
   } catch (err) {
     if (NoObjectGeneratedError.isInstance(err)) {

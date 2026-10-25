@@ -11,8 +11,10 @@
  * - Gemini 3+ keeps its default temperature (Google advises against lowering it: looping).
  * - 429 / RESOURCE_EXHAUSTED → rate_limit with Google's retryDelay, so the router cools the model
  *   down and falls through; an invalid key → auth (not retried).
+ * - `grounding: 'web_search'` adds Google Search as a provider-executed tool (google_search); the
+ *   answer's grounding chunks come back as `sources` (generate only).
  */
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { createGoogleGenerativeAI, type GoogleGenerativeAIProvider } from '@ai-sdk/google'
 import { type LlmTier, PROVIDER_BASE_URLS } from '@shared/llm'
 import type { LanguageModel } from 'ai'
 import { type SdkCall, sdkGenerate, sdkStream } from './ai-sdk'
@@ -115,22 +117,22 @@ export interface GeminiBackendOptions {
 
 export function createGeminiBackend(opts: GeminiBackendOptions): Backend {
   let cachedKey: string | undefined | null = null
-  let factory: ((model: string) => LanguageModel) | null = null
+  let provider: GoogleGenerativeAIProvider | null = null
 
-  const modelFor = (model: string): LanguageModel => {
+  const google = (): GoogleGenerativeAIProvider => {
     const key = opts.keys('GEMINI_API_KEY')
     if (!key) throw new BackendError('unavailable', 'GEMINI_API_KEY not set')
-    if (factory === null || key !== cachedKey) {
+    if (provider === null || key !== cachedKey) {
       cachedKey = key
-      const p = createGoogleGenerativeAI({
+      provider = createGoogleGenerativeAI({
         apiKey: key,
         baseURL: opts.baseURL ?? PROVIDER_BASE_URLS.gemini,
         fetch: opts.fetch,
       })
-      factory = (m) => p.languageModel(m)
     }
-    return factory(model)
+    return provider
   }
+  const modelFor = (model: string): LanguageModel => google().languageModel(model)
 
   const levelFor = (req: Pick<BackendRequest, 'tier' | 'reasoningEffort'>): ThinkingLevel =>
     req.tier ? TIER_THINKING[req.tier] : THINKING_LEVEL[req.reasoningEffort ?? 'none']
@@ -144,6 +146,9 @@ export function createGeminiBackend(opts: GeminiBackendOptions): Backend {
       temperature: geminiMajor(req.model) >= 3 ? undefined : req.temperature,
       maxOutputTokens: req.maxOutputTokens + THINKING_HEADROOM[level],
       mapError: toGeminiError,
+      ...(req.grounding === 'web_search'
+        ? { providerTools: { google_search: google().tools.googleSearch({}) } }
+        : {}),
     }
   }
 

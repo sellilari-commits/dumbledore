@@ -62,6 +62,8 @@ export interface CallPlan {
   onDeviceOk: boolean
   /** Size of the (compact) on-device variant of the request, when it differs. */
   onDeviceTokens?: number
+  /** Only these providers may serve the plan (web search: Gemini only); default all. */
+  providers?: readonly ProviderId[]
 }
 
 /** One candidate the router is trying; `call` performs a single logged backend request. */
@@ -166,6 +168,10 @@ export class Router {
       const key = `${route.provider}:${route.model}`
       if (seen.has(key)) continue
       seen.add(key)
+      if (plan.providers && !plan.providers.includes(route.provider)) {
+        skipped.push(`${key}: not used for this task`)
+        continue
+      }
       const backend = this.deps.backends[route.provider]
       if (!backend) {
         skipped.push(`${key}: no backend`)

@@ -39,6 +39,8 @@ import {
   TriageInput,
   type TriageOutput,
   type VerifyResult,
+  type WebSearchNoKey,
+  type WebSearchResult,
 } from '@engine/brain-contract'
 import type { FeedbackScope, Settings } from '@shared/domain'
 import type { LlmTier, ModelRoute, ProviderId, ProviderLimits } from '@shared/llm'
@@ -73,6 +75,7 @@ import { consolidatePrompt } from './prompts/p13-consolidate'
 import { preferencesPrompt } from './prompts/p14-preferences'
 import { outlinePrompt } from './prompts/p15-outline'
 import { withFeedback } from './prompts/shared'
+import { runWebSearch } from './web-search'
 
 export interface BrainDeps {
   clock?: Clock
@@ -322,6 +325,17 @@ export function createBrain(deps: BrainDeps = {}): BrainHandle {
       tools: CoachTools,
       opts?: CoachLoopOptions,
     ): AsyncIterable<CoachEvent> => runCoachLoop(router, clock, CoachInput.parse(raw), tools, opts),
+
+    webSearch: (query: string, opts?: CallOptions): Promise<WebSearchResult | WebSearchNoKey> =>
+      runWebSearch(
+        {
+          router,
+          clock,
+          geminiReady: async () => (await backends.gemini?.availability())?.ok ?? false,
+        },
+        query,
+        opts,
+      ),
 
     writeNudge: (raw: NudgeInput, opts?: CallOptions): Promise<NudgeOutput> =>
       runStructured(runner, nudgePrompt, NudgeInput.parse(raw), opts),

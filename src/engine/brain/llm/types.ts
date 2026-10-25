@@ -40,7 +40,19 @@ export interface BackendRequest {
   toolChoice?: 'auto' | 'none'
   /** Set by the router; backends may tune to it (Gemini picks its thinking level per tier). */
   tier?: LlmTier
+  /**
+   * 'web_search': the model may search the web itself (Gemini's Google Search grounding, a
+   * provider-executed tool). Only the Gemini backend supports it; callers restrict the plan to
+   * Gemini (CallPlan.providers) so it never falls through to a model without search.
+   */
+  grounding?: 'web_search'
   signal: AbortSignal
+}
+
+/** A web page an answer was grounded on. */
+export interface SourceLink {
+  title: string
+  url: string
 }
 
 export interface BackendUsage {
@@ -60,6 +72,8 @@ export interface BackendResult {
   headers: Record<string, string>
   toolCalls: ToolCallOut[]
   finishReason: string
+  /** Grounded requests only: the pages the answer drew on, as the provider reported them. */
+  sources?: SourceLink[]
 }
 
 export type StreamPart =
