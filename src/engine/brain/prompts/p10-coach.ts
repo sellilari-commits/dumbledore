@@ -19,7 +19,9 @@ const ToolInputs = {
     subjectId: z
       .string()
       .nullable()
-      .describe('Id of the matching subject from the context, or null for a new subject (it is created)'),
+      .describe(
+        'Id of the matching subject from the context, or null for a new subject (it is created)',
+      ),
     deadline: z
       .string()
       .nullable()

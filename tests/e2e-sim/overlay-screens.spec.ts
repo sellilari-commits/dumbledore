@@ -190,7 +190,8 @@ for (const theme of ['light', 'dark'] as const) {
       })
       await page.keyboard.type("I don't get recursion")
       await page.keyboard.press('Enter')
-      await expect(page.locator('.ask__chip')).toHaveCount(2)
+      // The reply's two action chips, plus Save to subject.
+      await expect(page.locator('.ask__chip')).toHaveCount(3)
       await page.waitForTimeout(250)
       await page.screenshot({
         path: `${SHOTS}/overlay-askbar-answer-${theme}.png`,
