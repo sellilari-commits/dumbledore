@@ -23,6 +23,18 @@ describe('normalizeHighlight', () => {
       'Backpropagation computes the gradient',
     )
   })
+
+  it('keeps the spaces at link boundaries the helper puts back (no joining or splitting here)', () => {
+    // Wikipedia "Regression analysis": the helper (TextJoin.restoreSpaces) returns the spaced text.
+    const spaced =
+      'The most common form of regression analysis is linear regression, in which one finds the line or hyperplane'
+    expect(normalizeHighlight(spaced)).toBe(spaced)
+    expect(normalizeHighlight(spaced)).not.toMatch(/islinear|thelineorhyperplane/)
+    // A word made of styled runs stays whole; existing punctuation stays attached.
+    expect(normalizeHighlight('Regression analysis estimates relationships.')).toBe(
+      'Regression analysis estimates relationships.',
+    )
+  })
 })
 
 describe('HighlightWatcher', () => {

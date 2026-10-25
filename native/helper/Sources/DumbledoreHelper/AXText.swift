@@ -34,6 +34,10 @@ struct AXFragment {
   var block = 0
   /// Scrolled out of view (whole-page reads keep it, without a box).
   var outOfView = false
+  /// The page has whitespace right before / after this run (`clean` trims it from `text`): the
+  /// space between this run and its neighbour ("is " + link "linear regression").
+  var spaceBefore = false
+  var spaceAfter = false
 }
 
 struct AXTextResult {
@@ -97,15 +101,24 @@ enum AXTextReader {
     func add(_ text: String, _ frame: CGRect?, _ region: PageRegion, block: Int) {
       let away = wholePage && outOfView(frame)
       var remaining = maxChars - result.chars
-      for raw in text.split(whereSeparator: \.isNewline) {
+      let pieces = text.split(whereSeparator: \.isNewline)
+      for (i, raw) in pieces.enumerated() {
         guard remaining > 0 else { return }
         var t = clean(String(raw))
-        guard !t.isEmpty else { continue }
+        let before = i > 0 || text.first?.isWhitespace == true || raw.first?.isWhitespace == true
+        let after = i < pieces.count - 1 || text.last?.isWhitespace == true || raw.last?.isWhitespace == true
+        guard !t.isEmpty else {
+          // A whitespace-only run (" " between two links) is the space between its neighbours.
+          if !frags.isEmpty { frags[frags.count - 1].spaceAfter = true }
+          continue
+        }
         if t.count > remaining { t = String(t.prefix(remaining)) }
         remaining -= t.count
         result.chars += t.count
-        frags.append(AXFragment(text: t, frame: away ? nil : frame, region: region, block: block, outOfView: away))
+        frags.append(AXFragment(text: t, frame: away ? nil : frame, region: region, block: block, outOfView: away,
+                                spaceBefore: before, spaceAfter: after))
       }
+      if pieces.isEmpty, !text.isEmpty, !frags.isEmpty { frags[frags.count - 1].spaceAfter = true }
     }
 
     func visit(_ el: AXUIElement, depth: Int, region parent: PageRegion, block parentBlock: Int) -> Bool {
@@ -184,16 +197,20 @@ enum AXTextReader {
   }
 
   /// Joins inline fragments (links, bold runs) that sit on the same visual line; out of view (no
-  /// frame), the fragments of one block join into one line.
+  /// frame), the fragments of one block join into one line. A space goes between two runs only
+  /// where the page has one (`TextJoin.needsSpace`): "is " + "linear" → "is linear", while
+  /// "Re" + "gression" (a bold run inside a word) stays "Regression".
   static func merge(_ frags: [AXFragment]) -> [TextLine] {
-    var out: [(text: String, frame: CGRect?)] = []
+    var out: [(text: String, frame: CGRect?, spaceAfter: Bool)] = []
     var lastAway: (block: Int, index: Int)?
     for f in frags {
       if f.outOfView {
         if let a = lastAway, a.block == f.block, a.index == out.count - 1 {
-          out[a.index] = (joinRun(out[a.index].text, f.text), nil)
+          let prev = out[a.index]
+          let space = TextJoin.needsSpace(prev.text, spaceAfter: prev.spaceAfter, f.text, spaceBefore: f.spaceBefore)
+          out[a.index] = (space ? joinRun(prev.text, f.text) : prev.text + f.text, nil, f.spaceAfter)
         } else {
-          out.append((f.text, nil))
+          out.append((f.text, nil, f.spaceAfter))
           lastAway = (f.block, out.count - 1)
         }
         continue
@@ -201,11 +218,11 @@ enum AXTextReader {
       lastAway = nil
       if let last = out.last, let lf = last.frame, let ff = f.frame, ff.height > 0,
          ff.midY >= lf.minY, ff.midY <= lf.maxY, ff.minX >= lf.minX - 1, ff.height <= lf.height * 1.6 {
-        let needsSpace = !(last.text.last?.isWhitespace ?? true) && !(f.text.first?.isWhitespace ?? true)
-          && ff.minX > lf.maxX + 1
-        out[out.count - 1] = (last.text + (needsSpace ? " " : "") + f.text, lf.union(ff))
+        let space = TextJoin.needsSpace(last.text, spaceAfter: last.spaceAfter, f.text, spaceBefore: f.spaceBefore,
+                                        gap: ff.minX - lf.maxX)
+        out[out.count - 1] = (last.text + (space ? " " : "") + f.text, lf.union(ff), f.spaceAfter)
       } else {
-        out.append((f.text, f.frame))
+        out.append((f.text, f.frame, f.spaceAfter))
       }
     }
     let boxed = out.enumerated().compactMap { i, f in f.frame.map { (i, $0) } }

@@ -59,19 +59,25 @@ enum Handlers {
   }
 
   /// Current selection — AXSelectedText, else WebKit/Chromium text markers on the page element.
+  /// On a page, Chrome's selection string can run words together where a link or inline element
+  /// starts or ends ("islinear regression"): the spaces are put back from the paragraph's own runs.
   static func selectedText() throws -> TextResult {
     try Permissions.requireAccessibility()
     guard let f = FocusReader.focused() else { return TextResult(text: nil) }
     try refuseSecure(f.element)
+    let web = AX.ancestor(f.element, where: { _, role in role == "AXWebArea" })
     var candidates = [f.element]
-    if let web = AX.ancestor(f.element, where: { _, role in role == "AXWebArea" }), !CFEqual(web, f.element) {
-      candidates.append(web)
+    if let web, !CFEqual(web, f.element) { candidates.append(web) }
+    func withSpaces(_ s: String) -> String {
+      guard let web, let range = AX.attr(web, "AXSelectedTextMarkerRange"),
+            let context = TextJoin.selectionContext(web, range: range) else { return s }
+      return TextJoin.restoreSpaces(s, from: context)
     }
     for el in candidates {
-      if let s = AX.string(el, kAXSelectedTextAttribute), !s.isEmpty { return TextResult(text: s) }
+      if let s = AX.string(el, kAXSelectedTextAttribute), !s.isEmpty { return TextResult(text: withSpaces(s)) }
       if let range = AX.attr(el, "AXSelectedTextMarkerRange"),
          let s = AX.str(AX.param(el, "AXStringForTextMarkerRange", range)), !s.isEmpty {
-        return TextResult(text: s)
+        return TextResult(text: withSpaces(s))
       }
     }
     return TextResult(text: nil)

@@ -153,7 +153,7 @@ enum SelfTestIO {
     // A whole-page read: out of view, a paragraph's runs (text, link, text) join into one line without a
     // box; the next paragraph stays its own line, and on-screen lines keep their boxes.
     let page = AXTextReader.merge([
-      AXFragment(text: "Carbocations are stabilised by", frame: nil, block: 3, outOfView: true),
+      AXFragment(text: "Carbocations are stabilised by", frame: nil, block: 3, outOfView: true, spaceAfter: true),
       AXFragment(text: "hyperconjugation", frame: nil, block: 3, outOfView: true),
       AXFragment(text: ", as shown.", frame: nil, block: 3, outOfView: true),
       AXFragment(text: "History", frame: nil, block: 4, outOfView: true),
@@ -164,6 +164,7 @@ enum SelfTestIO {
     expect(page[0].box == nil && page[2].box != nil, "out-of-view lines have no box")
     expect(AXTextReader.joinRun("(see", "below)") == "(see below)" && AXTextReader.joinRun("x (", "y") == "x (y",
            "run joining")
+    textJoin()
     regionTrim()
     let cli = CLIOptions(["serve", "--socket", "/x.sock", "--verbose", "--parent-pid", "42"])
     expect(cli.command == "serve" && cli.string("socket") == "/x.sock" && cli.bool("verbose") && cli.int("parent-pid") == 42,
@@ -177,6 +178,46 @@ enum SelfTestIO {
     expect(RefRegistry.shared.register(AX.app(getpid()), pid: getpid()) == r1 && r1.hasPrefix("ax:\(getpid()):"),
            "refs reuse handles")
     expect(RefRegistry.shared.resolve("ax:0:999999") == nil, "unknown ref")
+  }
+
+  /// Spaces at link / inline-run boundaries (Wikipedia "Regression analysis": "islinear", "thelineorhyperplane").
+  private static func textJoin() {
+    let h: CGFloat = 16
+    func frag(_ t: String, _ x: CGFloat, _ w: CGFloat, before: Bool = false, after: Bool = false) -> AXFragment {
+      AXFragment(text: t, frame: CGRect(x: x, y: 0, width: w, height: h), spaceBefore: before, spaceAfter: after)
+    }
+    // Chrome's runs carry the boundary space in their value (trimmed by clean), frames touch.
+    let wiki = AXTextReader.merge([
+      frag("The most common form of regression analysis is", 0, 300, after: true),
+      frag("linear regression", 300, 110),
+      frag(", in which one finds the", 410, 150, after: true),
+      frag("line", 560, 25),
+      frag("or", 585, 15, before: true, after: true),
+      frag("hyperplane", 600, 70),
+    ])
+    expect(wiki.map(\.text) == ["The most common form of regression analysis is linear regression, in which one finds the line or hyperplane"],
+           "link boundaries keep spaces: \(wiki.map(\.text))")
+    // A whitespace-only run between two links is the space between them; a frame gap is a space too.
+    let gap = AXTextReader.merge([frag("line", 0, 25), frag("hyperplane", 30, 70)])
+    expect(gap.map(\.text) == ["line hyperplane"], "frame gap is a space: \(gap.map(\.text))")
+    // A word made of styled runs stays whole, on screen and out of view; punctuation stays attached.
+    let word = AXTextReader.merge([frag("Re", 0, 16), frag("gression", 16, 60), frag(".", 76, 4)])
+    expect(word.map(\.text) == ["Regression."], "styled runs inside a word: \(word.map(\.text))")
+    let away = AXTextReader.merge([
+      AXFragment(text: "Re", frame: nil, block: 2, outOfView: true),
+      AXFragment(text: "gression is", frame: nil, block: 2, outOfView: true, spaceAfter: true),
+      AXFragment(text: "linear", frame: nil, block: 2, outOfView: true),
+    ])
+    expect(away.map(\.text) == ["Regression is linear"], "out-of-view runs: \(away.map(\.text))")
+    // The selection string from Chrome runs words together: spaces come back from the paragraph.
+    let para = "The most common form of regression analysis is linear regression, in which one finds the line or hyperplane"
+    expect(TextJoin.restoreSpaces("analysis islinear regression, in which one finds thelineorhyperplane", from: para)
+      == "analysis is linear regression, in which one finds the line or hyperplane", "selection spaces restored")
+    expect(TextJoin.restoreSpaces("Regression analysis", from: "Regression analysis") == "Regression analysis",
+           "selection already spaced stays")
+    expect(TextJoin.restoreSpaces("Re gression", from: "Regression") == "Re gression", "never removes a space")
+    expect(TextJoin.restoreSpaces("islinear", from: "something else") == "islinear", "not found: unchanged")
+    expect(!TextJoin.needsSpace("is ", spaceAfter: false, "linear", spaceBefore: true), "existing whitespace kept as is")
   }
 
   /// The connection's line splitter: CRLF, empty lines, split chunks, over-long lines, linear time.
