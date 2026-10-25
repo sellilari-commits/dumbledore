@@ -101,7 +101,7 @@ for (const theme of ['light', 'dark'] as const) {
       })
       expect(log.top).toBeGreaterThan(0)
       expect(log.gap).toBeLessThanOrEqual(2)
-      await expect(page.locator('.ask__chip').last()).toBeInViewport()
+      await expect(page.locator('.ask__receipt').last()).toBeInViewport()
       await shoot(page, `long-${theme}`)
     })
 
