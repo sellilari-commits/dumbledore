@@ -8,6 +8,7 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
+| 2026-10-25 09:04 | Ilari / Claude | Memory page By topic: every topic row collapsed by default (top-level topics only; subtopics, big picture, sources, notes on open), open/close per row for the visit, search still opens matches. Not touching LooseNotes / filing | `src/renderer/pages/inbox/ByTopicView.tsx`, `src/renderer/pages/inbox/InboxPage.test.tsx` (By topic tests only), `tests/e2e-sim/ui-home-inbox.spec.ts` + `ui-inbox-*` / `route-inbox-*` shots | main | |
 | 2026-10-25 08:51 | Ilari / Claude | Mini panel "+ New topic": quiet row at the bottom of the topic list → inline field (Enter creates, Esc/empty blur cancels); IPC `topics.create({ name })` files it as a top-level concept in the best-fitting subject (or a new subject of that name) | `src/shared/ipc.ts` (additive), `src/main/ipc/handlers.ts` (1 handler), new `src/main/topics-create.ts` (+ test), `src/renderer/surfaces/panel/` (TopicList, panel.css, MiniPanel test), `src/renderer/lib/mock/` (1 handler), `tests/e2e-sim/ui-panel.spec.ts` + panel shots | main | |
 
 ## Done recently
