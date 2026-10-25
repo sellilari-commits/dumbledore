@@ -76,6 +76,7 @@ function setup(opts: Setup = {}) {
     overlay: toasts,
     contextText: () => 'Studying chemistry',
     runAction: vi.fn(async () => undefined),
+    retryAfterMs: 0,
     emitDelta:
       opts.stream === false ? undefined : (d: EventPayload<'chat.delta'>) => deltas.push(d),
     ...(opts.feedback ? { feedback } : {}),
@@ -237,6 +238,21 @@ describe('AskFlow.submit', () => {
       actions: [exam],
       pasted: false,
     })
+  })
+
+  it('retries a plan once after an AI timeout, then says why in plain words with Try again', async () => {
+    const roadmap: CoachAction = { type: 'start_roadmap', subjectId: null, goal: 'Moles' }
+    const s = setup({ actions: [roadmap] })
+    s.sessions.start = vi.fn(async () => {
+      throw new Error('Couldn\'t build a roadmap: brain task "buildRoadmap" timed out')
+    })
+    await s.flow.submit('help me study moles')
+    await vi.waitFor(() =>
+      expect(s.messages.at(-1)?.content).toMatch(/^I couldn’t plan that yet\./),
+    )
+    expect(s.sessions.start).toHaveBeenCalledTimes(2)
+    expect(s.messages.at(-1)?.content).toMatch(/didn’t answer in time.*Gemini key/)
+    expect(s.messages.at(-1)?.actions).toEqual([roadmap])
   })
 
   it('offers adjust_roadmap as a chip and tells the coach it is a chat', async () => {

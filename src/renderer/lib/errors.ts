@@ -6,17 +6,9 @@
  * `errorToast` adds a button to the AI settings.
  */
 import { toast } from '@renderer/design-system'
+import { AI_OVER_BUDGET_TEXT, AI_UNAVAILABLE_TEXT, aiFailureText } from '@shared/ai-errors'
 
-const AI_DOWN =
-  /timed out|aborted|request cancelled|all providers|no provider|rate limit|429|task "[^"]*" unavailable|over-budget/i
-const OVER_BUDGET = /over-budget/i
-
-export const AI_UNAVAILABLE_TEXT =
-  'Dumbledore’s AI didn’t answer in time. Without an AI key it uses a slow free service — add a Gemini key in Settings → AI providers for fast answers.'
-
-/** The Gemini key is there, but the spending cap (DUMBLEDORE_BUDGET_EUR, €10) is reached. */
-export const AI_OVER_BUDGET_TEXT =
-  'Dumbledore’s AI spending cap is reached, so it used the slow free service, which didn’t answer. Try again in a moment.'
+export { AI_OVER_BUDGET_TEXT, AI_UNAVAILABLE_TEXT }
 
 export class AppError extends Error {
   constructor(
@@ -40,8 +32,8 @@ export function cleanError(err: unknown): AppError {
   if (err instanceof AppError) return err
   const raw = err instanceof Error ? err.message : String(err)
   const text = cleanMessage(raw)
-  if (OVER_BUDGET.test(text)) return new AppError(AI_OVER_BUDGET_TEXT, true)
-  return AI_DOWN.test(text) ? new AppError(AI_UNAVAILABLE_TEXT, true) : new AppError(text, false)
+  const ai = aiFailureText(text)
+  return ai ? new AppError(ai, true) : new AppError(text, false)
 }
 
 /** An error toast in plain words; an AI outage gets "Open AI settings". */

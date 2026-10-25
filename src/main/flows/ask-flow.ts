@@ -18,6 +18,7 @@
  */
 import type { Brain } from '@engine/brain-contract'
 import type { FeedbackRepo, PerceptionService, Repos } from '@engine/contracts'
+import { aiFailureText } from '@shared/ai-errors'
 import type { ChatMessage, CoachAction } from '@shared/domain'
 import type { EventPayload } from '@shared/ipc'
 import type { AskResult } from '@shared/state'
@@ -52,6 +53,8 @@ export interface AskFlowDeps {
   assistantName?: () => string | null
   /** Tells the open chat to reload (a message was added after the reply). */
   chatChanged?: () => void
+  /** Wait before the one retry of a plan that timed out (tests pass 0). */
+  retryAfterMs?: number
 }
 
 export interface AskOptions {
@@ -178,8 +181,20 @@ export class AskFlow {
       repos.chat.append({ thread: ASK_THREAD, role: 'assistant', content, actions })
       this.deps.chatChanged?.()
     }
-    sessions
-      .start({ subjectId: action.subjectId, goal: action.goal, question: null }, { hold: true })
+    const plan = () =>
+      sessions.start(
+        { subjectId: action.subjectId, goal: action.goal, question: null },
+        { hold: true },
+      )
+    // One retry after an AI timeout: the keyless fallback allows two requests a minute, and the
+    // chat reply just used one, so a plan right after it often waits its turn.
+    plan()
+      .catch(async (error: unknown) => {
+        const why = error instanceof Error ? error.message : String(error)
+        if (!aiFailureText(why)) throw error
+        await new Promise((r) => setTimeout(r, this.deps.retryAfterMs ?? 30_000))
+        return plan()
+      })
       .then(({ session }) => {
         if (!session) return say('Your roadmap is ready.', [])
         const key = keyName(repos.settings.get().shortcut.key)
@@ -209,8 +224,9 @@ export class AskFlow {
         )
       })
       .catch((error: unknown) => {
-        const why = error instanceof Error ? error.message : String(error)
-        say(`I couldn’t plan that: ${why}`, [action])
+        const raw = error instanceof Error ? error.message : String(error)
+        const why = aiFailureText(raw) ?? raw.replace(/^Couldn't build a roadmap:\s*/, '')
+        say(`I couldn’t plan that yet. ${why}`, [action])
       })
   }
 
