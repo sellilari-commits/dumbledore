@@ -5,7 +5,7 @@ import { createMemoryRepos } from '@engine/testing/memory-repos'
 import type { PerceivedWindow } from '@shared/helper-protocol'
 import type { OutlineOverlay } from '@shared/state'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { isCitation, moreBelow, OutlineFlow, pageLines, union } from './outline-flow'
+import { drawMarks, isCitation, OutlineFlow, pageLines, pageText, union } from './outline-flow'
 
 const TEXT = [
   'Carbocation – Wikipedia',
@@ -210,21 +210,31 @@ describe('OutlineFlow', () => {
 })
 
 describe('pageLines', () => {
-  it('outlines only what is on screen: no citations, nothing scrolled away or squeezed to the edge', () => {
+  it('reads the whole page, marks only what is on screen, and counts the rest by direction', () => {
     const win = page()
     win.frame = { x: 0, y: 0, width: 800, height: 900 }
     // Chrome reports text below the window squeezed to its bottom edge with no height.
+    const below = 'Stability: tertiary > secondary > primary.'
     win.lines.push({
-      text: 'Stability: tertiary > secondary > primary.',
+      text: below,
       conf: 1,
       box: { x: 100, y: 900, width: 500, height: 0 },
       align: 'left',
     })
-    expect(pageLines(win).map((l) => l.text)).not.toContain(
-      'Stability: tertiary > secondary > primary.',
+    expect(pageLines(win).map((l) => l.text)).not.toContain(below)
+    expect(pageText(win, false).map((l) => l.text)).toContain(below)
+    const drawn = drawMarks(
+      [
+        { verdict: 'read', why: 'On screen', order: 1, texts: [TEXT[1] ?? ''] },
+        { verdict: 'read', why: 'Further down', order: 2, texts: [below] },
+      ],
+      win,
     )
-    expect(moreBelow(win)).toBe(true)
-    expect(moreBelow(page())).toBe(false)
+    expect(drawn.marks.map((m) => m.why)).toEqual(['On screen'])
+    expect(drawn).toMatchObject({ above: 0, below: 1, found: true })
+    expect(
+      drawMarks([{ verdict: 'read', why: 'x', order: 1, texts: ['not on this page'] }], win).found,
+    ).toBe(false)
   })
 
   it('skips citation lines', () => {

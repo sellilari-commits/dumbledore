@@ -230,6 +230,8 @@ export function sceneState(name: SceneName, vp: Size): OverlayState {
           subjectName: 'Organic Chemistry',
           summary: 'The Stability section is your gap; skip the history.',
           minutes: 1,
+          // Two more passages further down the page: the edge cue and the card point there.
+          below: 2,
           marks: [
             { rect: span(lines, 1, 2), verdict: 'skim', why: 'Background' },
             {

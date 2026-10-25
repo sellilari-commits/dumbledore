@@ -1,6 +1,8 @@
 /*
  * Outline marks: drawn over other apps, so colours are fixed (not themed) and nothing takes
- * clicks. The highlighter is a warm yellow with uneven ends, like a real marker stroke.
+ * clicks. Calm to read through, like a highlighter in a book: a soft translucent fill that keeps
+ * the text crisp, a thin amber bar in the margin to find the passages at a glance, quiet margin
+ * labels, and the page itself never dimmed.
  */
 .ov-outline {
   position: fixed;
@@ -16,53 +18,29 @@
   overflow: hidden;
 }
 
-/* Spotlight: a soft wash everywhere except the passages to read. */
-.ov-spot {
-  position: absolute;
-  inset: 0;
-  animation: ov-fade-in 260ms ease-out both;
-}
-
-.ov-spot__wash {
-  fill: rgba(250, 249, 246, 0.42);
-}
-
-/* Highlighter stroke on one line of text, sweeping in left to right. */
+/* A soft highlight on one line of text, fading in line by line. */
 .ov-hl {
   position: absolute;
-  border-radius: 3px 7px 4px 8px / 7px 3px 8px 4px;
-  background: linear-gradient(
-    100deg,
-    rgba(255, 226, 64, 0.5) 0%,
-    rgba(255, 214, 10, 0.44) 50%,
-    rgba(255, 226, 64, 0.5) 100%
-  );
-  clip-path: inset(0 100% 0 0);
-  animation: ov-sweep 340ms cubic-bezier(0.3, 0.7, 0.2, 1) var(--sweep-delay, 0ms) forwards;
+  border-radius: 4px;
+  background: rgba(255, 214, 10, 0.24);
+  opacity: 0;
+  animation: ov-appear 320ms ease-out var(--sweep-delay, 0ms) forwards;
 }
 
-@keyframes ov-sweep {
-  to {
-    clip-path: inset(0 0 0 0);
-  }
+/* The passage's bar in the margin. */
+.ov-readbar {
+  position: absolute;
+  width: 3px;
+  border-radius: 2px;
+  background: rgba(232, 172, 0, 0.75);
+  opacity: 0;
+  animation: ov-appear 320ms ease-out var(--sweep-delay, 0ms) forwards;
 }
 
 @keyframes ov-fade-in {
   from {
     opacity: 0;
   }
-}
-
-/* Margin: the reason, then the reading-order number, left of the passage's first line. */
-.ov-margin {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: -10px;
-  transform: translate(-100%, -50%);
-  opacity: 0;
-  animation: ov-appear 240ms ease-out var(--sweep-delay, 0ms) forwards;
 }
 
 @keyframes ov-appear {
@@ -74,26 +52,37 @@
   }
 }
 
+/* Margin: the reason, then the reading-order number, left of the bar. */
+.ov-margin {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: -22px;
+  transform: translate(-100%, -50%);
+  opacity: 0;
+  animation: ov-appear 320ms ease-out var(--sweep-delay, 0ms) forwards;
+}
+
 .ov-margin__num {
   flex: none;
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font:
-    700 12px / 1 -apple-system,
+    600 11px / 1 -apple-system,
     system-ui,
     sans-serif;
-  color: #2c2c2b;
-  background: #ffd60a;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  color: #6b4e00;
+  background: #fde68a;
 }
 
 .ov-margin__why {
-  max-width: 190px;
-  padding: 3px 8px;
+  max-width: 170px;
+  padding: 2px 7px;
   border-radius: 6px;
   font:
     500 11px / 15px -apple-system,
@@ -102,47 +91,98 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #2c2c2b;
-  background: #fffbe6;
+  color: #4a4535;
+  background: rgba(255, 255, 255, 0.94);
   box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.16),
-    0 0 0 1px rgba(214, 160, 0, 0.3);
+    0 1px 2px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
-/* Skim: a quiet bar in the margin. */
+/* Skim: a thin grey line in the margin. */
 .ov-skim {
   position: absolute;
-  width: 3px;
+  width: 2px;
   border-radius: 2px;
-  background: rgba(120, 120, 120, 0.45);
-  animation: ov-fade-in 260ms ease-out both;
+  background: rgba(120, 120, 120, 0.35);
+  animation: ov-fade-in 320ms ease-out both;
 }
 
-/* Skip: faded further than the spotlight, with the reason. */
+/* Skip: a faint dashed line in the margin, with the reason; the text stays as it is. */
 .ov-skip {
   position: absolute;
-  border-radius: 6px;
-  background: rgba(250, 249, 246, 0.55);
-  animation: ov-fade-in 260ms ease-out both;
+  width: 0;
+  border-left: 2px dashed rgba(120, 120, 120, 0.3);
+  animation: ov-fade-in 320ms ease-out both;
 }
 
 .ov-skip__why {
   position: absolute;
   right: 100%;
-  top: 4px;
+  top: 0;
   margin-right: 10px;
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 6px;
   font:
     500 11px / 15px -apple-system,
     system-ui,
     sans-serif;
   white-space: nowrap;
-  color: #5f5e5b;
-  background: #f4f3f1;
+  color: #77736c;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+/* Edge cues: where the passages that aren't on screen are; they go once those scroll into view. */
+.ov-edge {
+  position: absolute;
+  right: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font:
+    600 12px / 16px -apple-system,
+    system-ui,
+    sans-serif;
+  color: #6b4e00;
+  background: #fff6cc;
   box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.12),
-    0 0 0 1px rgba(0, 0, 0, 0.06);
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(232, 172, 0, 0.35);
+  animation: ov-fade-in 260ms ease-out both;
+}
+
+.ov-edge > span {
+  display: inline-block;
+}
+
+.ov-edge--down {
+  bottom: 18px;
+}
+
+.ov-edge--down > span {
+  animation: ov-nudge-down 1.6s ease-in-out infinite;
+}
+
+.ov-edge--up {
+  top: 18px;
+}
+
+.ov-edge--up > span {
+  animation: ov-nudge-up 1.6s ease-in-out infinite;
+}
+
+@keyframes ov-nudge-down {
+  50% {
+    transform: translateY(3px);
+  }
+}
+
+@keyframes ov-nudge-up {
+  50% {
+    transform: translateY(-3px);
+  }
 }
 
 /* The guide card, out of the reading area. */
@@ -156,28 +196,29 @@
   gap: 10px;
   max-width: 560px;
   padding: 9px 14px 9px 10px;
-  border-radius: 12px;
+  border-radius: 14px;
   font:
     400 12px / 17px -apple-system,
     system-ui,
     sans-serif;
   color: #ffffff;
-  background: rgba(30, 30, 30, 0.92);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  background: rgba(30, 30, 30, 0.86);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
   animation: ov-fade-in 260ms ease-out both;
 }
 
 .ov-outline__badge {
   flex: none;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  color: #2c2c2b;
-  background: #ffd60a;
+  font-weight: 600;
+  color: #6b4e00;
+  background: #fde68a;
 }
 
 .ov-outline__summary {
@@ -190,19 +231,17 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ov-hl {
-    animation: none;
-    clip-path: none;
-  }
-
+  .ov-hl,
+  .ov-readbar,
   .ov-margin {
     animation: none;
     opacity: 1;
   }
 
-  .ov-spot,
   .ov-skim,
   .ov-skip,
+  .ov-edge,
+  .ov-edge > span,
   .ov-outline__card {
     animation: none;
   }
