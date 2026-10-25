@@ -429,8 +429,21 @@ export const CoachAction = z.discriminatedUnion('type', [
     /** What the course covers, in the student's words (the subject's description). */
     scope: z.string().nullable(),
   }),
-  /** The "Undo" chip after something the chat saved (a question, a course fact). */
-  z.object({ type: z.literal('undo_save'), saveId: z.string() }),
+  /**
+   * The "Undo" chip after something the chat saved (a question, a course fact) or a chat tool
+   * wrote; `label` is that write's receipt line ("Renamed “X” → “Y”"), shown with the chip.
+   */
+  z.object({ type: z.literal('undo_save'), saveId: z.string(), label: z.string().optional() }),
+  /**
+   * A chat tool call waiting for the student's go-ahead (a delete): the chip shows `label`
+   * ("Delete note “…”") and pressing it runs the call.
+   */
+  z.object({
+    type: z.literal('run_tool'),
+    tool: z.string(),
+    input: z.record(z.string(), z.unknown()),
+    label: z.string(),
+  }),
   /** Feedback about Dumbledore itself, stored and fed into the prompts of its scope. */
   z.object({
     type: z.literal('give_feedback'),

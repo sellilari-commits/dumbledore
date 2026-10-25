@@ -481,7 +481,28 @@ export type CoachInput = z.infer<typeof CoachInput>
 export type CoachEvent =
   | { type: 'text'; delta: string }
   | { type: 'action'; action: CoachAction }
+  /** coachLoop: a tool call the model made and whether it succeeded (for logs and tests). */
+  | { type: 'tool'; name: string; input: unknown; ok: boolean }
   | { type: 'done' }
+
+/** A tool the chat model may call in coachLoop: JSON-schema parameters, run by the shell. */
+export interface CoachToolSpec {
+  name: string
+  description: string
+  parameters: Record<string, unknown>
+}
+
+/** The shell side of coachLoop: the tools and how to run one call. */
+export interface CoachTools {
+  specs: CoachToolSpec[]
+  /** Runs one call; `result` goes back to the model as JSON. Never throws for a bad call. */
+  run(name: string, input: unknown): Promise<{ ok: boolean; result: unknown }>
+}
+
+export interface CoachLoopOptions extends CallOptions {
+  /** Most model steps (each may call tools); the last one answers without tools. Default 6. */
+  maxSteps?: number
+}
 
 export const NudgeInput = z.object({ kind: z.string(), facts: z.string(), language: Lang })
 export type NudgeInput = z.infer<typeof NudgeInput>
@@ -542,6 +563,16 @@ export interface Brain {
   improvePrompt(input: ImproveInput, opts?: CallOptions): Promise<PromptWithTip>
   suggestPrompt(input: SuggestInput, opts?: CallOptions): Promise<SuggestOutput>
   coach(input: CoachInput, opts?: CallOptions): AsyncIterable<CoachEvent>
+  /**
+   * P10 in chat mode with tools, as a loop: the model calls tools (read, write, act), sees each
+   * result and goes on until it answers in text; capped in steps and time. Optional: fakes and
+   * older brains leave it out and the chat falls back to coach().
+   */
+  coachLoop?(
+    input: CoachInput,
+    tools: CoachTools,
+    opts?: CoachLoopOptions,
+  ): AsyncIterable<CoachEvent>
   writeNudge(input: NudgeInput, opts?: CallOptions): Promise<NudgeOutput>
   buildProfile(input: ProfileInput, opts?: CallOptions): Promise<ProfileOutput>
   /** P15: which passages of the page being read to read / skim / skip for the student's gaps. */

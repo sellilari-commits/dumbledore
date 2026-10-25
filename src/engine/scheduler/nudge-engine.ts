@@ -82,6 +82,7 @@ const ACCEPT_LABEL: Record<CoachAction['type'], string> = {
   save_question: 'Save',
   update_subject: 'Save',
   undo_save: 'Undo',
+  run_tool: 'Confirm',
 }
 
 export function nudgeToast(nudge: Nudge): Toast {

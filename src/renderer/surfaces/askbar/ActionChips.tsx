@@ -56,6 +56,8 @@ export function describeAction(action: CoachAction): { label: string; Icon: Luci
       return { label: 'Save to subject', Icon: LibraryBig }
     case 'undo_save':
       return { label: 'Undo', Icon: Undo2 }
+    case 'run_tool':
+      return { label: action.label, Icon: Check }
   }
 }
 

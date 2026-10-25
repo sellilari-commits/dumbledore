@@ -29,6 +29,8 @@ export function coachActionLabel(action: CoachAction): string {
       return 'Save to subject'
     case 'undo_save':
       return 'Undo'
+    case 'run_tool':
+      return action.label
   }
 }
 
