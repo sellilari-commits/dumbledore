@@ -8,6 +8,7 @@
  * secret: settings drop anything key-, credential- or route-like, URLs lose their query string.
  */
 import type { MemoryControl, QueryService, Repos, StudyService } from '@engine/contracts'
+import { roadmapHistory } from '@engine/learning/study/roadmap-history'
 import type {
   Concept,
   Encounter,
@@ -41,6 +42,7 @@ export const READ_KINDS = [
   'note',
   'roadmaps',
   'roadmap',
+  'roadmap_history',
   'quizzes',
   'exams',
   'quiz',
@@ -87,7 +89,7 @@ const READ_DESCRIPTION = `Read anything Dumbledore knows about the student. Pass
 - subject (id): one subject: fields, study preferences, topic tree (topics and subtopics with ids, big picture, gap, mastery, sources), all roadmaps with progress, assignments, recent exam results.
 - topic (id = topic/concept id): the topic with its big picture, parent, subtopics, notes, sources, prerequisites and recent encounters.
 - notes (subjectId and/or conceptId; both null = loose notes that match no subject), note (id).
-- roadmaps (subjectId, null = every subject): all roadmaps, active, paused and done (the roadmap history), each with progress ("step 3 of 6, 2 done") and steps. roadmap (id): every step with its id, kind, objective or what it covers, status, and which one is current.
+- roadmaps (subjectId, null = every subject): all roadmaps, active, paused and done (the roadmap history), each with progress ("step 3 of 6, 2 done") and steps. roadmap (id): every step with its id, kind, objective or what it covers, status, and which one is current. roadmap_history (subjectId): earlier versions of the subject's roadmap that were replaced (replanned, a new roadmap, swapped), newest first, with when and why; act restore_roadmap_version brings one back.
 - quizzes (subjectId): every quiz incl. checkpoints and placements; exams (subjectId): exams and reviews; quiz (id): questions, the student's answers, score.
 - gaps (subjectId or null): struggling topics, misconceptions, open questions, roadmap carry.
 - encounters (subjectId; null = all, incl. the inbox): extracted learning records; encounter (id).
@@ -586,6 +588,25 @@ export function createReadTools(deps: ReadToolsDeps): ChatTool[] {
             nextMilestone: clip(r.nextMilestone, 160),
             createdAt: day(r.createdAt),
           },
+        })
+      }
+      case 'roadmap_history': {
+        if (!subjectId)
+          return failure('read roadmap_history needs a subjectId; read subjects first')
+        const versions = roadmapHistory(repos, subjectId)
+        return outcome({
+          kind: 'roadmap_history',
+          subjectId,
+          ...capped('versions', versions, cap, (v) => ({
+            versionId: v.roadmap.id,
+            title: clip(v.roadmap.title, 80),
+            status: v.roadmap.status,
+            progress: roadmapProgress(v.roadmap),
+            steps: v.roadmap.items.length,
+            replacedAt: minute(v.replacedAt),
+            replacedBy: v.replacedBy,
+            reason: clip(v.reason, 120),
+          })),
         })
       }
       case 'quizzes':

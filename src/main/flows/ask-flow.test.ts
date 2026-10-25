@@ -406,3 +406,18 @@ describe('afterReset', () => {
     expect(afterReset(all, Date.parse(at(2))).map((m) => m.id)).toEqual(['m3'])
   })
 })
+
+describe('AskFlow.submit: the tool loop only when the brain has coachLoop', () => {
+  it('keeps the single coach call when the brain has no coachLoop, even with tools wired', async () => {
+    const turn = vi.fn()
+    const t = setup()
+    const flow = new AskFlow({
+      ...(t.flow as unknown as { deps: AskFlowDeps }).deps,
+      chatTools: { turn },
+    } as AskFlowDeps)
+    const result = await flow.submit('hi')
+    expect(result.reply).toBe('Hello there.')
+    expect(turn).not.toHaveBeenCalled()
+    expect(t.inputs).toHaveLength(1)
+  })
+})

@@ -17,14 +17,25 @@
  * ask or don't get (save_question), facts about a course (update_subject) and notes they ask to
  * keep (add_note), each as a receipt line in the reply with an Undo chip. Feedback the coach
  * recognises (give_feedback) is stored right away and reaches the prompts of its scope.
+ *
+ * With chat tools wired (and a brain with coachLoop), the double-tap chat runs the tool loop
+ * instead of the single coach call: the model reads, writes and acts through the tools
+ * (chat-tools/index.ts) until it answers. The reply streams as before; the assistant message
+ * carries the turn's chips and one labelled undo_save per receipt (what was done, with Undo), and
+ * the web sources as links under the text. The history the next turns send says what was done
+ * ("Done: …" lines from those receipts) without showing it twice in the chat. `/d` instructions
+ * and a brain without coachLoop keep the single coach call.
  */
-import type { Brain } from '@engine/brain-contract'
+import type { Brain, CoachInput } from '@engine/brain-contract'
 import type { FeedbackRepo, PerceptionService, Repos } from '@engine/contracts'
 import { aiFailureText } from '@shared/ai-errors'
 import type { ChatMessage, CoachAction } from '@shared/domain'
 import type { EventPayload } from '@shared/ipc'
 import type { AskResult } from '@shared/state'
 import type { ChatWriter, FieldSnapshot } from '../chat/chat-writer'
+import type { ChatTools, ChatTurnTools } from '../chat-tools'
+import { askedToOpen, type StartRoadmapAction } from '../chat-tools/flows'
+import { sourcesMarkdown } from '../chat-tools/web-search'
 import { coachActionLabel } from '../overlay/labels'
 import type { ToastSpec } from '../overlay/toasts'
 import { keyName } from '../router/hints'
@@ -40,7 +51,7 @@ export interface AskFlowDeps {
   brain: Brain
   repos: Repos
   perception: Pick<PerceptionService, 'aiChat'>
-  sessions: Pick<SessionFlow, 'start'>
+  sessions: Pick<SessionFlow, 'start'> & Partial<Pick<SessionFlow, 'next'>>
   writer: Pick<ChatWriter, 'write'>
   thinking: Thinking
   overlay: { showToast(spec: ToastSpec): string }
@@ -58,6 +69,8 @@ export interface AskFlowDeps {
   chatChanged?: () => void
   /** Wait before the one retry of a plan that timed out (tests pass 0). */
   retryAfterMs?: number
+  /** The chat tools; with them (and brain.coachLoop) the chat runs the tool loop. */
+  chatTools?: Pick<ChatTools, 'turn'>
 }
 
 export interface AskOptions {
@@ -104,6 +117,22 @@ export function topicContext(
   return lines.join('\n')
 }
 
+/**
+ * What an earlier message says in the history the model gets: an assistant reply plus what it
+ * did ("Done: …" from its receipts, "Waiting for the student's click: …" for its chips), so the
+ * next turn knows a roadmap was planned or a note saved. The chat itself shows them as rows.
+ */
+export function historyContent(message: ChatMessage): string {
+  if (message.role !== 'assistant') return message.content
+  const done = message.actions.flatMap((a) =>
+    a.type === 'undo_save' && a.label ? [`Done: ${a.label}`] : [],
+  )
+  const offered = message.actions.flatMap((a) =>
+    a.type === 'run_tool' ? [`Waiting for the student's click: ${a.label}`] : [],
+  )
+  return [message.content, ...done, ...offered].filter(Boolean).join('\n')
+}
+
 /** Messages created after `since` (epoch ms); all of them when there was no "New chat". */
 export function afterReset(messages: ChatMessage[], since: number | null): ChatMessage[] {
   if (since === null) return messages
@@ -114,11 +143,17 @@ export class AskFlow {
   /** Latest "New chat" seen from the Ask bar; `/d` turns share the thread, so they honour it too. */
   private since: number | null = null
   private seq = 0
+  /** The tool-loop turn being answered; a plan's "ready" message waits for its reply. */
+  private turn: Promise<void> | null = null
 
   constructor(private readonly deps: AskFlowDeps) {}
 
-  /** Ask bar (double tap): reply + actions as chips. Chat only: nothing is ever pasted. */
+  /**
+   * Ask bar (double tap): reply + actions as chips. With chat tools it runs the tool loop
+   * (submitWithTools); without, one coach call where nothing is ever pasted.
+   */
   async submit(text: string, opts: AskOptions = {}): Promise<AskResult> {
+    if (this.deps.chatTools && this.deps.brain.coachLoop) return this.submitWithTools(text, opts)
     this.noteReset(opts.since)
     const { reply, actions } = await this.converse(text, opts.signal, opts.subjectId, CHAT_MODE)
     const applied = this.applyInChat(
@@ -160,7 +195,7 @@ export class AskFlow {
       }
       if (action.type === 'start_roadmap' && this.deps.sessions) {
         lines.push(`Planning a roadmap for “${action.goal}”. I’ll tell you here when it’s ready.`)
-        this.planInBackground(action)
+        this.plan(action)
         continue
       }
       const receipt = saves?.apply(action)
@@ -178,11 +213,15 @@ export class AskFlow {
   /**
    * Plans the roadmap the student asked for while they keep talking (the orb shows "Building your
    * roadmap…"), then says in the chat that it is ready and where step 1 is: their next tap in
-   * their AI chat. A failure says why and offers to try again.
+   * their AI chat. With `startNow` (the student asked to start) and an AI chat open when the plan
+   * is ready, step 1 is pasted there instead. Nothing is ever opened. A failure says why and
+   * offers to try again.
    */
-  private planInBackground(action: Extract<CoachAction, { type: 'start_roadmap' }>): void {
+  plan(action: StartRoadmapAction, opts: { startNow?: boolean } = {}): void {
     const { sessions, repos } = this.deps
-    const say = (content: string, actions: CoachAction[]) => {
+    const say = async (content: string, actions: CoachAction[]) => {
+      // Never above the reply of the turn that asked for the plan.
+      await this.turn
       repos.chat.append({ thread: ASK_THREAD, role: 'assistant', content, actions })
       this.deps.chatChanged?.()
     }
@@ -200,11 +239,24 @@ export class AskFlow {
         await new Promise((r) => setTimeout(r, this.deps.retryAfterMs ?? 30_000))
         return plan()
       })
-      .then(({ session }) => {
+      .then(async ({ session }) => {
         if (!session) return say('Your roadmap is ready.', [])
+        await this.turn
         const key = keyName(repos.settings.get().shortcut.key)
         const ai = this.deps.assistantName?.()
-        const where = ai ? `Open ${ai} and tap ${key}` : `In your AI chat, tap ${key}`
+        const open = opts.startNow ? this.deps.perception.aiChat() : null
+        const pasted =
+          open && sessions.next
+            ? await sessions
+                .next()
+                .then((r) => (r.write?.ok ? open.assistant : null))
+                .catch(() => null)
+            : null
+        const where = pasted
+          ? `Step 1 is in your ${pasted} chat box`
+          : ai
+            ? `Open ${ai} and tap ${key} for step 1`
+            : `In your AI chat, tap ${key} for step 1`
         // An exam date given with the request lands on the subject the planner found or made.
         const fact = action.deadline
           ? this.deps.saves?.apply({
@@ -215,9 +267,9 @@ export class AskFlow {
               scope: null,
             })
           : null
-        say(
+        await say(
           [
-            `Your roadmap is ready: **${session.title}**, ${session.total} steps. ${where} for step 1.`,
+            `Your roadmap is ready: **${session.title}**, ${session.total} steps. ${where}.`,
             fact?.line,
           ]
             .filter(Boolean)
@@ -225,14 +277,82 @@ export class AskFlow {
           [
             { type: 'open_subject', subjectId: session.subjectId },
             ...(fact?.undo ? [fact.undo] : []),
+            ...(pasted
+              ? [{ type: 'undo_save' as const, saveId: '', label: `Pasted step 1 into ${pasted}` }]
+              : []),
           ],
         )
       })
       .catch((error: unknown) => {
         const raw = error instanceof Error ? error.message : String(error)
         const why = aiFailureText(raw) ?? raw.replace(/^Couldn't build a roadmap:\s*/, '')
-        say(`I couldn’t plan that yet. ${why}`, [action])
+        return say(`I couldn’t plan that yet. ${why}`, [action])
       })
+  }
+
+  /**
+   * The double-tap chat with tools: the model reads, writes and acts in a loop until it answers.
+   * Receipts become labelled undo_saves (the UI shows them as lines with Undo), chips stay chips,
+   * web sources go under the reply as links. A website opens only when the student's message
+   * asked for it (askedToOpen) or later on a chip click.
+   */
+  private async submitWithTools(text: string, opts: AskOptions): Promise<AskResult> {
+    const { repos, brain, chatTools } = this.deps
+    if (!chatTools || !brain.coachLoop) throw new Error('Chat tools are not wired.')
+    this.noteReset(opts.since)
+    const history = afterReset(repos.chat.history(ASK_THREAD, HISTORY_LIMIT), this.since).map(
+      (m) => ({ role: m.role, content: historyContent(m) }),
+    )
+    repos.chat.append({ thread: ASK_THREAD, role: 'user', content: text, actions: [] })
+    const topic = opts.subjectId ? topicContext(repos, opts.subjectId) : null
+    const context = [topic, this.deps.contextText()].filter(Boolean).join('\n\n')
+    const turn = chatTools.turn({ signal: opts.signal, userAskedToOpen: askedToOpen(text) })
+    const messageId = `ask_pending_${++this.seq}`
+    let answered = () => {}
+    const current = new Promise<void>((resolve) => {
+      answered = resolve
+    })
+    this.turn = current
+    try {
+      return await this.answerWithTools(text, opts, turn, history, context, messageId)
+    } finally {
+      if (this.turn === current) this.turn = null
+      answered()
+    }
+  }
+
+  private async answerWithTools(
+    text: string,
+    opts: AskOptions,
+    turn: ChatTurnTools,
+    history: CoachInput['history'],
+    context: string,
+    messageId: string,
+  ): Promise<AskResult> {
+    const { repos, brain, thinking, emitDelta } = this.deps
+    let reply = ''
+    try {
+      await thinking.run('Thinking…', async () => {
+        const events = brain.coachLoop?.(
+          { profile: repos.profile.get().summary, context, history, message: text },
+          turn,
+          { signal: opts.signal },
+        )
+        if (!events) return
+        for await (const event of events) {
+          if (event.type === 'text') {
+            reply += event.delta
+            emitDelta?.({ thread: ASK_THREAD, messageId, delta: event.delta, done: false })
+          }
+        }
+      })
+    } finally {
+      emitDelta?.({ thread: ASK_THREAD, messageId, delta: '', done: true })
+    }
+    const content = [reply.trim(), sourcesMarkdown(turn.sources())].filter(Boolean).join('\n\n')
+    const actions = turn.actions()
+    repos.chat.append({ thread: ASK_THREAD, role: 'assistant', content, actions })
+    return { reply: content, actions, pasted: false }
   }
 
   /** `/d …` turn: a roadmap or prompt the coach proposes is pasted into the chat box at once. */

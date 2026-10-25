@@ -44,6 +44,11 @@ export interface ActToolDeps {
   perform(action: CoachAction, ctx: ToolCtx): Promise<ToolOutcome>
   /** Chat flows by name (write_prompt, open_topic, restore_roadmap_version…). */
   flows?: ActFlow[]
+  /**
+   * Why a coach flow must not run or be offered (e.g. a second roadmap for a subject that has
+   * one); null = fine. Checked before an offer too, so no chip offers what would be refused.
+   */
+  refuse?(action: CoachAction): string | null
   /** Calls an IPC channel's handler with the parsed request (runHandler); absent = no app acts. */
   invoke?(channel: InvokeChannel, payload: unknown): Promise<unknown>
   log?(message: string): void
@@ -423,6 +428,11 @@ export function createActTool(deps: ActToolDeps): ChatTool<z.output<typeof Input
       return failure(`Bad args for ${name}: ${issues(parsed.error)}`)
     }
     const action = parsed.data
+    const refused = deps.refuse?.(action) ?? null
+    if (refused) {
+      log(`${name} refused: ${short(refused, 80)}`)
+      return failure(refused)
+    }
     if (offer) {
       log(`${name} offered`)
       return outcome(

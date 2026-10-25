@@ -1,6 +1,7 @@
 import type { CoachAction } from '@shared/domain'
 import { type InvokeChannel, ipcInvoke } from '@shared/ipc'
 import { describe, expect, it, vi } from 'vitest'
+import { z } from 'zod'
 import { ACT_CHANNELS, COACH_FLOW_NAMES, createActTool, IPC_TOOL_CLASS, parseArgs } from './act'
 import { outcome, type ToolCtx, type ToolOutcome } from './types'
 
@@ -243,6 +244,68 @@ describe('act tool', () => {
       ok: false,
       result: { error: 'App actions are not available here.' },
     })
+  })
+})
+
+describe('act tool: chat flows and refusals', () => {
+  function withFlows() {
+    const ran = vi.fn(async (args: Record<string, unknown>, _ctx: ToolCtx) =>
+      outcome({ pasted: args.text }, { receipts: [{ line: 'Pasted into ChatGPT', undoId: null }] }),
+    )
+    const perform = vi.fn(async () => outcome({}))
+    const tool = createActTool({
+      perform,
+      flows: [
+        {
+          name: 'paste_prompt',
+          description: 'paste a prompt',
+          input: z.object({ text: z.string().min(1) }),
+          label: () => 'Open Claude and paste',
+          run: ran,
+        },
+      ],
+      refuse: (action) =>
+        action.type === 'start_roadmap' ? 'Not planned: Statistics already has a roadmap' : null,
+    })
+    const call = (name: string, args: unknown, offer = false, ctx: ToolCtx = {}) =>
+      tool.run(tool.input.parse({ name, args, offer }), ctx)
+    return { tool, ran, perform, call }
+  }
+
+  it('lists the flows with their fields and runs one with the turn context', async () => {
+    const { tool, call, ran } = withFlows()
+    expect(tool.description).toContain('- paste_prompt {text: string}: paste a prompt')
+    const out = await call('paste_prompt', { text: 'Explain DAGs' }, false, {
+      userAskedToOpen: true,
+    })
+    expect(ran).toHaveBeenCalledWith({ text: 'Explain DAGs' }, { userAskedToOpen: true })
+    expect(out.receipts).toEqual([{ line: 'Pasted into ChatGPT', undoId: null }])
+    expect((await call('paste_prompt', { text: '' })).ok).toBe(false)
+  })
+
+  it('offers a flow as a run_tool chip that runs this act', async () => {
+    const { call, ran } = withFlows()
+    const out = await call('paste_prompt', { text: 'Explain DAGs' }, true)
+    expect(ran).not.toHaveBeenCalled()
+    expect(out.chips).toEqual([
+      {
+        type: 'run_tool',
+        tool: 'act',
+        input: { name: 'paste_prompt', args: '{"text":"Explain DAGs"}', offer: false },
+        label: 'Open Claude and paste',
+      },
+    ])
+  })
+
+  it('refuses a coach flow before running or offering it', async () => {
+    const { call, perform } = withFlows()
+    for (const offer of [false, true]) {
+      const out = await call('start_roadmap', { subjectId: 's1', goal: 'Causal' }, offer)
+      expect(out.ok).toBe(false)
+      expect(out.chips).toEqual([])
+      expect((out.result as { error: string }).error).toContain('already has a roadmap')
+    }
+    expect(perform).not.toHaveBeenCalled()
   })
 })
 

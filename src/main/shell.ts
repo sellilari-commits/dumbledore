@@ -8,10 +8,15 @@ import type { AssistantConfig } from '@engine/perception/ai-chat/assistants'
 import { detectAssistant } from '@engine/perception/ai-chat/detector'
 import { usualAssistantFrom } from '@engine/perception/ai-chat/usual'
 import { blockReason, excludedBundleIds } from '@engine/privacy'
-import type { EventPayload } from '@shared/ipc'
+import type { RelinkSupport } from '@engine/store/sqlite-repos'
+import type { EventPayload, InvokeChannel } from '@shared/ipc'
 import type { AppState, OverlayState } from '@shared/state'
 import { ChatWriter } from './chat/chat-writer'
 import { FocusKeeper } from './chat/focus-keeper'
+import { type ChatTools, createChatTools } from './chat-tools'
+import { createChatFlows } from './chat-tools/flows'
+import { UndoLog } from './chat-tools/undo'
+import { createWebSearchTool } from './chat-tools/web-search'
 import { buildAppState, PermissionsCache } from './flows/app-state'
 import { AskFlow } from './flows/ask-flow'
 import { ChatSaves } from './flows/chat-saves'
@@ -25,9 +30,11 @@ import { RoadmapAdjust } from './flows/roadmap-adjust'
 import { SessionFlow } from './flows/session-flow'
 import { Thinking } from './flows/thinking'
 import { TypedNotes } from './flows/typed-notes'
+import { runHandler } from './ipc/register'
+import type { Handlers } from './ipc/types'
 import { OverlayController } from './overlay/controller'
 import type { ShellPlatform, SurfaceControl } from './platform'
-import { tapTarget } from './router/last-subject'
+import { lastStudiedSubject, tapTarget } from './router/last-subject'
 import { PendingWork } from './router/pending'
 import { ShortcutRouter } from './router/shortcut-router'
 import { SuggestionCache } from './router/suggestions'
@@ -56,6 +63,10 @@ export interface ShellCore {
   thinking: Thinking
   sessions: SessionFlow
   ask: AskFlow
+  /** The double-tap chat's tools (read, search, create, update, delete, act, web_search). */
+  chatTools: ChatTools
+  /** Late binding: the IPC handlers are built after the core (app acts, "Open <AI> and paste"). */
+  bindHandlers(handlers: Handlers): void
   /** The prompt box (right ⌥ hold): writes a prompt from what the student asked for. */
   promptWriter: PromptWriter
   chat: CoachChat
@@ -68,6 +79,12 @@ export interface ShellCore {
   appState(): AppState
   start(): void
   dispose(): void
+}
+
+/** SqliteRepos.relink (moving a topic to another subject), as the subject service finds it. */
+function relinkOf(repos: Services['repos']): RelinkSupport | null {
+  const candidate = (repos as Services['repos'] & { relink?: RelinkSupport }).relink
+  return candidate && typeof candidate.moveConcept === 'function' ? candidate : null
 }
 
 export function createShellCore(services: Services, hooks: ShellHooks): ShellCore {
@@ -134,7 +151,70 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
   const typedNotes = new TypedNotes({ repos, bus })
   // What the double-tap chat hears goes into the student's studying, with receipts and Undo.
   const chatSaves = new ChatSaves({ repos, bus, notes: typedNotes })
+  // The double-tap chat's tools: everything Dumbledore knows, with receipts and Undo. App acts and
+  // "Open <AI> and paste" go through the IPC handlers, bound once app.ts has built them.
+  let handlers: Handlers | null = null
+  const invoke = async (channel: InvokeChannel, payload: unknown): Promise<unknown> => {
+    if (!handlers) throw new Error('App actions are not ready yet.')
+    return runHandler(channel, handlers, payload, { surface: 'askbar', displayId: null })
+  }
+  const undoLog = new UndoLog()
+  const chatChanged = () => bus.emit('memory:changed', { scope: 'chat', ids: [] })
+  const chatFlows = createChatFlows({
+    repos,
+    bus,
+    nowIso: () => clock.nowIso(),
+    undo: undoLog,
+    saves: chatSaves,
+    notes: typedNotes,
+    // CoachActions and AskFlow are built below; these run only once a chat turn calls them.
+    run: (action) => actions.run(action),
+    plan: (action, opts) => ask.plan(action, opts),
+    prompts: services.prompts,
+    perception,
+    writer,
+    sessions,
+    surfaces,
+    usualAiName: () => usualAssistant()?.name ?? null,
+    openUsualAi: async (text) => {
+      const res = (await invoke('prompt.openUsualAi', text)) as {
+        opened: { name: string; prefilled: boolean } | null
+      }
+      return res.opened
+    },
+    copy: async (text) => platform.writeClipboard(text),
+    subjectName: () => {
+      const id = lastStudiedSubject(repos) ?? repos.settings.get().focusSubjectId
+      return id ? (repos.subjects.get(id)?.name ?? null) : null
+    },
+  })
+  const brain = services.brain
+  const chatTools = createChatTools({
+    repos,
+    queries: services.queries,
+    memory: services.subjects,
+    study,
+    bus,
+    undo: undoLog,
+    relink: relinkOf(repos),
+    nowIso: () => clock.nowIso(),
+    perform: chatFlows.perform,
+    flows: chatFlows.flows,
+    refuse: chatFlows.refuse,
+    invoke,
+    webSearch: brain.webSearch
+      ? createWebSearchTool({
+          search: (query, signal) =>
+            brain.webSearch ? brain.webSearch(query, { signal }) : Promise.resolve('no-key'),
+        })
+      : null,
+    log: (line) => console.info(line),
+  })
   const actions = new CoachActions({
+    chatTools,
+    undoLog,
+    chat: repos.chat,
+    chatChanged,
     notes: typedNotes,
     saves: chatSaves,
     feedback: repos.feedback,
@@ -177,7 +257,8 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     feedback: repos.feedback,
     saves: chatSaves,
     assistantName: () => perception.aiChat()?.assistant ?? usualAssistant()?.name ?? null,
-    chatChanged: () => bus.emit('memory:changed', { scope: 'chat', ids: [] }),
+    chatChanged,
+    chatTools,
   })
   const promptWriter = new PromptWriter({ sessions, study, perception, surfaces, thinking })
   const chat = new CoachChat({
@@ -273,6 +354,10 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     thinking,
     sessions,
     ask,
+    chatTools,
+    bindHandlers(bound) {
+      handlers = bound
+    },
     promptWriter,
     chat,
     actions,

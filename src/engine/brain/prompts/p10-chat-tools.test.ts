@@ -43,6 +43,25 @@ describe('P10 chat with tools', () => {
     expect(system).toMatch(/stuck[^\n]*act save_question/)
   })
 
+  it('never opens a website unless the student asked, and offers the button instead', () => {
+    expect(system).toMatch(/never open a website, a browser tab or their AI yourself/)
+    expect(system).toMatch(/Only when the student's own message asks you to open their AI/)
+    expect(system).toMatch(/Dumbledore's own pages[^\n]*may open/)
+  })
+
+  it('runs the old long-press flows and roadmap history from the chat', () => {
+    expect(system).toMatch(/act write_prompt with their wish in their words/)
+    expect(system).toMatch(/study_now \(they want to start now/)
+    expect(system).toMatch(/act open_topic/)
+    expect(system).toMatch(/read roadmap_history[^\n]*restore_roadmap_version/)
+    expect(system).toMatch(/Never delete a roadmap to replace it/)
+  })
+
+  it('uses web_search only outside their data and cites sources', () => {
+    expect(system).toMatch(/web_search only for facts outside the student's own data/)
+    expect(system).toMatch(/Cite what you used by its source title/)
+  })
+
   it('explains the tool-results turn', () => {
     expect(system).toContain(`A user turn starting with ${TOOL_RESULTS_HEADER} comes from the app`)
   })

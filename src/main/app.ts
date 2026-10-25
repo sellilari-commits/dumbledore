@@ -208,6 +208,7 @@ async function start(paths: AppPaths): Promise<void> {
     },
     openExternal: (url) => shell.openExternal(url),
   })
+  core.bindHandlers(handlers)
   const unregister = registerIpc(ipcMain, handlers, {
     identify: windows.identify,
     validateResponses: !app.isPackaged,

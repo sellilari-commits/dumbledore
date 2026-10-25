@@ -46,6 +46,8 @@ export interface ChatToolsDeps {
   perform: ActToolDeps['perform']
   /** Acts the shell adds by name (write_prompt, open_topic, restore_roadmap_version…). */
   flows?: ActFlow[]
+  /** Why a coach flow must not run or be offered (a second roadmap). */
+  refuse?: ActToolDeps['refuse']
   /** IPC channels classified 'act'; absent = no app acts. */
   invoke?: ActToolDeps['invoke']
   /** web_search (createWebSearchTool); absent = no web search. Reset at every turn. */
@@ -123,6 +125,7 @@ export function createChatTools(deps: ChatToolsDeps): ChatTools {
     createActTool({
       perform: deps.perform,
       flows: deps.flows,
+      refuse: deps.refuse,
       invoke: deps.invoke,
       log: (line) => log(line),
     }) as ChatTool,
