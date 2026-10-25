@@ -508,6 +508,7 @@ export interface MemoryControl {
   updateNote(id: Id, text: string): Note
   /** Returns the deleted note (for its subject). */
   deleteNote(id: Id): Note
+  /** The student files or moves a note: it becomes pinned, so auto-filing never moves it again. */
   fileNote(id: Id, subjectId: Id, conceptId: Id | null): Note
   updateConcept(id: Id, patch: { name?: string; summary?: string }): Concept
   /** Returns the deleted concept. */

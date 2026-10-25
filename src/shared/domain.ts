@@ -563,6 +563,12 @@ export const Settings = z.object({
   /** Length of the timer under the orb, the last one picked (1–180 minutes). */
   timerMinutes: z.number().int().min(1).max(180),
   onboardingDone: z.boolean(),
+  /**
+   * Note filing (engine/subjects/note-filing.ts): notes without a topic changed at or before
+   * this time were already offered to the filer, so a restart doesn't file (or ask about) them
+   * again. Null = never ran.
+   */
+  notesFiledThrough: IsoDate.nullable(),
 })
 export type Settings = z.infer<typeof Settings>
 
@@ -604,4 +610,5 @@ export const DEFAULT_SETTINGS: Settings = {
   focusTopicId: null,
   timerMinutes: 25,
   onboardingDone: false,
+  notesFiledThrough: null,
 }

@@ -34,6 +34,7 @@ import { redact } from '@engine/privacy'
 import { createQueryService } from '@engine/queries'
 import { createSqliteRepos, ensureDataDirs, resolveDataPaths } from '@engine/store'
 import { createMemoryMirror, createSubjectService, type MemoryMirrorHandle } from '@engine/subjects'
+import { createNoteFiling } from '@engine/subjects/note-filing'
 import { bridgeEvents } from '../compose'
 import type { Services } from '../services'
 import {
@@ -91,6 +92,7 @@ export function composeReal(opts: RealComposeOptions = {}): RealComposition {
 
   const mastery = createMasteryModel({ repos })
   const consolidation = createConsolidation({ repos, brain, bus, clock, relink: repos.relink, log })
+  const noteFiling = createNoteFiling({ repos, brain, bus, clock, log })
   const stack = createPerceptionStack({
     helper,
     repos,
@@ -207,6 +209,8 @@ export function composeReal(opts: RealComposeOptions = {}): RealComposition {
         start: () => consolidation.start(),
         stop: () => consolidation.stop(),
       },
+      // Notes saved without a topic are filed into the best topic (and once over the old ones).
+      { name: 'note-filing', start: () => noteFiling.start(), stop: () => noteFiling.stop() },
     ],
     log,
   )

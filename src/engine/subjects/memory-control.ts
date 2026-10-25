@@ -1,8 +1,8 @@
 /**
  * Memory control (docs/NOTES.md §7): what the student sees of a subject's memory and the edits
  * they can make to it. Reads: the topic tree with its notes and edges, and the loose notes. Writes:
- * edit a note (it becomes pinned, so consolidation never rewrites it), delete a note, file a loose
- * note into a subject, rename a concept or change its summary, delete a concept or an encounter.
+ * edit a note (it becomes pinned, so consolidation never rewrites it), delete a note, file or move
+ * a note into a subject or topic (pinned too, so auto-filing never moves it again), rename a concept or change its summary, delete a concept or an encounter.
  *
  * Plain repo work with no bus: the callers (SubjectService, the IPC handlers) announce
  * 'memory:changed', which refreshes the memory file, search and the windows.
@@ -109,7 +109,8 @@ export function createMemoryControl(repos: Repos): MemoryControl {
       mustSubject(subjectId)
       if (conceptId && mustConcept(conceptId).subjectId !== subjectId)
         throw new Error('That topic belongs to another subject')
-      return repos.notes.update(id, { subjectId, conceptId })
+      // Placed by the student's hand: pinned, so the filer (note-filing.ts) never moves it again.
+      return repos.notes.update(id, { subjectId, conceptId, pinned: true })
     },
 
     updateConcept(id, patch) {

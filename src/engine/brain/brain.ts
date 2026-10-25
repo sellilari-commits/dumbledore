@@ -19,6 +19,8 @@ import {
   ExamInput,
   ExtractInput,
   type ExtractOutput,
+  FileNotesInput,
+  type FileNotesOutput,
   GapInput,
   type GapOutput,
   ImproveInput,
@@ -77,6 +79,7 @@ import { consolidatePrompt } from './prompts/p13-consolidate'
 import { preferencesPrompt } from './prompts/p14-preferences'
 import { outlinePrompt } from './prompts/p15-outline'
 import { chatSummaryPrompt } from './prompts/p16-chat-summary'
+import { fileNotesPrompt } from './prompts/p17-file-notes'
 import { withFeedback } from './prompts/shared'
 import { runWebSearch } from './web-search'
 
@@ -348,5 +351,8 @@ export function createBrain(deps: BrainDeps = {}): BrainHandle {
 
     summarizeChat: (raw: ChatSummaryInput, opts?: CallOptions): Promise<ChatSummaryOutput> =>
       runStructured(runner, chatSummaryPrompt, ChatSummaryInput.parse(raw), opts),
+
+    fileNotes: (raw: FileNotesInput, opts?: CallOptions): Promise<FileNotesOutput> =>
+      runStructured(runner, fileNotesPrompt, FileNotesInput.parse(raw), opts),
   }
 }

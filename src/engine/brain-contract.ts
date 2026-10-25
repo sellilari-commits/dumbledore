@@ -531,6 +531,46 @@ export type ChatSummaryInput = z.infer<typeof ChatSummaryInput>
 export const ChatSummaryOutput = z.object({ summary: z.string() })
 export type ChatSummaryOutput = z.infer<typeof ChatSummaryOutput>
 
+// ─── P17 Note filing ────────────────────────────────────────────────────────────────────────
+
+/**
+ * Notes saved without a topic (loose, or in a subject but unplaced) and the student's subjects
+ * with their concept trees (compact, as for P1). `subjectId` on a note = it already belongs to
+ * that subject, so only that subject's topics may take it.
+ */
+export const FileNotesInput = z.object({
+  subjects: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      goal: z.string().nullable(),
+      concepts: z.array(
+        z.object({ id: z.string(), name: z.string(), parentId: z.string().nullable() }),
+      ),
+    }),
+  ),
+  notes: z.array(
+    z.object({
+      id: z.string(),
+      text: z.string(),
+      source: z.string(),
+      subjectId: z.string().nullable(),
+    }),
+  ),
+})
+export type FileNotesInput = z.infer<typeof FileNotesInput>
+/** The model's answer with short refs (n1, s1, c1); P17's finalize maps them back to ids. */
+export const FileNotesModelOutput = z.object({
+  placements: z.array(
+    z.object({ note: z.string(), subject: z.string().nullable(), concept: z.string().nullable() }),
+  ),
+})
+export type FileNotesModelOutput = z.infer<typeof FileNotesModelOutput>
+/** Ids mapped back; the filer (subjects/note-filing.ts) validates every placement again. */
+export interface FileNotesOutput {
+  placements: { noteId: string; subjectId: string | null; conceptId: string | null }[]
+}
+
 // ─── The interface ──────────────────────────────────────────────────────────────────────────
 
 export interface CallOptions {
@@ -615,4 +655,9 @@ export interface Brain {
    * and older brains leave it out and the chat keeps a plain list of the older turns instead.
    */
   summarizeChat?(input: ChatSummaryInput, opts?: CallOptions): Promise<ChatSummaryOutput>
+  /**
+   * P17: files notes saved without a topic into the best existing topic of the best subject, or
+   * leaves them where they are. Optional: fakes and older brains leave it out and notes stay put.
+   */
+  fileNotes?(input: FileNotesInput, opts?: CallOptions): Promise<FileNotesOutput>
 }

@@ -99,7 +99,7 @@ export const memoryHandlers: HandlerMap<MemoryChannel> = {
       throw new Error('That subject no longer exists.')
     if (conceptId && mustConcept(ctx, conceptId).subjectId !== subjectId)
       throw new Error('That topic belongs to another subject')
-    Object.assign(note, { subjectId, conceptId, updatedAt: nowIso() })
+    Object.assign(note, { subjectId, conceptId, pinned: true, updatedAt: nowIso() })
     ctx.changed('subjects', [subjectId])
     ctx.changed('inbox')
     return structuredClone(note)
