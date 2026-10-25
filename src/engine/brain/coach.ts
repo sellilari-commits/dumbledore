@@ -65,8 +65,9 @@ export async function* runCoach(
     },
   )) {
     if (part.type === 'text') {
-      wroteText = true
-      yield { type: 'text', delta: part.delta }
+      // Some models send an empty text part with a tool call: that is not an answer.
+      if (part.delta.trim()) wroteText = true
+      if (part.delta) yield { type: 'text', delta: part.delta }
     } else if (part.type === 'tool-call') {
       const action = toCoachAction(part.call.name, part.call.input)
       if (action) actions.push({ type: 'action', action })
@@ -95,8 +96,8 @@ export async function* runCoach(
         reasoningEffort: 'low',
       },
     )) {
-      if (part.type === 'text') {
-        wroteText = true
+      if (part.type === 'text' && part.delta) {
+        if (part.delta.trim()) wroteText = true
         yield { type: 'text', delta: part.delta }
       }
     }

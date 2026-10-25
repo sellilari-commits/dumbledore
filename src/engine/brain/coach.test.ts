@@ -83,6 +83,7 @@ describe('Brain.coach', () => {
   it('asks again, without tools, for the answer when the model only saved', async () => {
     const h = brainHarness()
     h.groq.queue({
+      text: ' ',
       toolCalls: [
         {
           name: 'save_question',
@@ -98,8 +99,11 @@ describe('Brain.coach', () => {
     })
     h.groq.queue({ text: 'Three alkyl groups share the charge.' })
     const events = await collect(h.brain.coach(input("I don't get carbocation stability")))
-    expect(events[0]).toEqual({ type: 'text', delta: 'Three alkyl groups share the charge.' })
-    expect(events[1]).toMatchObject({
+    const text = events
+      .filter((e) => e.type === 'text')
+      .map((e) => (e.type === 'text' ? e.delta : ''))
+    expect(text.join('').trim()).toBe('Three alkyl groups share the charge.')
+    expect(events.find((e) => e.type === 'action')).toMatchObject({
       type: 'action',
       action: { type: 'save_question', stuck: true },
     })
