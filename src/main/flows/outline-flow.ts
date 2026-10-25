@@ -13,6 +13,7 @@
  */
 import type { OutlineInput, OutlineOutput } from '@engine/brain-contract'
 import type { Repos } from '@engine/contracts'
+import { openQuestionsOf } from '@engine/memory/questions'
 import type { Concept, Id } from '@shared/domain'
 import type { Rect } from '@shared/geometry'
 import type { PerceivedWindow } from '@shared/helper-protocol'
@@ -133,7 +134,7 @@ export class OutlineFlow {
         .filter((c) => c.status === 'mastered')
         .map((c) => c.name)
         .slice(0, 20),
-      openQuestions: repos.encounters.openQuestions(subject.id, 8),
+      openQuestions: openQuestionsOf(repos, subject.id, 8),
       lines: lines.map((l, i) => ({ i, text: l.text })),
       language: repos.profile.get().promptLanguage,
     }

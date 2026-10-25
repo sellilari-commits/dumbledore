@@ -11,9 +11,10 @@
  * A topic selected in the Ask bar (`subjectId`) leads the coach context: "Topic: <name>" plus that
  * subject's goal, deadline, roadmap step and struggling concepts.
  *
- * The chat also takes feedback: feedback the coach recognises (give_feedback) is stored right away
- * and reaches the prompts of its scope (brain `feedback`). It takes no notes: a note the coach
- * proposes (add_note) is dropped there.
+ * What the student tells Dumbledore is saved into their studying at once (ChatSaves): what they
+ * ask or don't get (save_question), facts about a course (update_subject) and notes they ask to
+ * keep (add_note), each as a receipt line in the reply with an Undo chip. Feedback the coach
+ * recognises (give_feedback) is stored right away and reaches the prompts of its scope.
  */
 import type { Brain } from '@engine/brain-contract'
 import type { FeedbackRepo, PerceptionService, Repos } from '@engine/contracts'
@@ -23,6 +24,7 @@ import type { AskResult } from '@shared/state'
 import type { ChatWriter, FieldSnapshot } from '../chat/chat-writer'
 import { coachActionLabel } from '../overlay/labels'
 import type { ToastSpec } from '../overlay/toasts'
+import type { ChatSaves } from './chat-saves'
 import type { SessionFlow } from './session-flow'
 import type { Thinking } from './thinking'
 
@@ -43,6 +45,8 @@ export interface AskFlowDeps {
   emitDelta?: (delta: EventPayload<'chat.delta'>) => void
   /** Feedback store; without it give_feedback is ignored. */
   feedback?: Pick<FeedbackRepo, 'add'>
+  /** Saves what the chat hears into the student's studying; without it saves stay chips. */
+  saves?: Pick<ChatSaves, 'apply'>
 }
 
 export interface AskOptions {
@@ -61,7 +65,7 @@ const STRUGGLE_LIMIT = 5
 
 /** Leads the coach context in the Ask bar: a conversation, so nothing is pasted (P10 knows it). */
 const CHAT_MODE =
-  'Mode: chat (the student is talking with you in your own window; nothing is pasted into their AI chat, and no notes are saved here: never call add_note)'
+  'Mode: chat (the student is talking with you in your own window; nothing is pasted into their AI chat. What you save here — save_question, update_subject, add_note when they ask to keep something, give_feedback — is saved at once and shown with Undo)'
 
 /** "Topic: <name>" and that subject's own context, or null for an unknown subject. */
 export function topicContext(
@@ -108,7 +112,7 @@ export class AskFlow {
     this.noteReset(opts.since)
     const { reply, actions } = await this.converse(text, opts.signal, opts.subjectId, CHAT_MODE)
     const applied = this.applyInChat(
-      actions.filter((a) => a.type !== 'insert_prompt' && a.type !== 'add_note'),
+      actions.filter((a) => a.type !== 'insert_prompt'),
       reply,
     )
     const content = [reply, ...applied.lines].filter(Boolean).join('\n\n')
@@ -121,13 +125,17 @@ export class AskFlow {
     return { reply: content, actions: applied.actions, pasted: false }
   }
 
-  /** Feedback from the coach is stored now, with a "Got it" line when the coach said nothing. */
+  /**
+   * Saves happen now: each adds a receipt line ("Saved to …") and its Undo chip; feedback is
+   * stored, with a "Got it" line when the coach said nothing. Other actions stay chips.
+   */
   private applyInChat(
     actions: CoachAction[],
     reply: string,
   ): { actions: CoachAction[]; lines: string[] } {
-    const { feedback } = this.deps
-    const out: CoachAction[] = []
+    const { feedback, saves } = this.deps
+    const chips: CoachAction[] = []
+    const undos: CoachAction[] = []
     const lines: string[] = []
     for (const action of actions) {
       if (action.type === 'give_feedback') {
@@ -135,11 +143,18 @@ export class AskFlow {
           feedback.add({ scope: action.scope, subjectId: action.subjectId, text: action.text })
           if (!reply) lines.push('Got it, I’ll keep that in mind from now on.')
         }
-      } else {
-        out.push(action)
+        continue
+      }
+      const receipt = saves?.apply(action)
+      if (receipt) {
+        if (receipt.line) lines.push(receipt.line)
+        if (receipt.undo) undos.push(receipt.undo)
+        chips.push(...receipt.more)
+      } else if (action.type !== 'add_note' || !saves) {
+        chips.push(action)
       }
     }
-    return { actions: out, lines }
+    return { actions: [...chips, ...undos], lines }
   }
 
   /** `/d …` turn: a roadmap or prompt the coach proposes is pasted into the chat box at once. */

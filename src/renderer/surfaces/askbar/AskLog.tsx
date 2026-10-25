@@ -2,9 +2,12 @@
  * The Ask bar conversation: the student's questions as grey bubbles on the right, Dumbledore's
  * markdown replies with their action chips on the left, the reply being written (streamed) and
  * the last error. It stays on the newest message unless the student scrolled up to read.
+ * Dumbledore's own answers are saved only when the student chooses: "Save to subject" puts the
+ * answer (without its "Saved to …" receipt lines) as a note on the current topic.
  */
-import { Check } from 'lucide-react'
-import { memo, useRef } from 'react'
+import type { CoachAction } from '@shared/domain'
+import { BookmarkPlus, Check } from 'lucide-react'
+import { memo, useRef, useState } from 'react'
 import Markdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { ActionChips } from './ActionChips'
@@ -31,6 +34,52 @@ interface MessageProps {
   onRun: AskController['runAction']
 }
 
+/** Receipt lines the chat adds under a reply; never part of a saved answer. */
+const RECEIPT = /^(Saved to |Not saved: )/
+
+/** The answer as a note: the reply without its receipts, at most 1000 characters. */
+export function answerNote(content: string): string {
+  const text = content
+    .split(/\n{2,}/)
+    .filter((p) => !RECEIPT.test(p.trim()))
+    .join('\n\n')
+    .trim()
+  return text.length <= 1000 ? text : `${text.slice(0, 999).trimEnd()}…`
+}
+
+function SaveAnswer({ content, onRun }: { content: string; onRun: MessageProps['onRun'] }) {
+  const [state, setState] = useState<'idle' | 'busy' | 'saved'>('idle')
+  const text = answerNote(content)
+  if (!text) return null
+  if (state === 'saved')
+    return (
+      <p className="ask__pasted">
+        <Check size={14} aria-hidden /> Saved to your subject
+      </p>
+    )
+  const save: CoachAction = { type: 'add_note', text, subjectId: null, conceptId: null }
+  return (
+    <div className="ask__actions">
+      <button
+        type="button"
+        className="ask__chip"
+        aria-disabled={state === 'busy' || undefined}
+        onClick={() => {
+          if (state !== 'idle') return
+          setState('busy')
+          onRun(save).then(
+            (ok) => setState(ok ? 'saved' : 'idle'),
+            () => setState('idle'),
+          )
+        }}
+      >
+        <BookmarkPlus size={14} strokeWidth={1.75} aria-hidden />
+        <span>Save to subject</span>
+      </button>
+    </div>
+  )
+}
+
 /** Memoised: while a reply streams in, only the streaming bubble re-renders. */
 const Message = memo(function Message({ message, onRun }: MessageProps) {
   if (message.role === 'user') {
@@ -46,6 +95,9 @@ const Message = memo(function Message({ message, onRun }: MessageProps) {
         </p>
       )}
       <ActionChips actions={message.actions} onRun={onRun} />
+      {message.content && !message.pasted ? (
+        <SaveAnswer content={message.content} onRun={onRun} />
+      ) : null}
     </div>
   )
 })

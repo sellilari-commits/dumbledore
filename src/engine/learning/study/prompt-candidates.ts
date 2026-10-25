@@ -8,6 +8,7 @@ import type { Encounter, Profile } from '@shared/domain'
 import type { SessionState } from '@shared/state'
 import type { SuggestCandidate } from '../../brain-contract'
 import type { Repos } from '../../contracts'
+import { askedQuestions } from '../../memory/questions'
 import { isLearn } from './roadmap-ops'
 import { norm, plural } from './text'
 
@@ -103,11 +104,20 @@ export function buildCandidates(src: CandidateSources): SuggestCandidate[] {
   return out
 }
 
-/** Open questions of recent encounters, those matching the page on screen first. */
+/**
+ * Open questions: what the student asked Dumbledore in the last 3 days (newest first), then those
+ * of recent encounters, the ones matching the page on screen first.
+ */
 function openQuestions(src: CandidateSources): { question: string; subjectId: string | null }[] {
   const now = Date.parse(src.nowIso)
   const page = norm(src.pageContext)
   const since = new Date(now - 3 * DAY_MS).toISOString()
+  const asked = src.repos.subjects
+    .list({ status: ['active'] })
+    .flatMap((s) => askedQuestions(src.repos, s.id))
+    .filter((n) => n.createdAt >= since)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map((n) => ({ question: n.text.trim(), subjectId: n.subjectId }))
   const relevance = (e: Encounter) => {
     const terms = [...e.keyTerms, ...e.topicPath].map(norm).filter((t) => t.length >= 3)
     const overlap = page ? terms.filter((t) => page.includes(t)).length : 0
@@ -116,7 +126,7 @@ function openQuestions(src: CandidateSources): { question: string; subjectId: st
     return overlap * 10 + sameSubject + 0.5 ** (hours / 6)
   }
   const seen = new Set<string>()
-  return src.repos.encounters
+  const fromEncounters = src.repos.encounters
     .list({ sinceIso: since, limit: 40 })
     .filter((e) => e.inboxState !== 'ignored' && e.openQuestions.length > 0)
     .map((e) => ({ e, score: relevance(e) }))
@@ -124,6 +134,7 @@ function openQuestions(src: CandidateSources): { question: string; subjectId: st
     .flatMap(({ e }) =>
       e.openQuestions.map((question) => ({ question: question.trim(), subjectId: e.subjectId })),
     )
+  return [...asked, ...fromEncounters]
     .filter(({ question }) => {
       const key = norm(question)
       if (!key || seen.has(key)) return false

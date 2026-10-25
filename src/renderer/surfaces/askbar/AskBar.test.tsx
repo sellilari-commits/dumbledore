@@ -123,24 +123,45 @@ describe('AskBar', () => {
     expect(screen.getAllByRole('button', { name: 'Paste prompt into chat' })).toHaveLength(1)
   })
 
-  it('takes no notes: no Note toggle, and note chips from older replies are not shown', async () => {
-    const older: AskResult = {
-      reply: 'Saved to SN1 mechanism.',
+  it('shows what the chat saved as a receipt with Undo, which stays in the chat and turns into Undone', async () => {
+    const saved: AskResult = {
+      reply:
+        'Because it has one slow step.\n\nSaved to Chemistry › SN1: open question “why is SN1 first order?”',
       actions: [
-        { type: 'undo_note', noteId: 'note_1' },
+        { type: 'undo_save', saveId: 'save_1' },
         { type: 'add_note', text: 'SN1 is first order', subjectId: null, conceptId: null },
       ],
       pasted: false,
     }
-    const local = askApi(() => older)
+    const local = askApi(() => saved)
     render(<AskBar api={local.api} />)
-    expect(screen.queryByRole('button', { name: 'Note' })).toBeNull()
-    ask('note: why is SN1 first order?')
+    ask('why is SN1 first order?')
     await flush()
-    expect(callsTo(local, 'ask.submit')).toEqual([{ text: 'note: why is SN1 first order?' }])
-    expect(screen.getByText('Saved to SN1 mechanism.')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
+    expect(screen.getByText(/Saved to Chemistry › SN1: open question/)).toBeTruthy()
+    // An applied save is never offered again as a chip; only its Undo is.
     expect(screen.queryByRole('button', { name: /^Save note/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    await flush()
+    expect(callsTo(local, 'coach.runAction')).toEqual([{ type: 'undo_save', saveId: 'save_1' }])
+    expect(callsTo(local, 'window.close')).toEqual([])
+    expect(screen.getByText('Undone')).toBeTruthy()
+  })
+
+  it('saves an answer to the subject only when asked, without its receipt lines', async () => {
+    const local = askApi(() => ({
+      reply: 'SN1 has one slow step.\n\nSaved to Chemistry: goal “Pass”',
+      actions: [],
+      pasted: false,
+    }))
+    render(<AskBar api={local.api} />)
+    ask('why is SN1 first order?')
+    await flush()
+    fireEvent.click(screen.getByRole('button', { name: 'Save to subject' }))
+    await flush()
+    expect(callsTo(local, 'coach.runAction')).toEqual([
+      { type: 'add_note', text: 'SN1 has one slow step.', subjectId: null, conceptId: null },
+    ])
+    expect(screen.getByText('Saved to your subject')).toBeTruthy()
   })
 
   it('Shift+Enter adds a line instead of sending', async () => {

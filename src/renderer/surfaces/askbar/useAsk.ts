@@ -12,6 +12,15 @@ import { errorMessage, report } from '../overlay/lib/bridge'
 import { ASK_THREAD, ASK_THREADS, currentChat, loadSince, saveSince } from './askHistory'
 
 /** A chat message, plus the "pasted into the chat box" note for replies sent from this window. */
+
+/** Chips that keep the conversation open: saves into the studying and their undos. */
+const STAY_OPEN: ReadonlySet<CoachAction['type']> = new Set([
+  'add_note',
+  'undo_note',
+  'save_question',
+  'update_subject',
+  'undo_save',
+])
 export interface AskMessage extends ChatMessage {
   pasted?: boolean
 }
@@ -43,7 +52,8 @@ export interface AskController {
   /** Reloads the stored conversation (a `/d` line or another window may have added to it). */
   refresh: () => void
   dismissError: () => void
-  runAction: (action: CoachAction) => Promise<void>
+  /** Runs a chip's action; false when it failed (the error line says why). */
+  runAction: (action: CoachAction) => Promise<boolean>
   close: () => void
 }
 
@@ -169,9 +179,12 @@ export function useAsk(api: DumbledoreApi): AskController {
     async (action: CoachAction) => {
       try {
         await api.invoke('coach.runAction', action)
-        close()
+        // Saving and undoing happen in the conversation; anything else moves on, so the bar closes.
+        if (!STAY_OPEN.has(action.type)) close()
+        return true
       } catch (e) {
         setError({ message: errorMessage(e), retry: false })
+        return false
       }
     },
     [api, close],

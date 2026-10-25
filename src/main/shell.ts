@@ -14,6 +14,7 @@ import { ChatWriter } from './chat/chat-writer'
 import { FocusKeeper } from './chat/focus-keeper'
 import { buildAppState, PermissionsCache } from './flows/app-state'
 import { AskFlow } from './flows/ask-flow'
+import { ChatSaves } from './flows/chat-saves'
 import { CoachActions } from './flows/coach-actions'
 import { CoachChat } from './flows/coach-chat'
 import { chatContext, coachContextText } from './flows/context'
@@ -131,8 +132,11 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     overlay,
   })
   const typedNotes = new TypedNotes({ repos, bus })
+  // What the double-tap chat hears goes into the student's studying, with receipts and Undo.
+  const chatSaves = new ChatSaves({ repos, bus, notes: typedNotes })
   const actions = new CoachActions({
     notes: typedNotes,
+    saves: chatSaves,
     feedback: repos.feedback,
     sessions,
     quizzes: services.quizzes,
@@ -171,6 +175,7 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     runAction,
     emitDelta: hooks.onChatDelta,
     feedback: repos.feedback,
+    saves: chatSaves,
   })
   const promptWriter = new PromptWriter({ sessions, study, perception, surfaces, thinking })
   const chat = new CoachChat({

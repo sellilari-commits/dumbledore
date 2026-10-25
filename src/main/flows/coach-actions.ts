@@ -2,8 +2,9 @@
  * Runs a CoachAction (from chat replies, ask-bar chips, nudges, toasts): start a roadmap, create
  * an exam and open it in the app, start a review quiz in the overlay, insert a prompt into the
  * chat, set the focus subject, open a subject page, replan a subject's roadmap from the
- * student's own words (adjust_roadmap, never pasted), save or undo a typed note, or store
- * feedback for the prompts of its scope.
+ * student's own words (adjust_roadmap, never pasted), save or undo a typed note, save what the
+ * student asked or a course fact (ChatSaves) or undo it, or store feedback for the prompts of its
+ * scope.
  */
 import type { FeedbackRepo, QuizService, SettingsRepo } from '@engine/contracts'
 import type { EngineBus } from '@engine/events'
@@ -11,6 +12,7 @@ import type { CoachAction } from '@shared/domain'
 import { APP_ROUTES } from '@shared/state'
 import type { ChatWriter } from '../chat/chat-writer'
 import type { SurfaceControl } from '../platform'
+import type { ChatSaves } from './chat-saves'
 import type { RoadmapAdjust } from './roadmap-adjust'
 import type { SessionFlow } from './session-flow'
 import type { TypedNotes } from './typed-notes'
@@ -26,6 +28,7 @@ export interface CoachActionsDeps {
   roadmapAdjust?: Pick<RoadmapAdjust, 'run'>
   notes?: Pick<TypedNotes, 'save' | 'undo'>
   feedback?: Pick<FeedbackRepo, 'add'>
+  saves?: Pick<ChatSaves, 'apply' | 'undo'>
 }
 
 export class CoachActions {
@@ -79,6 +82,14 @@ export class CoachActions {
       case 'give_feedback':
         if (!deps.feedback) throw new Error('Feedback is not available here.')
         deps.feedback.add({ scope: action.scope, subjectId: action.subjectId, text: action.text })
+        return
+      case 'save_question':
+      case 'update_subject':
+        if (!deps.saves) throw new Error('Saving is not available here.')
+        deps.saves.apply(action)
+        return
+      case 'undo_save':
+        if (!deps.saves?.undo(action.saveId)) throw new Error('That can no longer be undone.')
         return
     }
   }

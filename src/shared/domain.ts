@@ -381,6 +381,31 @@ export const CoachAction = z.discriminatedUnion('type', [
   }),
   /** The "Undo" chip after a typed note: deletes that note. */
   z.object({ type: z.literal('undo_note'), noteId: Id }),
+  /**
+   * Something the student asked or doesn't get, said to Dumbledore: saved at once as an open
+   * question on the topic (by id, else by name, else the current topic); `stuck` also marks the
+   * topic as a gap. Prompts, outlines and roadmaps aim at it.
+   */
+  z.object({
+    type: z.literal('save_question'),
+    text: z.string(),
+    subjectId: Id.nullable(),
+    conceptId: Id.nullable(),
+    topic: z.string().nullable(),
+    stuck: z.boolean(),
+  }),
+  /** A fact about the student's course said in the chat: goal, exam date, what it covers. */
+  z.object({
+    type: z.literal('update_subject'),
+    subjectId: Id,
+    goal: z.string().nullable(),
+    /** YYYY-MM-DD. */
+    deadline: z.string().nullable(),
+    /** What the course covers, in the student's words (the subject's description). */
+    scope: z.string().nullable(),
+  }),
+  /** The "Undo" chip after something the chat saved (a question, a course fact). */
+  z.object({ type: z.literal('undo_save'), saveId: z.string() }),
   /** Feedback about Dumbledore itself, stored and fed into the prompts of its scope. */
   z.object({
     type: z.literal('give_feedback'),

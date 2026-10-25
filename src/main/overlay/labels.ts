@@ -23,6 +23,12 @@ export function coachActionLabel(action: CoachAction): string {
       return 'Undo'
     case 'give_feedback':
       return 'Send feedback'
+    case 'save_question':
+      return 'Save the question'
+    case 'update_subject':
+      return 'Save to subject'
+    case 'undo_save':
+      return 'Undo'
   }
 }
 

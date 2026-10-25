@@ -1,6 +1,11 @@
-/** Action chips under an Ask bar reply: each runs a CoachAction through `coach.runAction`. */
+/**
+ * Action chips under an Ask bar reply: each runs a CoachAction through `coach.runAction`. What the
+ * chat already saved (a question, a course fact, a note) shows as a receipt line in the reply, with
+ * an Undo chip here; a pressed Undo turns into "Undone".
+ */
 import type { CoachAction } from '@shared/domain'
 import {
+  Check,
   ClipboardPaste,
   FileCheck2,
   LibraryBig,
@@ -45,25 +50,45 @@ export function describeAction(action: CoachAction): { label: string; Icon: Luci
       return { label: 'Undo', Icon: Undo2 }
     case 'give_feedback':
       return { label: `Send feedback: ${short(action.text)}`, Icon: MessageSquare }
+    case 'save_question':
+      return { label: `Save the question: ${short(action.text)}`, Icon: StickyNote }
+    case 'update_subject':
+      return { label: 'Save to subject', Icon: LibraryBig }
+    case 'undo_save':
+      return { label: 'Undo', Icon: Undo2 }
   }
 }
 
 interface Props {
   actions: CoachAction[]
-  onRun: (action: CoachAction) => Promise<void>
+  onRun: (action: CoachAction) => Promise<boolean>
 }
 
-/** The chat takes no notes: note chips kept in older replies (Save note, Undo) are not shown. */
-const inChat = (action: CoachAction) => action.type !== 'add_note' && action.type !== 'undo_note'
+/** Saves are applied when the reply arrives (its receipt says so): only their Undo is a chip. */
+const APPLIED: ReadonlySet<CoachAction['type']> = new Set([
+  'add_note',
+  'save_question',
+  'update_subject',
+])
+const isUndo = (action: CoachAction) => action.type === 'undo_note' || action.type === 'undo_save'
 
 export function ActionChips({ actions: all, onRun }: Props) {
   const [busy, setBusy] = useState<number | null>(null)
-  const actions = all.filter(inChat)
+  const [undone, setUndone] = useState<ReadonlySet<number>>(new Set())
+  const actions = all.filter((a) => !APPLIED.has(a.type))
   if (actions.length === 0) return null
   return (
     <div className="ask__actions">
       {actions.map((action, i) => {
         const { label, Icon } = describeAction(action)
+        if (undone.has(i))
+          return (
+            // biome-ignore lint/suspicious/noArrayIndexKey: actions are a fixed list per reply
+            <span key={i} className="ask__chip" aria-disabled>
+              <Check size={14} strokeWidth={1.75} aria-hidden />
+              <span>Undone</span>
+            </span>
+          )
         return (
           <button
             // biome-ignore lint/suspicious/noArrayIndexKey: actions are a fixed list per reply
@@ -74,7 +99,11 @@ export function ActionChips({ actions: all, onRun }: Props) {
             onClick={() => {
               if (busy !== null) return
               setBusy(i)
-              onRun(action).finally(() => setBusy(null))
+              onRun(action)
+                .then((ok) => {
+                  if (ok && isUndo(action)) setUndone((u) => new Set(u).add(i))
+                })
+                .finally(() => setBusy(null))
             }}
           >
             {busy === i ? (

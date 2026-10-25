@@ -19,6 +19,7 @@ interface Setup {
   stream?: boolean
   fail?: boolean
   feedback?: boolean
+  saves?: boolean
 }
 
 function setup(opts: Setup = {}) {
@@ -50,6 +51,17 @@ function setup(opts: Setup = {}) {
   const writer = { write: vi.fn(async () => ({ ok: true, reason: null })) }
   const toasts = { showToast: vi.fn(() => 'toast_1') }
   const feedback = { add: vi.fn() }
+  const saves = {
+    apply: vi.fn((a: CoachAction) =>
+      a.type === 'add_note' || a.type === 'save_question'
+        ? {
+            line: `Saved to Chemistry: “${a.text}”`,
+            undo: { type: 'undo_save' as const, saveId: `s_${a.type}` },
+            more: [],
+          }
+        : null,
+    ),
+  }
   const deps = {
     brain: brain as unknown as Brain,
     repos: {
@@ -67,6 +79,7 @@ function setup(opts: Setup = {}) {
     emitDelta:
       opts.stream === false ? undefined : (d: EventPayload<'chat.delta'>) => deltas.push(d),
     ...(opts.feedback ? { feedback } : {}),
+    ...(opts.saves ? { saves } : {}),
   } as unknown as AskFlowDeps
   const seed = (n: number) => {
     for (let i = 0; i < n; i++) {
@@ -234,22 +247,38 @@ describe('AskFlow.submit', () => {
   })
 })
 
-describe('AskFlow.submit: feedback, no notes', () => {
-  it('"note: …" is a normal coach turn; a note the coach proposes is dropped', async () => {
+describe('AskFlow.submit: saves into studying, feedback', () => {
+  it('saves a note and a question at once, each with a receipt line and Undo; the rest stay chips', async () => {
     const h = setup({
       feedback: true,
+      saves: true,
       reply: ['A mole is a count.'],
       actions: [
         { type: 'add_note', text: 'A mole is 6.022e23', subjectId: null, conceptId: null },
+        {
+          type: 'save_question',
+          text: 'why is a mole that number?',
+          subjectId: null,
+          conceptId: null,
+          topic: 'Moles',
+          stuck: false,
+        },
         { type: 'set_focus', subjectId: 'sub_chem' },
       ],
     })
-    const out = await h.flow.submit('note: a mole is 6.022 × 10²³ particles')
-    expect(h.inputs).toHaveLength(1)
-    expect(h.inputs[0]?.context).toMatch(/^Mode: chat\b.*never call add_note/)
+    const out = await h.flow.submit('note: a mole is 6.022 × 10²³ particles, but why that number?')
+    expect(h.inputs[0]?.context).toMatch(/^Mode: chat\b.*saved at once and shown with Undo/)
     expect(out).toEqual({
-      reply: 'A mole is a count.',
-      actions: [{ type: 'set_focus', subjectId: 'sub_chem' }],
+      reply: [
+        'A mole is a count.',
+        'Saved to Chemistry: “A mole is 6.022e23”',
+        'Saved to Chemistry: “why is a mole that number?”',
+      ].join('\n\n'),
+      actions: [
+        { type: 'set_focus', subjectId: 'sub_chem' },
+        { type: 'undo_save', saveId: 's_add_note' },
+        { type: 'undo_save', saveId: 's_save_question' },
+      ],
       pasted: false,
     })
   })

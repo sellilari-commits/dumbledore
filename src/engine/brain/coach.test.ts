@@ -61,6 +61,8 @@ describe('Brain.coach', () => {
       'open_subject',
       'adjust_roadmap',
       'add_note',
+      'save_question',
+      'update_subject',
       'give_feedback',
     ])
     expect(req?.output).toEqual({ kind: 'text' })

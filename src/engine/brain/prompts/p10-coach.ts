@@ -1,7 +1,7 @@
 /**
- * P10 Coach (tier `chat`, tools): the panel / Ask-bar chat persona plus the nine action tools
+ * P10 Coach (tier `chat`, tools): the panel / Ask-bar chat persona plus the eleven action tools
  * (start_roadmap, create_exam, start_review, insert_prompt, set_focus, open_subject,
- * adjust_roadmap, add_note, give_feedback) and the
+ * adjust_roadmap, add_note, save_question, update_subject, give_feedback) and the
  * mapping from a model tool call to a validated CoachAction. Text only — no schema — because
  * Groq cannot combine tools with a response schema.
  */
@@ -54,6 +54,32 @@ const ToolInputs = {
       .nullable()
       .describe('conceptId of the topic from the context it belongs to, else null (current topic)'),
   }),
+  save_question: z.object({
+    text: z
+      .string()
+      .describe('What the student asked or does not get, in their words, ≤ 200 characters'),
+    conceptId: z
+      .string()
+      .nullable()
+      .describe('Id of the topic from the context it is about, else null'),
+    topic: z
+      .string()
+      .nullable()
+      .describe('The topic’s name in 1–5 words when it has no id in the context, else null'),
+    subjectId: z.string().nullable().describe('Id of the subject from the context, else null'),
+    stuck: z
+      .boolean()
+      .describe('true when they say they don’t understand it or keep getting it wrong'),
+  }),
+  update_subject: z.object({
+    subjectId: z.string().describe('Id of the subject from the context'),
+    goal: z.string().nullable().describe('Their goal for the subject in their words, else null'),
+    deadline: z.string().nullable().describe('Exam or deadline date as YYYY-MM-DD, else null'),
+    scope: z
+      .string()
+      .nullable()
+      .describe('What the course covers, in their words (≤ 300 characters), else null'),
+  }),
   give_feedback: z.object({
     text: z.string().describe('The feedback in the student’s words, one sentence'),
     scope: FeedbackScope.describe(
@@ -79,6 +105,10 @@ const DESCRIPTIONS: Record<ToolName, string> = {
     "Change what a subject's roadmap covers: focus on or skip topics, go deeper or lighter, in the student's words. The roadmap is planned again; nothing is pasted.",
   add_note:
     'Save a note the student wants to keep (a fact, definition, reminder or their own summary). It is saved at once on the right topic; they can undo it.',
+  save_question:
+    'Save what the student asked or does not understand as an open question on the topic (and mark it as a gap when they are stuck). Saved at once; their prompts, outlines and roadmaps then aim at it.',
+  update_subject:
+    "Save a fact about one of the student's subjects: their goal, the exam or deadline date, or what the course covers. Saved at once; they can undo it.",
   give_feedback:
     'Store feedback about Dumbledore itself (its study plans, quizzes, prompts or what it remembers) so later answers follow it.',
 }
@@ -137,6 +167,27 @@ export function toCoachAction(name: string, input: unknown): CoachAction | null 
         conceptId: v.conceptId || null,
       }
       break
+    case 'save_question':
+      action = {
+        type: tool,
+        text: v.text,
+        conceptId: v.conceptId || null,
+        topic: v.topic || null,
+        subjectId: v.subjectId || null,
+        stuck: v.stuck === true,
+      }
+      break
+    case 'update_subject': {
+      const date = typeof v.deadline === 'string' ? v.deadline.trim().slice(0, 10) : ''
+      action = {
+        type: tool,
+        subjectId: v.subjectId,
+        goal: v.goal || null,
+        deadline: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null,
+        scope: v.scope || null,
+      }
+      break
+    }
     case 'give_feedback':
       action = { type: tool, text: v.text, scope: v.scope, subjectId: v.subjectId || null }
       break
@@ -155,6 +206,9 @@ You know the learner profile, their subjects with mastery and deadlines, due rev
 - When they say what to focus on or skip in a subject ("on chemistry I want SN1, not SN2", "skip the history part"), call adjust_roadmap with that subject's id and their wish in their words.
 - If the context says "Mode: chat", this is a conversation with you: nothing is pasted into their AI chat, so never call insert_prompt; offer the other actions instead.
 - When the student writes something to keep — "remember that …", "note that …", a fact, definition or summary in their own words meant as a note, not a question — call add_note at once (no need to ask), then answer in one short sentence. Leave subjectId and conceptId null for the current topic; use the ids of another topic or subject from the context only when the note is clearly about it.
+- When they ask a question about what they study or say they don't get something ("I don't get carbocations", "why is SN1 two steps?"), answer it and also call save_question: their words, the topic's id from the context (or its name as topic when it has none), stuck: true when they say they don't understand it or keep getting it wrong. Don't for small talk or questions about you.
+- When they state a fact about one of their subjects — the exam or deadline date, their goal, what the course covers ("my exam is on 12 December", "I need to pass the midterm", "the course is reactions and mechanisms") — call update_subject for that subject at once (dates as YYYY-MM-DD from "Today" in the context), then confirm in one short sentence.
+- Everything you save shows the student a receipt with Undo, so save without asking; never claim you saved something without calling the tool.
 - When the student gives feedback about you — your study plans, quizzes, prompts or what you note ("your quizzes are too easy", "I prefer short prompts", "stop asking me about X", "this topic is wrong") — call give_feedback with the right scope and reply "Got it, I'll …" saying what changes. A wish about what one subject's roadmap covers is adjust_roadmap (also call give_feedback with scope study_plan only for a general preference about all study plans).
 - Act through the tools. Use ids exactly as written in the context. Call a tool only when the student asked for it or clearly agreed, except start_roadmap for learning requests.
 - A prompt you insert is written as the student, in first person: one line of their context, a short numbered ask, the sentence "${brevityRule('en')}" (in the student's language), ≤ 110 words.

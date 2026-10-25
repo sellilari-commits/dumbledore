@@ -8,6 +8,7 @@
 import type { Concept, Note, Quiz, Subject } from '@shared/domain'
 import type { RoadmapInput } from '../../brain-contract'
 import type { Repos, StudyPreferences } from '../../contracts'
+import { openQuestionsOf } from '../../memory/questions'
 import { sourcesOfNotes, subtreeIds } from '../../memory/sources'
 import { studyOrder } from '../consolidate/order'
 import { withDescendants } from './preferences'
@@ -62,7 +63,7 @@ export function assembleRoadmapContext(repos: Repos, req: ContextRequest): Roadm
     .slice(0, DONE_STEP_LIMIT)
   const openQuestions = uniqueNames([
     ...(req.question ? [req.question] : []),
-    ...repos.encounters.openQuestions(subject.id, QUESTION_LIMIT),
+    ...openQuestionsOf(repos, subject.id, QUESTION_LIMIT),
   ]).slice(0, QUESTION_LIMIT)
 
   const mastery = [...concepts]
