@@ -52,6 +52,14 @@ async function loaded(page: Page) {
 
 const topics = (page: Page) => page.getByRole('list', { name: 'Topics' }).getByRole('button')
 
+/** Opens a detail section that starts closed ("Roadmap", "Your notes", "Extracted"). */
+async function openSection(page: Page, title: string) {
+  const head = page.getByRole('button', { name: new RegExp(`^${title}, `) })
+  await expect(head).toHaveAttribute('aria-expanded', 'false')
+  await head.click()
+  await expect(head).toHaveAttribute('aria-expanded', 'true')
+}
+
 for (const theme of ['light', 'dark'] as const) {
   test.describe(`panel screenshots · ${theme}`, () => {
     test.use({ colorScheme: theme, viewport: { width: 560, height: 700 }, deviceScaleFactor: 2 })
@@ -72,18 +80,61 @@ for (const theme of ['light', 'dark'] as const) {
       await open(page)
       await loaded(page)
       await topics(page).filter({ hasText: 'Carbocation stability' }).click()
+      await openSection(page, 'Roadmap')
+      await openSection(page, 'Your notes')
       await expect(page.getByRole('list', { name: 'Roadmap steps' })).toBeVisible()
-      await expect(page.getByRole('list', { name: 'Flags' })).toBeVisible()
+      await expect(page.getByRole('list', { name: 'Your notes' })).toBeVisible()
       await page.mouse.move(0, 0)
       await shoot(page, 'detail', theme)
 
       await page.getByRole('button', { name: 'Back to topics' }).click()
       await topics(page).filter({ hasText: 'Plate tectonics' }).click()
       await expect(page.getByRole('heading', { name: 'Plate tectonics' })).toBeVisible()
-      await expect(page.getByRole('list', { name: 'Flags' })).toBeVisible()
+      await openSection(page, 'Your notes')
+      await expect(page.getByRole('list', { name: 'Your notes' })).toBeVisible()
       await expect(page.getByRole('list', { name: 'Roadmap steps' })).toHaveCount(0)
       await page.mouse.move(0, 0)
       await shoot(page, 'detail-flags', theme)
+    })
+
+    test('panel: a topic with subtopics, roadmap, notes and extracted; then a subtopic', async ({
+      page,
+    }) => {
+      await open(page, '/', '&subtopics=1')
+      await loaded(page)
+      await topics(page).filter({ hasText: 'Carbocation stability' }).click()
+      // The tree is always fully open; everything else starts closed to one line.
+      await expect(page.getByRole('list', { name: 'Subtopics', exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Hydride shifts' })).toBeVisible()
+      await expect(page.getByRole('button', { name: /^Roadmap, step \d+ of \d+$/ })).toBeVisible()
+      await expect(page.getByRole('list', { name: 'Roadmap steps' })).toHaveCount(0)
+      await expect(page.getByRole('list', { name: 'Your notes' })).toHaveCount(0)
+      // One lock on screen: the detail's own.
+      await expect(page.getByRole('button', { name: 'Lock topic' })).toBeHidden()
+      await page.mouse.move(0, 0)
+      await shoot(page, 'detail-subtopics', theme)
+
+      await openSection(page, 'Roadmap')
+      await openSection(page, 'Your notes')
+      await openSection(page, 'Extracted')
+      await expect(page.getByRole('list', { name: 'Extracted' })).toContainText(
+        'Wikipedia · 20 min',
+      )
+      await expect(page.getByRole('list', { name: 'Extracted' })).not.toContainText('Ilari')
+      await page.getByRole('list', { name: 'Extracted' }).getByRole('button').first().click()
+      await page.mouse.move(0, 0)
+      await shoot(page, 'detail-note-open', theme)
+
+      await page.getByRole('button', { name: 'Hydride shifts' }).click()
+      await expect(page.getByRole('heading', { name: 'Hydride shifts' })).toBeVisible()
+      await openSection(page, 'Your notes')
+      await expect(page.getByRole('list', { name: 'Your notes' })).toContainText(
+        'Chemistry LibreTexts',
+      )
+      await page.mouse.move(0, 0)
+      await shoot(page, 'detail-subtopic', theme)
+      await page.getByRole('button', { name: 'Back to Carbocation stability' }).click()
+      await expect(page.getByRole('heading', { name: 'Carbocation stability' })).toBeVisible()
     })
 
     test('panel: first day (empty)', async ({ page }) => {
