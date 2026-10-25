@@ -50,6 +50,10 @@ export interface OutlineFlowDeps {
   changed: (subjectId: Id) => void
   /** Runs fn every ms until the returned stop is called (tests pass a manual clock). */
   every?: (ms: number, fn: () => void) => () => void
+  /** Epoch ms (tests pass a fixed clock). */
+  now?: () => number
+  /** Waits (tests pass an instant one). */
+  sleep?: (ms: number) => Promise<void>
 }
 
 /** Struggling first, then concepts still under half way: what the page should help with. */
@@ -104,7 +108,10 @@ function onScreen(box: Rect, frame: Rect | null | undefined): boolean {
 export function pageLines(win: PerceivedWindow): Boxed[] {
   return win.lines.filter(
     (l): l is Boxed =>
-      l.box !== null && l.text.trim().length > 0 && !isCitation(l.text) && onScreen(l.box, win.frame),
+      l.box !== null &&
+      l.text.trim().length > 0 &&
+      !isCitation(l.text) &&
+      onScreen(l.box, win.frame),
   )
 }
 
@@ -174,8 +181,25 @@ export function drawMarks(
   return { marks, above, below, found }
 }
 
+/** Wait before the second read of a page that gave almost no text (its Accessibility warming up). */
+export const RETRY_MS = 700
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+
+/** How long a page keeps its outline: holding again shows the same marks, not a new guess. */
+export const REMEMBER_MS = 15 * 60_000
+
+interface Remembered {
+  at: number
+  chosen: Chosen[]
+  summary: string
+  minutes: number
+}
+
 export class OutlineFlow {
   private follow: { stop: () => void } | null = null
+  /** The last outlines, by page, subject and what the student knows (gaps, mastered, questions). */
+  private readonly remembered = new Map<string, Remembered>()
 
   constructor(private readonly deps: OutlineFlowDeps) {}
 
@@ -188,18 +212,27 @@ export class OutlineFlow {
   async run(signal?: AbortSignal): Promise<OutlineResult> {
     const { repos } = this.deps
     if (this.follow) this.clear()
-    const front = await this.deps.frontWindow()
+    let front = await this.deps.frontWindow()
     if (front === 'private') return { kind: 'private' }
+    // A browser or Electron app builds its text for Accessibility on the first read: read again.
+    if (!front || pageText(front, false).length < MIN_LINES) {
+      await (this.deps.sleep ?? sleep)(RETRY_MS)
+      if (signal?.aborted) return { kind: 'cancelled' }
+      front = await this.deps.frontWindow()
+      if (front === 'private') return { kind: 'private' }
+    }
     const win = front
     const aiChat = win ? (this.deps.isAiChat?.(win) ?? false) : false
-    const visible = win ? pageLines(win).filter((l) => !aiChat || l.align !== 'right') : []
-    if (!win || visible.length < MIN_LINES) return { kind: 'unreadable' }
-    const lines = pageText(win, aiChat)
+    // The whole page counts: a page that starts with a big header or image is still read, and
+    // the edge cue points to its passages.
+    const lines = win ? pageText(win, aiChat) : []
+    if (!win || lines.length < MIN_LINES) return { kind: 'unreadable' }
     const subjectId = this.deps.subjectFor(win)
     const subject = subjectId ? repos.subjects.get(subjectId) : null
     if (!subject) return { kind: 'noSubject' }
 
     const concepts = repos.concepts.listBySubject(subject.id)
+    const now = this.deps.now?.() ?? Date.now()
     const input: OutlineInput = {
       subject: { name: subject.name, goal: subject.goal },
       page: { title: win.title, app: win.appName, kind: aiChat ? 'ai_chat' : 'page' },
@@ -212,40 +245,65 @@ export class OutlineFlow {
       lines: lines.map((l, i) => ({ i, text: l.text })),
       language: repos.profile.get().promptLanguage,
     }
-    const out = await this.deps.outline(input, { signal })
-    if (signal?.aborted) return { kind: 'cancelled' }
-
-    let order = 0
-    const chosen: Chosen[] = out.ranges
-      .map((r) => ({
-        verdict: r.verdict,
-        why: r.why,
-        order: r.verdict === 'read' ? ++order : null,
-        texts: lines.slice(r.from, r.to + 1).map((l) => l.text),
-      }))
-      .filter((c) => c.texts.length > 0)
-    const reads = out.ranges.filter((r) => r.verdict === 'read')
+    // The same page for the same student shows the same marks: no second guess, and instant.
+    const key = JSON.stringify([
+      subject.id,
+      win.url ?? win.title,
+      input.gaps,
+      input.known,
+      input.openQuestions,
+      lines.length,
+      lines[0]?.text,
+      lines.at(-1)?.text,
+    ])
+    const kept = this.remembered.get(key)
+    const fresh = !kept || now - kept.at > REMEMBER_MS
+    let memo: Remembered
+    if (kept && !fresh) memo = kept
+    else {
+      const out = await this.deps.outline(input, { signal })
+      if (signal?.aborted) return { kind: 'cancelled' }
+      let order = 0
+      const chosen: Chosen[] = out.ranges
+        .map((r) => ({
+          verdict: r.verdict,
+          why: r.why,
+          order: r.verdict === 'read' ? ++order : null,
+          texts: lines.slice(r.from, r.to + 1).map((l) => l.text),
+        }))
+        .filter((c) => c.texts.length > 0)
+      const readWords = chosen
+        .filter((c) => c.verdict === 'read')
+        .flatMap((c) => c.texts)
+        .reduce((n, t) => n + t.split(/\s+/).filter(Boolean).length, 0)
+      memo = {
+        at: now,
+        chosen,
+        summary: out.summary,
+        minutes: Math.max(1, Math.round(readWords / 200)),
+      }
+      this.remembered.set(key, memo)
+    }
+    const { chosen } = memo
     if (chosen.length === 0) return { kind: 'nothing', subjectId: subject.id }
-    const readWords = reads
-      .flatMap((r) => lines.slice(r.from, r.to + 1))
-      .reduce((n, l) => n + l.text.split(/\s+/).filter(Boolean).length, 0)
+    const reads = chosen.filter((c) => c.verdict === 'read')
     const base: Omit<OutlineOverlay, 'marks' | 'above' | 'below'> = {
       windowId: win.windowId,
       frame: win.frame,
       title: win.title,
       subjectName: subject.name,
-      summary: out.summary,
-      minutes: Math.max(1, Math.round(readWords / 200)),
+      summary: memo.summary,
+      minutes: memo.minutes,
     }
     const drawn = drawMarks(chosen, win)
     this.deps.show({ ...base, marks: drawn.marks, above: drawn.above, below: drawn.below })
     this.startFollow(base, chosen, win.windowId)
+    if (!fresh) {
+      return { kind: 'shown', read: reads.length, marks: drawn.marks.length, subjectId: subject.id }
+    }
 
     for (const r of reads.slice(0, 5)) {
-      const text = lines
-        .slice(r.from, r.to + 1)
-        .map((l) => l.text.trim())
-        .join(' ')
+      const text = r.texts.map((t) => t.trim()).join(' ')
       repos.notes.add({
         subjectId: subject.id,
         conceptId: null,

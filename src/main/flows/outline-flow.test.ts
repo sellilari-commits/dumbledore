@@ -88,6 +88,7 @@ describe('OutlineFlow', () => {
       },
       show: (o) => void shown.push(o),
       changed: vi.fn(),
+      sleep: async () => undefined,
       ...over,
     })
 
@@ -134,6 +135,32 @@ describe('OutlineFlow', () => {
     expect(notes[0]?.text).toContain('Stability increases from methyl')
     expect(notes[0]?.source.title).toBe('Carbocation – Wikipedia')
     expect(changed).toHaveBeenCalledWith(subjectId)
+  })
+
+  it('remembers a page: holding again shows the same marks without asking again', async () => {
+    const f = flow({ now: () => 1_000 })
+    await f.run()
+    f.clear()
+    await f.run()
+    expect(inputs).toHaveLength(1)
+    expect(shown.at(-1)?.marks.map((m) => m.why)).toEqual(shown[0]?.marks.map((m) => m.why))
+    expect(repos.notes.list({ subjectId })).toHaveLength(1) // the passage is saved once
+  })
+
+  it('reads again when the first read gives almost no text (Accessibility warming up)', async () => {
+    let reads = 0
+    const f = flow({
+      frontWindow: async () => (++reads === 1 ? { ...page(), lines: [] } : page()),
+    })
+    expect((await f.run()).kind).toBe('shown')
+    expect(reads).toBe(2)
+  })
+
+  it('reads a page whose text starts below the screen; marks wait for the scroll', async () => {
+    const low = page()
+    low.frame = { x: 0, y: 0, width: 800, height: 90 } // only the title fits on screen
+    expect((await flow({ frontWindow: async () => low }).run()).kind).toBe('shown')
+    expect(shown.at(-1)?.below).toBeGreaterThan(0)
   })
 
   it('says when the page can’t be read or has no subject', async () => {
