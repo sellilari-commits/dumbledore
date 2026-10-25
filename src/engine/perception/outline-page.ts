@@ -7,12 +7,42 @@
 import type { Rect } from '@shared/geometry'
 import type { PerceivedWindow } from '@shared/helper-protocol'
 
-/** At most this many of the page's lines go to P15 (its own cap, OUTLINE_MAX_LINES, is 400). */
-export const OUTLINE_LINES = 400
+/**
+ * At most this many of the page's lines go to P15 (its own cap is OUTLINE_MAX_LINES): a real
+ * Wikipedia article read whole is ~1,200 lines once its reference markers are dropped.
+ */
+export const OUTLINE_LINES = 1500
 /** …and at most this much text (a line out of view is a whole paragraph). */
 export const OUTLINE_CHARS = 100_000
-/** A screen line this long is matched inside a passage's text (a paragraph read out of view). */
+/** A screen line this long (spaces aside) is matched inside a passage's paragraph read out of view. */
 export const MIN_MATCH = 12
+
+/**
+ * A reference marker read out of view, on a line of its own: "[", "]", "4", "iii", "n. 1", "a",
+ * "edit". Chrome gives Wikipedia's "[4]" as three such lines, half of an article's lines.
+ */
+const MARKER = /^(?:\[|\]|\d{1,3}|[ivx]{1,5}|[a-z]|n\.\s?\d+|edit|\^)$/
+
+/**
+ * The lines out of view (no box) as paragraphs: reference markers dropped, and a line that
+ * continues the one before it (it starts with a small letter or closing punctuation) joined to it.
+ * Lines on screen are left as they are: their boxes are what gets marked.
+ */
+export function joinAway(lines: readonly PerceivedWindow['lines'][number][]) {
+  const out: PerceivedWindow['lines'][number][] = []
+  for (const l of lines) {
+    const text = l.text.trim()
+    if (l.box === null && MARKER.test(text)) continue
+    const prev = out.at(-1)
+    if (l.box === null && prev && prev.box === null && /^[a-z,.;:!?)\]}%’”]/.test(text)) {
+      const glue = /^[,.;:!?)\]}%’”]/.test(text) ? '' : ' '
+      out[out.length - 1] = { ...prev, text: `${prev.text.trimEnd()}${glue}${text}` }
+      continue
+    }
+    out.push(l)
+  }
+  return out
+}
 
 /** Reference-list lines: never worth reading for a gap (and never saved as notes). */
 export function isCitation(text: string): boolean {
@@ -53,7 +83,7 @@ export function pageLines(win: PerceivedWindow): Boxed[] {
  * right-aligned messages are left out: only the answers count.
  */
 export function pageText(win: PerceivedWindow, aiChat: boolean): PerceivedWindow['lines'] {
-  const lines = win.lines
+  const lines = joinAway(win.lines)
     .filter((l) => l.text.trim().length > 0 && !isCitation(l.text))
     .filter((l) => !aiChat || l.align !== 'right')
   const first = Math.max(
@@ -81,14 +111,12 @@ export function pageText(win: PerceivedWindow, aiChat: boolean): PerceivedWindow
   return lines.slice(from, to)
 }
 
-/** Text compared across line breaks: case, runs of spaces and spaces before punctuation ignored. */
+/**
+ * Text compared across line breaks, case and spaces ignored: Chrome's lines on screen sometimes
+ * lose the space around a link ("theriseof theNazi Party"), the same text read out of view keeps it.
+ */
 export function norm(text: string): string {
-  return text
-    .replace(/\s+/g, ' ')
-    .replace(/ ([.,;:!?)\]}%])/g, '$1')
-    .replace(/([([{]) /g, '$1')
-    .trim()
-    .toLowerCase()
+  return text.replace(/\s+/g, '').toLowerCase()
 }
 
 /** Where a screen line is on the page: its own line, else the paragraph it is part of; -1 if none. */

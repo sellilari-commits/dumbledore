@@ -10,8 +10,8 @@ import { type OutlineInput, OutlineOutput } from '@engine/brain-contract'
 import { looksFinnish } from '../llm/text'
 import { bullets, languageName, type PromptSpec, tag } from './shared'
 
-/** Lines sent per call; a longer page is outlined from its top (what is on screen first). */
-export const OUTLINE_MAX_LINES = 400
+/** Lines sent per call (a whole article; the outline flow cuts a longer page around the screen). */
+export const OUTLINE_MAX_LINES = 1500
 
 export function outlineLanguage(input: OutlineInput): string {
   if (input.language && input.language !== 'auto') return input.language.slice(0, 2)

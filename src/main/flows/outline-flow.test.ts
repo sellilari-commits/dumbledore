@@ -8,7 +8,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   drawMarks,
   isCitation,
+  LOST_TICKS,
   norm,
+  OUTLINE_LINES,
   OutlineFlow,
   pageLines,
   pageText,
@@ -240,10 +242,18 @@ describe('OutlineFlow', () => {
     await new Promise((r) => setImmediate(r))
     expect(shown.at(-1)).toMatchObject({ marks: [], above: 0, below: 1 })
 
-    // Nothing on screen is on the outlined page any more (another page): the marks clear.
-    current = page0(['A different article', 'about something else entirely'])
+    // A page loading for a moment reads blank: the marks wait.
+    current = page0(['Loading…'])
     tick()
     await new Promise((r) => setImmediate(r))
+    expect(shown.at(-1)).not.toBeNull()
+
+    // Nothing on screen is on the outlined page for LOST_TICKS reads (another page): they clear.
+    current = page0(['A different article', 'about something else entirely'])
+    for (let i = 0; i < LOST_TICKS; i++) {
+      tick()
+      await new Promise((r) => setImmediate(r))
+    }
     expect(shown.at(-1)).toBeNull()
   })
 
@@ -357,14 +367,30 @@ describe('pageLines', () => {
         box: null,
         align: null,
       }))
-    win.lines = [...away(600), ...win.lines, ...away(600)]
+    win.lines = [...away(2000), ...win.lines, ...away(2000)]
     const lines = pageText(win, false)
-    expect(lines.length).toBe(400)
+    expect(lines.length).toBe(OUTLINE_LINES)
     expect(lines.map((l) => l.text)).toContain('On screen one')
     // A third before the screen, the rest after it.
     const first = lines.findIndex((l) => l.text === 'On screen one')
-    expect(first).toBeGreaterThan(100)
-    expect(first).toBeLessThan(160)
+    expect(first).toBeGreaterThan(OUTLINE_LINES * 0.28)
+    expect(first).toBeLessThan(OUTLINE_LINES * 0.4)
+  })
+
+  it('reads a paragraph out of view as one line, without its reference markers', () => {
+    const away = (text: string) => ({ text, conf: 1, box: null, align: null })
+    const win = page0(['On screen'])
+    // Chrome's Accessibility for "The treaty[4] was signed, and[iii] ratified." out of view.
+    win.lines = [
+      ...['The treaty', '[', '4', ']', 'was signed', ', and', '[', 'iii', ']', 'ratified.'].map(
+        away,
+      ),
+      ...win.lines,
+    ]
+    expect(pageText(win, false).map((l) => l.text)).toEqual([
+      'The treaty was signed, and ratified.',
+      'On screen',
+    ])
   })
 
   it('skips citation lines', () => {

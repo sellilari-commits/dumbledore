@@ -104,6 +104,11 @@ export function union(boxes: readonly Rect[]): Rect | null {
 
 /** How often the marks re-read the page to follow a scroll (and light up passages scrolled to). */
 export const FOLLOW_MS = 500
+/**
+ * Reads in a row that find nothing of the outlined page before the marks clear: a tab or page
+ * that is loading reads blank for a moment, which is not another page yet.
+ */
+export const LOST_TICKS = 4
 
 /** A passage P15 chose, kept by its lines' text so it is found again wherever the page scrolls. */
 export interface Chosen {
@@ -329,8 +334,9 @@ export class OutlineFlow {
   /**
    * Keeps the marks on their text: re-reads what is on screen every FOLLOW_MS (quick, not the
    * whole page) and finds each chosen passage again, so marks move with a scroll either way and
-   * passages light up as they come into view. Another window in front, or a screen that is not on
-   * the outlined page any more (another page), clears them.
+   * passages light up as they come into view. Another window in front clears them at once; a
+   * screen that is not on the outlined page any more (another page) after LOST_TICKS reads in a
+   * row, so a page that is loading for a moment keeps them.
    */
   private startFollow(
     base: Omit<OutlineOverlay, 'marks' | 'above' | 'below'>,
@@ -340,6 +346,7 @@ export class OutlineFlow {
   ): void {
     let last = ''
     let busy = false
+    let lost = 0
     const tick = async () => {
       if (busy) return
       busy = true
@@ -348,7 +355,11 @@ export class OutlineFlow {
         if (this.follow !== handle) return
         if (!win || win === 'private' || win.windowId !== windowId) return this.clear()
         const drawn = drawMarks(chosen, win, page)
-        if (!drawn.found) return this.clear()
+        if (!drawn.found) {
+          if (++lost >= LOST_TICKS) this.clear()
+          return
+        }
+        lost = 0
         const next: OutlineOverlay = {
           ...base,
           frame: win.frame,
