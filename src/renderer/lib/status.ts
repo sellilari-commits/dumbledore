@@ -5,6 +5,7 @@
  */
 import type {
   MasteryStatus,
+  Note,
   NotionColor,
   QuizKind,
   TeachingMove,
@@ -57,4 +58,14 @@ export function scoreColor(score: number | null): NotionColor {
   if (score >= 0.8) return 'green'
   if (score >= 0.5) return 'yellow'
   return 'red'
+}
+
+/**
+ * How a note reads in lists: a misconception an exam showed and a question asked in the chat say
+ * so ("You thought: …", "You asked: …"), so neither reads like a fact.
+ */
+export function noteLead(kind: Note['kind']): string {
+  if (kind === 'misconception') return 'You thought: '
+  if (kind === 'question') return 'You asked: '
+  return ''
 }

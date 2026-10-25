@@ -31,7 +31,7 @@ const DIFFICULTIES = [
 ] as const satisfies ReadonlyArray<{ value: Difficulty; label: string }>
 
 const FOCUSES: ReadonlyArray<{ value: Focus; label: string; hint: string }> = [
-  { value: 'weak', label: 'Weak spots', hint: 'Concepts you missed or rarely got right' },
+  { value: 'weak', label: 'Weak spots', hint: 'Topics you missed or rarely got right' },
   { value: 'due', label: 'Due for review', hint: 'Spaced reviews that are due today' },
   { value: 'everything', label: 'Everything', hint: 'A mix across the whole subject' },
 ]

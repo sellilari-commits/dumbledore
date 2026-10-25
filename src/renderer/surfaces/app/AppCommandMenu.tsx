@@ -15,7 +15,7 @@ const ICON = { size: 16, strokeWidth: 1.75 } as const
 
 const HIT_GROUP: Record<SearchHit['kind'], string> = {
   subject: 'Subjects',
-  concept: 'Concepts',
+  concept: 'Topics',
   encounter: 'Seen on screen',
   exam: 'Exams',
 }

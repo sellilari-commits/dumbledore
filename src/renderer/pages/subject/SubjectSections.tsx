@@ -82,7 +82,7 @@ export function ProgressSection({ detail }: { detail: SubjectDetail }) {
       )}
       {concepts.length > 0 ? (
         <p className="sp-progress-mastery">
-          {mastered} of {concepts.length} concepts mastered
+          {mastered} of {concepts.length} topics mastered
           {strong.length > 0 ? (
             <>
               {' · '}Strong: <span className="sp-strong">{strong.join(', ')}</span>

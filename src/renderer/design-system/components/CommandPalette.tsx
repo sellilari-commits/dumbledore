@@ -47,7 +47,7 @@ export function CommandPalette({
   onQueryChange,
   items,
   loading,
-  placeholder = 'Search subjects, concepts and what you’ve read…',
+  placeholder = 'Search subjects, topics and what you’ve read…',
   emptyText = 'No results',
 }: CommandPaletteProps) {
   const groups: Array<[string, PaletteItem[]]> = []

@@ -20,7 +20,7 @@ import { errorToast } from '@renderer/lib/errors'
 import { formatPercent, formatRelative } from '@renderer/lib/format'
 import { useSubjectTree } from '@renderer/lib/memory-queries'
 import { useAction } from '@renderer/lib/queries'
-import { MASTERY } from '@renderer/lib/status'
+import { MASTERY, noteLead } from '@renderer/lib/status'
 import type { ConceptEdge, Note } from '@shared/domain'
 import type { ConceptNode } from '@shared/state'
 import { Highlighter, Puzzle, Trash2, X } from 'lucide-react'
@@ -88,6 +88,7 @@ function NoteRow({ note }: { note: Note }) {
             aria-label={`Edit note: ${note.text}`}
             onClick={() => setDraft(note.text)}
           >
+            {noteLead(note.kind)}
             {note.text}
           </button>
         )}

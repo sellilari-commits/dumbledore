@@ -9,7 +9,7 @@ import { useDeleteAllData } from '@renderer/lib/queries'
 import { useLocation } from 'wouter'
 
 const GOES = [
-  'Your subjects, roadmaps and concepts',
+  'Your subjects, roadmaps and topics',
   'Everything Dumbledore saw, and its memory files',
   'Exams, quizzes and the coach chat',
   'Every export in the exports folder',

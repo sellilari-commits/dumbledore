@@ -34,7 +34,7 @@ type ConceptRow = QuizResult['byConcept'][number]
 const CONCEPT_COLUMNS: Column<ConceptRow>[] = [
   {
     key: 'concept',
-    header: 'Concept',
+    header: 'Topic',
     render: (r) => <span className="dd-table__title-cell">{r.conceptName}</span>,
   },
   {
@@ -140,9 +140,9 @@ export function ExamResults({ quiz, subjectLine }: ExamResultsProps) {
         <span className="ex-score__sub">{scoreLine(r)}</span>
       </div>
 
-      <Section title="By concept">
+      <Section title="By topic">
         <DatabaseTable
-          label="Score by concept"
+          label="Score by topic"
           columns={CONCEPT_COLUMNS}
           rows={r.byConcept}
           rowKey={(row) => row.conceptName}

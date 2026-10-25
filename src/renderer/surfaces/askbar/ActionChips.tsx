@@ -34,7 +34,7 @@ export function describeAction(action: CoachAction): { label: string; Icon: Luci
       return { label: `Create a ${action.spec.count}-question exam`, Icon: FileCheck2 }
     case 'start_review': {
       const n = action.conceptIds.length
-      return { label: n === 1 ? 'Review 1 concept' : `Review ${n} concepts`, Icon: RotateCcw }
+      return { label: n === 1 ? 'Review 1 topic' : `Review ${n} topics`, Icon: RotateCcw }
     }
     case 'insert_prompt':
       return { label: 'Paste prompt into chat', Icon: ClipboardPaste }

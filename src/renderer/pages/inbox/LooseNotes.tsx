@@ -3,9 +3,11 @@
  * newest first, as compact rows with their source link, "File to…" ('notes.file') and ✕. Shown
  * only when there are any.
  */
+
 import { IconButton, toast } from '@renderer/design-system'
 import { errorToast } from '@renderer/lib/errors'
 import { useAction } from '@renderer/lib/queries'
+import { noteLead } from '@renderer/lib/status'
 import type { Note, SubjectSummary } from '@shared/domain'
 import { Flag, X } from 'lucide-react'
 import { SourceLine } from './MemoryNotes'
@@ -34,7 +36,10 @@ function LooseNote({ note, subjects }: { note: Note; subjects: SubjectSummary[] 
         <span className="mem-note__dot" aria-hidden />
       )}
       <div className="mem-note__body">
-        <span className="mem-note__text">{note.text}</span>
+        <span className="mem-note__text">
+          {noteLead(note.kind)}
+          {note.text}
+        </span>
         <SourceLine source={sourceLink(note)} at={note.createdAt} />
       </div>
       <SubjectMenu

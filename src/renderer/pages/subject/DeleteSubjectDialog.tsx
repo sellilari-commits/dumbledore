@@ -31,7 +31,7 @@ export function DeleteSubjectDialog({
       open={subject !== null}
       onOpenChange={(next) => !remove.isPending && onOpenChange(next)}
       title={`Delete ${subject?.name ?? 'subject'}?`}
-      description="Dumbledore forgets everything about it: concepts, what it saw, roadmaps, exams. This can’t be undone."
+      description="Dumbledore forgets everything about it: topics, what it saw, roadmaps, exams. This can’t be undone."
       footer={
         <>
           <Button onClick={() => onOpenChange(false)} disabled={remove.isPending}>

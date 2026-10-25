@@ -68,9 +68,11 @@ export const STEP_LABEL: Record<StepState, string> = {
 const typedByStudent = (note: Note) =>
   note.source.bundleId === 'org.stuhi.dumbledore' || key(note.source.app) === 'dumbledore'
 
-/** A flag: a passage the student highlighted, or a note they typed. */
+/** A flag: a passage the student highlighted, or a note they typed or a question they asked (not an exam's misconception). */
 export const isFlag = (note: Note) =>
-  note.status === 'active' && (note.kind === 'highlight' || typedByStudent(note))
+  note.status === 'active' &&
+  note.kind !== 'misconception' &&
+  (note.kind === 'highlight' || typedByStudent(note))
 
 /** The topic's flags (its own and its subtopics'), newest first. */
 export function topicFlags(tree: SubjectTree | undefined, ids: ReadonlySet<Id>): Note[] {

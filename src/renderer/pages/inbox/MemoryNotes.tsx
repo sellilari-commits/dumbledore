@@ -4,9 +4,11 @@
  * page once when several notes came from it. Links open in the default browser: the window's
  * open handler sends http(s) links to shell.openExternal (main/security.ts).
  */
+
 import { IconButton, Textarea, toast } from '@renderer/design-system'
 import { errorToast } from '@renderer/lib/errors'
 import { useAction } from '@renderer/lib/queries'
+import { noteLead } from '@renderer/lib/status'
 import type { Note } from '@shared/domain'
 import { Flag, Pencil, PenLine, X } from 'lucide-react'
 import { useState } from 'react'
@@ -85,7 +87,10 @@ export function NoteItem({ note, showSource }: { note: Note; showSource: boolean
             }}
           />
         ) : (
-          <span className="mem-note__text">{note.text}</span>
+          <span className="mem-note__text">
+            {noteLead(note.kind)}
+            {note.text}
+          </span>
         )}
         {showSource && !editing && <SourceLine source={sourceLink(note)} at={note.createdAt} />}
       </div>

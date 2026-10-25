@@ -315,7 +315,7 @@ describe('AskBar', () => {
 describe('Ask bar helpers', () => {
   it('labels every coach action', () => {
     expect(describeAction({ type: 'start_review', conceptIds: ['a', 'b'] }).label).toBe(
-      'Review 2 concepts',
+      'Review 2 topics',
     )
     expect(
       describeAction({

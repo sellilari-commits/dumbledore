@@ -51,7 +51,7 @@ describe('ExamPage — taking', () => {
     expect(quiz?.answers[0]).toMatchObject({ questionId: 'q_l1', chosenIndex: 0, correct: true })
   })
 
-  it('finishes into a score, a by-concept table and the gaps', async () => {
+  it('finishes into a score, a by-topic table and the gaps', async () => {
     const r = renderExam('quiz_linalg_ready')
     const finish = await screen.findByRole('button', { name: /finish exam/i })
     expect((finish as HTMLButtonElement).disabled).toBe(true)
@@ -70,7 +70,7 @@ describe('ExamPage — taking', () => {
     fireEvent.click(screen.getByRole('button', { name: /finish exam/i }))
     expect(await screen.findByText('4 / 5')).toBeTruthy()
     expect(screen.getByText('80%')).toBeTruthy()
-    expect(screen.getByRole('table', { name: 'Score by concept' })).toBeTruthy()
+    expect(screen.getByRole('table', { name: 'Score by topic' })).toBeTruthy()
     expect(screen.getByText('Your gaps')).toBeTruthy()
     expect(screen.getByText(/you picked “A is invertible”/)).toBeTruthy()
     expect(r.api.db.quizzes.find((q) => q.id === 'quiz_linalg_ready')?.status).toBe('done')

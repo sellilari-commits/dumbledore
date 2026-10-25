@@ -53,7 +53,7 @@ export function DataSection() {
         label="Export everything"
         description={
           <>
-            One JSON file with your subjects, concepts, exams and settings, saved in the exports
+            One JSON file with your subjects, topics, exams and settings, saved in the exports
             folder and shown in Finder. API keys are never included.
             {exportedTo ? (
               <span className="dd-set-result" role="status">

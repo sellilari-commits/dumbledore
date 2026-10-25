@@ -79,7 +79,7 @@ export function ResultView({ api, result, onDone, primaryRef }: Props) {
       <p className="ov-score__line">{headline(result.correct, result.total)}</p>
 
       {result.byConcept.length > 0 && (
-        <ul className="ov-concepts" aria-label="By concept">
+        <ul className="ov-concepts" aria-label="By topic">
           {result.byConcept.map((c) => (
             <li key={c.conceptName}>
               <span className="ov-concepts__name">{c.conceptName}</span>

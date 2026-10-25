@@ -3,10 +3,12 @@
  * roadmap that covers it (each step with a plain state, checkpoints as small markers) and the
  * topic's flags — what the student highlighted or typed — each with a ✕. No roadmap: flags only.
  */
+
 import { IconButton, Tooltip } from '@renderer/design-system'
 import { invoke } from '@renderer/lib/api'
 import { useSubjectTree } from '@renderer/lib/memory-queries'
 import { keys, useAction } from '@renderer/lib/queries'
+import { noteLead } from '@renderer/lib/status'
 import type { Note, Roadmap, RoadmapItem } from '@shared/domain'
 import type { Topic } from '@shared/topics'
 import { useQuery } from '@tanstack/react-query'
@@ -187,6 +189,7 @@ function FlagRow({
       </span>
       <div className="pn-flag__body">
         <p className="pn-flag__text" data-open={open || undefined}>
+          {noteLead(note.kind)}
           {note.text}
         </p>
         <span className="pn-flag__meta">
