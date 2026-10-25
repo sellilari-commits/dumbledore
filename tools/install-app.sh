@@ -5,10 +5,11 @@
 #   npm run install-app                 build, sign, install, start
 #   npm run install-app -- --no-open    same, without starting it
 #
-# Env: SIGN_IDENTITY (default "-" = ad hoc). The helper runs as Dumbledore's child process, so
-# the Accessibility / Screen Recording grants belong to Dumbledore.app. An ad-hoc signature changes
-# with every build, so macOS stops honouring them after a rebuild (remove and re-add the app in
-# System Settings); a stable identity keeps them (README → Run).
+# Signing: the helper runs as Dumbledore's child process, so the Accessibility / Screen Recording
+# grants belong to Dumbledore.app, and macOS keeps them only while the signature stays the same
+# app. So every build is signed with this Mac's "Dumbledore Dev" identity (tools/dev-identity.sh
+# creates it on first use, in its own keychain). SIGN_IDENTITY overrides it: a Developer ID name,
+# or "-" for ad hoc (tied to one build; macOS then needs the grants again after each install).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -19,14 +20,33 @@ ARCH_DIR="release/mac-$( [ "$(uname -m)" = arm64 ] && echo arm64 || echo x64 )"
 [ -d "$ARCH_DIR" ] || ARCH_DIR="release/mac"
 APP="$ARCH_DIR/Dumbledore.app"
 HELPER="$APP/Contents/Library/LoginItems/Dumbledore Helper.app"
-IDENTITY="${SIGN_IDENTITY:--}"
+KEYCHAIN_ARGS=()
+if [ -n "${SIGN_IDENTITY:-}" ]; then
+  IDENTITY="$SIGN_IDENTITY"
+else
+  IDENTITY="$(bash tools/dev-identity.sh)"
+  DEV_KEYCHAIN="${DUMBLEDORE_DEV_DIR:-$HOME/.dumbledore-dev}/signing.keychain-db"
+  KEYCHAIN_ARGS=(--keychain "$DEV_KEYCHAIN")
+  # codesign only finds identities in the search list: add the dev keychain while signing, then
+  # put the list back exactly as it was (also on failure).
+  SEARCH=()
+  while IFS= read -r line; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    SEARCH+=("${line//\"/}")
+  done < <(security list-keychains -d user)
+  trap 'security list-keychains -d user -s "${SEARCH[@]}"' EXIT
+  security list-keychains -d user -s "${SEARCH[@]}" "$DEV_KEYCHAIN"
+fi
+# (bash 3.2: an empty array under set -u needs the ${a[@]+…} form)
+sign() { codesign --force ${KEYCHAIN_ARGS[@]+"${KEYCHAIN_ARGS[@]}"} --sign "$IDENTITY" "$@"; }
 
 # Inside out: the whole bundle, then the helper with its own identifier, then the outer app again.
-codesign --force --deep --sign "$IDENTITY" "$APP"
-codesign --force --sign "$IDENTITY" --identifier org.stuhi.dumbledore.helper "$HELPER/Contents/MacOS/dumbledore-helper"
-codesign --force --sign "$IDENTITY" --identifier org.stuhi.dumbledore.helper "$HELPER"
-codesign --force --sign "$IDENTITY" "$APP"
+sign --deep "$APP"
+sign --identifier org.stuhi.dumbledore.helper "$HELPER/Contents/MacOS/dumbledore-helper"
+sign --identifier org.stuhi.dumbledore.helper "$HELPER"
+sign "$APP"
 codesign --verify --deep --strict "$APP"
+codesign -dr - "$APP" 2>&1 | sed -n 's/^[# ]*designated => /Signed: /p'
 
 osascript -e 'quit app "Dumbledore"' >/dev/null 2>&1 || true
 sleep 1

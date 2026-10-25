@@ -50,6 +50,7 @@ function PermissionRows() {
             waiting={flow.isWaiting(p.kind)}
             onOpen={() => flow.request(p.kind)}
             onRelaunch={p.kind === 'screenRecording' ? flow.relaunch : undefined}
+            onReset={() => flow.reset(p.kind)}
             actionLabel="Turn on"
           />
         </SettingsRow>

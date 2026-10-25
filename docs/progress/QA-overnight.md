@@ -78,11 +78,12 @@ sits in someone's area is listed under **Open** below.
   call uses the slow free OVH fallback (exam ~30 s, roadmap ~60 s). `.env.local` points
   `DUMBLEDORE_ENV_FILES` at `hugo-backend/.env`, which apparently has no `GEMINI_API_KEY` (not
   read). Add the key in Settings → AI providers.
-- **Permissions after each install.** Ad-hoc signing changes with every build, so macOS stops
-  honouring the Accessibility / Screen Recording switches after a reinstall. Remove and re-add
-  Dumbledore in System Settings, or once create a self-signed "Dumbledore Dev" code-signing
-  certificate and install with `SIGN_IDENTITY="Dumbledore Dev" npm run install-app` (README → Run).
-  The build installed tonight needs this before the outline and capture work.
+- **Permissions after each install** (fixed the morning after): ad-hoc signing changed with every
+  build, so macOS stopped honouring the Accessibility / Screen Recording switches after a
+  reinstall while they still looked on. `install-app` now signs with a stable "Dumbledore Dev"
+  identity (`tools/dev-identity.sh`), and a stuck "Waiting for macOS…" offers "Already on? Reset
+  and ask again" (`tccutil reset` for the app, then macOS asks again). The first install with the
+  new signature needs the grants once more.
 
 **For Ilari (his decisions or areas)**
 - Toast rule (6364d96): the password-field refusal, "Cancelled", router errors and the Screen
@@ -108,7 +109,7 @@ sits in someone's area is listed under **Open** below.
 - `Package.swift`'s unconditional weak FoundationModels flag breaks `swift build` on the 15 SDK
   (`build.sh` is the supported build).
 - PLAN.md is behind: §5, §6.2 (tools/bench.ts, dev-launch.sh, … don't exist), WP9 (helper is in
-  LoginItems), §9.4.1 ("permissions survive rebuilds" is false with ad-hoc signing).
+  LoginItems), §9.4.1 ("permissions survive rebuilds" holds only with install-app's stable identity).
 - Dead code: design-system `RoadmapItem` / `Checkbox`, `useChat`, a few unused events and channels.
 - Selection actions can't be cancelled with Esc; the overlay timer-chooser test is flaky in the
   full run (passes alone).

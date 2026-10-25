@@ -33,6 +33,11 @@ export interface HandlerExtras {
   exportDir: string
   /** Shows a file in Finder. */
   revealFile: (path: string) => void
+  /**
+   * Removes macOS's privacy entry for the installed app (`tccutil reset`), so the next request
+   * adds a fresh one; false when it can't (development, where the terminal holds the grants).
+   */
+  resetPermission: (kind: 'accessibility' | 'screenRecording') => Promise<boolean>
   /** Quits and reopens the app (a Screen Recording grant needs a fresh process). */
   relaunch: () => void
   /** "Delete everything": wipes the store, memory files and keys, then relaunches the app. */
@@ -60,6 +65,15 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
     helper,
     changed: (subjectId) => memory('subjects', [subjectId]),
   })
+  /** macOS's prompt via the helper, else the right System Settings pane. */
+  const requestPermission = async (kind: 'accessibility' | 'screenRecording') => {
+    try {
+      const { opened } = await helper.call('permissions.request', { kind })
+      if (!opened) await extras.openSystemSettings(kind)
+    } catch {
+      await extras.openSystemSettings(kind)
+    }
+  }
   const settingsChanged = () => {
     const settings = repos.settings.get()
     bus.emit('settings:changed', { settings })
@@ -161,13 +175,11 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
       settingsChanged()
     },
     'permissions.status': () => core.permissions.refresh(),
-    'permissions.open': async (kind) => {
-      try {
-        const { opened } = await helper.call('permissions.request', { kind })
-        if (!opened) await extras.openSystemSettings(kind)
-      } catch {
-        await extras.openSystemSettings(kind)
-      }
+    'permissions.open': (kind) => requestPermission(kind),
+    'permissions.reset': async (kind) => {
+      const ok = await extras.resetPermission(kind)
+      await requestPermission(kind) // macOS adds a fresh entry for this build; the student turns it on
+      return { ok }
     },
     'app.relaunch': () => extras.relaunch(),
     'providers.test': (id) => services.providers.test(id),

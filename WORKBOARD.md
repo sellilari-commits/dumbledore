@@ -8,7 +8,6 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
-| 2026-10-25 00:05 | Olle / Claude | Permissions: a hint in "Waiting for macOS…" for a switch that is on but belongs to an earlier build (remove with − and add again) | `src/renderer/pages/settings/permissions.tsx` (+ new `permissions.test.tsx`) | main | |
 
 ## Done recently
 
@@ -16,6 +15,7 @@ Newest first; keep about the last 20 entries.
 
 | Finished (UTC) | Who / agent | Work | Commit |
 |---|---|---|---|
+| 2026-10-25 06:30 | Olle / Claude | Permissions survive rebuilds: install-app signs with a stable "Dumbledore Dev" identity (`tools/dev-identity.sh`, own keychain); a stuck "Waiting for macOS…" offers "Already on? Reset and ask again" (IPC `permissions.reset`: `tccutil reset`, then ask again); waiting actions stack so the row stays narrow | (this push) |
 | 2026-10-24 23:45 | Olle / Claude | Overnight QA, install to tests: fresh clone builds and packages; first launch opens onboarding; Screen Recording "Quit & reopen"; Electron fuses; tap clears the outline / closes the panel; usual AI in every AppState push; paused roadmaps on Continue; exams follow the goal; roadmap planning 90 s on the keyless fallback. Report and open items: `docs/progress/QA-overnight.md` | 866f07d…(this push) |
 | 2026-10-25 | Ilari / Claude | Memory page: each topic ends with "All extracted text", a text file of everything captured about it (screen text by source, extracted records, notes) | b65129c |
 | 2026-10-25 | Ilari / Claude | Double-tap chat takes no notes: Note toggle, "note:" saving and note Undo removed; hint "Ask anything or give feedback on your study plan." (stored notes, Memory page, highlight notes untouched) | 95d67ed |

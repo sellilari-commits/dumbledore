@@ -7,9 +7,10 @@
  * The services come from `composeReal()` (src/main/real, the real engine). Test mode and
  * DUMBLEDORE_FAKES=1 use `compose()` instead: fakes with demo data.
  */
+import { execFile } from 'node:child_process'
 import { rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { APP_NAME } from '@shared/constants'
+import { APP_BUNDLE_ID, APP_NAME } from '@shared/constants'
 import { app, clipboard, dialog, ipcMain, Notification, shell } from 'electron'
 import { compose } from './compose'
 import { deleteEverything } from './data/delete-all'
@@ -186,6 +187,16 @@ async function start(paths: AppPaths): Promise<void> {
       app.relaunch()
       app.quit()
     },
+    // Only the installed app owns its entry; in development the terminal holds the grants.
+    resetPermission: (kind) =>
+      new Promise((done) => {
+        if (!app.isPackaged || isTest) return done(false)
+        const service = kind === 'accessibility' ? 'Accessibility' : 'ScreenCapture'
+        execFile('/usr/bin/tccutil', ['reset', service, APP_BUNDLE_ID], (error) => {
+          if (error) console.warn(`[permissions] tccutil reset ${service} failed`, error)
+          done(!error)
+        })
+      }),
     pickMaterialFiles: async () => {
       const r = await dialog.showOpenDialog({
         title: 'Add study material',

@@ -81,6 +81,8 @@ describe('IPC handlers', () => {
     await call('permissions.open', 'screenRecording')
     await call('app.relaunch')
     expect(calls).toContain('relaunch')
+    expect(await call('permissions.reset', 'accessibility')).toEqual({ ok: true })
+    expect(calls).toContain('reset:accessibility')
     expect((await call('providers.test', 'groq')).ok).toBe(true)
     expect((await call('providers.usage')).limits.length).toBeGreaterThan(0)
 

@@ -37,12 +37,14 @@ an existing env file). The installed app reads `.env.local` from its data folder
 | Use a separate data folder (testing) | `DUMBLEDORE_DATA_DIR=/tmp/dd-test npm run dev` |
 
 On first launch, onboarding asks for **Accessibility** (required) and **Screen Recording** (for
-PDFs, slides and video). With the default ad-hoc signature macOS ties these grants to one build: after a
-rebuild the switches in System Settings still look on but no longer work, so remove Dumbledore
-there and add it again. To keep them across rebuilds, sign with a stable identity: in Keychain
-Access → Certificate Assistant → Create a Certificate…, make a self-signed **Code Signing**
-certificate named `Dumbledore Dev`, then install with
-`SIGN_IDENTITY="Dumbledore Dev" npm run install-app`. The right ⌥ key is Dumbledore's key: tap in an AI chat for the next
+PDFs, slides and video). macOS keeps these grants only while the app's signature stays the same,
+so `npm run install-app` signs every build with this Mac's own **Dumbledore Dev** identity
+(`tools/dev-identity.sh` makes it on first use, in its own keychain at `~/.dumbledore-dev`; the
+login keychain is left alone). Grant once and rebuilds keep it. A switch left from an older build
+looks on but doesn't apply: onboarding and Settings → Capture then offer **Already on? Reset and
+ask again**. `SIGN_IDENTITY` overrides the identity (`-` = ad hoc, tied to one build).
+
+The right ⌥ key is Dumbledore's key: tap in an AI chat for the next
 study prompt, tap on an article or PDF to outline what to read, hold to write a prompt,
 double-tap to chat.
 
