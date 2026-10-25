@@ -10,6 +10,8 @@ import {
   CheckpointInput,
   type CoachEvent,
   CoachInput,
+  type CoachLoopOptions,
+  type CoachTools,
   ConsolidateInput,
   type ConsolidateOutput,
   ExamInput,
@@ -44,6 +46,7 @@ import { z } from 'zod'
 import { type Clock, systemClock } from '../clock'
 import type { HelperClient, UsageRepo } from '../contracts'
 import { runCoach } from './coach'
+import { runCoachLoop } from './coach-loop'
 import { createAppleBackend } from './llm/apple-backend'
 import { createMemoryCache, type ResponseCache } from './llm/cache'
 import { createCloudBackend } from './llm/cloud-backend'
@@ -313,6 +316,12 @@ export function createBrain(deps: BrainDeps = {}): BrainHandle {
 
     coach: (raw: CoachInput, opts?: CallOptions): AsyncIterable<CoachEvent> =>
       runCoach(router, clock, CoachInput.parse(raw), opts),
+
+    coachLoop: (
+      raw: CoachInput,
+      tools: CoachTools,
+      opts?: CoachLoopOptions,
+    ): AsyncIterable<CoachEvent> => runCoachLoop(router, clock, CoachInput.parse(raw), tools, opts),
 
     writeNudge: (raw: NudgeInput, opts?: CallOptions): Promise<NudgeOutput> =>
       runStructured(runner, nudgePrompt, NudgeInput.parse(raw), opts),
