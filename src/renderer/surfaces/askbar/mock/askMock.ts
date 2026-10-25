@@ -4,7 +4,9 @@
  * `chat.history` serves the thread; `prompt.write` "writes" a canned prompt after a short wait.
  * URL options: `?seed=<turns>` starts with an earlier conversation, `?theme=dark|light` forces a
  * theme, `?topics=0` hides the topic chips (otherwise 9 subjects with 19 topics, so they scroll;
- * `session.start` just answers), `#/prompt` opens the prompt box (right ⌥ hold). `window.__ddMock.calls` logs every call (Playwright reads it).
+ * `session.start` just answers), `#/prompt` opens the prompt box (right ⌥ hold), `?undo=fail`
+ * makes every Undo and confirmation fail ("That can no longer be undone."). `coach.runAction`
+ * takes a moment for an Undo (undo_save) or a confirmation (run_tool), like main. `window.__ddMock.calls` logs every call (Playwright reads it).
  */
 
 import { demoAppState } from '@renderer/lib/mock/demo-misc'
@@ -17,6 +19,7 @@ import { demoSession, demoSubject, demoSubjects } from './askTopics'
 
 const CHUNK_MS = 35
 const PROMPT_MS = 900
+const ACTION_MS = 300
 
 export function createAskMock(search: string = window.location.search): DumbledoreApi {
   const params = new URLSearchParams(search)
@@ -71,7 +74,17 @@ export function createAskMock(search: string = window.location.search): Dumbledo
     'subjects.list': () => (params.get('topics') === '0' ? [] : demoSubjects()),
     'subjects.get': (id) => demoSubject(id),
     'session.start': ({ subjectId }) => demoSession(subjectId ?? ''),
-    'coach.runAction': () => undefined,
+    'coach.runAction': async (action) => {
+      if (action.type !== 'undo_save' && action.type !== 'run_tool') return
+      await new Promise((r) => window.setTimeout(r, ACTION_MS))
+      if (params.get('undo') === 'fail') {
+        throw new Error(
+          action.type === 'undo_save'
+            ? 'That can no longer be undone.'
+            : 'That note is already gone.',
+        )
+      }
+    },
     'window.close': () => undefined,
     'window.setSize': () => undefined,
   })

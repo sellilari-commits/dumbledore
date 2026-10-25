@@ -1,7 +1,9 @@
 /**
  * Fixtures for the Ask bar's browser mock: canned Dumbledore replies picked by keywords, an
  * earlier conversation to seed (`?seed=<turns>`) for the long-chat screenshots, and the prompt
- * the prompt box "writes".
+ * the prompt box "writes". The tool-using chat's replies are scripted too: "rename … and mark step
+ * 3 done" (two receipts with Undo), "delete …" (a confirmation chip) and "look up …" / "search …"
+ * (an answer with its web sources as links).
  */
 import type { CoachAction } from '@shared/domain'
 import type { AskResult } from '@shared/state'
@@ -18,7 +20,46 @@ const EXAM: CoachAction = {
   spec: { subjectIds: ['sub_chem'], count: 5, focus: 'weak', difficulty: 'mixed' },
 }
 
+/** Receipts of the scripted tool writes (undo_save with the write's receipt line). */
+export const TOOL_RECEIPTS: CoachAction[] = [
+  { type: 'undo_save', saveId: 'undo_rename', label: 'Renamed “Causal graphs” → “DAGs”' },
+  {
+    type: 'undo_save',
+    saveId: 'undo_step',
+    label: 'Marked step 3 “Backdoor criterion” of Causal inference done',
+  },
+]
+
+/** The scripted delete waiting for the student's go-ahead. */
+export const DELETE_CHIP: CoachAction = {
+  type: 'run_tool',
+  tool: 'delete',
+  input: { kind: 'note', id: 'note_colliders' },
+  label: 'Delete note “Colliders open a path when you condition on them”',
+}
+
+export const SOURCES = [
+  { title: 'Causal Inference: What If (Hernán & Robins)', url: 'https://example.org/what-if' },
+  { title: 'The Book of Why, ch. 4', url: 'https://example.org/book-of-why' },
+]
+
 const CANNED: Canned[] = [
+  {
+    test: /rename|mark step/i,
+    reply: 'Done — the topic has its shorter name, and step 3 is ticked off. Step 4 is next.',
+    actions: TOOL_RECEIPTS,
+  },
+  {
+    test: /delete|remove/i,
+    reply:
+      'That note is the only one on **Colliders**. Press the button below if you want it gone.',
+    actions: [DELETE_CHIP],
+  },
+  {
+    test: /look up|search|latest/i,
+    reply: `A **backdoor path** is any path from treatment to outcome that starts with an arrow *into* the treatment. Blocking every one of them (without opening a collider) is enough to read the causal effect off the data.\n\nSources: ${SOURCES.map((s) => `[${s.title}](${s.url})`).join(' · ')}`,
+    actions: [],
+  },
   { test: /recursion/i, reply: ASK_RESULT.reply, actions: ASK_RESULT.actions },
   {
     test: /quiz|test me|check me/i,
