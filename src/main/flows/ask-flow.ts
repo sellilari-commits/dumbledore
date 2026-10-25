@@ -24,6 +24,7 @@ import type { AskResult } from '@shared/state'
 import type { ChatWriter, FieldSnapshot } from '../chat/chat-writer'
 import { coachActionLabel } from '../overlay/labels'
 import type { ToastSpec } from '../overlay/toasts'
+import { keyName } from '../router/hints'
 import type { ChatSaves } from './chat-saves'
 import type { SessionFlow } from './session-flow'
 import type { Thinking } from './thinking'
@@ -47,6 +48,10 @@ export interface AskFlowDeps {
   feedback?: Pick<FeedbackRepo, 'add'>
   /** Saves what the chat hears into the student's studying; without it saves stay chips. */
   saves?: Pick<ChatSaves, 'apply'>
+  /** The AI the student studies with (the open chat, else the usual one), for "Open Claude …". */
+  assistantName?: () => string | null
+  /** Tells the open chat to reload (a message was added after the reply). */
+  chatChanged?: () => void
 }
 
 export interface AskOptions {
@@ -65,7 +70,7 @@ const STRUGGLE_LIMIT = 5
 
 /** Leads the coach context in the Ask bar: a conversation, so nothing is pasted (P10 knows it). */
 const CHAT_MODE =
-  'Mode: chat (the student is talking with you in your own window; nothing is pasted into their AI chat. What you save here — save_question, update_subject, add_note when they ask to keep something, give_feedback — is saved at once and shown with Undo)'
+  'Mode: chat (the student is talking with you in your own window; nothing is pasted into their AI chat. What you save here — save_question, update_subject, add_note when they ask to keep something, give_feedback — is saved at once and shown with Undo. Call start_roadmap only when they ask to plan, study or prepare something, never for a single question (answer that); planning then starts at once and step 1 waits for their tap in their AI chat)'
 
 /** "Topic: <name>" and that subject's own context, or null for an unknown subject. */
 export function topicContext(
@@ -145,6 +150,11 @@ export class AskFlow {
         }
         continue
       }
+      if (action.type === 'start_roadmap' && this.deps.sessions) {
+        lines.push(`Planning a roadmap for “${action.goal}”. I’ll tell you here when it’s ready.`)
+        this.planInBackground(action)
+        continue
+      }
       const receipt = saves?.apply(action)
       if (receipt) {
         if (receipt.line) lines.push(receipt.line)
@@ -155,6 +165,35 @@ export class AskFlow {
       }
     }
     return { actions: [...chips, ...undos], lines }
+  }
+
+  /**
+   * Plans the roadmap the student asked for while they keep talking (the orb shows "Building your
+   * roadmap…"), then says in the chat that it is ready and where step 1 is: their next tap in
+   * their AI chat. A failure says why and offers to try again.
+   */
+  private planInBackground(action: Extract<CoachAction, { type: 'start_roadmap' }>): void {
+    const { sessions, repos } = this.deps
+    const say = (content: string, actions: CoachAction[]) => {
+      repos.chat.append({ thread: ASK_THREAD, role: 'assistant', content, actions })
+      this.deps.chatChanged?.()
+    }
+    sessions
+      .start({ subjectId: action.subjectId, goal: action.goal, question: null }, { hold: true })
+      .then(({ session }) => {
+        if (!session) return say('Your roadmap is ready.', [])
+        const key = keyName(repos.settings.get().shortcut.key)
+        const ai = this.deps.assistantName?.()
+        const where = ai ? `Open ${ai} and tap ${key}` : `In your AI chat, tap ${key}`
+        say(
+          `Your roadmap is ready: **${session.title}**, ${session.total} steps. ${where} for step 1.`,
+          [{ type: 'open_subject', subjectId: session.subjectId }],
+        )
+      })
+      .catch((error: unknown) => {
+        const why = error instanceof Error ? error.message : String(error)
+        say(`I couldn’t plan that: ${why}`, [action])
+      })
   }
 
   /** `/d …` turn: a roadmap or prompt the coach proposes is pasted into the chat box at once. */

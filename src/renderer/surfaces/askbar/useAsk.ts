@@ -107,6 +107,14 @@ export function useAsk(api: DumbledoreApi): AskController {
   }, [api])
 
   useEffect(() => refresh(), [refresh])
+  // Dumbledore can add a message after its reply (e.g. "Your roadmap is ready").
+  useEffect(
+    () =>
+      api.on('memory.changed', ({ scope }) => {
+        if (scope === 'chat') refresh()
+      }),
+    [api, refresh],
+  )
 
   useEffect(
     () =>

@@ -176,6 +176,8 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     emitDelta: hooks.onChatDelta,
     feedback: repos.feedback,
     saves: chatSaves,
+    assistantName: () => perception.aiChat()?.assistant ?? usualAssistant()?.name ?? null,
+    chatChanged: () => bus.emit('memory:changed', { scope: 'chat', ids: [] }),
   })
   const promptWriter = new PromptWriter({ sessions, study, perception, surfaces, thinking })
   const chat = new CoachChat({

@@ -42,6 +42,11 @@ export interface StepOptions {
   /** 'replaceAll' when the prompt replaces a `/d …` instruction in the chat box. */
   mode?: 'insert' | 'replaceAll'
   signal?: AbortSignal
+  /**
+   * Plan and start, but keep the first prompt for the student's next tap in their AI chat: nothing
+   * is pasted now (planning from the double-tap chat, while the student is talking to Dumbledore).
+   */
+  hold?: boolean
 }
 
 export interface StepResult {
@@ -93,6 +98,10 @@ export class SessionFlow {
     }
     switch (instruction.kind) {
       case 'paste': {
+        if (opts.hold) {
+          study.pasteFailed(instruction.itemId) // the next tap in the AI chat delivers it
+          break
+        }
         try {
           await this.closeTypingSurfaces()
           write = await writer.write({

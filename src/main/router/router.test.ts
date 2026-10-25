@@ -373,19 +373,25 @@ describe('ShortcutRouter', () => {
 })
 
 describe('Ask flow', () => {
-  it('the double-tap chat never pastes: "I don\'t get X" comes back as a roadmap chip', async () => {
+  it('planning from the chat: it starts at once, says when it is ready, and step 1 waits for the tap', async () => {
     const h = await harness()
     await inChatGPT(h)
     h.surfaces.opened.add('askbar')
     const result = await h.core.ask.submit("I don't get the Calvin cycle")
     expect(result.pasted).toBe(false)
-    expect(result.actions[0]?.type).toBe('start_roadmap')
+    expect(result.reply).toMatch(/Planning a roadmap for/)
+    await flush()
+    await flush()
     expect(h.helper.callsTo('input.write')).toHaveLength(0)
-    expect(h.services.study.current()).toBeNull()
-    expect(h.services.repos.chat.history('ask', 10).map((m) => m.role)).toEqual([
-      'user',
-      'assistant',
-    ])
+    expect(h.services.study.current()?.phase).toBe('step')
+    const last = h.services.repos.chat.history('ask', 10).at(-1)
+    expect(last?.content).toMatch(
+      /^Your roadmap is ready: .*Open ChatGPT and tap right ⌥ for step 1\.$/,
+    )
+    // The tap in the AI chat now delivers step 1.
+    h.surfaces.opened.delete('askbar')
+    expect(await h.core.router.gesture('tap')).toEqual({ kind: 'sessionNext' })
+    expect(h.helper.callsTo('input.write')).toHaveLength(1)
   })
 
   it('long press: the study box makes the subject and roadmap, then pastes step 1', async () => {
@@ -399,11 +405,15 @@ describe('Ask flow', () => {
     expect(h.helper.state.fieldValue).toMatch(/Calvin cycle/)
   })
 
-  it('without an AI chat it returns the roadmap action as a chip', async () => {
+  it('without an AI chat open it still plans, and says where step 1 will come', async () => {
     const h = await harness()
     const result = await h.core.ask.submit('I want to learn recursion')
     expect(result.pasted).toBe(false)
-    expect(result.actions[0]?.type).toBe('start_roadmap')
+    await flush()
+    await flush()
+    expect(h.services.repos.chat.history('ask', 10).at(-1)?.content).toMatch(
+      /^Your roadmap is ready: .* tap right ⌥ for step 1\.$/,
+    )
   })
 })
 

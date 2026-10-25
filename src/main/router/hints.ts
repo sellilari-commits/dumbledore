@@ -18,6 +18,12 @@ export function keyGlyph(key: TriggerKey): string {
   return GLYPH[key] ?? '⌥'
 }
 
+/** "right ⌥": how a sentence names the Dumbledore key. */
+export function keyName(key: TriggerKey): string {
+  if (key === 'fn') return 'fn'
+  return `${key.startsWith('left') ? 'left' : 'right'} ${keyGlyph(key)}`
+}
+
 export const REFUSE_SECURE: ToastSpec = {
   kind: 'info',
   title: 'Password field',

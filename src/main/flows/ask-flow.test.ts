@@ -215,7 +215,7 @@ describe('AskFlow.submit', () => {
     })
   })
 
-  it('is a chat: never pastes, even with an AI chat open, and drops insert_prompt', async () => {
+  it('is a chat: never pastes; a roadmap it is asked for is planned at once, step 1 kept for the tap', async () => {
     const exam: CoachAction = {
       type: 'create_exam',
       spec: { subjectIds: ['s'], count: 5, focus: 'weak', difficulty: 'mixed' },
@@ -225,12 +225,18 @@ describe('AskFlow.submit', () => {
       aiChat: true,
       actions: [{ type: 'insert_prompt', text: 'Explain moles simply' }, roadmap, exam],
     })
-    const result = await s.flow.submit('moles?')
+    const result = await s.flow.submit('help me study moles')
     expect(s.writer.write).not.toHaveBeenCalled()
-    expect(s.sessions.start).not.toHaveBeenCalled()
+    expect(s.sessions.start).toHaveBeenCalledWith(
+      { subjectId: null, goal: 'Moles', question: null },
+      { hold: true },
+    )
     expect(s.toasts.showToast).not.toHaveBeenCalled()
-    expect(result).toEqual({ reply: 'Hello there.', actions: [roadmap, exam], pasted: false })
-    expect(s.messages.at(-1)?.actions).toEqual([roadmap, exam])
+    expect(result).toEqual({
+      reply: 'Hello there.\n\nPlanning a roadmap for “Moles”. I’ll tell you here when it’s ready.',
+      actions: [exam],
+      pasted: false,
+    })
   })
 
   it('offers adjust_roadmap as a chip and tells the coach it is a chat', async () => {
