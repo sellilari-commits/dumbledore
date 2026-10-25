@@ -89,7 +89,7 @@ export function SubjectPage() {
         <SubjectHeader key={detail.subject.id} detail={detail} />
         <div className="sp-sections">
           <ProgressSection detail={detail} />
-          <GapsSection concepts={detail.concepts} />
+          <GapsSection detail={detail} />
           <Section
             id="subject-caught"
             title="What Dumbledore caught"

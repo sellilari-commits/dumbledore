@@ -17,7 +17,7 @@ import {
   type Settings,
   type Subject,
 } from '@shared/domain'
-import type { AppState, SessionState, UsageSummary } from '@shared/state'
+import type { AppState, GapNote, SessionState, UsageSummary } from '@shared/state'
 import { demoEncounters } from './demo-encounters'
 import {
   demoAppState,
@@ -27,7 +27,7 @@ import {
   demoUsage,
   demoWeek,
 } from './demo-misc'
-import { demoEdges, demoNotes } from './demo-notes'
+import { demoEdges, demoGapNotes, demoNotes } from './demo-notes'
 import { demoQuizzes } from './demo-quizzes'
 import { demoConcepts, demoRoadmaps, demoSubjects } from './demo-subjects'
 
@@ -54,6 +54,8 @@ export interface MockDb {
   concepts: Concept[]
   encounters: Encounter[]
   notes: Note[]
+  /** Your gaps: exam misconceptions and asked questions per topic (kept apart from `notes`). */
+  gapNotes: GapNote[]
   edges: ConceptEdge[]
   assignments: Assignment[]
   roadmaps: Roadmap[]
@@ -114,6 +116,7 @@ export function createDb(scenario: MockScenario, opts: CreateDbOptions = {}): Mo
     concepts: empty ? [] : demoConcepts(),
     encounters: empty ? [] : demoEncounters(),
     notes: empty ? [] : demoNotes(),
+    gapNotes: empty ? [] : demoGapNotes(),
     edges: empty ? [] : demoEdges(),
     assignments: empty ? [] : demoAssignments(),
     roadmaps: empty ? [] : demoRoadmaps(),

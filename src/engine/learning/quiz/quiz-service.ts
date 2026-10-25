@@ -147,6 +147,50 @@ export function createQuizService(deps: QuizServiceDeps): QuizServiceImpl {
     }
   }
 
+  /**
+   * Each misconception the exam showed is kept as a pinned note on its topic, so Your gaps can
+   * show it later (a result screen alone forgets it). The topic is the missed question whose
+   * concept shares the most words with the diagnosis, else the first miss.
+   */
+  function rememberMisconceptions(quiz: Quiz, probes: QuizResult['gaps']): void {
+    const missed = missesOf(quiz).filter((m) => m.question.conceptId)
+    if (missed.length === 0) return
+    const words = (s: string) =>
+      new Set(
+        normalize(s)
+          .split(/\s+/)
+          .filter((w) => w.length > 2),
+      )
+    const subjects = new Set<Id>()
+    for (const probe of probes) {
+      const text = probe.misconception.trim()
+      if (!text) continue
+      const want = words(probe.concept)
+      const best = [...missed].sort((a, b) => {
+        const overlap = (m: (typeof missed)[number]) =>
+          [...words(m.question.conceptName)].filter((w) => want.has(w)).length
+        return overlap(b) - overlap(a)
+      })[0]
+      const concept = best?.question.conceptId ? repos.concepts.get(best.question.conceptId) : null
+      if (!concept) continue
+      try {
+        const { note } = repos.notes.add({
+          subjectId: concept.subjectId,
+          conceptId: concept.id,
+          encounterId: null,
+          kind: 'misconception',
+          text,
+          source: { app: 'Dumbledore', bundleId: null, url: null, title: `Exam: ${quiz.title}` },
+        })
+        if (!note.pinned) repos.notes.update(note.id, { pinned: true })
+        subjects.add(concept.subjectId)
+      } catch (error) {
+        log(`could not keep a misconception for ${concept.id}`, error)
+      }
+    }
+    if (subjects.size > 0) changed('subjects', [...subjects])
+  }
+
   function statusOf(question: Question, missed: boolean): MasteryStatus {
     const concept = question.conceptId ? repos.concepts.get(question.conceptId) : null
     return concept?.status ?? (missed ? 'struggling' : 'learning')
@@ -187,6 +231,7 @@ export function createQuizService(deps: QuizServiceDeps): QuizServiceImpl {
       }
     }
     const gaps = await diagnose(quiz)
+    rememberMisconceptions(quiz, gaps.gaps)
     const { correct, total, score } = scoreQuiz(quiz)
     const result: QuizResult = {
       quizId,

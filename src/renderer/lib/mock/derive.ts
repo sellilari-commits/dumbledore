@@ -175,6 +175,9 @@ export function subjectDetail(db: MockDb, id: string): SubjectDetail {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     exams: db.quizzes.filter((q) => q.subjectIds.includes(id)).map(quizSummary),
     assignments: db.assignments.filter((a) => a.subjectId === id),
+    gapNotes: db.gapNotes.filter((n) =>
+      db.concepts.some((c) => c.id === n.conceptId && c.subjectId === id),
+    ),
   }
 }
 

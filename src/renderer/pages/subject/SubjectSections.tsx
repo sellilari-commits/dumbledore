@@ -1,8 +1,8 @@
 /**
  * The subject page's two judgement sections. Progress: where the roadmap stands (step, bar,
  * the step you're on), how many concepts are mastered and which are strong, and the latest exam
- * results with "Test me"; without a roadmap (or once it is finished), a button that plans one. Gaps: the concepts that keep not clicking, weakest first, each with "Study this"
- * (coach.runAction start_roadmap on that concept).
+ * results with "Test me"; without a roadmap (or once it is finished), a button that plans one.
+ * Your gaps: see GapsSection.
  */
 import { Button, ProgressBar, Section, toast } from '@renderer/design-system'
 import { errorToast } from '@renderer/lib/errors'
@@ -10,7 +10,7 @@ import { formatMinutes, formatRelative } from '@renderer/lib/format'
 import { keys, useAction } from '@renderer/lib/queries'
 import { useShell } from '@renderer/lib/shell'
 import type { Concept } from '@shared/domain'
-import type { SubjectDetail } from '@shared/state'
+import type { GapNote, SubjectDetail } from '@shared/state'
 import { useQueryClient } from '@tanstack/react-query'
 import { CircleAlert, FilePenLine, Map as MapIcon, TrendingUp } from 'lucide-react'
 import { useLocation } from 'wouter'
@@ -163,8 +163,42 @@ export function gapsOf(concepts: readonly Concept[]): Concept[] {
   return [...struggling, ...weak]
 }
 
-function GapRow({ concept }: { concept: Concept }) {
+const BREVITY =
+  'No greetings or small talk. Short structured bullets, max ~150 words, bold key terms.'
+
+/** A prompt for the student's AI that starts from exactly what went wrong on this topic. */
+export function fixPromptFor(subject: string, topic: string, notes: readonly GapNote[]): string {
+  const thought = notes.filter((n) => n.kind === 'misconception').slice(0, 3)
+  const asked = notes.filter((n) => n.kind === 'question').slice(0, 2)
+  const lines = [`I'm studying ${subject} and I'm stuck on ${topic}.`]
+  for (const n of thought) lines.push(`In a quiz I thought: ${n.text.replace(/[.!]+$/, '')}.`)
+  for (const n of asked) lines.push(`My question: ${n.text}`)
+  lines.push(
+    "1) Explain what's right and, where I was wrong, why. 2) Give one concrete example. 3) Then ask me one question to check I got it, and wait.",
+    BREVITY,
+  )
+  return lines.join(' ')
+}
+
+/** Where the fix prompt went, for the toast. */
+function sentText(r: { ok: boolean; opened?: { name: string; prefilled: boolean } | null }) {
+  if (!r.opened) return 'Pasted into your AI chat'
+  return r.opened.prefilled
+    ? `Opened ${r.opened.name} with the prompt`
+    : `Opened ${r.opened.name} · paste with ⌘V`
+}
+
+function GapRow({
+  concept,
+  notes,
+  subjectName,
+}: {
+  concept: Concept
+  notes: readonly GapNote[]
+  subjectName: string
+}) {
   const run = useAction('coach.runAction')
+  const send = useAction('prompt.sendToChat')
   const study = () =>
     run.mutate(
       { type: 'start_roadmap', subjectId: concept.subjectId, goal: concept.name },
@@ -173,11 +207,21 @@ function GapRow({ concept }: { concept: Concept }) {
         onError: (err) => errorToast(err),
       },
     )
+  const fix = () =>
+    send.mutate(fixPromptFor(subjectName, concept.name, notes), {
+      onSuccess: (r) =>
+        r.ok
+          ? toast(sentText(r), { tone: 'success' })
+          : errorToast(new Error(r.reason ?? 'Could not paste.')),
+      onError: (err) => errorToast(err),
+    })
   const why =
     concept.struggleCount > 0
       ? // Wrong quiz answers and confused reading or chats both count.
         `Stuck on it ${concept.struggleCount === 1 ? 'once' : `${concept.struggleCount} times`}`
-      : `${Math.round(concept.mastery * 100)}% there`
+      : concept.status === 'struggling' || concept.status === 'learning'
+        ? `${Math.round(concept.mastery * 100)}% there`
+        : 'Open question'
   return (
     <li className="sp-gap">
       <div className="sp-gap__text">
@@ -186,33 +230,90 @@ function GapRow({ concept }: { concept: Concept }) {
           <span className="sp-gap__why">{why}</span>
           {concept.summary ? ` · ${concept.summary}` : null}
         </span>
+        {notes.length > 0 ? (
+          <ul className="sp-gap__notes">
+            {notes.slice(0, 4).map((n) => (
+              <li key={n.id} title={n.source}>
+                <span className="sp-gap__label">
+                  {n.kind === 'misconception' ? 'You thought' : 'You asked'}
+                </span>{' '}
+                {n.text}
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
-      <Button
-        size="xs"
-        variant="ghost"
-        loading={run.isPending}
-        onClick={study}
-        aria-label={`Study ${concept.name}`}
-      >
-        Study this
-      </Button>
+      <div className="sp-gap__actions">
+        <Button
+          size="xs"
+          variant="ghost"
+          loading={send.isPending}
+          onClick={fix}
+          aria-label={`Fix ${concept.name} with your AI`}
+        >
+          Fix it
+        </Button>
+        <Button
+          size="xs"
+          variant="ghost"
+          loading={run.isPending}
+          onClick={study}
+          aria-label={`Study ${concept.name}`}
+        >
+          Study this
+        </Button>
+      </div>
     </li>
   )
 }
 
-export function GapsSection({ concepts }: { concepts: readonly Concept[] }) {
-  const gaps = gapsOf(concepts)
+/**
+ * Your gaps: the topics that keep not clicking, weakest first, each with what an exam showed the
+ * student believed ("You thought …") and what they asked Dumbledore ("You asked …"); then topics
+ * with only an open question. "Fix it" opens their AI with a prompt built from exactly that,
+ * "Study this" plans a roadmap for the topic.
+ */
+export function GapsSection({ detail }: { detail: SubjectDetail }) {
+  const notes = detail.gapNotes ?? []
+  const notesOf = (id: string) => notes.filter((n) => n.conceptId === id)
+  const gaps = gapsOf(detail.concepts)
+  const gapIds = new Set(gaps.map((c) => c.id))
+  const asked = detail.concepts.filter(
+    (c) => !gapIds.has(c.id) && notes.some((n) => n.conceptId === c.id && n.kind === 'question'),
+  )
+  const rows = [...gaps, ...asked]
+  const loose = notes.filter((n) => n.conceptId === null && n.kind === 'question')
   return (
-    <Section id="subject-gaps" title="Gaps" icon={<CircleAlert {...HEAD} />}>
-      {gaps.length === 0 ? (
+    <Section id="subject-gaps" title="Your gaps" icon={<CircleAlert {...HEAD} />}>
+      {rows.length === 0 && loose.length === 0 ? (
         <p className="sp-quiet">
-          No gaps found yet. They show up here when a quiz answer misses or something doesn’t click.
+          No gaps found yet. They show up here when a quiz answer misses, something doesn’t click,
+          or you tell Dumbledore you don’t get it (double-tap right ⌥).
         </p>
       ) : (
         <ul className="sp-gaps">
-          {gaps.map((c) => (
-            <GapRow key={c.id} concept={c} />
+          {rows.map((c) => (
+            <GapRow
+              key={c.id}
+              concept={c}
+              notes={notesOf(c.id)}
+              subjectName={detail.subject.name}
+            />
           ))}
+          {loose.length > 0 ? (
+            <li className="sp-gap">
+              <div className="sp-gap__text">
+                <span className="sp-gap__name">Open questions</span>
+                <ul className="sp-gap__notes">
+                  {loose.slice(0, 5).map((n) => (
+                    <li key={n.id} title={n.source}>
+                      <span className="sp-gap__label">You asked</span> {n.text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </li>
+          ) : null}
         </ul>
       )}
     </Section>

@@ -111,7 +111,10 @@ export const Encounter = z.object({
 })
 export type Encounter = z.infer<typeof Encounter>
 
-/** One fact, definition, formula, example, highlighted passage or question, short enough to quiz on. */
+/**
+ * One fact, definition, formula, example, highlighted passage or question, short enough to quiz
+ * on; or a misconception an exam showed ("thinks the base deprotonates the substrate"), pinned.
+ */
 export const NoteKind = z.enum([
   'fact',
   'definition',
@@ -119,6 +122,7 @@ export const NoteKind = z.enum([
   'example',
   'highlight',
   'question',
+  'misconception',
 ])
 export type NoteKind = z.infer<typeof NoteKind>
 

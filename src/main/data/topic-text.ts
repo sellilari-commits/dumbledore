@@ -74,6 +74,7 @@ const KIND: Record<Note['kind'], string> = {
   example: 'Example',
   highlight: 'Highlighted',
   question: 'Question',
+  misconception: 'Misconception (from an exam)',
 }
 
 function noteLine(note: Note, pad = '  '): string {

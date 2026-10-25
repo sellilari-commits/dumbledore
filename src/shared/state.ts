@@ -284,6 +284,18 @@ export const HomeData = z.object({
 })
 export type HomeData = z.infer<typeof HomeData>
 
+/** What Your gaps shows under a topic: a misconception from an exam, or a question asked. */
+export const GapNote = z.object({
+  id: Id,
+  conceptId: Id.nullable(),
+  kind: z.enum(['misconception', 'question']),
+  text: z.string(),
+  createdAt: IsoDate,
+  /** "Exam: Organic Chemistry · weak spots", "Asked Dumbledore". */
+  source: z.string(),
+})
+export type GapNote = z.infer<typeof GapNote>
+
 export const SubjectDetail = z.object({
   subject: SubjectSummary,
   roadmap: Roadmap.nullable(),
@@ -291,6 +303,8 @@ export const SubjectDetail = z.object({
   encounters: z.array(Encounter),
   exams: z.array(QuizSummary),
   assignments: z.array(Assignment),
+  /** Misconceptions and questions per topic, newest first (Your gaps). */
+  gapNotes: z.array(GapNote).optional(),
 })
 export type SubjectDetail = z.infer<typeof SubjectDetail>
 

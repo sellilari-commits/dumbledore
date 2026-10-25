@@ -4,7 +4,7 @@
  */
 import type { Quiz } from '@shared/domain'
 import { DEFAULT_ROUTES, PROVIDER_LIMITS, type ProviderId } from '@shared/llm'
-import type { QuizSummary, UsageSummary } from '@shared/state'
+import type { GapNote, QuizSummary, UsageSummary } from '@shared/state'
 import type { Clock } from '../clock'
 import type { QueryService, Repos } from '../contracts'
 import { defaultGreetingName } from './greeting'
@@ -38,6 +38,23 @@ export function toQuizSummary(q: Quiz): QuizSummary {
 }
 
 /** Exams and reviews (not checkpoints or placements), newest first; failed generations hidden. */
+/** Misconceptions from exams and questions the student asked, per topic, newest first. */
+function gapNotesOf(repos: Repos, subjectId: string): GapNote[] {
+  return repos.notes
+    .list({ subjectId, status: 'active' })
+    .filter((n) => n.kind === 'misconception' || n.kind === 'question')
+    .reverse()
+    .slice(0, 60)
+    .map((n) => ({
+      id: n.id,
+      conceptId: n.conceptId,
+      kind: n.kind === 'misconception' ? ('misconception' as const) : ('question' as const),
+      text: n.text,
+      createdAt: n.createdAt,
+      source: n.source.title ?? n.source.app,
+    }))
+}
+
 function examList(repos: Repos, subjectId?: string): QuizSummary[] {
   return [
     ...repos.quizzes.list({ kind: 'exam', subjectId }),
@@ -102,6 +119,7 @@ export function createQueryService(deps: QueryServiceDeps): QueryService {
         assignments: repos.assignments
           .list({ subjectId: id })
           .filter((a) => a.status !== 'dismissed'),
+        gapNotes: gapNotesOf(repos, id),
       }
     },
 

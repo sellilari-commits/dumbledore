@@ -4,6 +4,7 @@
  * and two loose notes from casual reading.
  */
 import type { ConceptEdge, Note, NoteKind } from '@shared/domain'
+import type { GapNote } from '@shared/state'
 import { DAY, HOUR, isoAgo } from './time'
 
 const wiki = { app: 'Google Chrome', bundleId: 'com.google.Chrome', url: null }
@@ -126,6 +127,28 @@ export function demoNotes(): Note[] {
       38 * 60_000,
       'https://en.wikipedia.org/wiki/Tampere',
     ),
+  ]
+}
+
+/** Your gaps on Carbocation stability: what an exam showed, and what was asked in the chat. */
+export function demoGapNotes(): GapNote[] {
+  return [
+    {
+      id: 'note_cc_q',
+      conceptId: 'con_carbocation',
+      kind: 'question',
+      text: 'Why does hyperconjugation stabilise the cation more than induction?',
+      createdAt: isoAgo(3 * HOUR),
+      source: 'Asked Dumbledore',
+    },
+    {
+      id: 'note_cc_mis',
+      conceptId: 'con_carbocation',
+      kind: 'misconception',
+      text: 'Thought primary carbocations are the most stable',
+      createdAt: isoAgo(2 * DAY),
+      source: 'Exam: Organic Chemistry · weak spots',
+    },
   ]
 }
 

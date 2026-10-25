@@ -68,6 +68,13 @@ describe('QuizService.finish', () => {
     expect(w.repos.concepts.get(sn1.id)).toMatchObject({ mastery: 0.18, box: 1, struggleCount: 1 })
     expect(w.repos.concepts.get(e1.id)).toMatchObject({ mastery: 0.65, box: 3 })
     expect(result.gaps).toEqual([{ concept: 'SN1', misconception: 'Chose "Option D"' }])
+    // The misconception outlives the result screen: a pinned note on the topic, for Your gaps.
+    const kept = w.repos.notes
+      .list({ subjectId: w.subject.id })
+      .filter((n) => n.kind === 'misconception')
+    expect(kept).toHaveLength(1)
+    expect(kept[0]).toMatchObject({ conceptId: sn1.id, text: 'Chose "Option D"', pinned: true })
+    expect(kept[0]?.source.title).toMatch(/^Exam: /)
     expect(result.fixPrompt).toContain('Then quiz me with 2 new questions')
     expect(result.nextTopic).toBe('SN1 in practice')
     expect(w.quizzes.get(quiz.id)).toMatchObject({

@@ -8,7 +8,7 @@ import type { MockScenario } from '@renderer/lib/mock/db'
 import { useShell } from '@renderer/lib/shell'
 import { renderWithApp } from '@renderer/lib/test-utils'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Route } from 'wouter'
 import { SubjectPage } from './SubjectPage'
 
@@ -35,8 +35,11 @@ describe('SubjectPage', () => {
     expect(within(goals).getAllByRole('listitem').length).toBe(2)
     const progress = screen.getByRole('region', { name: 'Progress' })
     expect(within(progress).getByText(/Step 3 of 8/)).toBeTruthy()
-    const gaps = screen.getByRole('region', { name: 'Gaps' })
+    const gaps = screen.getByRole('region', { name: 'Your gaps' })
     expect(within(gaps).getByText('Carbocation stability')).toBeTruthy()
+    // What an exam showed and what was asked in the chat, under the topic.
+    expect(within(gaps).getByText(/Thought primary carbocations are the most stable/)).toBeTruthy()
+    expect(within(gaps).getByText(/hyperconjugation stabilise the cation/)).toBeTruthy()
     const caught = screen.getByRole('region', { name: 'What Dumbledore caught' })
     expect(await within(caught).findByRole('region', { name: 'SN1 mechanism' })).toBeTruthy()
     expect(screen.queryByRole('tab')).toBeNull()
@@ -106,6 +109,19 @@ describe('SubjectPage', () => {
     renderSubject()
     fireEvent.click(await screen.findByRole('button', { name: /make a quiz/i }))
     expect(useShell.getState().newExam).toEqual({ open: true, subjectIds: ['sub_orgo'] })
+  })
+
+  it('fixes a gap: the prompt starts from what went wrong and goes to the AI', async () => {
+    const r = renderSubject()
+    const invoke = vi.spyOn(r.api, 'invoke')
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Fix Carbocation stability with your AI' }),
+    )
+    await waitFor(() => expect(invoke.mock.calls.map((c) => c[0])).toContain('prompt.sendToChat'))
+    const sent = invoke.mock.calls.find((c) => c[0] === 'prompt.sendToChat')?.[1] as string
+    expect(sent).toContain("I'm studying Organic Chemistry and I'm stuck on Carbocation stability.")
+    expect(sent).toContain('In a quiz I thought: Thought primary carbocations are the most stable.')
+    expect(sent).toContain('My question: Why does hyperconjugation')
   })
 
   it('studies a gap', async () => {

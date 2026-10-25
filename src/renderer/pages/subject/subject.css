@@ -446,7 +446,7 @@ button.sp-edit:hover {
 
 .sp-gap {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 10px 0;
   border-bottom: 1px solid var(--c-borPri);
@@ -476,6 +476,28 @@ button.sp-edit:hover {
 
 .sp-gap__why {
   color: var(--c-red-ink);
+}
+
+.sp-gap__notes {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+}
+
+.sp-gap__label {
+  color: var(--c-texSec);
+}
+
+.sp-gap__actions {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  align-self: flex-start;
 }
 
 /* ── What Dumbledore caught: Ilari’s topic tree (docs/progress/notes-phase3) ── */
