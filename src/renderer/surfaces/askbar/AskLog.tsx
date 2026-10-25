@@ -4,6 +4,12 @@
  * the last error. It stays on the newest message unless the student scrolled up to read.
  * Dumbledore's own answers are saved only when the student chooses: "Save to subject" puts the
  * answer (without its "Saved to …" receipt lines) as a note on the current topic.
+ * What a chat tool wrote shows as receipt rows under the reply (Receipts.tsx); a line of the reply
+ * that only repeats one of them is left out of the text. Links in a reply (e.g. a web search's
+ * "Sources: [title](url) · …") open only when clicked, in the default browser: they are
+ * target=_blank anchors, which main's window open handler sends to shell.openExternal
+ * (src/main/security.ts; navigating the window away is refused there too). Only http(s) and
+ * mailto links are links; anything else stays plain text.
  */
 import type { CoachAction } from '@shared/domain'
 import { BookmarkPlus, Check } from 'lucide-react'
@@ -11,13 +17,45 @@ import { memo, useRef, useState } from 'react'
 import Markdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { ActionChips } from './ActionChips'
+import { isReceipt, Receipts } from './Receipts'
 import type { AskController, AskError, AskMessage } from './useAsk'
 import { useStickToBottom } from './useStickToBottom'
 
+const OPENABLE = /^(https?:|mailto:)/i
+
+/** Whether `href` is a link the default browser may open (react-markdown already drops javascript:). */
+export const isOpenable = (href: string | undefined): href is string =>
+  !!href && OPENABLE.test(href)
+
 const MARKDOWN: Components = {
-  a: ({ node: _node, ...props }) => <a {...props} target="_blank" rel="noreferrer" />,
+  a: ({ node: _node, href, children, ...props }) =>
+    isOpenable(href) ? (
+      <a {...props} href={href} title={href} target="_blank" rel="noopener noreferrer">
+        {children}
+      </a>
+    ) : (
+      <span>{children}</span>
+    ),
+  // A web search's sources line reads quieter than the answer.
+  p: ({ node, ...props }) => {
+    const first = node?.children[0]
+    const sources = first?.type === 'text' && /^\s*Sources:/.test(first.value)
+    return <p {...props} className={sources ? 'ask__sources' : undefined} />
+  },
 }
 const PLUGINS = [remarkGfm]
+
+/** The reply without lines that only repeat a receipt row shown under it. */
+export function withoutReceiptLines(content: string, actions: CoachAction[]): string {
+  const labels = new Set(actions.filter(isReceipt).map((a) => a.label.trim()))
+  if (labels.size === 0) return content
+  return content
+    .split('\n')
+    .filter((line) => !labels.has(line.trim().replace(/^[-*•]\s+/, '')))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
 
 function Reply({ text, streaming }: { text: string; streaming?: boolean }) {
   return (
@@ -32,6 +70,7 @@ function Reply({ text, streaming }: { text: string; streaming?: boolean }) {
 interface MessageProps {
   message: AskMessage
   onRun: AskController['runAction']
+  onRunInPlace: AskController['runInPlace']
 }
 
 /** Receipt lines the chat adds under a reply; never part of a saved answer. */
@@ -81,23 +120,23 @@ function SaveAnswer({ content, onRun }: { content: string; onRun: MessageProps['
 }
 
 /** Memoised: while a reply streams in, only the streaming bubble re-renders. */
-const Message = memo(function Message({ message, onRun }: MessageProps) {
+const Message = memo(function Message({ message, onRun, onRunInPlace }: MessageProps) {
   if (message.role === 'user') {
     return <div className="ask__msg ask__msg--user">{message.content}</div>
   }
   if (!message.content && !message.pasted && message.actions.length === 0) return null
+  const text = withoutReceiptLines(message.content, message.actions)
   return (
     <div className="ask__msg ask__msg--assistant">
-      {message.content && <Reply text={message.content} />}
+      {text && <Reply text={text} />}
+      <Receipts actions={message.actions} onRun={onRunInPlace} />
       {message.pasted && (
         <p className="ask__pasted">
           <Check size={14} aria-hidden /> Pasted into the chat box
         </p>
       )}
-      <ActionChips actions={message.actions} onRun={onRun} />
-      {message.content && !message.pasted ? (
-        <SaveAnswer content={message.content} onRun={onRun} />
-      ) : null}
+      <ActionChips actions={message.actions} onRun={onRun} onRunInPlace={onRunInPlace} />
+      {text && !message.pasted ? <SaveAnswer content={text} onRun={onRun} /> : null}
     </div>
   )
 })
@@ -122,7 +161,7 @@ export function AskLog({ chat }: { chat: AskController }) {
         aria-label="Conversation with Dumbledore"
       >
         {chat.messages.map((m) => (
-          <Message key={m.id} message={m} onRun={chat.runAction} />
+          <Message key={m.id} message={m} onRun={chat.runAction} onRunInPlace={chat.runInPlace} />
         ))}
         {pending && (
           <div className="ask__msg ask__msg--assistant" aria-live="polite">

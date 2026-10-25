@@ -350,13 +350,18 @@ body {
   background: none;
 }
 
+/* Links read as links (the accent is ink): a soft underline that firms up on hover. */
 .ask__reply a {
   color: var(--c-accent);
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
 
 .ask__reply a:hover {
-  text-decoration: underline;
+  text-decoration-color: currentColor;
 }
 
 .ask__reply[data-streaming] > :last-child::after {
@@ -437,6 +442,175 @@ body {
 .ask__chip-spin {
   width: 14px;
   height: 14px;
+}
+
+/* A tool call waiting for the student's go-ahead (a delete): a quiet outline in the warm ink, not
+   an alarm; after it ran it reads "Done". Its label wraps: the student reads what goes. */
+.ask__chip--confirm {
+  height: auto;
+  min-height: 28px;
+  padding: 5px 10px;
+  line-height: 18px;
+  white-space: normal;
+  color: var(--c-texPri);
+  background: var(--c-bacSec);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-brown-ink) 40%, var(--c-borPri));
+}
+
+.ask__chip--confirm svg {
+  align-self: flex-start;
+  margin-top: 2px;
+  color: var(--c-brown-ink);
+}
+
+.ask__chip--confirm span {
+  overflow-wrap: anywhere;
+}
+
+.ask__chip--confirm:hover {
+  background: var(--c-bacInt);
+}
+
+.ask__chip--confirm[data-state="done"] {
+  color: var(--c-texSec);
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--c-borPri);
+  opacity: 1;
+}
+
+.ask__chip--confirm[data-state="done"] svg {
+  color: var(--c-green-ink);
+}
+
+.ask__actions-block {
+  align-self: stretch;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* A failed confirmation or Undo: one small line, not the red error. */
+.ask__quiet {
+  margin: 0;
+  font-size: var(--text-meta);
+  color: var(--c-texTer);
+}
+
+/* ── Receipts: what the chat's tools changed, one row each ──────────── */
+
+.ask__receipts {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 2px 0;
+  list-style: none;
+  border-top: 1px solid var(--c-borPri);
+  border-bottom: 1px solid var(--c-borPri);
+}
+
+.ask__receipt {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 30px;
+  padding: 5px 0;
+  font-size: var(--text-meta);
+  line-height: 18px;
+  color: var(--c-texSec);
+  animation: ask-fade-in var(--dur-base) var(--ease-out);
+}
+
+.ask__receipt + .ask__receipt {
+  border-top: 1px dashed var(--c-borPri);
+}
+
+.ask__receipt-icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--c-green-ink);
+}
+
+.ask__receipt-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-top: 1px;
+}
+
+.ask__receipt-line {
+  overflow-wrap: anywhere;
+  color: var(--c-texPri);
+  user-select: text;
+}
+
+.ask__receipt-note {
+  color: var(--c-texTer);
+}
+
+.ask__receipt-undo {
+  all: unset;
+  box-sizing: border-box;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-control);
+  font-size: var(--text-meta);
+  font-weight: var(--weight-medium);
+  color: var(--c-texSec);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.ask__receipt-undo-icon {
+  color: var(--c-icoSec);
+}
+
+.ask__receipt-undo:hover {
+  color: var(--c-texPri);
+  background: var(--c-bacInt);
+}
+
+.ask__receipt-undo:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+.ask__receipt-undo[aria-disabled] {
+  opacity: 0.6;
+}
+
+.ask__receipt-done {
+  flex: none;
+  height: 22px;
+  padding: 0 8px;
+  line-height: 22px;
+  font-style: italic;
+  color: var(--c-texTer);
+}
+
+.ask__receipt[data-state="undone"] .ask__receipt-line {
+  color: var(--c-texTer);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--c-texTer) 70%, transparent);
+}
+
+.ask__receipt[data-state="undone"] .ask__receipt-icon {
+  color: var(--c-texTer);
+}
+
+/* A web search's "Sources: [title](url) · …" line under the answer. */
+.ask__reply .ask__sources {
+  margin-top: 10px;
+  font-size: var(--text-meta);
+  line-height: 18px;
+  color: var(--c-texTer);
 }
 
 @keyframes ask-breathe {

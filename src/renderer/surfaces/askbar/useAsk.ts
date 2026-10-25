@@ -3,7 +3,8 @@
  * (`chat.history`, reloaded whenever the bar comes back), `ask.submit` (with the selected topic's
  * `subjectId`) with the reply streamed
  * from 'chat.delta' while it is written, action chips per reply (`coach.runAction`, then the bar
- * closes) and "New chat". One question at a time; a reply that lands after "New chat" is dropped.
+ * closes; a receipt's Undo and a confirmation chip run in place, see runInPlace) and "New chat".
+ * One question at a time; a reply that lands after "New chat" is dropped.
  */
 import type { ChatMessage, CoachAction } from '@shared/domain'
 import type { DumbledoreApi } from '@shared/ipc'
@@ -20,6 +21,7 @@ const STAY_OPEN: ReadonlySet<CoachAction['type']> = new Set([
   'save_question',
   'update_subject',
   'undo_save',
+  'run_tool',
 ])
 export interface AskMessage extends ChatMessage {
   pasted?: boolean
@@ -54,6 +56,11 @@ export interface AskController {
   dismissError: () => void
   /** Runs a chip's action; false when it failed (the error line says why). */
   runAction: (action: CoachAction) => Promise<boolean>
+  /**
+   * Runs a receipt's Undo or a confirmation chip where it stands: the bar stays open and a failure
+   * is not the error line, it comes back (null = done) for the row or chip to show quietly.
+   */
+  runInPlace: (action: CoachAction) => Promise<string | null>
   close: () => void
 }
 
@@ -198,5 +205,28 @@ export function useAsk(api: DumbledoreApi): AskController {
     [api, close],
   )
 
-  return { messages, pending, error, submit, newChat, refresh, dismissError, runAction, close }
+  const runInPlace = useCallback(
+    async (action: CoachAction) => {
+      try {
+        await api.invoke('coach.runAction', action)
+        return null
+      } catch (e) {
+        return errorMessage(e)
+      }
+    },
+    [api],
+  )
+
+  return {
+    messages,
+    pending,
+    error,
+    submit,
+    newChat,
+    refresh,
+    dismissError,
+    runAction,
+    runInPlace,
+    close,
+  }
 }
