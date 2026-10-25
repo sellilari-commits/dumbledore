@@ -7,16 +7,18 @@
  * instead (560 × 52, growing with its note): the student says what they want to study, Dumbledore
  * builds the subject's roadmap and pastes its first prompt into the AI chat (see usePromptBox).
  * The chat itself never pastes anything.
- * In chat mode a row of recent topics sits on top of the input (TopicCarousel): a selected topic
- * goes with every question as context, ↵ on an empty input studies it, ←/→ move the selection
- * while the input is empty.
+ * In chat mode every topic sits on top of the input as a chip (TopicChips): a selected topic's
+ * subject goes with every question as context, ↵ on an empty input studies it, ←/→ move the
+ * selection while the input is empty. Like the orb and the mini panel, the window follows the
+ * theme in Settings (light, dark or the system's).
  */
 import type { DumbledoreApi } from '@shared/ipc'
 import { SquarePen } from 'lucide-react'
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { SpectaclesGlyph } from '../overlay/glyph/SpectaclesGlyph'
+import { useOverlaySettings } from '../overlay/lib/useOverlaySettings'
 import { AskLog } from './AskLog'
-import { TopicCarousel } from './TopicCarousel'
+import { TopicChips } from './TopicChips'
 import { useAsk } from './useAsk'
 import { promptHint, usePromptBox } from './usePromptBox'
 import { useTopics } from './useTopics'
@@ -34,6 +36,7 @@ export const topicPlaceholder = (name: string, open: boolean) =>
   open ? `Reply about ${name}…` : `Ask about ${name}…`
 
 export function AskBar({ api }: { api: DumbledoreApi }) {
+  useOverlaySettings(api)
   const chat = useAsk(api)
   const promptBox = usePromptBox(api)
   const topics = useTopics(api, chat.close, !promptBox.active)
@@ -62,7 +65,7 @@ export function AskBar({ api }: { api: DumbledoreApi }) {
       return
     }
     setText('')
-    void chat.submit(question, topic?.id).then((sent) => {
+    void chat.submit(question, topic?.subjectId).then((sent) => {
       if (!sent) setText((now) => (now.trim() ? now : question))
     })
   }
@@ -162,7 +165,7 @@ export function AskBar({ api }: { api: DumbledoreApi }) {
         )
       )}
       {showTopics && (
-        <TopicCarousel
+        <TopicChips
           topics={topics.topics}
           selectedId={topic?.id ?? null}
           onToggle={(id) => {

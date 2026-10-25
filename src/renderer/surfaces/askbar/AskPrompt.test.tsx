@@ -53,7 +53,7 @@ describe('Ask bar prompt box (route prompt, right ⌥ hold)', () => {
     expect(box().placeholder).toBe(PROMPT_PLACEHOLDER)
     expect(screen.getByText(promptHint('ChatGPT'))).toBeTruthy()
     expect(document.querySelector('.ask__choices')).toBeNull()
-    expect(callsTo(local, 'session.picker')).toEqual([])
+    expect(callsTo(local, 'subjects.list')).toEqual([])
     // The compact study box, clearly not the tall chat: no header, the 560-wide bar layout.
     expect(screen.queryByRole('heading')).toBeNull()
     expect(document.querySelector('.ask')?.getAttribute('data-layout')).toBe('bar')

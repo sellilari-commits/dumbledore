@@ -35,7 +35,7 @@ function askApi(
   return fakeApi(
     {
       'chat.history': () => [],
-      'session.picker': () => ({ subjects: [] }),
+      'subjects.list': () => [],
       'ask.submit': ({ text }) => submit(text),
       'coach.runAction': () => undefined,
       'window.close': () => undefined,

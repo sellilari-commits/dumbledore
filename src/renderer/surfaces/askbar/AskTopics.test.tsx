@@ -1,3 +1,4 @@
+import { DEFAULT_SETTINGS } from '@shared/domain'
 import type { InvokeChannel } from '@shared/ipc'
 import type { AskResult } from '@shared/state'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
@@ -5,16 +6,18 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { InvokeHandlers } from '../overlay/lib/localApi'
 import { fakeApi } from '../overlay/testing/fakeApi'
 import { AskBar, PLACEHOLDER, topicPlaceholder } from './AskBar'
-import { demoSession, demoTopics } from './mock/askTopics'
-import { moveIndex, TOPIC_LIMIT, topicsFrom } from './useTopics'
+import { demoSession, demoSubject, demoSubjects } from './mock/askTopics'
+import { loadTopics, moveIndex } from './useTopics'
 
 const RESULT: AskResult = { reply: 'Sure.', actions: [], pasted: false }
+const NOW = Date.parse('2026-10-24T10:00:00.000Z')
 
 function topicsApi(extra: InvokeHandlers = {}) {
   return fakeApi(
     {
       'chat.history': () => [],
-      'session.picker': () => demoTopics(Date.parse('2026-10-24T10:00:00.000Z')),
+      'subjects.list': () => demoSubjects(NOW),
+      'subjects.get': (id) => demoSubject(id, NOW),
       'session.start': ({ subjectId }) => demoSession(subjectId ?? ''),
       'ask.submit': () => RESULT,
       'coach.runAction': () => undefined,
@@ -32,6 +35,10 @@ const flush = () => act(async () => {})
 const callsTo = (local: Local, channel: InvokeChannel) =>
   local.calls.filter((c) => c.channel === channel).map((c) => c.payload)
 const chip = (name: string) => screen.getByRole('button', { name: new RegExp(name) })
+const names = () =>
+  Array.from(
+    screen.getByRole('group', { name: 'Topics' }).querySelectorAll('.ask__topic-name'),
+  ).map((n) => n.textContent)
 const pressed = () =>
   screen
     .queryAllByRole('button', { pressed: true })
@@ -49,22 +56,38 @@ afterEach(() => {
   cleanup()
   window.localStorage.clear()
   window.location.hash = ''
+  delete document.documentElement.dataset.theme
 })
 
-describe('topicsFrom / moveIndex', () => {
-  it('orders by last studied (never studied last) and keeps at most TOPIC_LIMIT', () => {
-    const data = demoTopics()
-    const reversed = { subjects: [...data.subjects].reverse() }
-    const names = topicsFrom(reversed).map((t) => t.name)
-    expect(names[0]).toBe('Organic chemistry')
-    expect(names.at(-1)).toBe('Ethics')
-    const many = {
-      subjects: [...data.subjects, ...data.subjects].map((s, i) => ({
-        ...s,
-        subject: { ...s.subject, id: `s${i}` },
-      })),
-    }
-    expect(topicsFrom(many)).toHaveLength(TOPIC_LIMIT)
+describe('loadTopics / moveIndex', () => {
+  it('lists every topic of the counted subjects, newest information first, as the panel does', async () => {
+    const topics = await loadTopics(topicsApi().api)
+    expect(topics).toHaveLength(19)
+    expect(topics.slice(0, 3).map((t) => t.name)).toEqual([
+      'Carbocation stability',
+      'Integration by parts',
+      'SN1 mechanism',
+    ])
+    expect(topics.at(-1)?.name).toBe('Utilitarianism')
+    const twins = topics.filter((t) => t.name === 'Equilibrium')
+    expect(twins.map((t) => t.subjectLabel)).toEqual(['Organic chemistry', 'Microeconomics'])
+    expect(topics.find((t) => t.name === 'Quicksort')?.subjectLabel).toBeNull()
+  })
+
+  it('leaves out archived subjects and keeps the rest when one subject fails to load', async () => {
+    const local = topicsApi({
+      'subjects.list': () =>
+        demoSubjects(NOW).map((s) => (s.id === 'sub_phil' ? { ...s, status: 'archived' } : s)),
+      'subjects.get': (id) => {
+        if (id === 'sub_algo') throw new Error('gone')
+        return demoSubject(id, NOW)
+      },
+    })
+    const topics = (await loadTopics(local.api)).map((t) => t.name)
+    expect(topics).toHaveLength(15)
+    expect(topics).not.toContain('Utilitarianism')
+    expect(topics).not.toContain('Quicksort')
+    expect(callsTo(local, 'subjects.get')).not.toContain('sub_phil')
   })
 
   it('moves inside the row; the first step selects the first topic', () => {
@@ -77,33 +100,44 @@ describe('topicsFrom / moveIndex', () => {
   })
 })
 
-describe('AskBar topic row', () => {
-  it('shows the recent topics, most recent first; nothing selected', async () => {
+describe('AskBar topic chips', () => {
+  it('shows every topic, newest first; nothing selected', async () => {
     await mount()
-    const group = screen.getByRole('group', { name: 'Topics' })
-    const names = Array.from(group.querySelectorAll('.ask__topic-name')).map((n) => n.textContent)
-    expect(names.slice(0, 3)).toEqual(['Organic chemistry', 'Calculus II', 'Cold War history'])
+    expect(names()).toHaveLength(19)
+    expect(names().slice(0, 3)).toEqual([
+      'Carbocation stability',
+      'Integration by parts',
+      'SN1 mechanism',
+    ])
     expect(pressed()).toEqual([])
     expect(input().placeholder).toBe(PLACEHOLDER)
+  })
+
+  it('a topic whose name is in two subjects shows its subject', async () => {
+    await mount()
+    const labels = Array.from(document.querySelectorAll('.ask__topic-subject')).map(
+      (n) => n.textContent,
+    )
+    expect(labels).toEqual(['Organic chemistry', 'Microeconomics'])
   })
 
   it('a click selects and a second click deselects, with no other call', async () => {
     const local = await mount()
     const before = local.calls.length
-    fireEvent.click(chip('Calculus II'))
-    expect(pressed()).toEqual(['Calculus II'])
-    expect(input().placeholder).toBe(topicPlaceholder('Calculus II', false))
-    fireEvent.click(chip('Algorithms'))
-    expect(pressed()).toEqual(['Algorithms'])
-    fireEvent.click(chip('Algorithms'))
+    fireEvent.click(chip('Taylor series'))
+    expect(pressed()).toEqual(['Taylor series'])
+    expect(input().placeholder).toBe(topicPlaceholder('Taylor series', false))
+    fireEvent.click(chip('Quicksort'))
+    expect(pressed()).toEqual(['Quicksort'])
+    fireEvent.click(chip('Quicksort'))
     expect(pressed()).toEqual([])
     const after = local.calls.slice(before).map((c) => c.channel)
     expect(after.filter((c) => c !== 'window.setSize')).toEqual([])
   })
 
-  it('Enter with text asks with the topic as subjectId', async () => {
+  it("Enter with text asks with the topic's subject as subjectId", async () => {
     const local = await mount()
-    fireEvent.click(chip('Cell biology'))
+    fireEvent.click(chip('Mitosis'))
     fireEvent.change(input(), { target: { value: ' what is mitosis ' } })
     key('Enter')
     await flush()
@@ -111,17 +145,17 @@ describe('AskBar topic row', () => {
       { text: 'what is mitosis', subjectId: 'sub_bio' },
     ])
     expect(callsTo(local, 'session.start')).toEqual([])
-    expect(pressed()).toEqual(['Cell biology'])
+    expect(pressed()).toEqual(['Mitosis'])
   })
 
   it('Enter on an empty input studies the selected topic and closes the bar', async () => {
     const local = await mount()
-    fireEvent.click(chip('Calculus II'))
+    fireEvent.click(chip('Integration by parts'))
     expect(screen.getByText('Study')).toBeTruthy()
     key('Enter')
     await flush()
     expect(callsTo(local, 'session.start')).toEqual([
-      { subjectId: 'sub_calc', goal: null, question: null },
+      { subjectId: 'sub_calc', goal: 'Integration by parts', question: null },
     ])
     expect(callsTo(local, 'window.close')).toEqual(['askbar'])
     expect(callsTo(local, 'ask.submit')).toEqual([])
@@ -142,7 +176,7 @@ describe('AskBar topic row', () => {
         throw new Error('No assistant chat open')
       },
     })
-    fireEvent.click(chip('Calculus II'))
+    fireEvent.click(chip('Taylor series'))
     key('Enter')
     await flush()
     expect(screen.getByRole('alert').textContent).toContain('No assistant chat open')
@@ -152,19 +186,19 @@ describe('AskBar topic row', () => {
   it('←/→ move the selection while the input is empty, not while typing', async () => {
     await mount()
     key('ArrowRight')
-    expect(pressed()).toEqual(['Organic chemistry'])
+    expect(pressed()).toEqual(['Carbocation stability'])
     key('ArrowRight')
     key('ArrowRight')
-    expect(pressed()).toEqual(['Cold War history'])
+    expect(pressed()).toEqual(['SN1 mechanism'])
     key('ArrowLeft')
-    expect(pressed()).toEqual(['Calculus II'])
+    expect(pressed()).toEqual(['Integration by parts'])
     fireEvent.change(input(), { target: { value: 'x' } })
     key('ArrowRight')
-    expect(pressed()).toEqual(['Calculus II'])
+    expect(pressed()).toEqual(['Integration by parts'])
   })
 
-  it('no subjects → no row', async () => {
-    await mount({ 'session.picker': () => ({ subjects: [] }) })
+  it('no subjects → no chips', async () => {
+    await mount({ 'subjects.list': () => [] })
     expect(screen.queryByRole('group', { name: 'Topics' })).toBeNull()
   })
 
@@ -172,6 +206,19 @@ describe('AskBar topic row', () => {
     window.location.hash = '#/prompt'
     const local = await mount()
     expect(screen.queryByRole('group', { name: 'Topics' })).toBeNull()
-    expect(callsTo(local, 'session.picker')).toEqual([])
+    expect(callsTo(local, 'subjects.list')).toEqual([])
+  })
+})
+
+describe('AskBar theme', () => {
+  it('follows the theme in Settings, like the orb and the mini panel', async () => {
+    await mount({ 'settings.get': () => ({ ...DEFAULT_SETTINGS, theme: 'dark' }) })
+    expect(document.documentElement.dataset.theme).toBe('dark')
+  })
+
+  it('stays on the system theme when Settings say so', async () => {
+    document.documentElement.dataset.theme = 'dark'
+    await mount({ 'settings.get': () => ({ ...DEFAULT_SETTINGS, theme: 'system' }) })
+    expect(document.documentElement.dataset.theme).toBeUndefined()
   })
 })

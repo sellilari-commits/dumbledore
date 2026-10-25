@@ -3,8 +3,8 @@
  * memory. `ask.submit` stores both turns and streams the canned reply as 'chat.delta';
  * `chat.history` serves the thread; `prompt.write` "writes" a canned prompt after a short wait.
  * URL options: `?seed=<turns>` starts with an earlier conversation, `?theme=dark|light` forces a
- * theme, `?topics=0` hides the topic row (otherwise 9 subjects, so it overflows; `session.start`
- * just answers), `#/prompt` opens the prompt box (right ⌥ hold). `window.__ddMock.calls` logs every call (Playwright reads it).
+ * theme, `?topics=0` hides the topic chips (otherwise 9 subjects with 19 topics, so they scroll;
+ * `session.start` just answers), `#/prompt` opens the prompt box (right ⌥ hold). `window.__ddMock.calls` logs every call (Playwright reads it).
  */
 
 import { demoAppState } from '@renderer/lib/mock/demo-misc'
@@ -13,7 +13,7 @@ import type { DumbledoreApi } from '@shared/ipc'
 import { createLocalApi } from '../../overlay/lib/localApi'
 import { ASK_THREAD } from '../askHistory'
 import { cannedPrompt, cannedReply, SEED_QUESTIONS } from './askReplies'
-import { demoSession, demoTopics } from './askTopics'
+import { demoSession, demoSubject, demoSubjects } from './askTopics'
 
 const CHUNK_MS = 35
 const PROMPT_MS = 900
@@ -68,7 +68,8 @@ export function createAskMock(search: string = window.location.search): Dumbledo
       await new Promise((r) => window.setTimeout(r, PROMPT_MS))
       return { pasted: true, prompt: cannedPrompt(context) }
     },
-    'session.picker': () => (params.get('topics') === '0' ? { subjects: [] } : demoTopics()),
+    'subjects.list': () => (params.get('topics') === '0' ? [] : demoSubjects()),
+    'subjects.get': (id) => demoSubject(id),
     'session.start': ({ subjectId }) => demoSession(subjectId ?? ''),
     'coach.runAction': () => undefined,
     'window.close': () => undefined,

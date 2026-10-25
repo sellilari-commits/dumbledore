@@ -1,21 +1,18 @@
 /**
- * The Ask bar's topic row (chat mode): the subjects studied most recently (`session.picker`, at
- * most TOPIC_LIMIT, reloaded whenever the window comes back). One topic can be selected; it goes
- * with every question as context (`ask.submit` `subjectId`), and ↵ on an empty input studies it
- * (`session.start`, main pastes that subject's next prompt into the AI chat) and closes the bar.
+ * The Ask bar's topic chips (chat mode): every topic the mini panel lists (shared/topics.ts: the
+ * top-level concepts of every active or suggested subject, newest information first), reloaded
+ * whenever the window comes back. One topic can be selected; its subject goes with every question
+ * as context (`ask.submit` `subjectId`), and ↵ on an empty input studies it the way a tap studies
+ * a locked topic (`session.start` with the topic's name as the goal; main pastes the next prompt
+ * into the AI chat) and closes the bar.
  */
+import type { SubjectSummary } from '@shared/domain'
 import type { DumbledoreApi } from '@shared/ipc'
-import type { PickerData } from '@shared/state'
+import { listTopics, type Topic, topicSubjects } from '@shared/topics'
 import { useCallback, useEffect, useState } from 'react'
 import { errorMessage, report } from '../overlay/lib/bridge'
 
-export const TOPIC_LIMIT = 12
-
-export interface Topic {
-  id: string
-  name: string
-  emoji: string
-}
+export type { Topic }
 
 export interface TopicsController {
   topics: Topic[]
@@ -31,14 +28,19 @@ export interface TopicsController {
   error: string | null
 }
 
-/** Most recently studied first (never studied last, picker order kept), at most TOPIC_LIMIT. */
-export function topicsFrom(data: PickerData): Topic[] {
-  const studied = (iso: string | null) => (iso ? Date.parse(iso) || 0 : 0)
-  return data.subjects
-    .map(({ subject }) => subject)
-    .sort((a, b) => studied(b.lastStudiedAt) - studied(a.lastStudiedAt))
-    .slice(0, TOPIC_LIMIT)
-    .map(({ id, name, emoji }) => ({ id, name, emoji }))
+/** Every topic of the counted subjects, as the mini panel lists them. */
+export async function loadTopics(api: DumbledoreApi): Promise<Topic[]> {
+  const pool: SubjectSummary[] = topicSubjects(await api.invoke('subjects.list'))
+  const details = await Promise.all(
+    pool.map((s) =>
+      api.invoke('subjects.get', s.id).catch((e: unknown) => {
+        report(e, 'subjects.get')
+        return null
+      }),
+    ),
+  )
+  const concepts = new Map(pool.map((s, i) => [s.id, details[i]?.concepts ?? []]))
+  return listTopics(pool, (id) => concepts.get(id) ?? [])
 }
 
 /** The index `step` away from `current` (-1 = none), kept inside the row. */
@@ -59,15 +61,13 @@ export function useTopics(api: DumbledoreApi, close: () => void, enabled = true)
     if (!enabled) return
     let live = true
     const load = () => {
-      api
-        .invoke('session.picker')
-        .then((data) => {
+      loadTopics(api)
+        .then((next) => {
           if (!live) return
-          const next = topicsFrom(data)
           setTopics(next)
           setSelectedId((id) => (id && next.some((t) => t.id === id) ? id : null))
         })
-        .catch((e: unknown) => report(e, 'session.picker'))
+        .catch((e: unknown) => report(e, 'subjects.list'))
     }
     load()
     window.addEventListener('focus', load)
@@ -104,7 +104,11 @@ export function useTopics(api: DumbledoreApi, close: () => void, enabled = true)
     setStarting(true)
     setError(null)
     try {
-      await api.invoke('session.start', { subjectId: selected.id, goal: null, question: null })
+      await api.invoke('session.start', {
+        subjectId: selected.subjectId,
+        goal: selected.name,
+        question: null,
+      })
       close()
       return true
     } catch (e) {

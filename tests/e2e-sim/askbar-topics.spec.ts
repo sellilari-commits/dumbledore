@@ -1,9 +1,9 @@
 /**
- * The Ask bar's topic row (chat mode, double-tap right ⌥) in a plain browser with its mock driver
- * (9 subjects, so the row overflows): screenshots of the row, a topic selected mid-row (both fades
- * and arrows) and a chat about a topic in light and dark to
+ * The Ask bar's topic chips (chat mode, double-tap right ⌥) in a plain browser with its mock driver
+ * (9 subjects with 19 topics, so the wrapped chips scroll): screenshots of the chips, a topic
+ * selected further down (both fades) and a chat about a topic in light and dark to
  * __screenshots__/askbar-topics-<state>-<theme>.png, plus select/deselect, ↵ with and without
- * text, ←/→ and sideways-scroll checks. Starts its own Vite server (port 5189).
+ * text, ←/→ and scroll checks. Starts its own Vite server (port 5189).
  */
 import { resolve } from 'node:path'
 import { expect, type Page, test } from '@playwright/test'
@@ -17,7 +17,7 @@ const CONFIG = resolve(ROOT, 'src/renderer/surfaces/overlay/vite.config.mjs')
 interface PageGlobals {
   __ddMock: { calls: Array<{ channel: string; payload: unknown }> }
   document: {
-    querySelector: (s: string) => { scrollLeft: number; scrollWidth: number; clientWidth: number }
+    querySelector: (s: string) => { scrollTop: number }
   }
 }
 
@@ -49,11 +49,10 @@ const calls = (page: Page, channel: string) =>
     channel,
   )
 
-const scrollLeft = (page: Page) =>
+const scrollTop = (page: Page) =>
   page.evaluate(
     () =>
-      (globalThis as unknown as PageGlobals).document.querySelector('.ask__topics-track')
-        .scrollLeft,
+      (globalThis as unknown as PageGlobals).document.querySelector('.ask__topics-track').scrollTop,
   )
 
 async function shoot(page: Page, name: string) {
@@ -73,34 +72,39 @@ const selected = (page: Page) => page.locator('.ask__topic[aria-pressed="true"]'
 
 for (const theme of ['light', 'dark'] as const) {
   test.describe(`ask bar topics (${theme})`, () => {
-    test('row of recent topics', async ({ page }) => {
+    test('every topic, wrapped', async ({ page }) => {
       await page.goto(`${base}/askbar.html?theme=${theme}`)
-      await expect(page.locator('.ask__topic')).toHaveCount(9)
-      await expect(page.locator('.ask__topics-arrow--next')).toBeVisible()
-      await expect(page.locator('.ask__topics-arrow--prev')).toHaveCount(0)
+      await expect(page.locator('.ask__topic')).toHaveCount(19)
+      // Wrapped onto lines, not one sideways row; the rest scrolls under a fade.
+      const tops = await page
+        .locator('.ask__topic')
+        .evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)))
+      expect(new Set(tops).size).toBeGreaterThan(3)
+      await expect(page.locator('.ask__topics[data-fade-bottom]')).toHaveCount(1)
+      await expect(page.locator('.ask__topics[data-fade-top]')).toHaveCount(0)
       await expect(input(page)).toBeFocused()
       await shoot(page, `row-${theme}`)
     })
 
-    test('topic selected mid-row', async ({ page }) => {
+    test('topic selected further down', async ({ page }) => {
       await page.goto(`${base}/askbar.html?theme=${theme}`)
-      await expect(page.locator('.ask__topic')).toHaveCount(9)
-      for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowRight')
-      await expect(selected(page)).toHaveText(/Spanish B1/)
-      await expect(page.locator('.ask__topics-arrow--prev')).toBeVisible()
-      await expect(page.locator('.ask__topics-arrow--next')).toBeVisible()
-      await expect(page.getByPlaceholder('Ask about Spanish B1…')).toBeVisible()
+      await expect(page.locator('.ask__topic')).toHaveCount(19)
+      for (let i = 0; i < 12; i++) await page.keyboard.press('ArrowRight')
+      await expect(selected(page)).toHaveText(/Dynamic programming/)
+      await expect(page.locator('.ask__topics[data-fade-top]')).toHaveCount(1)
+      await expect(selected(page)).toBeInViewport()
+      await expect(page.getByPlaceholder('Ask about Dynamic programming…')).toBeVisible()
       await shoot(page, `selected-${theme}`)
     })
 
     test('chat about a topic', async ({ page }) => {
       await page.goto(`${base}/askbar.html?theme=${theme}`)
-      await topic(page, 'Organic chemistry').click()
+      await topic(page, 'Carbocation stability').click()
       await input(page).fill('why is SN1 faster with tertiary carbons?')
       await page.keyboard.press('Enter')
       await expect(page.locator('.ask__msg--assistant')).toHaveCount(1)
       await expect(page.locator('.ask__busy')).toHaveCount(0)
-      await expect(page.getByPlaceholder('Reply about Organic chemistry…')).toBeFocused()
+      await expect(page.getByPlaceholder('Reply about Carbocation stability…')).toBeFocused()
       await shoot(page, `chat-${theme}`)
     })
   })
@@ -109,18 +113,18 @@ for (const theme of ['light', 'dark'] as const) {
 test.describe('ask bar topic interactions', () => {
   test('click selects and deselects without any call', async ({ page }) => {
     await page.goto(`${base}/askbar.html`)
-    await topic(page, 'Calculus II').click()
-    await expect(selected(page)).toHaveText(/Calculus II/)
+    await topic(page, 'Taylor series').click()
+    await expect(selected(page)).toHaveText(/Taylor series/)
     await expect(input(page)).toBeFocused()
-    await topic(page, 'Calculus II').click()
+    await topic(page, 'Taylor series').click()
     await expect(selected(page)).toHaveCount(0)
     expect(await calls(page, 'session.start')).toEqual([])
     expect(await calls(page, 'ask.submit')).toEqual([])
   })
 
-  test('Enter with text sends the topic as subjectId', async ({ page }) => {
+  test("Enter with text sends the topic's subject as subjectId", async ({ page }) => {
     await page.goto(`${base}/askbar.html`)
-    await topic(page, 'Algorithms').click()
+    await topic(page, 'Quicksort').click()
     await input(page).fill('quicksort worst case?')
     await page.keyboard.press('Enter')
     await expect(page.locator('.ask__msg--assistant')).toHaveCount(1)
@@ -133,32 +137,30 @@ test.describe('ask bar topic interactions', () => {
     page,
   }) => {
     await page.goto(`${base}/askbar.html`)
-    await expect(page.locator('.ask__topic')).toHaveCount(9)
+    await expect(page.locator('.ask__topic')).toHaveCount(19)
     await page.keyboard.press('Enter')
     expect(await calls(page, 'session.start')).toEqual([])
     await page.keyboard.press('ArrowRight')
     await page.keyboard.press('ArrowRight')
-    await expect(selected(page)).toHaveText(/Calculus II/)
+    await expect(selected(page)).toHaveText(/Integration by parts/)
     await expect(page.locator('.ask__study')).toHaveText(/Study/)
     await page.keyboard.press('Enter')
     await expect.poll(() => calls(page, 'window.close')).toEqual(['askbar'])
     expect(await calls(page, 'session.start')).toEqual([
-      { subjectId: 'sub_calc', goal: null, question: null },
+      { subjectId: 'sub_calc', goal: 'Integration by parts', question: null },
     ])
     expect(await calls(page, 'ask.submit')).toEqual([])
   })
 
-  test('sideways scroll and the › arrow move the row', async ({ page }) => {
+  test('the wheel scrolls the chips; the top edge fades once scrolled', async ({ page }) => {
     await page.goto(`${base}/askbar.html`)
-    await expect(page.locator('.ask__topic')).toHaveCount(9)
+    await expect(page.locator('.ask__topic')).toHaveCount(19)
     await page.locator('.ask__topics-track').hover()
     await page.mouse.wheel(0, 200)
-    await expect.poll(() => scrollLeft(page)).toBeGreaterThan(0)
-    await expect(page.locator('.ask__topics-arrow--prev')).toBeVisible()
-    await page.locator('.ask__topics-arrow--prev').click()
-    await expect.poll(() => scrollLeft(page)).toBe(0)
-    await page.locator('.ask__topics-arrow--next').click()
-    await expect.poll(() => scrollLeft(page)).toBeGreaterThan(0)
+    await expect.poll(() => scrollTop(page)).toBeGreaterThan(0)
+    await expect(page.locator('.ask__topics[data-fade-top]')).toHaveCount(1)
+    await expect(page.locator('.ask__topics[data-fade-bottom]')).toHaveCount(0)
+    await expect(topic(page, 'Utilitarianism')).toBeInViewport()
     await expect(input(page)).toBeFocused()
   })
 
@@ -169,10 +171,10 @@ test.describe('ask bar topic interactions', () => {
     await expect(page.getByTestId('ask-empty')).toBeVisible()
   })
 
-  test('the prompt box has no topic row', async ({ page }) => {
+  test('the prompt box has no topic chips', async ({ page }) => {
     await page.goto(`${base}/askbar.html#/prompt`)
     await expect(page.locator('.ask__prompt-note')).toBeVisible()
     await expect(page.locator('.ask__topics')).toHaveCount(0)
-    expect(await calls(page, 'session.picker')).toEqual([])
+    expect(await calls(page, 'subjects.list')).toEqual([])
   })
 })
