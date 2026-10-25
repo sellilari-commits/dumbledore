@@ -80,6 +80,31 @@ describe('Brain.coach', () => {
     expect(events[1]?.type).toBe('action')
   })
 
+  it('asks again, without tools, for the answer when the model only saved', async () => {
+    const h = brainHarness()
+    h.groq.queue({
+      toolCalls: [
+        {
+          name: 'save_question',
+          input: {
+            text: 'why are tertiary cations stable?',
+            conceptId: null,
+            topic: null,
+            subjectId: null,
+            stuck: true,
+          },
+        },
+      ],
+    })
+    h.groq.queue({ text: 'Three alkyl groups share the charge.' })
+    const events = await collect(h.brain.coach(input("I don't get carbocation stability")))
+    expect(events[0]).toEqual({ type: 'text', delta: 'Three alkyl groups share the charge.' })
+    expect(events[1]).toMatchObject({
+      type: 'action',
+      action: { type: 'save_question', stuck: true },
+    })
+  })
+
   it('falls through to the next chat model before the first token', async () => {
     const h = brainHarness([R.groq, R.ovh])
     h.groq.queue({ error: new BackendError('rate_limit', 'busy', { status: 429 }) })

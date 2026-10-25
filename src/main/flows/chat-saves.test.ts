@@ -64,6 +64,16 @@ describe('ChatSaves', () => {
     expect(h.repos.concepts.findByName(h.chem.id, 'Avogadro constant')).toBeNull()
   })
 
+  it('with no topic yet, guesses the subject (the newest) rather than asking', () => {
+    const clock = new ManualClock('2026-10-25T09:00:00.000Z')
+    const repos = createMemoryRepos(clock)
+    const bus = createEngineBus()
+    const chem = repos.subjects.create({ name: 'Chemistry' })
+    const saves = new ChatSaves({ repos, bus, notes: new TypedNotes({ repos, bus }) })
+    expect(saves.apply(question())?.line).toMatch(/^Saved to Chemistry: open question/)
+    expect(repos.notes.list({ subjectId: chem.id })).toHaveLength(1)
+  })
+
   it('falls back to the current topic, and asks for a subject when there is none', () => {
     const h = setup()
     expect(h.saves.apply(question())?.line).toMatch(/^Saved to Chemistry › Moles:/)

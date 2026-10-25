@@ -14,6 +14,7 @@
 import type { Repos } from '@engine/contracts'
 import type { EngineBus } from '@engine/events'
 import type { CoachAction, Concept, Id, Note, Subject } from '@shared/domain'
+import { lastStudiedSubject } from '../router/last-subject'
 import type { TypedNotes } from './typed-notes'
 
 export const ASKED_SOURCE: Note['source'] = {
@@ -24,7 +25,7 @@ export const ASKED_SOURCE: Note['source'] = {
 }
 
 export interface ChatSavesDeps {
-  repos: Pick<Repos, 'notes' | 'subjects' | 'concepts' | 'settings' | 'roadmaps'>
+  repos: Pick<Repos, 'notes' | 'subjects' | 'concepts' | 'settings' | 'roadmaps' | 'encounters'>
   bus: EngineBus
   notes: Pick<TypedNotes, 'save' | 'current'>
 }
@@ -99,7 +100,11 @@ export class ChatSaves {
     if (subjectId) bus.emit('memory:changed', { scope: 'subjects', ids: [subjectId] })
   }
 
-  /** The subject a question belongs to: named, else the concept's, else the current topic's. */
+  /**
+   * The subject a question belongs to: the concept's, else named, else the current topic's, else
+   * the focus subject, the one studied last, the newest one. A best guess beats asking: the
+   * receipt names it and Undo takes it back.
+   */
   private subjectFor(subjectId: Id | null, concept: Concept | null): Subject | null {
     const { repos, notes } = this.deps
     if (concept) return repos.subjects.get(concept.subjectId)
@@ -107,8 +112,9 @@ export class ChatSaves {
     if (named) return named
     const topic = notes.current()
     if (topic) return repos.subjects.get(topic.subjectId)
-    const focus = repos.settings.get().focusSubjectId
-    return focus ? repos.subjects.get(focus) : null
+    const guess = repos.settings.get().focusSubjectId ?? lastStudiedSubject(repos)
+    if (guess) return repos.subjects.get(guess)
+    return repos.subjects.list({ status: ['active'] }).at(-1) ?? null
   }
 
   private saveQuestion(action: Extract<CoachAction, { type: 'save_question' }>): Receipt {
