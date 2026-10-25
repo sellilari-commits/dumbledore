@@ -8,6 +8,7 @@ in `AGENTS.md` → "Workboard" (every agent and tool reads it; a pre-push hook e
 
 | Started (UTC) | Who / agent | Work | Files or areas claimed | Branch | Notes |
 |---|---|---|---|---|---|
+| 2026-10-25 08:38 | Olle / Claude | Outline reads the whole page + accuracy eval (asked by Olle: "doesn't feel like he has read the entire page", "how accurate are the highlights"): the hold reads all of the page's text (off-screen lines kept, without boxes), the follow ticks stay on-screen only; passages matched by text across line breaks; a P15 eval suite on real pages with hand-labelled passages; the pill says what the marks are based on | `native/helper` (AXText, Perceive, Protocol, SelfTestIO: new perceive `wholePage`), `src/shared/helper-protocol.ts` (`wholePage` param), `src/main/shell.ts` (outline frontWindow only), `src/main/flows/outline-flow.ts` (+ test), `src/engine/brain/prompts/p15-outline.ts` (+ test), new `src/engine/brain/evals/suite-outline.ts` + fixtures + cli registration, `src/main/test-control/` (dev-only brain endpoint for evals), `src/shared/state.ts` (OutlineOverlay basis), `src/renderer/surfaces/overlay/outline/` | main | |
 
 ## Done recently
 
