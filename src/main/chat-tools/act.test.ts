@@ -2,11 +2,11 @@ import type { CoachAction } from '@shared/domain'
 import { type InvokeChannel, ipcInvoke } from '@shared/ipc'
 import { describe, expect, it, vi } from 'vitest'
 import { ACT_CHANNELS, COACH_FLOW_NAMES, createActTool, IPC_TOOL_CLASS, parseArgs } from './act'
-import { outcome, type ToolOutcome } from './types'
+import { outcome, type ToolCtx, type ToolOutcome } from './types'
 
 function setup() {
   const perform = vi.fn(
-    async (action: CoachAction): Promise<ToolOutcome> =>
+    async (action: CoachAction, _ctx: ToolCtx): Promise<ToolOutcome> =>
       outcome({ ran: action.type }, { receipts: [{ line: `Ran ${action.type}`, undoId: 'u1' }] }),
   )
   const invoke = vi.fn(async (_channel: InvokeChannel, _payload: unknown): Promise<unknown> => {
@@ -124,12 +124,15 @@ describe('act tool', () => {
       'start_roadmap',
       JSON.stringify({ subjectId: 's1', goal: 'Pass the exam', deadline: '2026-12-01' }),
     )
-    expect(perform).toHaveBeenCalledWith({
-      type: 'start_roadmap',
-      subjectId: 's1',
-      goal: 'Pass the exam',
-      deadline: '2026-12-01',
-    })
+    expect(perform).toHaveBeenCalledWith(
+      {
+        type: 'start_roadmap',
+        subjectId: 's1',
+        goal: 'Pass the exam',
+        deadline: '2026-12-01',
+      },
+      {},
+    )
     expect(result.ok).toBe(true)
     expect(result.receipts).toEqual([{ line: 'Ran start_roadmap', undoId: 'u1' }])
   })
@@ -137,14 +140,17 @@ describe('act tool', () => {
   it('fills left-out nullable fields with null and keeps type from the name', async () => {
     const { call, perform } = setup()
     await call('save_question', { text: 'Why SN1?', stuck: true, type: 'insert_prompt' })
-    expect(perform).toHaveBeenCalledWith({
-      type: 'save_question',
-      text: 'Why SN1?',
-      stuck: true,
-      subjectId: null,
-      conceptId: null,
-      topic: null,
-    })
+    expect(perform).toHaveBeenCalledWith(
+      {
+        type: 'save_question',
+        text: 'Why SN1?',
+        stuck: true,
+        subjectId: null,
+        conceptId: null,
+        topic: null,
+      },
+      {},
+    )
   })
 
   it('offers a coach flow as a chip without performing it', async () => {

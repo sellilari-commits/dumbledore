@@ -34,6 +34,11 @@ export interface ToolCtx {
   signal?: AbortSignal
   /** The student pressed the confirmation chip: a delete runs instead of asking. */
   confirmed?: boolean
+  /**
+   * The student's own message asked to open their AI ("open ChatGPT and paste it"). Without it
+   * (or a chip click, `confirmed`) the chat never opens a website or browser tab.
+   */
+  userAskedToOpen?: boolean
 }
 
 export interface ChatTool<I = unknown> {

@@ -6,19 +6,44 @@
  *   (deps.perform), which knows receipts, Undo and background planning.
  * - App acts: the IPC channels classified 'act' in IPC_TOOL_CLASS, validated with the channel's
  *   own request schema and run through deps.invoke. They have no Undo.
- * `offer: true` runs nothing: the coach flow comes back as a chip the student can press. App acts
- * cannot be chips, so offering one is refused.
+ * - Chat flows: acts the shell adds by name with their own zod schema (deps.flows), e.g. write a
+ *   prompt and paste it into the AI chat, open a topic, bring back an earlier roadmap version.
+ * `offer: true` runs nothing: the coach flow comes back as a chip the student can press (a chat
+ * flow as a run_tool chip that runs this act). App acts cannot be chips, so offering one is
+ * refused.
  * Providers run strict JSON schemas, so `args` is a JSON-object string (an object is accepted too).
  */
 import { CoachAction } from '@shared/domain'
 import { type InvokeChannel, type InvokeRes, ipcInvoke } from '@shared/ipc'
 import { z } from 'zod'
 import type { InvokeReqOut } from '../ipc/types'
-import { type ChatTool, defineTool, failure, outcome, short, type ToolOutcome } from './types'
+import {
+  type ChatTool,
+  defineTool,
+  failure,
+  outcome,
+  short,
+  type ToolCtx,
+  type ToolOutcome,
+} from './types'
+
+/** An act the shell adds by name (not a CoachAction): its own args schema and runner. */
+export interface ActFlow {
+  name: string
+  /** One line for the act tool's description: what it does and when to use it. */
+  description: string
+  // biome-ignore lint/suspicious/noExplicitAny: any object schema; args are parsed with it
+  input: z.ZodObject<any>
+  /** The chip label when the flow is offered ("Open ChatGPT and paste"). */
+  label(args: Record<string, unknown>): string
+  run(args: Record<string, unknown>, ctx: ToolCtx): Promise<ToolOutcome> | ToolOutcome
+}
 
 export interface ActToolDeps {
   /** Runs a coach flow the way the chat does (ChatSaves receipts, background planning…). */
-  perform(action: CoachAction): Promise<ToolOutcome>
+  perform(action: CoachAction, ctx: ToolCtx): Promise<ToolOutcome>
+  /** Chat flows by name (write_prompt, open_topic, restore_roadmap_version…). */
+  flows?: ActFlow[]
   /** Calls an IPC channel's handler with the parsed request (runHandler); absent = no app acts. */
   invoke?(channel: InvokeChannel, payload: unknown): Promise<unknown>
   log?(message: string): void
@@ -304,7 +329,7 @@ const ACT_NOTES: Partial<Record<InvokeChannel, string>> = {
   'inbox.act': 'accept, ignore or assign (to subjectId) an inbox item',
 }
 
-function describeTool(): string {
+function describeTool(flows: readonly ActFlow[]): string {
   const coach = COACH_FLOW_NAMES.map((name) => {
     const option = coachOption(name)
     const fields = option ? describeSchema(option, ['type']) : '{}'
@@ -314,11 +339,15 @@ function describeTool(): string {
     (channel) =>
       `- ${channel} ${describeSchema(ipcInvoke[channel].req)}: ${ACT_NOTES[channel] ?? ''}`,
   )
+  const chat = flows.map(
+    (flow) => `- ${flow.name} ${describeSchema(flow.input)}: ${flow.description}`,
+  )
   return [
     'Run a flow that is more than a row edit, by name. args is a JSON object string with the fields shown (null for "none"); ids only from what read/search returned.',
     'offer: true runs nothing and shows the coach flow as a button the student can press; use it when the student should decide. offer: false runs it now.',
     'Coach flows (can be offered):',
     ...coach,
+    ...chat,
     'App actions (run only, never offered; no Undo):',
     ...acts,
     'Row edits are create/update/delete; reading is read/search.',
@@ -338,9 +367,54 @@ const errorText = (error: unknown) => (error instanceof Error ? error.message : 
 
 export function createActTool(deps: ActToolDeps): ChatTool<z.output<typeof Input>> {
   const log = (message: string) => deps.log?.(`act: ${message}`)
-  const validNames = () => [...COACH_FLOW_NAMES, ...ACT_CHANNELS].join(', ')
+  const flows = deps.flows ?? []
+  const validNames = () =>
+    [...COACH_FLOW_NAMES, ...flows.map((f) => f.name), ...ACT_CHANNELS].join(', ')
 
-  async function runCoach(name: ActCoachFlow, args: Record<string, unknown>, offer: boolean) {
+  async function runFlow(
+    flow: ActFlow,
+    args: Record<string, unknown>,
+    offer: boolean,
+    ctx: ToolCtx,
+  ) {
+    const parsed = flow.input.safeParse(fillNulls(flow.input, args))
+    if (!parsed.success) {
+      log(`${flow.name} bad args: ${issues(parsed.error)}`)
+      return failure(`Bad args for ${flow.name}: ${issues(parsed.error)}`)
+    }
+    const data = parsed.data as Record<string, unknown>
+    if (offer) {
+      log(`${flow.name} offered`)
+      const chip: CoachAction = {
+        type: 'run_tool',
+        tool: 'act',
+        input: { name: flow.name, args: JSON.stringify(data), offer: false },
+        label: flow.label(data),
+      }
+      return outcome(
+        {
+          offered: flow.name,
+          note: 'Shown as a button; nothing runs until the student presses it.',
+        },
+        { chips: [chip] },
+      )
+    }
+    try {
+      const result = await flow.run(data, ctx)
+      log(`${flow.name} ${result.ok ? 'ran' : 'failed'}`)
+      return result
+    } catch (error) {
+      log(`${flow.name} failed: ${errorText(error)}`)
+      return failure(`${flow.name} failed: ${short(errorText(error), 200)}`)
+    }
+  }
+
+  async function runCoach(
+    name: ActCoachFlow,
+    args: Record<string, unknown>,
+    offer: boolean,
+    ctx: ToolCtx,
+  ) {
     const option = coachOption(name)
     const candidate = { ...(option ? fillNulls(option, args) : args), type: name }
     const parsed = CoachAction.safeParse(candidate)
@@ -357,7 +431,7 @@ export function createActTool(deps: ActToolDeps): ChatTool<z.output<typeof Input
       )
     }
     try {
-      const result = await deps.perform(action)
+      const result = await deps.perform(action, ctx)
       log(`${name} ${result.ok ? 'ran' : 'failed'}`)
       return result
     } catch (error) {
@@ -402,9 +476,9 @@ export function createActTool(deps: ActToolDeps): ChatTool<z.output<typeof Input
 
   return defineTool({
     name: 'act',
-    description: describeTool(),
+    description: describeTool(flows),
     input: Input,
-    async run({ name: rawName, args: rawArgs, offer }) {
+    async run({ name: rawName, args: rawArgs, offer }, ctx) {
       const name = rawName.trim()
       const parsedArgs = parseArgs(rawArgs)
       if (!parsedArgs.ok) {
@@ -412,8 +486,10 @@ export function createActTool(deps: ActToolDeps): ChatTool<z.output<typeof Input
         return failure(parsedArgs.error)
       }
       if ((COACH_FLOW_NAMES as string[]).includes(name)) {
-        return runCoach(name as ActCoachFlow, parsedArgs.args, offer)
+        return runCoach(name as ActCoachFlow, parsedArgs.args, offer, ctx)
       }
+      const flow = flows.find((f) => f.name === name)
+      if (flow) return runFlow(flow, parsedArgs.args, offer, ctx)
       const cls = Object.hasOwn(IPC_TOOL_CLASS, name)
         ? IPC_TOOL_CLASS[name as InvokeChannel]
         : undefined
