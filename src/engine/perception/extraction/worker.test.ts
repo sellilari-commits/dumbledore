@@ -430,7 +430,18 @@ describe('ExtractionWorker', () => {
     expect(input.episodes[0]?.text).not.toContain('maija@aalto.fi')
   })
 
+  it('keeps screen text forever by default', async () => {
+    const old = makeEpisode({ endedAt: '2026-10-01T09:00:00.000Z' })
+    repos.episodes.save(old)
+    const worker = make()
+    worker.start()
+    expect(worker.purge()).toBe(0)
+    expect(repos.episodes.get(old.id)?.text).not.toBe('')
+    worker.stop()
+  })
+
   it('recovers unextracted episodes on start and purges text past retention', async () => {
+    repos.settings.update({ privacy: { episodeRetentionHours: 48, redact: true } })
     const old = makeEpisode({ endedAt: '2026-10-21T09:00:00.000Z' })
     const pending = makeEpisode({ endedAt: '2026-10-24T08:59:00.000Z' })
     repos.episodes.save(old)

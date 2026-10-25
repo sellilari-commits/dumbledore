@@ -518,6 +518,7 @@ export const Settings = z.object({
     morningPlan: z.boolean(),
     eveningWrap: z.boolean(),
   }),
+  /** episodeRetentionHours: how long screen text is kept; 0 = forever. */
   privacy: z.object({ episodeRetentionHours: z.number().int(), redact: z.boolean() }),
   ai: z.object({
     geminiKeySet: z.boolean(),
@@ -561,7 +562,7 @@ export const DEFAULT_SETTINGS: Settings = {
     morningPlan: true,
     eveningWrap: true,
   },
-  privacy: { episodeRetentionHours: 48, redact: true },
+  privacy: { episodeRetentionHours: 0, redact: true },
   ai: {
     geminiKeySet: false,
     groqKeySet: false,

@@ -17,6 +17,7 @@ const CADENCE: SelectOption<number>[] = [
 ]
 
 const RETENTION: SelectOption<number>[] = [
+  { value: 0, label: 'Forever' },
   { value: 24, label: '1 day' },
   { value: 48, label: '2 days' },
   { value: 168, label: '1 week' },

@@ -285,9 +285,13 @@ export class ExtractionWorker {
     return this.running
   }
 
-  /** Blanks episode text older than the retention window; returns how many were purged. */
+  /**
+   * Blanks episode text older than the retention window; returns how many were purged.
+   * A retention of 0 (the default) keeps screen text forever.
+   */
   purge(): number {
     const hours = this.deps.repos.settings.get().privacy.episodeRetentionHours
+    if (hours <= 0) return 0
     const cutoff = new Date(this.deps.clock.now() - hours * HOUR).toISOString()
     this.queue = this.queue.filter((i) => i.episode.endedAt >= cutoff)
     try {
