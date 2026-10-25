@@ -1,11 +1,13 @@
 /**
  * A topic's detail inside the mini panel, top to bottom: back, the topic name, its subject and
  * its lock (the panel header's own lock hides while a detail is open: one lock on screen); its
- * subtopics as a tree in the topic list's look (a chevron opens a row's children in place, all
- * closed at first; a name opens that subtopic's detail, back and Esc go up one level); the
- * roadmap that covers it; "Your notes" (what the student highlighted or typed) and "Extracted"
- * (what Dumbledore read: facts from pages, outline passages). Each note is one line with its
- * source and age under it; a click opens it in full, ✕ on hover deletes it.
+ * subtopics as a tree in the topic list's look, always fully open (a name opens that subtopic's
+ * detail, back and Esc go up one level); then the roadmap that covers it, "Your notes" (what the
+ * student highlighted or typed) and "Extracted" (what Dumbledore read: facts from pages, outline
+ * passages), each closed to one header line until clicked, like the app's Memory rows. Each note
+ * is one line with its source and age under it; a click opens it in full, ✕ on hover deletes it.
+ * What is open is remembered while the panel is open and forgotten when it hides.
+ * Long text never widens the panel: it wraps (see topic-detail.css).
  */
 
 import { IconButton, Tooltip } from '@renderer/design-system'
@@ -17,7 +19,7 @@ import type { Concept, Note, Roadmap, RoadmapItem } from '@shared/domain'
 import type { Topic } from '@shared/topics'
 import { useQuery } from '@tanstack/react-query'
 import { Check, ChevronLeft, ChevronRight, Lock, LockOpen, X } from 'lucide-react'
-import { type CSSProperties, useEffect, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { report } from './panel-actions'
 import { SectionError, SectionLoading } from './Section'
 import {
@@ -36,6 +38,37 @@ import type { PanelTopics } from './usePanelTopics'
 export const EMPTY_FLAGS = 'Highlight text on any page to flag it here.'
 
 type Level = Pick<Concept, 'id' | 'name'>
+
+// What the student opened (sections and notes), kept while the panel is open. The panel window
+// hides rather than closes, so hiding forgets it.
+const opened = new Set<string>()
+const listeners = new Set<() => void>()
+const subscribe = (fn: () => void) => {
+  listeners.add(fn)
+  return () => listeners.delete(fn)
+}
+
+/** Closes everything opened in the detail (the panel hid; also used between tests). */
+export function forgetOpened(): void {
+  opened.clear()
+  for (const fn of listeners) fn()
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) forgetOpened()
+  })
+}
+
+function useOpened(key: string): [boolean, () => void] {
+  const open = useSyncExternalStore(subscribe, () => opened.has(key))
+  const toggle = () => {
+    if (opened.has(key)) opened.delete(key)
+    else opened.add(key)
+    for (const fn of listeners) fn()
+  }
+  return [open, toggle]
+}
 
 export function TopicDetail({
   topic,
@@ -139,16 +172,18 @@ export function TopicDetail({
               ))}
             </ul>
           )}
-          {roadmap && <RoadmapSteps roadmap={roadmap} />}
-          <NoteSection title="Your notes" notes={notes.yours} empty={EMPTY_FLAGS} />
-          {notes.extracted.length > 0 && <NoteSection title="Extracted" notes={notes.extracted} />}
+          {roadmap && <RoadmapSteps level={here.id} roadmap={roadmap} />}
+          <NoteSection level={here.id} title="Your notes" notes={notes.yours} empty={EMPTY_FLAGS} />
+          {notes.extracted.length > 0 && (
+            <NoteSection level={here.id} title="Extracted" notes={notes.extracted} />
+          )}
         </div>
       )}
     </section>
   )
 }
 
-/** One subtopic in the tree: a chevron when it has children (closed at first), its name opens it. */
+/** One subtopic in the tree, its children always shown indented under it; its name opens it. */
 function SubtopicRow({
   concept,
   concepts,
@@ -160,29 +195,15 @@ function SubtopicRow({
   depth: number
   onOpen: (c: Concept) => void
 }) {
-  const [expanded, setExpanded] = useState(false)
   const children = subtopicsOf(concepts, concept.id)
   return (
     <li>
       <div className="pn-tree__row" style={{ '--pn-depth': depth } as CSSProperties}>
-        {children.length > 0 ? (
-          <button
-            type="button"
-            className="pn-tree__toggle"
-            aria-expanded={expanded}
-            aria-label={`${expanded ? 'Hide' : 'Show'} subtopics of ${concept.name}`}
-            onClick={() => setExpanded(!expanded)}
-          >
-            <ChevronRight size={14} strokeWidth={2} />
-          </button>
-        ) : (
-          <span className="pn-tree__toggle" aria-hidden />
-        )}
         <button type="button" className="pn-topic" onClick={() => onOpen(concept)}>
           <span className="pn-topic__name">{concept.name}</span>
         </button>
       </div>
-      {expanded && (
+      {children.length > 0 && (
         <ul className="pn-tree__children" aria-label={`Subtopics of ${concept.name}`}>
           {children.map((c) => (
             <SubtopicRow
@@ -199,21 +220,64 @@ function SubtopicRow({
   )
 }
 
-function RoadmapSteps({ roadmap }: { roadmap: Roadmap }) {
-  const done = roadmap.items.filter((i) => i.status === 'done').length
+/** A section's header: closed it is one line (title and a short summary); a click opens it. */
+function SectionHead({
+  title,
+  summary,
+  open,
+  onToggle,
+}: {
+  title: string
+  summary: string
+  open: boolean
+  onToggle: () => void
+}) {
   return (
-    <div className="pn-sec">
-      <h3 className="pn-sec__head">
-        Roadmap
-        <span className="pn-sec__count">
-          {done}/{roadmap.items.length}
-        </span>
-      </h3>
-      <ol className="pn-steps" aria-label="Roadmap steps">
-        {roadmap.items.map((item) => (
-          <Step key={item.id} item={item} />
-        ))}
-      </ol>
+    <h3 className="pn-sec__head">
+      <button
+        type="button"
+        className="pn-sec__toggle"
+        aria-expanded={open}
+        aria-label={`${title}, ${summary}`}
+        onClick={onToggle}
+      >
+        <ChevronRight className="pn-sec__chev" size={13} strokeWidth={2} aria-hidden />
+        <span className="pn-sec__title">{title}</span>
+        <span className="pn-sec__count">{summary}</span>
+      </button>
+    </h3>
+  )
+}
+
+/** "step 3 of 6" at the current step, "all done" when every step is. */
+export function roadmapSummary(roadmap: Roadmap): string {
+  const total = roadmap.items.length
+  const at = roadmap.items.findIndex((i) => {
+    const state = stepState(i)
+    return state === 'current' || state === 'waiting'
+  })
+  if (at !== -1) return `step ${at + 1} of ${total}`
+  const done = roadmap.items.filter((i) => i.status === 'done').length
+  return done === total ? 'all done' : `${done} of ${total} done`
+}
+
+function RoadmapSteps({ level, roadmap }: { level: string; roadmap: Roadmap }) {
+  const [open, toggle] = useOpened(`${level}:roadmap`)
+  return (
+    <div className="pn-sec" data-open={open || undefined}>
+      <SectionHead
+        title="Roadmap"
+        summary={roadmapSummary(roadmap)}
+        open={open}
+        onToggle={toggle}
+      />
+      {open && (
+        <ol className="pn-steps" aria-label="Roadmap steps">
+          {roadmap.items.map((item) => (
+            <Step key={item.id} item={item} />
+          ))}
+        </ol>
+      )}
     </div>
   )
 }
@@ -247,20 +311,35 @@ function Step({ item }: { item: RoadmapItem }) {
 /** Past this many, a section shows the newest few and "Show all (N)". */
 export const NOTES_SHOWN = 5
 
-function NoteSection({ title, notes, empty }: { title: string; notes: Note[]; empty?: string }) {
+function NoteSection({
+  level,
+  title,
+  notes,
+  empty,
+}: {
+  level: string
+  title: string
+  notes: Note[]
+  empty?: string
+}) {
   const remove = useAction('notes.delete', { onError: report })
   const [all, setAll] = useState(false)
+  const [open, toggle] = useOpened(`${level}:${title}`)
   const shown = all || notes.length <= NOTES_SHOWN ? notes : notes.slice(0, NOTES_SHOWN)
-  return (
-    <div className="pn-sec">
-      <h3 className="pn-sec__head">
-        {title}
-        {notes.length > 0 && <span className="pn-sec__count">{notes.length}</span>}
-      </h3>
-      {notes.length === 0 ? (
+  // Nothing to open: the header and one calm line.
+  if (notes.length === 0) {
+    return (
+      <div className="pn-sec">
+        <h3 className="pn-sec__head">{title}</h3>
         <p className="pn-empty pn-empty--inline">{empty}</p>
-      ) : (
-        <ul className="pn-flags" aria-label={title}>
+      </div>
+    )
+  }
+  return (
+    <div className="pn-sec" data-open={open || undefined}>
+      <SectionHead title={title} summary={String(notes.length)} open={open} onToggle={toggle} />
+      {!open ? null : (
+        <ul className="pn-flags pn-notes" aria-label={title}>
           {shown.map((note) => (
             <NoteRow
               key={note.id}
@@ -271,7 +350,7 @@ function NoteSection({ title, notes, empty }: { title: string; notes: Note[]; em
           ))}
         </ul>
       )}
-      {shown.length < notes.length && (
+      {open && shown.length < notes.length && (
         <button type="button" className="pn-notes__all" onClick={() => setAll(true)}>
           Show all ({notes.length})
         </button>
@@ -289,19 +368,14 @@ function NoteRow({
   removing: boolean
   onRemove: () => void
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, toggle] = useOpened(`note:${note.id}`)
   return (
     <li
       className="pn-flag pn-note"
       data-open={open || undefined}
       data-removing={removing || undefined}
     >
-      <button
-        type="button"
-        className="pn-note__body"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-      >
+      <button type="button" className="pn-note__body" aria-expanded={open} onClick={toggle}>
         <span className="pn-note__text">
           {noteLead(note.kind)}
           {note.text}

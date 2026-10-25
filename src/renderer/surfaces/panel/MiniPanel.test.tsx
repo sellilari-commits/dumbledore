@@ -69,6 +69,7 @@ describe('MiniPanel', () => {
     fireEvent.click(
       (await rows()).find((b) => b.textContent?.startsWith('Carbocation stability')) as HTMLElement,
     )
+    fireEvent.click(await screen.findByRole('button', { name: /^Roadmap, step \d+ of \d+$/ }))
     const steps = await screen.findByRole('list', { name: 'Roadmap steps' })
     const items = within(steps).getAllByRole('listitem')
     expect(items.map((li) => li.getAttribute('data-state'))).toContain('done')
@@ -76,6 +77,7 @@ describe('MiniPanel', () => {
       /Carbocation stability/,
     )
     expect(items.some((li) => li.getAttribute('data-kind') === 'checkpoint')).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: /^Your notes, / }))
     const flags = await screen.findByRole('list', { name: 'Your notes' })
     expect(flags.textContent).toMatch(/hyperconjugation/)
     expect(flags.textContent).toMatch(/LibreTexts/)
@@ -101,6 +103,7 @@ describe('MiniPanel', () => {
     fireEvent.click(
       (await rows()).find((b) => b.textContent?.startsWith('Carbocation stability')) as HTMLElement,
     )
+    fireEvent.click(await screen.findByRole('button', { name: /^Your notes, / }))
     const flags = await screen.findByRole('list', { name: 'Your notes' })
     fireEvent.click(within(flags).getAllByRole('button', { name: 'Delete note' })[0] as HTMLElement)
     await waitFor(() => expect(r.calls('notes.delete')).toEqual(['note_cc2']))

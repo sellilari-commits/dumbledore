@@ -13,6 +13,7 @@ import { type RenderResult, render } from '@testing-library/react'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 import { PanelRoutes } from '../PanelApp'
+import { forgetOpened } from '../TopicDetail'
 
 // The mock opens other surfaces in a new tab; jsdom has no tabs.
 if (typeof window !== 'undefined') window.open = (() => null) as typeof window.open
@@ -33,6 +34,7 @@ export function renderPanel({
   scenario?: MockScenario
   prepare?: (db: MockDb) => void
 } = {}): PanelRender {
+  forgetOpened() // what was opened in a topic detail lives while the panel does
   const api = createMockApi({ latencyMs: 0, scenario, surface: 'panel' })
   prepare?.(api.db)
   const log: Array<{ channel: InvokeChannel; payload: unknown }> = []
