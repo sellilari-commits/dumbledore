@@ -110,6 +110,8 @@ export const IPC_TOOL_CLASS: Record<InvokeChannel, IpcToolClass> = {
   // Pasting into the student's AI chat or clipboard is not for the chat.
   'prompt.copy': 'deny',
   'prompt.sendToChat': 'deny',
+  // Opens a website: only ever from the student's click on "Open <AI> and paste".
+  'prompt.openUsualAi': 'deny',
   'prompt.write': 'deny',
   // The student's own answers.
   'quiz.answer': 'deny',

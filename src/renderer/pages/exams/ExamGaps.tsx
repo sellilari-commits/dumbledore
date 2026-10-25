@@ -1,13 +1,15 @@
 /**
  * "Your gaps" on the results page: one row per missed concept (what the student picked, or the
  * engine's diagnosis in words, plus links to the questions), the repair prompt, and the two ways
- * to hand it to the student's AI — Explore with <their AI> (pasted into the open chat, or their usual AI
- * opened with the prompt; never sent) or Copy prompt.
+ * to hand it to the student's AI — Explore with <their AI> (pasted into the open chat; never sent)
+ * or Copy prompt. With no chat open nothing opens: "ChatGPT isn't open. [Open ChatGPT and paste]
+ * [Copy]" shows under the buttons, and only that labelled button opens the site.
  */
 import { Button, Callout, toast } from '@renderer/design-system'
 import { errorToast } from '@renderer/lib/errors'
 import { useAction } from '@renderer/lib/queries'
 import { Copy, Lightbulb, Send } from 'lucide-react'
+import { NoChatChoice, useChatPrompt } from '../NoChatChoice'
 import type { GapRow } from './exam-utils'
 import './exam-page.css'
 
@@ -28,7 +30,7 @@ export interface ExamGapsProps {
 }
 
 export function ExamGaps({ rows, prompt, assistant, onShowQuestion }: ExamGapsProps) {
-  const send = useAction('prompt.sendToChat')
+  const chat = useChatPrompt()
   const copy = useAction('prompt.copy')
 
   const copyPrompt = () => {
@@ -40,26 +42,15 @@ export function ExamGaps({ rows, prompt, assistant, onShowQuestion }: ExamGapsPr
   }
   const explore = () => {
     if (!prompt) return
-    send.mutate(prompt, {
-      onSuccess: (res) =>
-        res.opened
-          ? toast(
-              res.opened.prefilled
-                ? `Opened ${res.opened.name} with your prompt typed in — read it, then press Enter there.`
-                : `Opened ${res.opened.name} — your prompt is copied: paste it with ⌘V.`,
-              { tone: 'success', ttlMs: 8000 },
-            )
-          : res.ok
-            ? toast(`Pasted into ${assistant} — read it, then press Enter there.`, {
-                tone: 'success',
-              })
-            : toast(res.reason ?? `Couldn’t reach ${assistant}.`, {
-                tone: 'error',
-                action: { label: 'Copy instead', onClick: copyPrompt },
-                ttlMs: 8000,
-              }),
-      onError: (err) => errorToast(err),
-    })
+    chat.send(prompt, (res) =>
+      res.ok
+        ? toast(`Pasted into ${assistant} — read it, then press Enter there.`, { tone: 'success' })
+        : toast(res.reason ?? `Couldn’t reach ${assistant}.`, {
+            tone: 'error',
+            action: { label: 'Copy instead', onClick: copyPrompt },
+            ttlMs: 8000,
+          }),
+    )
   }
 
   return (
@@ -97,7 +88,7 @@ export function ExamGaps({ rows, prompt, assistant, onShowQuestion }: ExamGapsPr
               variant="primary"
               size="sm"
               icon={<Send size={14} />}
-              loading={send.isPending}
+              loading={chat.sending}
               onClick={explore}
             >
               Explore with {assistant}
@@ -106,6 +97,14 @@ export function ExamGaps({ rows, prompt, assistant, onShowQuestion }: ExamGapsPr
               Copy prompt
             </Button>
           </div>
+          {chat.noChat ? (
+            <NoChatChoice
+              noChat={chat.noChat}
+              opening={chat.opening}
+              onOpen={chat.open}
+              onCopy={chat.copy}
+            />
+          ) : null}
         </>
       ) : null}
     </Callout>

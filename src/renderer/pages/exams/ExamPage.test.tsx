@@ -5,8 +5,8 @@
 import { useToasts } from '@renderer/design-system'
 import { useShell } from '@renderer/lib/shell'
 import { renderWithApp } from '@renderer/lib/test-utils'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Route } from 'wouter'
 import { ExamPage } from './ExamPage'
 
@@ -108,12 +108,36 @@ describe('ExamPage — results and states', () => {
     expect(screen.getByText('Which carbocation is the most stable?')).toBeTruthy()
   })
 
-  it('offers to copy when no AI chat is open', async () => {
+  it('with no AI chat open opens nothing, says so and offers Copy', async () => {
     const r = renderExam('quiz_orgo_weak')
     r.api.db.appState.aiChat = null
+    const invoke = vi.spyOn(r.api, 'invoke')
     fireEvent.click(await screen.findByRole('button', { name: /explore with/i }))
-    expect(await screen.findByText(/No AI chat is open/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: /copy instead/i })).toBeTruthy()
+    const choice = await screen.findByRole('group', { name: 'No AI chat open' })
+    expect(within(choice).getByText('No AI chat is open.')).toBeTruthy()
+    expect(within(choice).queryByRole('button', { name: /^Open / })).toBeNull()
+    fireEvent.click(within(choice).getByRole('button', { name: 'Copy' }))
+    expect(await screen.findByText('Prompt copied — paste it into your AI')).toBeTruthy()
+    expect(invoke.mock.calls.map((c) => c[0])).not.toContain('prompt.openUsualAi')
+  })
+
+  it('opens the usual AI only on a click of "Open ChatGPT and paste"', async () => {
+    const r = renderExam('quiz_orgo_weak')
+    r.api.db.appState.aiChat = null
+    r.api.db.appState.assistant = { key: 'chatgpt', name: 'ChatGPT', open: false }
+    const invoke = vi.spyOn(r.api, 'invoke')
+    fireEvent.click(await screen.findByRole('button', { name: /explore with/i }))
+    const choice = await screen.findByRole('group', { name: 'No AI chat open' })
+    expect(within(choice).getByText('ChatGPT isn’t open.')).toBeTruthy()
+    expect(invoke.mock.calls.map((c) => c[0])).not.toContain('prompt.openUsualAi')
+    fireEvent.click(within(choice).getByRole('button', { name: 'Open ChatGPT and paste' }))
+    expect(
+      await screen.findByText('Opened ChatGPT — your prompt is copied: paste it with ⌘V.'),
+    ).toBeTruthy()
+    const opened = invoke.mock.calls.filter((c) => c[0] === 'prompt.openUsualAi')
+    expect(opened).toHaveLength(1)
+    expect(String(opened[0]?.[1])).toContain('Organic Chemistry')
+    expect(screen.queryByRole('group', { name: 'No AI chat open' })).toBeNull()
   })
 
   it('says what it is writing, then shows the questions', async () => {

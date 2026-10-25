@@ -166,6 +166,7 @@ describe('IPC handlers', () => {
     await call('prompt.copy', 'copied text')
     expect(h.platform.clipboard).toBe('copied text')
     expect(await call('prompt.sendToChat', 'hello chat')).toMatchObject({ ok: true })
+    expect(await call('prompt.openUsualAi', 'hello chat')).toHaveProperty('opened')
     await h.surfaces.open('askbar', { route: 'prompt' })
     const written = await call('prompt.write', { context: 'explain SN1 simply, exam Friday' })
     expect(written).toMatchObject({ pasted: true })
@@ -295,8 +296,30 @@ describe('IPC handlers', () => {
     await expect(call('prompt.write', { context: '' })).rejects.toThrow(IpcValidationError)
   })
 
-  it('names the usual AI and opens it with the prompt when no AI chat is open', async () => {
+  it('pastes into the open AI chat and opens nothing', async () => {
+    await inChatGPT(h)
+    const before = calls.length
+    const out = await call('prompt.sendToChat', 'Explain SN1')
+    expect(out).toEqual({ ok: true, reason: null, opened: null })
+    expect(h.helper.callsTo('input.write').at(-1)).toMatchObject({ text: 'Explain SN1' })
+    expect(calls.slice(before).filter((c) => c.startsWith('open:'))).toEqual([])
+  })
+
+  it('opens nothing when no AI chat is open; only prompt.openUsualAi opens the usual AI', async () => {
     const { repos } = h.services
+    const before = calls.length
+    // Nothing known yet: no chat, no usual AI, nothing opened or copied.
+    h.platform.clipboard = 'kept'
+    expect(await call('prompt.sendToChat', 'Explain the Sphinx')).toEqual({
+      ok: false,
+      reason: 'no-chat',
+      opened: null,
+      usual: null,
+    })
+    expect(await call('prompt.openUsualAi', 'Explain the Sphinx')).toEqual({ opened: null })
+    expect(calls.slice(before).filter((c) => c.startsWith('open:'))).toEqual([])
+    expect(h.platform.clipboard).toBe('kept')
+
     const subject = repos.subjects.create({ name: 'Egyptian History' })
     repos.encounters.add({
       subjectId: subject.id,
@@ -321,11 +344,21 @@ describe('IPC handlers', () => {
     expect(state.assistant).toEqual({ key: 'claude', name: 'Claude', open: false })
     // The pushed AppState ('state.changed') carries it too, not only the first read.
     expect(h.core.appState().assistant).toEqual(state.assistant)
+
+    // The usual AI is known: sendToChat still opens nothing and only names it.
     const out = await call('prompt.sendToChat', 'Explain why the Sphinx is 4th dynasty')
-    expect(out).toEqual({ ok: true, reason: null, opened: { name: 'Claude', prefilled: true } })
-    expect(calls.at(-1)).toBe(
+    expect(out).toEqual({ ok: false, reason: 'no-chat', opened: null, usual: { name: 'Claude' } })
+    expect(calls.slice(before).filter((c) => c.startsWith('open:'))).toEqual([])
+    expect(h.platform.clipboard).toBe('kept')
+    expect(h.helper.callsTo('input.write')).toEqual([])
+
+    // The explicit "Open Claude and paste" click: copied, and Claude opened with it typed in.
+    const opened = await call('prompt.openUsualAi', 'Explain why the Sphinx is 4th dynasty')
+    expect(opened).toEqual({ opened: { name: 'Claude', prefilled: true } })
+    expect(h.platform.clipboard).toBe('Explain why the Sphinx is 4th dynasty')
+    expect(calls.slice(before).filter((c) => c.startsWith('open:'))).toEqual([
       'open:https://claude.ai/new?q=Explain%20why%20the%20Sphinx%20is%204th%20dynasty',
-    )
+    ])
   })
 
   it('refuses data.deleteAll without the explicit confirmation', async () => {

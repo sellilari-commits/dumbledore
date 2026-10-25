@@ -30,6 +30,8 @@ export interface MockOptions {
   latencyMs?: number
   /** A Gemini key in the dev env file (default true): Gemini tests pass without a saved key. */
   geminiEnvKey?: boolean
+  /** No AI chat open, ChatGPT the usual AI (`?chat=0`). */
+  noChat?: boolean
 }
 
 export type KeyGestureKind = EventPayload<'key.gesture'>['gesture']
@@ -73,7 +75,7 @@ const handlers = {
 export function createMockApi(options: MockOptions = {}): MockApi {
   const surface = options.surface ?? 'app'
   const scenario = options.scenario ?? 'demo'
-  const db = createDb(scenario, { geminiEnvKey: options.geminiEnvKey })
+  const db = createDb(scenario, { geminiEnvKey: options.geminiEnvKey, noChat: options.noChat })
   const listeners = new Map<EventChannel, Set<(payload: unknown) => void>>()
 
   const emit: MockApi['emit'] = (event, payload) => {

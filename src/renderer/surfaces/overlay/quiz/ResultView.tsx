@@ -1,7 +1,8 @@
 /**
  * Quiz result: score, per-concept breakdown, the gaps, and "Fix my gaps", which pastes the
- * engine's repair prompt into the open chat (`prompt.sendToChat`), or with no chat open opens the
- * student's usual AI with the prompt (typed in, or on the clipboard).
+ * engine's repair prompt into the open chat (`prompt.sendToChat`). With no chat open nothing
+ * opens: "ChatGPT isn't open." with [Copy] and [Open ChatGPT and paste]; only a click on that
+ * button opens the student's usual AI (`prompt.openUsualAi`, typed in or on the clipboard).
  */
 import type { MasteryStatus, QuizResult } from '@shared/domain'
 import type { DumbledoreApi } from '@shared/ipc'
@@ -30,6 +31,8 @@ type SendState =
   | { kind: 'sending' }
   | { kind: 'sent'; note: string }
   | { kind: 'failed'; reason: string }
+  | { kind: 'no-chat'; usual: { name: string } | null }
+  | { kind: 'opening'; usual: { name: string } }
 
 export function headline(correct: number, total: number): string {
   if (total === 0) return 'No questions this time.'
@@ -38,7 +41,7 @@ export function headline(correct: number, total: number): string {
   return missed === 1 ? 'One idea to fix.' : `${missed} ideas to fix.`
 }
 
-/** What happened to the fix prompt: pasted into the open chat, or the usual AI opened with it. */
+/** What happened to the fix prompt: pasted into the open chat, or the usual AI opened (on click). */
 export function sentNote(opened: { name: string; prefilled: boolean } | null): string {
   if (!opened) return 'Pasted into your chat'
   return opened.prefilled
@@ -52,20 +55,44 @@ export function ResultView({ api, result, onDone, primaryRef }: Props) {
   const fixPrompt = result.fixPrompt
 
   const fix = () => {
-    if (!fixPrompt || send.kind === 'sending' || send.kind === 'sent') return
+    if (!fixPrompt || send.kind !== 'idle') return
     setSend({ kind: 'sending' })
     api
       .invoke('prompt.sendToChat', fixPrompt)
       .then((r) =>
         setSend(
           r.ok
-            ? { kind: 'sent', note: sentNote(r.opened ?? null) }
-            : { kind: 'failed', reason: r.reason ?? 'Could not paste.' },
+            ? { kind: 'sent', note: sentNote(null) }
+            : r.reason === 'no-chat'
+              ? { kind: 'no-chat', usual: r.usual ?? null }
+              : { kind: 'failed', reason: r.reason ?? 'Could not paste.' },
         ),
       )
       .catch((error: unknown) => setSend({ kind: 'failed', reason: errorMessage(error) }))
   }
-  primaryRef.current = fixPrompt && send.kind === 'idle' ? fix : onDone
+  /** The click on "Open <usual AI> and paste": the only way this card opens a website. */
+  const openUsual = (usual: { name: string }) => {
+    if (!fixPrompt) return
+    setSend({ kind: 'opening', usual })
+    api
+      .invoke('prompt.openUsualAi', fixPrompt)
+      .then((r) =>
+        setSend(
+          r.opened ? { kind: 'sent', note: sentNote(r.opened) } : { kind: 'no-chat', usual: null },
+        ),
+      )
+      .catch((error: unknown) => setSend({ kind: 'failed', reason: errorMessage(error) }))
+  }
+  const copy = () => {
+    if (!fixPrompt) return
+    api
+      .invoke('prompt.copy', fixPrompt)
+      .then(() => setSend({ kind: 'sent', note: 'Copied · paste with ⌘V' }))
+      .catch((error: unknown) => setSend({ kind: 'failed', reason: errorMessage(error) }))
+  }
+  const noChat = send.kind === 'no-chat' || send.kind === 'opening'
+  // Enter never opens a website: with no chat open it does nothing (the buttons need a click).
+  primaryRef.current = noChat ? null : fixPrompt && send.kind === 'idle' ? fix : onDone
 
   return (
     <div className="ov-quiz__result">
@@ -115,6 +142,11 @@ export function ResultView({ api, result, onDone, primaryRef }: Props) {
         <p className="ov-score__next">Next up: {result.nextTopic}</p>
       )}
 
+      {noChat && (
+        <p className="ov-quiz__nochat" role="status">
+          {send.usual ? `${send.usual.name} isn’t open.` : 'No AI chat is open.'}
+        </p>
+      )}
       <div className="ov-quiz__actions">
         {send.kind === 'sent' && (
           <span className="ov-quiz__sent" role="status">
@@ -129,7 +161,22 @@ export function ResultView({ api, result, onDone, primaryRef }: Props) {
         <button type="button" className="ov-btn" onClick={onDone}>
           Done
         </button>
-        {fixPrompt && send.kind !== 'sent' && (
+        {noChat && (
+          <button type="button" className="ov-btn" onClick={copy}>
+            Copy
+          </button>
+        )}
+        {noChat && send.usual && (
+          <button
+            type="button"
+            className="ov-btn ov-btn--primary"
+            aria-disabled={send.kind === 'opening' || undefined}
+            onClick={() => send.kind === 'no-chat' && send.usual && openUsual(send.usual)}
+          >
+            Open {send.usual.name} and paste
+          </button>
+        )}
+        {fixPrompt && send.kind !== 'sent' && !noChat && (
           <button
             type="button"
             className="ov-btn ov-btn--primary"

@@ -240,10 +240,28 @@ export const coreHandlers: HandlerMap<CoreChannel> = {
       // Clipboard access can be denied in a plain browser; the UI still confirms.
     }
   },
-  'prompt.sendToChat': (ctx) =>
-    ctx.db.appState.aiChat
-      ? { ok: true, reason: null }
-      : { ok: false, reason: 'No AI chat is open. Open ChatGPT and try again.' },
+  // Like the shell: no chat open → nothing opens, the page offers "Open <usual> and paste".
+  'prompt.sendToChat': (ctx) => {
+    if (ctx.db.appState.aiChat) return { ok: true, reason: null, opened: null }
+    const usual = ctx.db.appState.assistant
+    return {
+      ok: false,
+      reason: 'no-chat',
+      opened: null,
+      usual: usual ? { name: usual.name } : null,
+    }
+  },
+  // The explicit "Open <usual> and paste": the mock copies and opens nothing.
+  'prompt.openUsualAi': async (ctx, text) => {
+    const usual = ctx.db.appState.assistant
+    if (!usual) return { opened: null }
+    try {
+      await navigator.clipboard?.writeText(text)
+    } catch {
+      // Clipboard access can be denied in a plain browser.
+    }
+    return { opened: { name: usual.name, prefilled: usual.key === 'claude' } }
+  },
   'prompt.write': (ctx, { context }) => ({
     pasted: ctx.db.appState.aiChat !== null,
     prompt: `I'm a student. ${context.trim()} Explain it step by step with one example.`,

@@ -14,6 +14,7 @@ import type { GapNote, SubjectDetail } from '@shared/state'
 import { useQueryClient } from '@tanstack/react-query'
 import { CircleAlert, FilePenLine, Map as MapIcon, TrendingUp } from 'lucide-react'
 import { useLocation } from 'wouter'
+import { NoChatChoice, useChatPrompt } from '../NoChatChoice'
 import { RoadmapHistory } from './RoadmapHistory'
 import { roadmapProgress } from './subject-utils'
 
@@ -182,14 +183,6 @@ export function fixPromptFor(subject: string, topic: string, notes: readonly Gap
   return lines.join(' ')
 }
 
-/** Where the fix prompt went, for the toast. */
-function sentText(r: { ok: boolean; opened?: { name: string; prefilled: boolean } | null }) {
-  if (!r.opened) return 'Pasted into your AI chat'
-  return r.opened.prefilled
-    ? `Opened ${r.opened.name} with the prompt`
-    : `Opened ${r.opened.name} · paste with ⌘V`
-}
-
 function GapRow({
   concept,
   notes,
@@ -200,7 +193,7 @@ function GapRow({
   subjectName: string
 }) {
   const run = useAction('coach.runAction')
-  const send = useAction('prompt.sendToChat')
+  const chat = useChatPrompt()
   const study = () =>
     run.mutate(
       { type: 'start_roadmap', subjectId: concept.subjectId, goal: concept.name },
@@ -210,13 +203,11 @@ function GapRow({
       },
     )
   const fix = () =>
-    send.mutate(fixPromptFor(subjectName, concept.name, notes), {
-      onSuccess: (r) =>
-        r.ok
-          ? toast(sentText(r), { tone: 'success' })
-          : errorToast(new Error(r.reason ?? 'Could not paste.')),
-      onError: (err) => errorToast(err),
-    })
+    chat.send(fixPromptFor(subjectName, concept.name, notes), (r) =>
+      r.ok
+        ? toast('Pasted into your AI chat', { tone: 'success' })
+        : errorToast(new Error(r.reason ?? 'Could not paste.')),
+    )
   const why =
     concept.struggleCount > 0
       ? // Wrong quiz answers and confused reading or chats both count.
@@ -244,12 +235,21 @@ function GapRow({
             ))}
           </ul>
         ) : null}
+        {chat.noChat ? (
+          <NoChatChoice
+            size="xs"
+            noChat={chat.noChat}
+            opening={chat.opening}
+            onOpen={chat.open}
+            onCopy={chat.copy}
+          />
+        ) : null}
       </div>
       <div className="sp-gap__actions">
         <Button
           size="xs"
           variant="ghost"
-          loading={send.isPending}
+          loading={chat.sending}
           onClick={fix}
           aria-label={`Fix ${concept.name} with your AI`}
         >
@@ -272,7 +272,8 @@ function GapRow({
 /**
  * Your gaps: the topics that keep not clicking, weakest first, each with what an exam showed the
  * student believed ("You thought …") and what they asked Dumbledore ("You asked …"); then topics
- * with only an open question. "Fix it" opens their AI with a prompt built from exactly that,
+ * with only an open question. "Fix it" pastes a prompt built from exactly that into the open AI
+ * chat (with none open: "ChatGPT isn't open. [Open ChatGPT and paste] [Copy]" under the topic),
  * "Study this" plans a roadmap for the topic.
  */
 export function GapsSection({ detail }: { detail: SubjectDetail }) {

@@ -34,7 +34,8 @@ function surfaceFromPath(): DumbledoreApi['surface'] {
 
 /**
  * Mock options from the URL: ?mock=1&scenario=empty|error|slow|onboarding&latency=ms, and
- * &geminiEnv=0 for a machine without the dev Gemini key (shows "add a key").
+ * &geminiEnv=0 for a machine without the dev Gemini key (shows "add a key"), &chat=0 for no AI
+ * chat open (ChatGPT the usual AI).
  */
 export function mockOptionsFromUrl(): MockOptions {
   const p = params()
@@ -42,6 +43,7 @@ export function mockOptionsFromUrl(): MockOptions {
   const latency = p.get('latency')
   return {
     geminiEnvKey: p.get('geminiEnv') !== '0',
+    noChat: p.get('chat') === '0',
     surface: surfaceFromPath(),
     scenario:
       scenario === 'empty' ||

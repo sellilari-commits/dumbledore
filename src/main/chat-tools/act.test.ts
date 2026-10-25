@@ -58,6 +58,7 @@ describe('IPC classification', () => {
       'nudge.act',
       'prompt.copy',
       'prompt.sendToChat',
+      'prompt.openUsualAi',
       'prompt.write',
       'quiz.answer',
       'quiz.finish',

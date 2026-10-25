@@ -83,6 +83,10 @@ export interface MockDb {
 export interface CreateDbOptions {
   /** A Gemini key in the dev env file (default true; `?geminiEnv=0` turns it off). */
   geminiEnvKey?: boolean
+  /**
+   * `?chat=0`: no AI chat open, ChatGPT is the usual AI (the "ChatGPT isn't open" choice).
+   */
+  noChat?: boolean
 }
 
 export function createDb(scenario: MockScenario, opts: CreateDbOptions = {}): MockDb {
@@ -101,6 +105,10 @@ export function createDb(scenario: MockScenario, opts: CreateDbOptions = {}): Mo
     ai: { ...DEFAULT_SETTINGS.ai, groqKeySet: !onboarding },
     excludedHosts: empty ? [] : ['mybank.fi', 'web.whatsapp.com'],
     excludedBundleIds: empty ? [] : ['com.1password.1password'],
+  }
+  if (opts.noChat) {
+    appState.aiChat = null
+    appState.assistant = { key: 'chatgpt', name: 'ChatGPT', open: false }
   }
   if (onboarding) appState.permissions = { accessibility: false, screenRecording: false }
   return {

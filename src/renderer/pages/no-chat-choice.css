@@ -1,0 +1,19 @@
+/* "ChatGPT isn't open. [Open ChatGPT and paste] [Copy]": a quiet line in place of a toast. */
+
+.dd-nochat {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+  color: var(--c-texSec);
+}
+
+.dd-nochat__text {
+  margin-right: 2px;
+}

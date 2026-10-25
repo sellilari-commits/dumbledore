@@ -41,6 +41,7 @@ function viewport(): Size {
 
 function createOverlayMock(params: URLSearchParams): DumbledoreApi {
   const pinned = params.get('scene')
+  const noChat = params.get('chat') === '0'
   let state = sceneState(isScene(pinned) ? pinned : 'idle', viewport())
   const answers = new Map<string, number>()
   const actions: OverlayAction[] = []
@@ -58,7 +59,13 @@ function createOverlayMock(params: URLSearchParams): DumbledoreApi {
       return answerOf(questionId, chosenIndex)
     },
     'quiz.finish': (id) => resultOf(id, answers),
-    'prompt.sendToChat': () => ({ ok: true, reason: null }),
+    // `?chat=0`: no AI chat open, ChatGPT the usual AI; nothing opens in the mock.
+    'prompt.sendToChat': () =>
+      noChat
+        ? { ok: false, reason: 'no-chat', opened: null, usual: { name: 'ChatGPT' } }
+        : { ok: true, reason: null, opened: null },
+    'prompt.openUsualAi': () => ({ opened: { name: 'ChatGPT', prefilled: false } }),
+    'prompt.copy': () => undefined,
   })
 
   const set = (next: OverlayState) => {

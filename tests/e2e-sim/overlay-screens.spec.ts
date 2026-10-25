@@ -52,8 +52,9 @@ test.afterAll(async () => {
   await server?.close()
 })
 
-const overlay = (page: Page, scene: string) =>
-  page.goto(`${base}/overlay.html?scene=${scene}&clean=1&display=1`)
+/** `extra`: more query params, e.g. 'chat=0' (no AI chat open). */
+const overlay = (page: Page, scene: string, extra = '') =>
+  page.goto(`${base}/overlay.html?scene=${scene}&clean=1&display=1${extra ? `&${extra}` : ''}`)
 
 const actions = (page: Page) =>
   page.evaluate(() => (globalThis as unknown as PageGlobals).__ddMock.actions.map((a) => a.type))
@@ -172,6 +173,23 @@ for (const theme of ['light', 'dark'] as const) {
       await card.getByRole('button', { name: /See results/ }).click()
       await expect(card.getByText('3/4')).toBeVisible()
       await shoot(page, 'quiz-result', theme)
+    })
+
+    test('quiz result with no AI chat open: the explicit choice', async ({ page }) => {
+      await overlay(page, 'quiz', 'chat=0')
+      const card = page.getByTestId('quiz-card')
+      for (const pick of [2, 0, 0, 1]) {
+        await card.getByTestId('quiz-option').nth(pick).click()
+        await card.getByRole('button', { name: /Next|See results/ }).click()
+      }
+      await card.getByRole('button', { name: 'Fix my gaps' }).click()
+      await expect(card.getByText('ChatGPT isn’t open.')).toBeVisible()
+      await expect(card.getByRole('button', { name: 'Open ChatGPT and paste' })).toBeVisible()
+      expect(await calls(page)).not.toContain('prompt.openUsualAi')
+      await shoot(page, 'quiz-result-no-chat', theme)
+      await card.getByRole('button', { name: 'Open ChatGPT and paste' }).click()
+      await expect(card.getByText('Opened ChatGPT · paste with ⌘V')).toBeVisible()
+      expect(await calls(page)).toContain('prompt.openUsualAi')
     })
 
     test('ask bar: empty and answered', async ({ page }) => {

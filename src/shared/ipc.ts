@@ -211,8 +211,10 @@ export const ipcInvoke = {
   // Prompts
   'prompt.copy': { req: z.string(), res: Void },
   /**
-   * Pastes into the open AI chat; with none open, copies the prompt and opens the student's usual
-   * AI (prefilled where the site allows), and says which in `opened`.
+   * Pastes into the open AI chat. With none open it opens and copies nothing: `ok: false`,
+   * `reason: 'no-chat'` and `usual` (the AI the student usually studies with, or null), so the
+   * caller can offer "Open <usual> and paste" / "Copy" — a website opens only on that click.
+   * `opened` is always null now (kept for older callers).
    */
   'prompt.sendToChat': {
     req: z.string(),
@@ -220,6 +222,19 @@ export const ipcInvoke = {
       ok: z.boolean(),
       reason: z.string().nullable(),
       opened: z.object({ name: z.string(), prefilled: z.boolean() }).nullable().optional(),
+      usual: z.object({ name: z.string() }).nullable().optional(),
+    }),
+  },
+  /**
+   * The explicit "Open <usual AI> and paste" button: copies the prompt and opens the student's
+   * usual AI in the browser (typed in where the site allows, never sent). `opened: null` when
+   * Dumbledore doesn't know one (nothing opens then). Only ever called from a click on a button
+   * that says it opens the AI.
+   */
+  'prompt.openUsualAi': {
+    req: z.string(),
+    res: z.object({
+      opened: z.object({ name: z.string(), prefilled: z.boolean() }).nullable(),
     }),
   },
   /**

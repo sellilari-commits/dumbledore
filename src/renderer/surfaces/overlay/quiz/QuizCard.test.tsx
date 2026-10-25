@@ -81,6 +81,57 @@ describe('QuizCard', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('with no AI chat open: says so, Enter opens nothing, only the Open button opens the AI', async () => {
+    const local = quizApi({
+      'prompt.sendToChat': () => ({
+        ok: false,
+        reason: 'no-chat',
+        opened: null,
+        usual: { name: 'ChatGPT' },
+      }),
+      'prompt.openUsualAi': () => ({ opened: { name: 'ChatGPT', prefilled: false } }),
+    })
+    await mount(local)
+    for (const k of ['3', 'Enter', '1', 'Enter', '1', 'Enter', '2']) {
+      key(k)
+      await flush()
+    }
+    key('Enter') // See results
+    await flush()
+    key('Enter') // Fix my gaps
+    await flush()
+    expect(screen.getByText('ChatGPT isn’t open.')).toBeTruthy()
+    key('Enter') // never opens a website
+    await flush()
+    expect(local.calls.some((c) => c.channel === 'prompt.openUsualAi')).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Open ChatGPT and paste' }))
+    await flush()
+    const opened = local.calls.filter((c) => c.channel === 'prompt.openUsualAi')
+    expect(opened).toHaveLength(1)
+    expect(String(opened[0]?.payload)).toContain('Carbocation stability')
+    expect(screen.getByText('Opened ChatGPT · paste with ⌘V')).toBeTruthy()
+  })
+
+  it('with no AI chat open, Copy copies the fix prompt', async () => {
+    const local = quizApi({
+      'prompt.sendToChat': () => ({ ok: false, reason: 'no-chat', opened: null, usual: null }),
+      'prompt.copy': () => undefined,
+    })
+    await mount(local)
+    for (const k of ['3', 'Enter', '1', 'Enter', '1', 'Enter', '2', 'Enter', 'Enter']) {
+      key(k)
+      await flush()
+    }
+    expect(screen.getByText('No AI chat is open.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Open / })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }))
+    await flush()
+    expect(local.calls.find((c) => c.channel === 'prompt.copy')?.payload).toContain(
+      'Carbocation stability',
+    )
+    expect(screen.getByText('Copied · paste with ⌘V')).toBeTruthy()
+  })
+
   it('resumes at the first unanswered question', async () => {
     const answers = new Map([['q1', 3]])
     const local = fakeApi({ 'quiz.get': (id) => demoQuiz(id, answers) })

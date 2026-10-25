@@ -124,6 +124,39 @@ describe('SubjectPage', () => {
     expect(sent).toContain('My question: Why does hyperconjugation')
   })
 
+  it('with no AI chat open, Fix it opens nothing and offers Open ChatGPT and paste / Copy', async () => {
+    const r = renderSubject()
+    r.api.db.appState.aiChat = null
+    r.api.db.appState.assistant = { key: 'chatgpt', name: 'ChatGPT', open: false }
+    const invoke = vi.spyOn(r.api, 'invoke')
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Fix Carbocation stability with your AI' }),
+    )
+    const choice = await screen.findByRole('group', { name: 'No AI chat open' })
+    expect(within(choice).getByText('ChatGPT isn’t open.')).toBeTruthy()
+    expect(choice.closest('li')?.textContent).toMatch(/^Carbocation stability/)
+    expect(invoke.mock.calls.map((c) => c[0])).not.toContain('prompt.openUsualAi')
+    fireEvent.click(within(choice).getByRole('button', { name: 'Open ChatGPT and paste' }))
+    await waitFor(() =>
+      expect(toastTexts()).toContain('Opened ChatGPT — your prompt is copied: paste it with ⌘V.'),
+    )
+    const opened = invoke.mock.calls.filter((c) => c[0] === 'prompt.openUsualAi')
+    expect(opened).toHaveLength(1)
+    expect(String(opened[0]?.[1])).toContain("I'm stuck on Carbocation stability")
+  })
+
+  it('with no AI chat open, Copy copies the fix prompt', async () => {
+    const r = renderSubject()
+    r.api.db.appState.aiChat = null
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Fix Carbocation stability with your AI' }),
+    )
+    const choice = await screen.findByRole('group', { name: 'No AI chat open' })
+    expect(within(choice).getByText('No AI chat is open.')).toBeTruthy()
+    fireEvent.click(within(choice).getByRole('button', { name: 'Copy' }))
+    await waitFor(() => expect(toastTexts()).toContain('Prompt copied — paste it into your AI'))
+  })
+
   it('studies a gap', async () => {
     renderSubject()
     fireEvent.click(await screen.findByRole('button', { name: 'Study Carbocation stability' }))

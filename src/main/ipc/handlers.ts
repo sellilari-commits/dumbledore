@@ -46,8 +46,9 @@ export interface HandlerExtras {
   /** File picker for study material; [] when cancelled. */
   pickMaterialFiles: () => Promise<string[]>
   /**
-   * Opens a web address in the default browser (the student's AI, to explore a prompt), or a
-   * file:// address in its default app (a topic's extracted text).
+   * Opens a web address in the default browser (the student's usual AI, only from the explicit
+   * "Open <AI> and paste" button), or a file:// address in its default app (a topic's extracted
+   * text, on the student's click). Never call it without the student asking.
    */
   openExternal: (url: string) => Promise<void>
 }
@@ -311,17 +312,21 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
     'prompt.copy': (text) => hooks.platform.writeClipboard(text),
     'prompt.sendToChat': async (text) => {
       if (!services.perception.aiChat()) {
-        // No AI chat open: copy the prompt and open the student's usual AI instead.
+        // No AI chat open: open nothing (no website without the student asking). The caller
+        // offers "Open <usual> and paste" (prompt.openUsualAi) and "Copy".
         const usual = usualFromCaptures()
-        const link = usual ? assistantLink(usual, text) : null
-        if (usual && link) {
-          await hooks.platform.writeClipboard(text)
-          await extras.openExternal(link.url)
-          return { ok: true, reason: null, opened: { name: usual.name, prefilled: link.prefilled } }
-        }
+        return { ok: false, reason: 'no-chat', opened: null, usual: usual && { name: usual.name } }
       }
       const out = await core.writer.write({ text, mode: 'insert', target: 'chat' })
       return { ok: out.ok, reason: out.reason, opened: null }
+    },
+    'prompt.openUsualAi': async (text) => {
+      const usual = usualFromCaptures()
+      const link = usual ? assistantLink(usual, text) : null
+      if (!usual || !link) return { opened: null }
+      await hooks.platform.writeClipboard(text)
+      await extras.openExternal(link.url)
+      return { opened: { name: usual.name, prefilled: link.prefilled } }
     },
     'prompt.write': ({ context }) => core.promptWriter.write(context),
 

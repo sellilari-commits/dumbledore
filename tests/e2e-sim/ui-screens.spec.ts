@@ -1,7 +1,8 @@
 /**
  * Every app route in a plain browser against the mock API (?mock=1), light and dark: full-length
  * screenshots to __screenshots__/route-<route>-<theme>.png for design review, plus the exam flow
- * (empty list, New exam dialog, "writing" state, taking with feedback) as
+ * (empty list, New exam dialog, "writing" state, taking with feedback, the "ChatGPT isn't
+ * open" choice) as
  * ui-exams-<state>-<theme>.png. Page lanes own ui-<page>-* for their own specs; this spec never
  * writes those. A route fails softly when it crashes (error boundary, not-found page or an
  * uncaught error) — the screenshot is still written. Starts its own Vite preview server on 5180
@@ -200,6 +201,19 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(page.getByRole('dialog')).toHaveCount(0)
       await shoot(page, 'ui-exams-writing', theme, false)
       await expect(page.getByText(/^0 of \d+ answered$/)).toBeVisible({ timeout: 5000 })
+      await expectHealthy(page, errors)
+    })
+
+    test('ui-exams-no-chat', async ({ page }) => {
+      const errors = watchErrors(page)
+      await open(page, { name: 'exams-no-chat', route: `/exams/${EXAM_DONE}?chat=0` }, theme)
+      await page.getByRole('button', { name: 'Explore with ChatGPT' }).click()
+      const choice = page.getByRole('group', { name: 'No AI chat open' })
+      await expect(choice.getByText('ChatGPT isn’t open.')).toBeVisible()
+      await expect(choice.getByRole('button', { name: 'Open ChatGPT and paste' })).toBeVisible()
+      await choice.scrollIntoViewIfNeeded()
+      await page.waitForTimeout(250)
+      await shoot(page, 'ui-exams-no-chat', theme, false)
       await expectHealthy(page, errors)
     })
 
