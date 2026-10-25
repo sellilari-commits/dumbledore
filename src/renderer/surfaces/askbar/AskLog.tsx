@@ -1,7 +1,9 @@
 /**
  * The Ask bar conversation: the student's questions as grey bubbles on the right, Dumbledore's
  * markdown replies with their action chips on the left, the reply being written (streamed) and
- * the last error. It stays on the newest message unless the student scrolled up to read.
+ * the last error. Until the reply arrives, the working indicator (Working.tsx: pulsing dots and
+ * the current step) stands where it will appear, and comes back under streamed words while a tool
+ * runs. It stays on the newest message unless the student scrolled up to read.
  * Dumbledore's own answers are saved only when the student chooses: "Save to subject" puts the
  * answer (without its "Saved to …" receipt lines) as a note on the current topic.
  * What a chat tool wrote shows as receipt rows under the reply (Receipts.tsx); a line of the reply
@@ -20,6 +22,7 @@ import { ActionChips } from './ActionChips'
 import { isReceipt, Receipts } from './Receipts'
 import type { AskController, AskError, AskMessage } from './useAsk'
 import { useStickToBottom } from './useStickToBottom'
+import { Working } from './Working'
 
 const OPENABLE = /^(https?:|mailto:)/i
 
@@ -165,11 +168,8 @@ export function AskLog({ chat }: { chat: AskController }) {
         ))}
         {pending && (
           <div className="ask__msg ask__msg--assistant" aria-live="polite">
-            {pending.text ? (
-              <Reply text={pending.text} streaming />
-            ) : (
-              <p className="ask__thinking">Thinking…</p>
-            )}
+            {pending.text && <Reply text={pending.text} streaming={!pending.step} />}
+            {pending.step && <Working label={pending.step} />}
           </div>
         )}
         {error && (

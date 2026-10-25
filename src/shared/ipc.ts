@@ -271,6 +271,15 @@ export const ipcEvents = {
     delta: z.string(),
     done: z.boolean(),
   }),
+  /**
+   * What the chat is doing while a reply is on its way (a tool started, or back to thinking):
+   * a short label for the Ask bar's working indicator, under the same messageId as 'chat.delta'.
+   */
+  'chat.progress': z.object({
+    thread: z.string(),
+    messageId: Id,
+    label: z.string(),
+  }),
   /** Main asks a window to show a route (e.g. open the app on an exam). */
   navigate: z.object({ route: z.string() }),
   /** Trigger-key gestures, forwarded to the app window (onboarding teaches the key with it). */

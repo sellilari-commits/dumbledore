@@ -46,6 +46,8 @@ export interface ShellHooks {
   version: string
   onOverlayChange: (state: OverlayState) => void
   onChatDelta: (delta: EventPayload<'chat.delta'>) => void
+  /** The chat's current step while a reply is on its way (the Ask bar's working indicator). */
+  onChatProgress?: (progress: EventPayload<'chat.progress'>) => void
   /** Shortcut work started or finished (the shell registers Esc while busy). */
   onBusy: (busy: boolean) => void
   /** Something AppState depends on changed. */
@@ -254,6 +256,7 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     contextText,
     runAction,
     emitDelta: hooks.onChatDelta,
+    emitProgress: hooks.onChatProgress,
     feedback: repos.feedback,
     saves: chatSaves,
     assistantName: () => perception.aiChat()?.assistant ?? usualAssistant()?.name ?? null,

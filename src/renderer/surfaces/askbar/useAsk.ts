@@ -4,7 +4,9 @@
  * `subjectId`) with the reply streamed
  * from 'chat.delta' while it is written, action chips per reply (`coach.runAction`, then the bar
  * closes; a receipt's Undo and a confirmation chip run in place, see runInPlace) and "New chat".
- * One question at a time; a reply that lands after "New chat" is dropped.
+ * One question at a time; a reply that lands after "New chat" is dropped. While the reply is on its
+ * way, `pending.step` is the working indicator's label: "Thinking…" from Enter, then the tool
+ * loop's steps from 'chat.progress'; null while the reply's words stream in.
  */
 import type { ChatMessage, CoachAction } from '@shared/domain'
 import type { DumbledoreApi } from '@shared/ipc'
@@ -32,7 +34,11 @@ export interface AskPending {
   text: string
   /** The chat.delta message id it streams under (the first one seen wins). */
   streamId: string | null
+  /** What Dumbledore is doing ("Thinking…", "Searching the web…"); null while words stream in. */
+  step: string | null
 }
+
+export const THINKING = 'Thinking…'
 
 export interface AskError {
   message: string
@@ -130,7 +136,20 @@ export function useAsk(api: DumbledoreApi): AskController {
         setPending((p) =>
           !p || (p.streamId !== null && p.streamId !== d.messageId)
             ? p
-            : { streamId: d.messageId, text: p.text + d.delta },
+            : { streamId: d.messageId, text: p.text + d.delta, step: null },
+        )
+      }),
+    [api],
+  )
+
+  useEffect(
+    () =>
+      api.on('chat.progress', (d) => {
+        if (!ASK_THREADS.has(d.thread) || !d.label) return
+        setPending((p) =>
+          !p || (p.streamId !== null && p.streamId !== d.messageId)
+            ? p
+            : { ...p, streamId: d.messageId, step: d.label },
         )
       }),
     [api],
@@ -145,7 +164,7 @@ export function useAsk(api: DumbledoreApi): AskController {
       const mine = localMessage('user', question)
       setError(null)
       setMessages((m) => [...m, mine])
-      setPending({ text: '', streamId: null })
+      setPending({ text: '', streamId: null, step: THINKING })
       const after = since.current
       try {
         const result = await api.invoke('ask.submit', {

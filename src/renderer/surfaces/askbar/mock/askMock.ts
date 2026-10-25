@@ -14,6 +14,7 @@ import type { ChatMessage } from '@shared/domain'
 import type { DumbledoreApi } from '@shared/ipc'
 import { createLocalApi } from '../../overlay/lib/localApi'
 import { ASK_THREAD } from '../askHistory'
+import { mockWork } from './askProgress'
 import { cannedPrompt, cannedReply, SEED_QUESTIONS } from './askReplies'
 import { demoSession, demoSubject, demoSubjects } from './askTopics'
 
@@ -56,6 +57,9 @@ export function createAskMock(search: string = window.location.search): Dumbledo
       add('user', text)
       const result = cannedReply(text)
       const messageId = `ask_pending_${seq}`
+      await mockWork(params, (label) =>
+        local.emit('chat.progress', { thread: ASK_THREAD, messageId, label }),
+      )
       const words = result.reply.split(/(?<= )/)
       for (let i = 0; i < words.length; i += 3) {
         await new Promise((r) => window.setTimeout(r, CHUNK_MS))

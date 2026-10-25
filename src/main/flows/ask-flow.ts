@@ -35,6 +35,7 @@ import type { AskResult } from '@shared/state'
 import type { ChatWriter, FieldSnapshot } from '../chat/chat-writer'
 import type { ChatTools, ChatTurnTools } from '../chat-tools'
 import { askedToOpen, type StartRoadmapAction } from '../chat-tools/flows'
+import { withProgress } from '../chat-tools/progress'
 import { sourcesMarkdown } from '../chat-tools/web-search'
 import { coachActionLabel } from '../overlay/labels'
 import type { ToastSpec } from '../overlay/toasts'
@@ -59,6 +60,8 @@ export interface AskFlowDeps {
   runAction: (action: CoachAction) => Promise<void>
   /** Streams the reply to the windows (thread 'ask'); optional, the result carries it too. */
   emitDelta?: (delta: EventPayload<'chat.delta'>) => void
+  /** The tool loop's current step ("Reading your roadmap…") for the Ask bar; optional. */
+  emitProgress?: (progress: EventPayload<'chat.progress'>) => void
   /** Feedback store; without it give_feedback is ignored. */
   feedback?: Pick<FeedbackRepo, 'add'>
   /** Saves what the chat hears into the student's studying; without it saves stay chips. */
@@ -335,7 +338,9 @@ export class AskFlow {
       await thinking.run('Thinking…', async () => {
         const events = brain.coachLoop?.(
           { profile: repos.profile.get().summary, context, history, message: text },
-          turn,
+          withProgress(turn, (label) =>
+            this.deps.emitProgress?.({ thread: ASK_THREAD, messageId, label }),
+          ),
           { signal: opts.signal },
         )
         if (!events) return

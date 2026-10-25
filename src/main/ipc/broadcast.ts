@@ -13,6 +13,7 @@ export const EVENT_ROUTES: Record<EventChannel, readonly Surface[]> = {
   'memory.changed': ['overlay', 'panel', 'askbar', 'app'],
   'session.changed': ['overlay', 'panel', 'askbar', 'app'],
   'chat.delta': ['panel', 'askbar', 'app'],
+  'chat.progress': ['askbar'],
   navigate: [],
   'key.gesture': ['app'],
 }

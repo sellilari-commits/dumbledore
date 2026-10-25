@@ -162,6 +162,7 @@ async function start(paths: AppPaths): Promise<void> {
       syncQuizKeys()
     },
     onChatDelta: (delta) => broadcaster.emit('chat.delta', delta),
+    onChatProgress: (progress) => broadcaster.emit('chat.progress', progress),
     onBusy: (busy) => shortcuts.setEscape(busy, () => core.router.cancel()),
     notify: ({ title, body }) => {
       if (Notification.isSupported()) new Notification({ title, body }).show()
