@@ -65,6 +65,9 @@ export const IPC_TOOL_CLASS: Record<InvokeChannel, IpcToolClass> = {
   'concepts.update': 'write',
   'concepts.delete': 'write',
   'encounters.delete': 'write',
+  // Roadmap versions: history is read through `read`; a restore runs as its own act with Undo.
+  'roadmaps.history': 'read',
+  'roadmaps.restore': 'deny',
 
   // Acts: small, local, what the student would do with one click in the app.
   // Study session: start, step on, stop (start_roadmap plans a new roadmap in the background).
