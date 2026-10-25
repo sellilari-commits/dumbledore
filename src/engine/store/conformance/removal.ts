@@ -52,6 +52,31 @@ export function removalSuite(t: () => ConformanceTarget): void {
       expect(() => repos.concepts.remove(mid.id)).toThrow(/not found/)
     })
 
+    it('a removed concept can be restored with its id and fields', () => {
+      const { repos } = t()
+      const s = repos.subjects.create({ name: 'History' })
+      const top = repos.concepts.upsert({ subjectId: s.id, name: 'Finland' })
+      const mid = repos.concepts.upsert({
+        subjectId: s.id,
+        name: 'Tampere',
+        parentName: 'Finland',
+        summary: 'Mill town on the Tammerkoski rapids',
+      })
+      const before = repos.concepts.update(mid.id, { mastery: 0.4, summaryPinned: true })
+
+      repos.concepts.remove(mid.id)
+      expect(repos.concepts.restore(before)).toEqual(before)
+
+      expect(repos.concepts.get(mid.id)).toEqual(before)
+      expect(repos.concepts.findByName(s.id, 'tampere')?.id).toBe(mid.id)
+      expect(repos.search.query('Tammerkoski', 10).map((h) => h.id)).toContain(mid.id)
+      expect(() => repos.concepts.restore(before)).toThrow(/exists/)
+
+      repos.concepts.remove(mid.id)
+      repos.concepts.remove(top.id)
+      expect(repos.concepts.restore(before).parentId).toBeNull()
+    })
+
     it('deleting an encounter deletes its notes and its screen text unless shared', () => {
       const { repos } = t()
       const s = repos.subjects.create({ name: 'History' })

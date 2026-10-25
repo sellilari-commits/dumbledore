@@ -131,6 +131,19 @@ export function createConceptRepo(ctx: StoreCtx): SqliteConceptRepo {
       })()
     },
 
+    restore(concept) {
+      if (repo.get(concept.id)) throw new Error(`concept ${concept.id} already exists`)
+      const parentId = concept.parentId && repo.get(concept.parentId) ? concept.parentId : null
+      const row: Concept = { ...concept, parentId }
+      const info = stmt(INSERT).run({
+        ...conceptCodec.params(row),
+        name_key: normalizeName(row.name),
+      })
+      if (row.summaryPinned) stmt('UPDATE concepts SET summary_pinned = 1 WHERE id = ?').run(row.id)
+      index.put('concept', Number(info.lastInsertRowid), [row.name, row.summary])
+      return must(repo.get(row.id), `concept ${row.id}`)
+    },
+
     moveToSubject(id, subjectId) {
       const concept = must(repo.get(id), `concept ${id}`)
       if (concept.subjectId === subjectId) return concept

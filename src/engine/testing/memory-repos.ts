@@ -324,6 +324,16 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
         edges = edges.filter((e) => e.fromId !== id && e.toId !== id)
         concepts.delete(id)
       },
+      restore(concept) {
+        if (concepts.has(concept.id)) throw new Error(`concept ${concept.id} already exists`)
+        must(subjects.get(concept.subjectId), `subject ${concept.subjectId}`)
+        const parentId =
+          concept.parentId && concepts.has(concept.parentId) ? concept.parentId : null
+        const next: Concept = { ...clone(concept), parentId }
+        if (!next.summaryPinned) delete next.summaryPinned
+        concepts.set(next.id, next)
+        return clone(next)
+      },
     },
 
     encounters: {

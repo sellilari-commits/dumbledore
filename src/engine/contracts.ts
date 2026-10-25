@@ -165,6 +165,12 @@ export interface ConceptRepo {
    * parent, its encounters and quiz questions lose the link, its edges go.
    */
   remove(id: Id): void
+  /**
+   * Puts a removed concept back with its id and fields (the Undo of `remove`). Its parent must
+   * still exist, else it comes back top-level. Notes, children, edges and links are the caller's
+   * to restore. Throws when a concept with that id exists.
+   */
+  restore(concept: Concept): Concept
   listStruggling(limit: number): Concept[]
 }
 
