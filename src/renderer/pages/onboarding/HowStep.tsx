@@ -86,8 +86,8 @@ export function HowStep({
           <WritesPrompts keyName={keyName} />
           <div className="dd-how__title">It writes your prompts</div>
           <p className="dd-how__text">
-            In ChatGPT, Claude or Gemini, tap {keyName}. You get a step-by-step plan and a prompt
-            that starts from what you already know.
+            In ChatGPT, Claude or Gemini, tap {keyName} for a prompt that starts from what you
+            already know. Hold it on a page or an answer to see what to read.
           </p>
         </li>
         <li className="dd-how__card">

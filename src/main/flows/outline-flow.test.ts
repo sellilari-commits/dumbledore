@@ -109,6 +109,22 @@ describe('OutlineFlow', () => {
     expect(shown[0]?.windowId).toBe(7)
   })
 
+  it('in an AI chat it outlines only the answers: the student’s right-aligned messages are left out', async () => {
+    const chat = page()
+    chat.lines[0] = {
+      ...chat.lines[0],
+      text: 'why are tertiary carbocations stable?',
+      align: 'right',
+    } as never
+    await flow({ frontWindow: async () => chat, isAiChat: () => true }).run()
+    expect(inputs[0]?.page.kind).toBe('ai_chat')
+    expect(inputs[0]?.lines.map((l) => l.text)).not.toContain(
+      'why are tertiary carbocations stable?',
+    )
+    await flow().run()
+    expect(inputs[1]?.page.kind).toBe('page')
+  })
+
   it('saves each passage to read as a highlight note on the subject', async () => {
     const changed = vi.fn()
     await flow({ changed }).run()

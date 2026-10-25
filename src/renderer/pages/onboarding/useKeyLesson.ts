@@ -54,7 +54,7 @@ export function initialLesson(key: TriggerKey): LessonState {
   }
 }
 
-const HOLD = 'tell Dumbledore what you want, it writes the prompt'
+const HOLD = 'on a page or an AI answer it marks what to read'
 
 /** The next lesson state after one gesture. Pure, so it is easy to test. */
 export function react(state: LessonState, g: KeyGesture, key: TriggerKey): LessonState {
@@ -100,7 +100,7 @@ export function react(state: LessonState, g: KeyGesture, key: TriggerKey): Lesso
         presses: state.presses + 1,
         verdict: {
           tone: 'good',
-          text: `That’s a double-tap: it opens a chat with Dumbledore. ${nextMove(next)}`,
+          text: `That’s a double-tap: it opens the chat with Dumbledore. ${nextMove(next)}`,
         },
       }
     }
@@ -111,7 +111,7 @@ export function react(state: LessonState, g: KeyGesture, key: TriggerKey): Lesso
         verdict: state.tapped
           ? {
               tone: 'good',
-              text: 'Holding… now tell Dumbledore what you want, it writes the prompt.',
+              text: 'Holding… on a page or an AI answer, this marks what to read.',
             }
           : {
               tone: 'warn',

@@ -44,9 +44,13 @@ login keychain is left alone). Grant once and rebuilds keep it. A switch left fr
 looks on but doesn't apply: onboarding and Settings → Capture then offer **Already on? Reset and
 ask again**. `SIGN_IDENTITY` overrides the identity (`-` = ad hoc, tied to one build).
 
-The right ⌥ key is Dumbledore's key: tap in an AI chat for the next
-study prompt, tap on an article or PDF to outline what to read, hold to write a prompt,
-double-tap to chat.
+The right ⌥ key is Dumbledore's key, with one job per gesture:
+- **Tap: the prompt.** In your AI chat: the next step, your prompt rewritten, or the best next
+  question. With text selected: Explain / Add to a roadmap / Quiz me. A tap never starts a roadmap.
+- **Hold: mark what to read** on an article, a PDF or the AI's answer, for your goal and gaps.
+  Hold again to clear.
+- **Double-tap: talk to Dumbledore.** Ask anything or plan your studying; what you tell it is
+  saved to your subject (each save shows in the chat, with Undo).
 
 ## Test
 

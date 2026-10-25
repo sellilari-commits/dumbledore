@@ -99,7 +99,9 @@ describe('OnboardingPage', () => {
     act(() => r.api.pressKey('tap', 'leftOption'))
     expect(await screen.findByText('That’s left ⌥ — tap right ⌥ instead.')).toBeTruthy()
     act(() => r.api.pressKey('holdStart'))
-    expect(await screen.findByText(/That’s a hold — tell Dumbledore what you want/)).toBeTruthy()
+    expect(
+      await screen.findByText(/That’s a hold — on a page or an AI answer it marks/),
+    ).toBeTruthy()
     act(() => r.api.pressKey('holdEnd'))
     // A real press in this window: keydown + keyup of the right Option key.
     fireEvent.keyDown(window, { code: 'AltRight', key: 'Alt' })
@@ -108,14 +110,12 @@ describe('OnboardingPage', () => {
     act(() => r.api.pressKey('holdStart'))
     act(() => r.api.pressKey('holdEnd'))
     expect(
-      await screen.findByText(/That’s a hold: tell Dumbledore what you want, it writes the prompt/),
+      await screen.findByText(/That’s a hold: on a page or an AI answer it marks what to read/),
     ).toBeTruthy()
     act(() => r.api.pressKey('doubleTap'))
-    expect(await screen.findByText(/it opens a chat with Dumbledore/)).toBeTruthy()
+    expect(await screen.findByText(/it opens the chat with Dumbledore/)).toBeTruthy()
     expect(
-      screen.getByText(
-        /^Tell Dumbledore what you want, it writes the prompt and pastes it into your AI chat\.$/,
-      ),
+      screen.getByText(/^On an article, a PDF or the AI's answer: what to read for your gaps\./),
     ).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(
       false,

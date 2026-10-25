@@ -1,23 +1,22 @@
 /**
- * The shortcut decision table (PLAN §4 D8, §5.3 F4, §5.6), as a pure function.
+ * The shortcut decision table (PLAN §4 D8, §5.3 F4, §5.6), as a pure function. Three gestures, one
+ * job each (Olle, 2026-10-25):
  *
- * Short press = the prompt (Ilari, 2026-10-24). A right-⌥ tap resolves in order (an orb click only
- * toggles the mini panel, see ShortcutRouter.orbClick): ask bar
- * / quiz card open → Enter · password field → refuse · in the AI-chat box: `/d …` line →
- * instruction, the student's own text → rewrite it in place (also during a session), empty → the
- * next step of a running session, else study the subject worked on last · outline marks showing
- * → clear them · session in an AI chat → next step · `/d …` line in another field → instruction
- * · selection → actions toast · mini panel open → close it · reading a page (PDF, article) →
- * outline what to read · AI chat open → study the subject worked on last · else → toggle the
- * mini panel.
- * A click on the suggestion chip is a tap, except that it inserts the suggested prompt into an
- * empty box.
+ *   Tap         = the quick, smart prompt. In order: ask bar / quiz card open → Enter · password
+ *                 field → refuse · in the AI-chat box: `/d …` line → instruction, the student's own
+ *                 text → rewrite it in place, empty → the session's next step, else the best next
+ *                 prompt (suggest) · session in an AI chat → next step · `/d …` line in another
+ *                 field → instruction · selection → actions toast · mini panel open → close it ·
+ *                 AI chat open → the best next prompt · else → toggle the mini panel.
+ *                 A tap never starts a roadmap and never outlines.
+ *   Hold        = the longer job on what is on screen: outline what to read, on an article, a PDF
+ *                 or an AI chat's answers (even with the cursor in the chat box); a hold while the
+ *                 marks show clears them. A quiz card swallows it; an open ask bar takes focus.
+ *   Double-tap  = knock on Dumbledore's door: the chat with Dumbledore (talk, ask, plan studying),
+ *                 and again to close it (from the study box it switches to the chat).
  *
- * Long press (holdStart) opens the prompt box: the ask bar with route 'prompt', where the student
- * says what they want and Dumbledore writes the prompt and pastes it into the AI chat (the
- * 'prompt.write' channel). Double-tap opens the chat with Dumbledore, plain, and closes it again
- * when it is open (from the study box it switches to the chat). A hold focuses an open ask bar.
- * A quiz card swallows the hold. holdEnd → nothing.
+ * A click on the suggestion chip is a tap. holdEnd → nothing. An orb click only toggles the mini
+ * panel (ShortcutRouter.orbClick).
  *
  * The field value and the selection are read from the helper only on an explicit gesture, and
  * only when the table needs them: `decide` returns `need` until the caller supplies them.
@@ -42,9 +41,7 @@ export interface RouteContext {
   secureInput: boolean
   /** The mini panel is open: a tap outside a chat box closes it again. */
   panelOpen?: boolean
-  /** The front window is a page being read (PDF, article), not an AI chat. */
-  reading?: boolean
-  /** Outline marks are showing over the page. */
+  /** Outline marks are showing over the page (a hold clears them). */
   outlineShown?: boolean
   /** undefined = not read yet; null = could not be read. */
   fieldText?: string | null
@@ -60,10 +57,6 @@ export type Decision =
   | { kind: 'focusAskbar' }
   /** Double-tap while the chat is open: it closes (a toggle). */
   | { kind: 'closeAskbar' }
-  /** The prompt box: the ask bar with route 'prompt' ("tell Dumbledore what you want"). */
-  | { kind: 'promptBox' }
-  /** Resume or start the subject worked on last (the router finds it). */
-  | { kind: 'studyLast' }
   | { kind: 'enter'; surface: 'askbar' | 'overlay' }
   | { kind: 'refuseSecure' }
   | { kind: 'sessionNext' }
@@ -107,7 +100,7 @@ export function decide(input: RouteInput, ctx: RouteContext): Decision {
     case 'holdStart':
       return decideHold(ctx)
     default:
-      return decideTap(input, ctx)
+      return decideTap(ctx)
   }
 }
 
@@ -126,10 +119,12 @@ function draftOf(ctx: RouteContext): { draft: string } | 'unreadable' | 'empty' 
 
 function decideHold(ctx: RouteContext): Decision {
   if (ctx.quizOpen) return { kind: 'ignore' }
-  return ctx.askbarOpen ? { kind: 'focusAskbar' } : { kind: 'promptBox' }
+  if (ctx.askbarOpen) return { kind: 'focusAskbar' }
+  return ctx.outlineShown ? { kind: 'clearOutline' } : { kind: 'outline' }
 }
 
-function decideTap(input: 'tap' | 'chip', ctx: RouteContext): Decision {
+/** A tap and a chip click decide alike. */
+function decideTap(ctx: RouteContext): Decision {
   if (ctx.askbarOpen) return { kind: 'enter', surface: 'askbar' }
   if (ctx.quizOpen) return { kind: 'enter', surface: 'overlay' }
   if (isSecure(ctx)) return { kind: 'refuseSecure' }
@@ -142,12 +137,9 @@ function decideTap(input: 'tap' | 'chip', ctx: RouteContext): Decision {
     const d = draftOf(ctx)
     if (d === 'unreadable') return { kind: 'unreadable' }
     if (d !== 'empty') return { kind: 'improve', draft: d.draft }
-    if (ctx.sessionActive) return { kind: 'sessionNext' }
-    return input === 'chip' ? { kind: 'suggest' } : { kind: 'studyLast' }
+    return ctx.sessionActive ? { kind: 'sessionNext' } : { kind: 'suggest' }
   }
 
-  // Outside the chat box, a tap on showing marks clears them, even during a study session.
-  if (ctx.outlineShown) return { kind: 'clearOutline' }
   if (ctx.sessionActive && chat) return { kind: 'sessionNext' }
 
   if (ctx.focused?.editable) {
@@ -160,7 +152,6 @@ function decideTap(input: 'tap' | 'chip', ctx: RouteContext): Decision {
   const selection = ctx.selection?.trim()
   if (selection) return { kind: 'selection', text: selection }
   if (ctx.panelOpen) return { kind: 'togglePanel' }
-  if (ctx.reading) return { kind: 'outline' }
-  if (chat) return { kind: 'studyLast' }
+  if (chat) return { kind: 'suggest' }
   return { kind: 'togglePanel' }
 }

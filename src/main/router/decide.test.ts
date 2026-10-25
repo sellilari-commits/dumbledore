@@ -78,9 +78,9 @@ describe('decide — the F4 tap table', () => {
     })
   })
 
-  it('studies the last subject from an empty AI-chat box; typed text is rewritten in place', () => {
+  it('pastes the best next prompt into an empty AI-chat box; typed text is rewritten in place', () => {
     expect(decide('tap', ctx({ aiChat: CHAT, focused: chatBox(), fieldText: '' }))).toEqual({
-      kind: 'studyLast',
+      kind: 'suggest',
     })
     expect(
       decide('tap', ctx({ aiChat: CHAT, focused: chatBox(15), fieldText: ' what is osmosis ' })),
@@ -104,7 +104,7 @@ describe('decide — the F4 tap table', () => {
   it('a tap never rewrites a field outside the AI-chat box', () => {
     expect(
       decide('tap', ctx({ aiChat: CHAT, focused: notesField, fieldText: 'x', selection: '' })),
-    ).toEqual({ kind: 'studyLast' })
+    ).toEqual({ kind: 'suggest' })
   })
 
   it('a chip click is a tap that rewrites typed text', () => {
@@ -135,38 +135,23 @@ describe('decide — the F4 tap table', () => {
     ).toEqual({ kind: 'selection', text: 'SN1 is unimolecular' })
   })
 
-  it('studies the last subject when an AI chat is open without a session', () => {
-    expect(decide('tap', ctx({ aiChat: CHAT, selection: '' }))).toEqual({ kind: 'studyLast' })
+  it('pastes the best next prompt when an AI chat is open without a session (never a roadmap)', () => {
+    expect(decide('tap', ctx({ aiChat: CHAT, selection: '' }))).toEqual({ kind: 'suggest' })
   })
 
-  it('outlines a page being read, and a second tap clears the marks', () => {
-    expect(decide('tap', ctx({ reading: true, selection: '' }))).toEqual({ kind: 'outline' })
-    expect(decide('tap', ctx({ reading: true, aiChat: CHAT, selection: '' }))).toEqual({
-      kind: 'outline',
+  it('a tap never outlines or clears marks: that is the hold', () => {
+    expect(decide('tap', ctx({ outlineShown: true, selection: '' }))).toEqual({
+      kind: 'togglePanel',
     })
-    expect(decide('tap', ctx({ reading: true, outlineShown: true, selection: '' }))).toEqual({
-      kind: 'clearOutline',
-    })
-    // A selection still wins: the student marked something themselves.
-    expect(decide('tap', ctx({ reading: true, selection: 'SN1' }))).toEqual({
-      kind: 'selection',
-      text: 'SN1',
-    })
+    expect(
+      decide('tap', ctx({ outlineShown: true, sessionActive: true, aiChat: CHAT, selection: '' })),
+    ).toEqual({ kind: 'sessionNext' })
   })
 
-  it('a tap closes the open panel instead of studying or outlining', () => {
+  it('a tap closes the open panel instead of prompting', () => {
     expect(decide('tap', ctx({ panelOpen: true, aiChat: CHAT, selection: '' }))).toEqual({
       kind: 'togglePanel',
     })
-    expect(decide('tap', ctx({ panelOpen: true, reading: true, selection: '' }))).toEqual({
-      kind: 'togglePanel',
-    })
-  })
-
-  it('a tap clears showing marks even while a session runs in a visible chat', () => {
-    expect(
-      decide('tap', ctx({ outlineShown: true, sessionActive: true, aiChat: CHAT, selection: '' })),
-    ).toEqual({ kind: 'clearOutline' })
   })
 
   it('toggles the mini panel anywhere else', () => {
@@ -177,26 +162,26 @@ describe('decide — the F4 tap table', () => {
   })
 })
 
-describe('decide — hold opens the prompt box, double-tap opens the chat plain', () => {
+describe('decide — hold outlines what is on screen, double-tap opens the chat', () => {
   const typed = { aiChat: CHAT, focused: chatBox(15), fieldText: 'what is osmosis' }
 
-  it('hold opens the prompt box, without reading anything', () => {
-    expect(decide('holdStart', ctx())).toEqual({ kind: 'promptBox' })
+  it('hold outlines anywhere, the AI chat included, without reading the field', () => {
+    expect(decide('holdStart', ctx())).toEqual({ kind: 'outline' })
     expect(decide('holdStart', ctx({ aiChat: CHAT, focused: chatBox(15) }))).toEqual({
-      kind: 'promptBox',
+      kind: 'outline',
     })
-    expect(decide('holdStart', ctx({ focused: notesField }))).toEqual({ kind: 'promptBox' })
+    expect(decide('holdStart', ctx({ focused: notesField }))).toEqual({ kind: 'outline' })
   })
 
-  it('hold never rewrites, runs instructions or pastes the next step', () => {
+  it('hold never rewrites, runs instructions or pastes the next step; again, it clears', () => {
     expect(decide('holdStart', ctx({ ...typed, sessionActive: true }))).toEqual({
-      kind: 'promptBox',
+      kind: 'outline',
     })
     expect(
       decide('holdStart', ctx({ aiChat: CHAT, focused: chatBox(9), fieldText: '/d simpler' })),
-    ).toEqual({ kind: 'promptBox' })
-    expect(decide('holdStart', ctx({ ...typed, secureInput: true }))).toEqual({
-      kind: 'promptBox',
+    ).toEqual({ kind: 'outline' })
+    expect(decide('holdStart', ctx({ outlineShown: true, aiChat: CHAT }))).toEqual({
+      kind: 'clearOutline',
     })
   })
 

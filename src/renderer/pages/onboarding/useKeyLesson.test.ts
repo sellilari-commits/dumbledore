@@ -45,20 +45,20 @@ describe('key lesson', () => {
     s = react(s, { gesture: 'holdStart', key: 'rightOption' }, 'rightOption')
     s = react(s, { gesture: 'holdEnd', key: 'rightOption' }, 'rightOption')
     expect([s.tapped, s.held, s.down]).toEqual([true, true, false])
-    expect(s.verdict.text).toMatch(/it writes the prompt\. Now double-tap it/)
+    expect(s.verdict.text).toMatch(/it marks what to read\. Now double-tap it/)
     s = react(s, { gesture: 'tap', key: 'rightOption' }, 'rightOption')
     expect(s.verdict.text).toBe('That’s a tap. Now double-tap it: two quick taps.')
   })
 
-  it('explains a hold as the prompt box, before and after the first tap', () => {
+  it('explains a hold as marking what to read, before and after the first tap', () => {
     const early = react(start, { gesture: 'holdStart', key: 'rightOption' }, 'rightOption')
     expect(early.verdict.text).toMatch(
-      /^That’s a hold — tell Dumbledore what you want, it writes the prompt\. First a quick tap/,
+      /^That’s a hold — on a page or an AI answer it marks what to read\. First a quick tap/,
     )
     const tapped = react(start, { gesture: 'tap', key: 'rightOption' }, 'rightOption')
     const holding = react(tapped, { gesture: 'holdStart', key: 'rightOption' }, 'rightOption')
     expect(holding.verdict.text).toBe(
-      'Holding… now tell Dumbledore what you want, it writes the prompt.',
+      'Holding… on a page or an AI answer, this marks what to read.',
     )
   })
 
@@ -66,7 +66,7 @@ describe('key lesson', () => {
     const s = react(start, { gesture: 'doubleTap', key: 'rightOption' }, 'rightOption')
     expect([s.tapped, s.doubled]).toEqual([true, true])
     expect(s.verdict.text).toBe(
-      'That’s a double-tap: it opens a chat with Dumbledore. Now hold it for half a second.',
+      'That’s a double-tap: it opens the chat with Dumbledore. Now hold it for half a second.',
     )
   })
 

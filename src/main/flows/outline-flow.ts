@@ -1,7 +1,8 @@
 /**
- * Outline (a right-⌥ tap on a page being read): Dumbledore marks
- * what the student needs to read on the PDF or article in front of them, for the subject the
- * page belongs to.
+ * Outline (right-⌥ hold): Dumbledore marks what the student needs to read on what is in front of
+ * them, a PDF, an article or an AI chat's answers, for the subject it belongs to. In an AI chat
+ * only the assistant's answers are marked (P15 gets kind 'ai_chat'; the student's own
+ * right-aligned bubbles are left out).
  *
  *   1. the front window's lines with their screen boxes (Accessibility or OCR),
  *   2. the page's subject (what perception linked it to, else the subject studied last),
@@ -36,6 +37,8 @@ export interface OutlineFlowDeps {
   frontWindow: () => Promise<PerceivedWindow | 'private' | null>
   /** The subject this page belongs to (perception's link, else the last one studied). */
   subjectFor: (window: PerceivedWindow) => Id | null
+  /** Whether the window is a conversation with an AI assistant (ChatGPT, Claude, …). */
+  isAiChat?: (window: PerceivedWindow) => boolean
   /** P15 (Brain.outline once wired). */
   outline: (input: OutlineInput, opts?: { signal?: AbortSignal }) => Promise<OutlineOutput>
   /** Shows the marks (null clears them). */
@@ -113,7 +116,9 @@ export class OutlineFlow {
     const front = await this.deps.frontWindow()
     if (front === 'private') return { kind: 'private' }
     const win = front
-    const lines = win ? pageLines(win) : []
+    const aiChat = win ? (this.deps.isAiChat?.(win) ?? false) : false
+    // In an AI chat the student's own messages sit right-aligned: only the answers count.
+    const lines = win ? pageLines(win).filter((l) => !aiChat || l.align !== 'right') : []
     if (!win || lines.length < MIN_LINES) return { kind: 'unreadable' }
     const subjectId = this.deps.subjectFor(win)
     const subject = subjectId ? repos.subjects.get(subjectId) : null
@@ -122,7 +127,7 @@ export class OutlineFlow {
     const concepts = repos.concepts.listBySubject(subject.id)
     const input: OutlineInput = {
       subject: { name: subject.name, goal: subject.goal },
-      page: { title: win.title, app: win.appName },
+      page: { title: win.title, app: win.appName, kind: aiChat ? 'ai_chat' : 'page' },
       gaps: gaps(concepts),
       known: concepts
         .filter((c) => c.status === 'mastered')

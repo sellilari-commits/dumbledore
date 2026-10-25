@@ -1,6 +1,6 @@
 /**
- * P15 Outline (tier `extract`): the student is reading a page (PDF, article) and asked Dumbledore
- * to outline it. Given the page as numbered lines and the subject's goal, gaps, mastered concepts
+ * P15 Outline (tier `extract`): the student is reading a page (PDF, article, or an AI chat's
+ * answers) and held the Dumbledore key to outline it. Given the page as numbered lines and the subject's goal, gaps, mastered concepts
  * and open questions, mark which passages to READ carefully (they teach a gap, answer an open
  * question or serve the goal), which to SKIM (useful background) and which to SKIP (already
  * known, or off the goal). Code then cleans the ranges: in page order, within the page, no
@@ -26,6 +26,7 @@ Mark passages as line ranges ("from" and "to" are the numbers in <page>, inclusi
 - skip: what they already know (<known>), or off their goal (navigation, references, unrelated sections).
 Leave a line out of every range when it needs no mark.
 Never mark as read or skim: the page title, navigation, menus, tabs, a table of contents, settings or appearance panels, buttons, image captions, references, citations, footnotes, "See also" or "External links". Mark only the article's own text.
+When <page kind="ai_chat">, the page is a conversation with an AI assistant: mark only the assistant's answers, never the student's own messages, the chat box, the conversation list or model pickers. Prefer the latest answer.
 Ranges are in page order and never overlap. Each "why" is at most 8 words and concrete ("Your gap: carbocation stability", "You know SN2 already", "Off topic: history of the method").
 "summary": one sentence on what this page gives the student for their goal.
 Write "why" and "summary" in ${languageName(lang)}.`
@@ -46,7 +47,11 @@ function user(input: OutlineInput): string {
     ),
     tag('known', input.known.length ? bullets(input.known) : '(nothing mastered yet)'),
     tag('open_questions', input.openQuestions.length ? bullets(input.openQuestions) : '(none)'),
-    tag('page', lines.join('\n'), { title: input.page.title, app: input.page.app }),
+    tag('page', lines.join('\n'), {
+      title: input.page.title,
+      app: input.page.app,
+      kind: input.page.kind ?? 'page',
+    }),
   ].join('\n')
 }
 
@@ -79,7 +84,7 @@ export function cleanRanges(out: OutlineOutput, input: OutlineInput): OutlineOut
 export const outlinePrompt: PromptSpec<OutlineInput, OutlineOutput, OutlineOutput> = {
   id: 'P15',
   task: 'outline',
-  version: 2,
+  version: 3,
   tier: 'extract',
   temperature: 0.2,
   maxOutputTokens: 1500,

@@ -114,15 +114,16 @@ export function KeyStep({
         </div>
       </div>
       <ul className="dd-onb__lessons">
-        <Lesson done={lesson.tapped} title="Tap">
-          Writes the prompt in your AI chat (ChatGPT, Claude, Gemini…): for what you studied last,
-          or the next step. Typed your own? It rewrites it (⌘Z undoes).
+        <Lesson done={lesson.tapped} title="Tap · the prompt">
+          In your AI chat (ChatGPT, Claude, Gemini…): the next step, or the best next question.
+          Typed your own? It rewrites it (⌘Z undoes).
         </Lesson>
-        <Lesson done={lesson.held} title="Hold">
-          Tell Dumbledore what you want, it writes the prompt and pastes it into your AI chat.
+        <Lesson done={lesson.held} title="Hold · mark what to read">
+          On an article, a PDF or the AI's answer: what to read for your gaps. Hold again to clear.
         </Lesson>
-        <Lesson done={lesson.doubled} title="Double-tap">
-          Opens the chat with Dumbledore.
+        <Lesson done={lesson.doubled} title="Double-tap · talk to Dumbledore">
+          Like knocking on the door: ask anything, or plan your studying. What you tell it is saved
+          to your subject.
         </Lesson>
       </ul>
       {shortcut.key === 'rightOption' ? (

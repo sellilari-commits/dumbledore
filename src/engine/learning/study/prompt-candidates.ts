@@ -1,7 +1,7 @@
 /**
- * Ranked prompt candidates for an empty chat box (P9, PLAN F3): session next step › an open
- * question from the current page/encounters › struggling concept › due review › deadline ›
- * starter. Each candidate is a complete student prompt (§7 rules), so the top one works as-is
+ * Ranked prompt candidates for an empty chat box (P9, PLAN F3): session next step › the topic
+ * locked in the mini panel › an open question from the current page/encounters › struggling
+ * concept › due review › deadline › starter. A tap pastes the best one; it never starts a roadmap. Each candidate is a complete student prompt (§7 rules), so the top one works as-is
  * when the brain is unavailable.
  */
 import type { Encounter, Profile } from '@shared/domain'
@@ -46,6 +46,19 @@ export function buildCandidates(src: CandidateSources): SuggestCandidate[] {
 
   const step = sessionStepPrompt(src.session)
   if (step) out.push({ kind: 'session_step', text: step })
+
+  const lockedId = repos.settings.get().focusTopicId
+  const locked = lockedId ? repos.concepts.get(lockedId) : null
+  if (locked) {
+    const where =
+      locked.status === 'struggling'
+        ? `I keep getting ${locked.name} wrong.`
+        : `I'm working on ${locked.name}${locked.summary ? ` (${locked.summary})` : ''}.`
+    out.push({
+      kind: 'focus_topic',
+      text: `${context(subjectName(locked.subjectId) ?? locked.name, profile)} ${where} Take me one step further from where I am: 1) the next idea I need, in one sentence, 2) one concrete example, 3) the trap students fall into. ${BREVITY} ${CHECK}`,
+    })
+  }
 
   for (const { question, subjectId } of openQuestions(src)) {
     const q = /[?.!]$/.test(question) ? question : `${question}?`

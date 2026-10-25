@@ -1,6 +1,6 @@
 /**
  * P9 Suggester (tier `write`): picks the single best prompt for an empty chat box from ranked
- * candidates (session step › open question › struggling concept › due review › deadline ›
+ * candidates (session step › locked topic › open question › struggling concept › due review › deadline ›
  * starter) and writes it following the student-prompt rules.
  */
 import {

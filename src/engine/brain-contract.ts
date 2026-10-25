@@ -367,7 +367,12 @@ export type ExamInput = z.infer<typeof ExamInput>
 /** A page the student reads (PDF, article) as numbered lines, plus what they need from it. */
 export const OutlineInput = z.object({
   subject: z.object({ name: z.string(), goal: z.string().nullable() }),
-  page: z.object({ title: z.string().nullable(), app: z.string() }),
+  /** kind 'ai_chat': a conversation with an AI assistant; only its answers get marked. */
+  page: z.object({
+    title: z.string().nullable(),
+    app: z.string(),
+    kind: z.enum(['page', 'ai_chat']).optional(),
+  }),
   /** Concepts the student struggles with or hasn't got yet, with why. */
   gaps: z.array(z.object({ name: z.string(), why: z.string() })),
   /** Concepts already mastered: their passages can be skimmed or skipped. */
@@ -439,6 +444,8 @@ export type PromptWithTip = z.infer<typeof PromptWithTip>
 export const SuggestCandidate = z.object({
   kind: z.enum([
     'session_step',
+    /** The topic the student locked in the mini panel. */
+    'focus_topic',
     'open_question',
     'struggling',
     'due_review',

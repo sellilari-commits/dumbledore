@@ -30,7 +30,6 @@ import type { ToastSpec } from '../overlay/toasts'
 import type { SurfaceControl } from '../platform'
 import { type Decision, decide, type RouteContext, type RouteInput } from './decide'
 import { REFUSE_SECURE, unreadableToast } from './hints'
-import { tapTarget } from './last-subject'
 import type { PendingWork } from './pending'
 import { selectionToast } from './selection-actions'
 import type { SuggestionCache } from './suggestions'
@@ -56,9 +55,8 @@ export interface RouterDeps {
   writer: Pick<ChatWriter, 'write'>
   thinking: Thinking
   pending: PendingWork
-  /** Outline of the page being read (right ⌥ on a PDF or article); absent until wired. */
+  /** Outline of what is on screen (right ⌥ hold: an article, a PDF, an AI chat's answers). */
   outline?: {
-    reading(): boolean
     shown(): boolean
     run(signal: AbortSignal): Promise<OutlineResult>
     clear(): void
@@ -105,7 +103,6 @@ export class ShortcutRouter {
         : null,
       secureInput: opts.secureInput ?? false,
       panelOpen: surfaces.isOpen('panel'),
-      reading: this.deps.outline?.reading() ?? false,
       outlineShown: this.deps.outline?.shown() ?? false,
     }
     // Text in an app the student excluded (or a password manager, a bank) is never read.
@@ -189,23 +186,6 @@ export class ShortcutRouter {
       case 'closeAskbar':
         await surfaces.close('askbar')
         return
-      case 'promptBox':
-        await surfaces.open('askbar', { route: 'prompt' })
-        return
-      case 'studyLast': {
-        const target = tapTarget(this.deps.repos)
-        if (target === null) {
-          await surfaces.open('panel', { route: '/picker' })
-          return
-        }
-        await pending.run((signal) =>
-          sessions.start(
-            { subjectId: target.subjectId, goal: target.goal, question: null },
-            { expect: inChatBox ? snapshot : null, signal },
-          ),
-        )
-        return
-      }
       case 'outline': {
         const outline = this.deps.outline
         if (!outline) return
@@ -242,11 +222,12 @@ export class ShortcutRouter {
         await pending.run(async (signal) => {
           const s = await thinking.run('Writing a prompt…', () => suggestions.get())
           if (signal.aborted) return
+          // Into the box the cursor is in, else into the open AI chat's box.
           const out = await writer.write({
             text: s.prompt,
             mode: 'insert',
-            target: 'focused',
-            expect: snapshot,
+            target: inChatBox ? 'focused' : 'chat',
+            expect: inChatBox ? snapshot : null,
             signal,
           })
           if (!out.ok) return

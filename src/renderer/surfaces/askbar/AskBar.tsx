@@ -2,7 +2,8 @@
  * The Ask bar. Double-tap on right ⌥ opens the chat with Dumbledore (thread 'ask'): a tall, narrow
  * panel beside the orb with the conversation filling it (newest at the bottom) and the input at
  * the bottom. Enter sends, Shift+Enter adds a line, Esc closes and hands focus back, ⌘N (or the pen
- * icon) starts a new chat. Opened with route 'prompt' (right ⌥ hold), it is the compact study box
+ * icon) starts a new chat. Opened with route 'prompt' (no gesture opens it since hold became the
+ * outline, 2026-10-25; to fold into the chat or remove), it is the compact study box
  * instead (560 × 52, growing with its note): the student says what they want to study, Dumbledore
  * builds the subject's roadmap and pastes its first prompt into the AI chat (see usePromptBox).
  * The chat itself never pastes anything.

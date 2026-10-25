@@ -3,7 +3,7 @@
  * (text written through the fake helper, windows opened, toasts shown).
  */
 import { FakeBrain } from '@engine/testing/fake-brain'
-import { currentTopic, listTopics } from '@shared/topics'
+import { listTopics } from '@shared/topics'
 import { describe, expect, it } from 'vitest'
 import { makeFocused } from '../fakes/fake-helper'
 import { CHECKPOINT_QUESTION } from '../flows/session-flow'
@@ -37,19 +37,16 @@ function slowImprove() {
 }
 
 describe('ShortcutRouter', () => {
-  it('(c) a tap in an empty AI-chat box studies the current topic’s subject', async () => {
+  it('(c) a tap in an empty AI-chat box pastes the best next prompt and starts no roadmap', async () => {
     const h = await harness()
     await inChatGPT(h)
-    const { repos } = h.services
-    const topics = listTopics(repos.subjects.list(), (id) => repos.concepts.listBySubject(id))
-    const newest = currentTopic(topics, null)
-    expect(await h.core.router.gesture('tap')).toEqual({ kind: 'studyLast' })
-    expect(h.services.study.current()?.subjectId).toBe(newest?.subjectId)
-    expect(h.helper.state.fieldValue).not.toBe('')
+    expect(await h.core.router.gesture('tap')).toEqual({ kind: 'suggest' })
+    expect(h.helper.state.fieldValue).toMatch(/No greetings or small talk/)
+    expect(h.services.study.current()).toBeNull()
     expect(h.surfaces.log).not.toContain('open:panel:/picker')
   })
 
-  it('a tap with a locked topic studies that topic (its name is the goal)', async () => {
+  it('a tap with a locked topic pastes a prompt about that topic', async () => {
     const h = await harness()
     await inChatGPT(h)
     const { repos } = h.services
@@ -57,16 +54,18 @@ describe('ShortcutRouter', () => {
     const pick = topics.at(-1)
     if (!pick) throw new Error('seed has no topics')
     repos.settings.update({ focusTopicId: pick.id, focusSubjectId: pick.subjectId })
-    expect(await h.core.router.gesture('tap')).toEqual({ kind: 'studyLast' })
-    expect(h.services.study.current()?.subjectId).toBe(pick.subjectId)
+    // The topic leads the prompt (buildCandidates); here: a prompt is pasted, no roadmap starts.
+    expect(await h.core.router.gesture('tap')).toEqual({ kind: 'suggest' })
+    expect(h.helper.state.fieldValue).not.toBe('')
+    expect(h.services.study.current()).toBeNull()
   })
 
-  it('a tap with no subjects at all opens the picker', async () => {
+  it('a tap with no subjects at all pastes a starter prompt', async () => {
     const h = await harness({ seed: false })
     await inChatGPT(h)
-    expect(await h.core.router.gesture('tap')).toEqual({ kind: 'studyLast' })
-    expect(h.surfaces.log).toEqual(['open:panel:/picker'])
-    expect(h.helper.callsTo('input.write')).toHaveLength(0)
+    expect(await h.core.router.gesture('tap')).toEqual({ kind: 'suggest' })
+    expect(h.helper.state.fieldValue).toMatch(/Help me plan how to learn/)
+    expect(h.surfaces.log).toEqual([])
   })
 
   it('the chip writes the suggested prompt into an empty AI-chat box, with no tip toast', async () => {
@@ -123,18 +122,17 @@ describe('ShortcutRouter', () => {
     expect(h.helper.state.fieldValue).toMatch(/why is it unimolecular/)
   })
 
-  it('hold opens the prompt box, in or outside an AI chat, and writes nothing', async () => {
+  it('hold outlines what is on screen, in or outside an AI chat, and writes nothing', async () => {
     const h = await harness()
     await inChatGPT(h, 'typed text stays as it is')
-    expect(await h.core.router.gesture('holdStart')).toEqual({ kind: 'promptBox' })
-    expect(h.surfaces.log).toEqual(['open:askbar:prompt'])
+    expect(await h.core.router.gesture('holdStart')).toEqual({ kind: 'outline' })
+    expect(h.surfaces.log).toEqual([])
     expect(h.helper.callsTo('ax.readFocusedValue')).toHaveLength(0)
     expect(await h.core.router.gesture('holdEnd')).toEqual({ kind: 'ignore' })
-    await h.surfaces.close('askbar')
     h.helper.activateApp(NOTES)
     await flush()
     h.helper.state.focused = makeFocused(NOTES, { role: 'AXWebArea', editable: false })
-    expect(await h.core.router.gesture('holdStart')).toEqual({ kind: 'promptBox' })
+    expect(await h.core.router.gesture('holdStart')).toEqual({ kind: 'outline' })
     expect(h.helper.callsTo('input.write')).toHaveLength(0)
     expect(h.helper.state.fieldValue).toBe('typed text stays as it is')
     expect(h.services.study.current()).toBeNull()
@@ -236,15 +234,16 @@ describe('ShortcutRouter', () => {
     expect(h.services.quizzes.get(quizId ?? '').kind).toBe('review')
   })
 
-  it('(e) studies the last subject in an AI chat when the box is not focused', async () => {
+  it('(e) pastes the best next prompt into the AI chat when its box is not focused', async () => {
     const h = await harness()
     await inChatGPT(h)
     h.helper.state.focused = makeFocused(h.helper.state.frontmost ?? NOTES, {
       role: 'AXWebArea',
       editable: false,
     })
-    expect(await h.core.router.gesture('tap')).toEqual({ kind: 'studyLast' })
-    expect(h.services.study.current()?.phase).toBe('step')
+    expect(await h.core.router.gesture('tap')).toEqual({ kind: 'suggest' })
+    expect(h.helper.state.fieldValue).toMatch(/No greetings or small talk/)
+    expect(h.services.study.current()).toBeNull()
   })
 
   it('(f) toggles the mini panel anywhere else', async () => {
@@ -268,21 +267,12 @@ describe('ShortcutRouter', () => {
     expect(h.surfaces.log).toEqual(['open:askbar', 'open:askbar', 'close:askbar'])
   })
 
-  it('double-tap twice opens and then closes the chat; from the study box it switches', async () => {
+  it('double-tap knocks: it opens the chat with Dumbledore, and again closes it', async () => {
     const h = await harness()
     expect(await h.core.router.gesture('doubleTap')).toEqual({ kind: 'askbar' })
     expect(await h.core.router.gesture('doubleTap')).toEqual({ kind: 'closeAskbar' })
     expect(h.surfaces.isOpen('askbar')).toBe(false)
-    expect(await h.core.router.gesture('holdStart')).toEqual({ kind: 'promptBox' })
-    expect(await h.core.router.gesture('doubleTap')).toEqual({ kind: 'focusAskbar' })
-    expect(await h.core.router.gesture('doubleTap')).toEqual({ kind: 'closeAskbar' })
-    expect(h.surfaces.log).toEqual([
-      'open:askbar',
-      'close:askbar',
-      'open:askbar:prompt',
-      'open:askbar',
-      'close:askbar',
-    ])
+    expect(h.surfaces.log).toEqual(['open:askbar', 'close:askbar'])
   })
 
   it('a long press on the orb closes the open chat', async () => {

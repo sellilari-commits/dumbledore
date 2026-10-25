@@ -18,6 +18,13 @@ describe('P15 outline', () => {
     expect(user).toContain('Carbocation stability (missed 2×)')
     expect(user).toContain('SN2 mechanism')
     expect(user).toContain('3: line 3')
+    expect(user).toContain('kind="page"')
+    const chat = outlinePrompt.build(
+      { ...input, page: { ...input.page, kind: 'ai_chat' } },
+      { onDevice: false, today: '2026-10-25' },
+    )
+    expect(chat.user).toContain('kind="ai_chat"')
+    expect(chat.system).toMatch(/mark only the assistant's answers/)
   })
 
   it('cleans ranges: page order, clamped to the page, no overlaps, short reasons', () => {

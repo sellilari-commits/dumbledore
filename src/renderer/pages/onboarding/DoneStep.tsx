@@ -104,8 +104,8 @@ export function DoneStep({
       </ul>
       <div className="dd-onb__try">
         <span className="dd-onb__try-label">Try it now</span>
-        Open your AI chat (ChatGPT, Claude, Gemini…) and tap {key}: Dumbledore writes a prompt for
-        what you studied last. Typed your own? Tap and it rewrites it.
+        Open your AI chat (ChatGPT, Claude, Gemini…) and tap {key} for your next prompt. Hold it on
+        an article to see what to read, and double-tap to talk to Dumbledore.
       </div>
     </StepFrame>
   )

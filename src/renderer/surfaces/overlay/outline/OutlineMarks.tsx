@@ -5,7 +5,7 @@
  *   · everything else is softly dimmed (a spotlight), and SKIP passages fade further;
  *   · SKIM passages get a quiet bar in the margin;
  *   · a small card at the bottom says how many passages, for which subject, about how long, on
- *     the display showing the page (a tap of the Dumbledore key clears it all).
+ *     the display showing the page (holding the Dumbledore key again clears it all).
  * Marks come in global screen points, clipped to the page's window; each overlay window (one per
  * display) draws them relative to its own origin. Never takes clicks.
  */
@@ -188,7 +188,7 @@ export function OutlineMarks({
               <span className="ov-outline__summary"> {outline.summary}</span>
             ) : null}
           </span>
-          <span className="ov-outline__hint">tap {TRIGGER_KEYS[triggerKey].short} to clear</span>
+          <span className="ov-outline__hint">hold {TRIGGER_KEYS[triggerKey].short} to clear</span>
         </div>
       ) : null}
     </section>

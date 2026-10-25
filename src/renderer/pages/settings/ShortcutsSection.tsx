@@ -43,14 +43,17 @@ export function gestureGroup(key: TriggerKey): KeyGroup {
     group: 'Dumbledore key',
     items: [
       {
-        label: 'The prompt: studied last · next step · rewrite yours',
+        label: 'The prompt: the next step · rewrite yours · the best next question',
         keys: [{ sep: 'tap' }, glyph],
       },
       {
-        label: 'Tell Dumbledore what you want, it writes the prompt',
+        label: 'Mark what to read: articles, PDFs, AI answers (again to clear)',
         keys: [{ sep: 'hold' }, glyph],
       },
-      { label: 'Chat with Dumbledore', keys: [{ sep: 'double-tap' }, glyph] },
+      {
+        label: 'Talk to Dumbledore: ask, plan your studying',
+        keys: [{ sep: 'double-tap' }, glyph],
+      },
     ],
   }
 }
@@ -133,7 +136,7 @@ export function ShortcutsSection({ settings }: { settings: Settings }) {
       >
         <SettingsRow
           label="Key"
-          description="Tap: the prompt — one for what you studied last, the next step, or yours rewritten (⌘Z undoes). Hold: tell Dumbledore what you want, it writes the prompt. Double-tap: chat with Dumbledore."
+          description="Tap: the prompt — the next step, yours rewritten (⌘Z undoes), or the best next question. Hold: mark what to read on the page or in the AI's answer; hold again to clear. Double-tap: talk to Dumbledore — ask, plan your studying."
         >
           <SelectMenu<TriggerKey>
             label="Dumbledore key"

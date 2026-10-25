@@ -17,7 +17,7 @@ const LINES = [
 ]
 
 describe('outline wiring', () => {
-  it('a tap on a page being read marks your gap and saves it; a second tap clears', async () => {
+  it('a hold on a page being read marks your gap and saves it; a second hold clears', async () => {
     const h = await createHarness({ seed: false })
     const { repos } = h.services
     const subject = repos.subjects.create({ name: 'Organic Chemistry' })
@@ -59,7 +59,7 @@ describe('outline wiring', () => {
       }
     })
 
-    expect(await h.core.router.gesture('tap', { source: 'chord' })).toEqual({ kind: 'outline' })
+    expect(await h.core.router.gesture('holdStart')).toEqual({ kind: 'outline' })
     await flush()
     const shown = h.overlayStates.at(-1)?.outline
     expect(shown?.subjectName).toBe('Organic Chemistry')
@@ -77,9 +77,7 @@ describe('outline wiring', () => {
       ['highlight', 'Carbocation stability increases from methyl to tertiary.'],
     ])
 
-    expect(await h.core.router.gesture('tap', { source: 'chord' })).toEqual({
-      kind: 'clearOutline',
-    })
+    expect(await h.core.router.gesture('holdStart')).toEqual({ kind: 'clearOutline' })
     expect(h.overlayStates.at(-1)?.outline).toBeNull()
   })
 })

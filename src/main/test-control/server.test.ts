@@ -140,8 +140,8 @@ describe('TestControlServer', () => {
     // The orb stays on the right edge; it no longer docks beside chat boxes by default.
     expect(overlay.orb.docked).toBe(false)
     const tap = await http(info, 'POST', '/gesture', { gesture: 'tap' })
-    // An empty chat box with no session studies the subject worked on last.
-    expect(tap.json).toEqual({ decision: { kind: 'studyLast' } })
+    // An empty chat box with no session gets the best next prompt (a tap never starts a roadmap).
+    expect(tap.json).toEqual({ decision: { kind: 'suggest' } })
     expect(h.helper.state.fieldValue).toMatch(/No greetings/)
   })
 

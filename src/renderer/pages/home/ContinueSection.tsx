@@ -66,7 +66,7 @@ export function ContinueSection({ items }: { items: HomeData['continue'] }) {
     <Section id="home-continue" title="Continue" icon={<Milestone size={14} strokeWidth={1.75} />}>
       {items.length === 0 ? (
         <p className="hm-quiet">
-          No roadmap in progress. Open an AI chat and tap right ⌥ to start one.
+          No roadmap in progress. Double-tap right ⌥ and tell Dumbledore what you want to study.
         </p>
       ) : (
         <ul className="hm-cards">

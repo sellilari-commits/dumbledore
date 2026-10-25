@@ -82,15 +82,19 @@ describe('SettingsPage', () => {
     await waitFor(() => expect(r.api.db.settings.shortcut.key).toBe('rightCommand'))
   })
 
-  it('teaches the key: tap = the prompt, hold = the prompt box, double-tap = chat', async () => {
+  it('teaches the key: tap = the prompt, hold = mark what to read, double-tap = talk', async () => {
     renderWithApp(page, { route: '/settings/shortcuts' })
     const list = await screen.findByRole('list', { name: 'Dumbledore key' })
-    expect(list.textContent).toContain('The prompt: studied last · next step · rewrite yourstap⌥')
-    expect(list.textContent).toContain('Tell Dumbledore what you want, it writes the prompthold⌥')
-    expect(list.textContent).toContain('Chat with Dumbledoredouble-tap⌥')
+    expect(list.textContent).toContain(
+      'The prompt: the next step · rewrite yours · the best next questiontap⌥',
+    )
+    expect(list.textContent).toContain(
+      'Mark what to read: articles, PDFs, AI answers (again to clear)hold⌥',
+    )
+    expect(list.textContent).toContain('Talk to Dumbledore: ask, plan your studyingdouble-tap⌥')
     expect(
       screen.getByText(
-        /Hold: tell Dumbledore what you want, it writes the prompt\. Double-tap: chat with Dumbledore\./,
+        /Hold: mark what to read on the page or in the AI's answer; hold again to clear\. Double-tap: talk to Dumbledore/,
       ),
     ).toBeTruthy()
   })

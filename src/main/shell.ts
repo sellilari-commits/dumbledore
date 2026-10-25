@@ -5,6 +5,7 @@
  */
 
 import type { AssistantConfig } from '@engine/perception/ai-chat/assistants'
+import { detectAssistant } from '@engine/perception/ai-chat/detector'
 import { usualAssistantFrom } from '@engine/perception/ai-chat/usual'
 import { blockReason, excludedBundleIds } from '@engine/privacy'
 import type { EventPayload } from '@shared/ipc'
@@ -180,8 +181,8 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     contextText,
     emitDelta: hooks.onChatDelta,
   })
-  // Outline (right ⌥ on a page being read): the page's lines with their boxes, read fresh and
-  // never from an excluded app or site, marked for the page's subject and saved to it.
+  // Outline (right ⌥ hold on an article, a PDF or an AI chat's answers): the lines with their
+  // boxes, read fresh and never from an excluded app or site, marked for its subject and saved to it.
   const outlineFlow = new OutlineFlow({
     repos,
     frontWindow: async () => {
@@ -197,6 +198,8 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
       return blockReason(win, win.url, win.title, settings) ? 'private' : win
     },
     subjectFor: () => perception.now()?.subjectId ?? tapTarget(repos)?.subjectId ?? null,
+    isAiChat: (win) =>
+      detectAssistant({ bundleId: win.bundleId ?? '', title: win.title, url: win.url }) !== null,
     outline: (input, opts) => services.brain.outline(input, opts),
     show: (outline) => overlay.setOutline(outline),
     changed: (subjectId) => bus.emit('memory:changed', { scope: 'subjects', ids: [subjectId] }),
@@ -218,7 +221,6 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     thinking,
     pending,
     outline: {
-      reading: () => perception.now()?.kind === 'reading',
       shown: () => overlay.outlineShown,
       run: (signal) => outlineFlow.run(signal),
       clear: () => outlineFlow.clear(),

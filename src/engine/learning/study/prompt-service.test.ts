@@ -64,6 +64,23 @@ describe('prompt candidates', () => {
     expect(candidates[4]?.text).toContain('2026-10-30 (6 days left)')
   })
 
+  it('puts the topic locked in the mini panel right after the session step', () => {
+    const { repos, clock } = setup()
+    const { orgo } = seedSignals(repos)
+    const topic = repos.concepts.upsert({ subjectId: orgo.id, name: 'Nucleophilic substitution' })
+    repos.settings.update({ focusTopicId: topic.id })
+    const candidates = buildCandidates({
+      repos,
+      session: null,
+      pageContext: '',
+      nowIso: clock.nowIso(),
+    })
+    expect(candidates[0]?.kind).toBe('focus_topic')
+    expect(candidates[0]?.text).toContain(
+      "I'm studying Organic Chemistry. I'm working on Nucleophilic substitution.",
+    )
+  })
+
   it('puts the session step first and always ends with a starter', () => {
     const { repos, clock } = setup()
     expect(
