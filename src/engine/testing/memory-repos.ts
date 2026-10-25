@@ -20,6 +20,7 @@ import {
   type Profile,
   type Quiz,
   type Roadmap,
+  type RoadmapVersion,
   type Settings,
   type Subject,
 } from '@shared/domain'
@@ -60,6 +61,16 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
   let feedback: Feedback[] = []
   const episodes = new Map<Id, Episode>()
   const roadmaps = new Map<Id, Roadmap>()
+  /** Superseded roadmaps (earlier versions): id → when, by what and why. */
+  const superseded = new Map<Id, { at: string; by: Id | null; reason: string }>()
+  const current = (r: Roadmap) => !superseded.has(r.id)
+  const versionOf = (id: Id): RoadmapVersion | null => {
+    const r = roadmaps.get(id)
+    const info = superseded.get(id)
+    return r && info
+      ? { roadmap: clone(r), replacedAt: info.at, replacedBy: info.by, reason: info.reason }
+      : null
+  }
   const quizzes = new Map<Id, Quiz>()
   const assignments = new Map<Id, Assignment>()
   const nudges = new Map<Id, Nudge>()
@@ -535,20 +546,32 @@ export function createMemoryRepos(clock: Clock = systemClock): Repos {
       getActive: (subjectId) =>
         clone(
           [...roadmaps.values()]
-            .filter((r) => r.subjectId === subjectId && r.status !== 'done')
+            .filter((r) => r.subjectId === subjectId && r.status !== 'done' && current(r))
             .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] ?? null,
         ),
       listBySubject: (subjectId) =>
         [...roadmaps.values()]
-          .filter((r) => r.subjectId === subjectId)
+          .filter((r) => r.subjectId === subjectId && current(r))
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
           .map(clone),
       listActive: () =>
         [...roadmaps.values()]
-          .filter((r) => r.status === 'active')
+          .filter((r) => r.status === 'active' && current(r))
           .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
           .map(clone),
       save: (roadmap) => void roadmaps.set(roadmap.id, clone(roadmap)),
+      history: (subjectId) =>
+        [...roadmaps.values()]
+          .filter((r) => r.subjectId === subjectId && !current(r))
+          .map((r) => versionOf(r.id))
+          .filter((v): v is RoadmapVersion => v !== null)
+          .reverse()
+          .sort((a, b) => b.replacedAt.localeCompare(a.replacedAt)),
+      version: (id) => versionOf(id),
+      supersede(id, info) {
+        if (roadmaps.has(id)) superseded.set(id, { ...info })
+      },
+      unsupersede: (id) => void superseded.delete(id),
     },
 
     quizzes: {

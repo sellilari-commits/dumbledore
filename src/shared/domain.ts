@@ -275,6 +275,21 @@ export const Roadmap = z.object({
 })
 export type Roadmap = z.infer<typeof Roadmap>
 
+/**
+ * An earlier version of a subject's roadmap (roadmap history): one that was replaced by a
+ * replan, by a new roadmap for the same subject, or by bringing back an older version. It is
+ * kept whole, steps and their states included, and can be brought back; `roadmap.id` is its id.
+ */
+export const RoadmapVersion = z.object({
+  roadmap: Roadmap,
+  replacedAt: IsoDate,
+  /** The roadmap that took its place, when known. */
+  replacedBy: Id.nullable(),
+  /** Why it was replaced, in a few words ("Replanned: skip SN2", "New roadmap: …"). */
+  reason: z.string(),
+})
+export type RoadmapVersion = z.infer<typeof RoadmapVersion>
+
 // ─── Quizzes & exams ────────────────────────────────────────────────────────────────────────
 
 export const QuizKind = z.enum(['checkpoint', 'exam', 'review', 'placement'])

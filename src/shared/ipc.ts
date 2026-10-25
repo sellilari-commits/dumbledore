@@ -20,6 +20,8 @@ import {
   Profile,
   Quiz,
   QuizResult,
+  Roadmap,
+  RoadmapVersion,
   Settings,
   SettingsPatch,
   Subject,
@@ -58,6 +60,10 @@ export const MaterialResult = z.object({
   error: z.string().nullable(),
 })
 export type MaterialResult = z.infer<typeof MaterialResult>
+
+/** "Bring back": the version that is current again, and the ones it moved into the history. */
+export const RoadmapRestored = z.object({ restored: Roadmap, replaced: z.array(Id) })
+export type RoadmapRestored = z.infer<typeof RoadmapRestored>
 
 export const ipcInvoke = {
   // App status & settings
@@ -160,6 +166,14 @@ export const ipcInvoke = {
    * captured about it (screen text by source, extracted records, notes) and opens it.
    */
   'concepts.openText': { req: Id, res: z.object({ path: z.string() }) },
+
+  /**
+   * Roadmap history: a subject's earlier roadmap versions (replaced, never deleted), newest
+   * replacement first; and bringing one back by its roadmap id, which moves the current one into
+   * the history the same way (restoring that one again undoes it).
+   */
+  'roadmaps.history': { req: Id, res: z.array(RoadmapVersion) },
+  'roadmaps.restore': { req: Id, res: RoadmapRestored },
 
   // Study session (the shell performs pastes; see StepInstruction)
   'session.get': { req: Void, res: SessionState.nullable() },

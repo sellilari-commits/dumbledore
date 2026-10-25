@@ -5,6 +5,7 @@
  * and run in the background, so the overlay never waits on the LLM.
  */
 import { pathToFileURL } from 'node:url'
+import { restoreRoadmapVersion, roadmapHistory } from '@engine/learning/study/roadmap-history'
 import { assistantLink, usualAssistantFrom } from '@engine/perception/ai-chat/usual'
 import type { Settings } from '@shared/domain'
 import type { MemoryScope, OverlayAction } from '@shared/state'
@@ -272,6 +273,9 @@ export function createHandlers(core: ShellCore, extras: HandlerExtras): Handlers
     },
 
     // Study session
+    'roadmaps.history': (subjectId) => roadmapHistory(repos, subjectId),
+    'roadmaps.restore': (versionId) =>
+      restoreRoadmapVersion({ repos, bus, clock: services.clock }, versionId),
     'session.get': () => study.current(),
     'session.picker': () => study.picker(),
     'session.start': async (input) => {

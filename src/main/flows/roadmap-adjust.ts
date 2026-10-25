@@ -73,8 +73,9 @@ export class RoadmapAdjust {
       })
       repos.subjects.setStudyPreferences(subject.id, prefs)
       bus.emit('memory:changed', { scope: 'subjects', ids: [subject.id] })
+      // replan: a fresh plan even though a roadmap with this goal is open (it goes to the history).
       return study.start(
-        { subjectId: subject.id, goal, question: null },
+        { subjectId: subject.id, goal, question: null, replan: instruction },
         chatContext(this.deps.perception),
       )
     })

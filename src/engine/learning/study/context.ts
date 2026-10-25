@@ -53,7 +53,11 @@ export function assembleRoadmapContext(repos: Repos, req: ContextRequest): Roadm
     .list({ subjectId: subject.id, limit: ENCOUNTER_LIMIT * 2 })
     .filter((e) => e.inboxState !== 'ignored')
     .slice(0, ENCOUNTER_LIMIT)
-  const previous = repos.roadmaps.listBySubject(subject.id)
+  // Earlier versions count too: a replan keeps what the replaced roadmap's steps covered.
+  const previous = [
+    ...repos.roadmaps.listBySubject(subject.id),
+    ...repos.roadmaps.history(subject.id).map((v) => v.roadmap),
+  ]
   const mastered = new Set(concepts.filter((c) => c.status === 'mastered').map((c) => norm(c.name)))
   const carry = uniqueNames(previous.flatMap((r) => r.carry))
     .filter((c) => !mastered.has(norm(c)))

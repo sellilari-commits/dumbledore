@@ -1,5 +1,8 @@
-/** SQLite RoadmapRepo: `roadmaps` + `roadmap_items` (one row per item, in array order). */
-import type { Roadmap, RoadmapItem } from '@shared/domain'
+/**
+ * SQLite RoadmapRepo: `roadmaps` + `roadmap_items` (one row per item, in array order). A row with
+ * `superseded_at` is an earlier version (schema v5): only `get`, `history` and `version` see it.
+ */
+import type { Roadmap, RoadmapItem, RoadmapVersion } from '@shared/domain'
 import type { RoadmapRepo } from '../../contracts'
 import { codec, insertSql, type Row } from '../codec'
 import type { StoreCtx } from '../context'
@@ -119,6 +122,12 @@ export function createRoadmapRepo(ctx: StoreCtx): RoadmapRepo {
   })
   const many = (sql: string, ...params: unknown[]) =>
     (stmt(sql).all(...params) as Row[]).map(hydrate)
+  const asVersion = (r: Row): RoadmapVersion => ({
+    roadmap: hydrate(r),
+    replacedAt: String(r.superseded_at),
+    replacedBy: (r.superseded_by as string | null) ?? null,
+    reason: String(r.supersede_reason ?? ''),
+  })
 
   return {
     get(id) {
@@ -127,17 +136,19 @@ export function createRoadmapRepo(ctx: StoreCtx): RoadmapRepo {
     },
     getActive(subjectId) {
       const r = stmt(
-        "SELECT * FROM roadmaps WHERE subject_id = ? AND status <> 'done' ORDER BY updated_at DESC, seq ASC LIMIT 1",
+        "SELECT * FROM roadmaps WHERE subject_id = ? AND status <> 'done' AND superseded_at IS NULL ORDER BY updated_at DESC, seq ASC LIMIT 1",
       ).get(subjectId) as Row | undefined
       return r ? hydrate(r) : null
     },
     listBySubject: (subjectId) =>
       many(
-        'SELECT * FROM roadmaps WHERE subject_id = ? ORDER BY created_at DESC, seq ASC',
+        'SELECT * FROM roadmaps WHERE subject_id = ? AND superseded_at IS NULL ORDER BY created_at DESC, seq ASC',
         subjectId,
       ),
     listActive: () =>
-      many("SELECT * FROM roadmaps WHERE status = 'active' ORDER BY updated_at DESC, seq ASC"),
+      many(
+        "SELECT * FROM roadmaps WHERE status = 'active' AND superseded_at IS NULL ORDER BY updated_at DESC, seq ASC",
+      ),
     save(roadmap) {
       ctx.db.transaction(() => {
         const { items, ...row } = roadmap
@@ -147,6 +158,28 @@ export function createRoadmapRepo(ctx: StoreCtx): RoadmapRepo {
           stmt(INSERT_ITEM).run(itemParams(roadmap.id, pos, item))
         })
       })()
+    },
+    history: (subjectId) =>
+      (
+        stmt(
+          'SELECT * FROM roadmaps WHERE subject_id = ? AND superseded_at IS NOT NULL ORDER BY superseded_at DESC, seq DESC',
+        ).all(subjectId) as Row[]
+      ).map(asVersion),
+    version(id) {
+      const r = stmt('SELECT * FROM roadmaps WHERE id = ? AND superseded_at IS NOT NULL').get(id) as
+        | Row
+        | undefined
+      return r ? asVersion(r) : null
+    },
+    supersede(id, info) {
+      stmt(
+        'UPDATE roadmaps SET superseded_at = ?, superseded_by = ?, supersede_reason = ? WHERE id = ?',
+      ).run(info.at, info.by, info.reason, id)
+    },
+    unsupersede(id) {
+      stmt(
+        'UPDATE roadmaps SET superseded_at = NULL, superseded_by = NULL, supersede_reason = NULL WHERE id = ?',
+      ).run(id)
     },
   }
 }

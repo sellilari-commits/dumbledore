@@ -196,6 +196,11 @@ export const StartSessionInput = z.object({
   subjectId: Id.nullable(),
   goal: z.string().nullable(),
   question: z.string().nullable(),
+  /**
+   * Plan a fresh roadmap even when an open one has this goal (adjust_roadmap). The words say why;
+   * the replaced roadmap keeps them in the subject's roadmap history.
+   */
+  replan: z.string().optional(),
 })
 export type StartSessionInput = z.infer<typeof StartSessionInput>
 

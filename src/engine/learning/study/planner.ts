@@ -10,6 +10,7 @@ import { assembleRoadmapContext } from './context'
 import { errorMessage, withDeadline } from './deadline'
 import type { StudyDeps, StudyOptions } from './deps'
 import { materializeRoadmap } from './materialize'
+import { shownRoadmap, supersedeRoadmap } from './roadmap-history'
 import { StudyError } from './session-state'
 
 export interface PlanRequest {
@@ -52,9 +53,16 @@ export async function planRoadmap(
   })
 }
 
-/** Stores a new roadmap as its subject's active one; older active ones are parked. */
-export function commitRoadmap(repos: Repos, roadmap: Roadmap): void {
+/**
+ * Stores a new roadmap as its subject's active one; older active ones are parked. The roadmap
+ * the subject showed until now goes into its history with `reason` (roadmap-history.ts).
+ */
+export function commitRoadmap(repos: Repos, roadmap: Roadmap, reason: string): void {
   repos.transaction(() => {
+    const shown = shownRoadmap(repos, roadmap.subjectId)
+    if (shown && shown.id !== roadmap.id) {
+      supersedeRoadmap(repos, shown, { at: roadmap.createdAt, by: roadmap.id, reason })
+    }
     for (const old of repos.roadmaps.listBySubject(roadmap.subjectId)) {
       if (old.id !== roadmap.id && old.status === 'active') {
         repos.roadmaps.save({ ...old, status: 'paused' })

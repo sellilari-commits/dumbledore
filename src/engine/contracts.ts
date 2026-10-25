@@ -29,6 +29,7 @@ import type {
   QuizKind,
   QuizResult,
   Roadmap,
+  RoadmapVersion,
   Settings,
   SettingsPatch,
   Subject,
@@ -265,13 +266,25 @@ export interface EpisodeRepo {
   purgeTextOlderThan(iso: IsoDate): number
 }
 
+/**
+ * Roadmaps. A superseded roadmap (an earlier version, see RoadmapVersion) is still readable with
+ * `get` and listed by `history`, but `getActive`, `listBySubject` and `listActive` leave it out.
+ */
 export interface RoadmapRepo {
   get(id: Id): Roadmap | null
   getActive(subjectId: Id): Roadmap | null
   listBySubject(subjectId: Id): Roadmap[]
   listActive(): Roadmap[]
-  /** Insert or replace, items included. */
+  /** Insert or replace, items included. Keeps a superseded roadmap superseded. */
   save(roadmap: Roadmap): void
+  /** The subject's earlier versions, most recently replaced first. */
+  history(subjectId: Id): RoadmapVersion[]
+  /** The roadmap as an earlier version, or null when it is current (or unknown). */
+  version(id: Id): RoadmapVersion | null
+  /** Moves the roadmap into its subject's history (never deletes it). */
+  supersede(id: Id, info: { at: string; by: Id | null; reason: string }): void
+  /** Takes the roadmap out of the history again (it counts as current). */
+  unsupersede(id: Id): void
 }
 
 export interface QuizRepo {

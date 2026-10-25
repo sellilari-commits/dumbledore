@@ -15,6 +15,7 @@ import { touchConcepts } from './memory-updates'
 import { buildPicker } from './picker'
 import { commitRoadmap, parkRoadmap, planRoadmap, saveRoadmap } from './planner'
 import { CheckpointQuizzes } from './quiz-cache'
+import { newRoadmapReason, replannedReason } from './roadmap-history'
 import {
   closeItem,
   completionSummary,
@@ -67,6 +68,26 @@ export class StudyServiceImpl implements StudyService {
       this.meta = metaFor(active, null)
       this.watchSentStep(active) // a step sent before a restart still waits for its answer
     }
+    deps.bus.on('memory:changed', ({ scope }) => {
+      if (scope === 'roadmaps') this.followCurrentVersion()
+    })
+  }
+
+  /**
+   * The session's roadmap went into the history (an earlier version was brought back): the
+   * session moves to the subject's roadmap now, paused, so the next tap resumes it there.
+   */
+  private followCurrentVersion(): void {
+    const meta = this.meta
+    if (!meta || meta.phase === 'planning') return
+    const { repos } = this.deps
+    if (!repos.roadmaps.version(meta.roadmapId)) return
+    this.quizzes.cancelScheduled()
+    this.answers.stop()
+    this.waitedOn = null
+    const now = repos.roadmaps.getActive(meta.subjectId)
+    this.meta = now ? { ...metaFor(now, meta.assistant), phase: 'paused' } : null
+    this.emitChange()
   }
 
   current(): SessionState | null {
@@ -93,8 +114,8 @@ export class StudyServiceImpl implements StudyService {
     try {
       const target = resolveTarget(this.deps.repos, input)
       const open = openRoadmap(this.deps.repos, target.subject.id)
-      if (shouldResume(open, target.goal)) return await this.resume(open, ctx)
-      return await this.plan(target, ctx)
+      if (!input.replan && shouldResume(open, target.goal)) return await this.resume(open, ctx)
+      return await this.plan(target, ctx, input.replan)
     } finally {
       this.gate.finish(seq)
     }
@@ -210,7 +231,11 @@ export class StudyServiceImpl implements StudyService {
     return this.deliverCurrent(ctx)
   }
 
-  private async plan(target: SessionTarget, ctx: ChatContext): Promise<StepInstruction> {
+  private async plan(
+    target: SessionTarget,
+    ctx: ChatContext,
+    replan?: string,
+  ): Promise<StepInstruction> {
     const { subject } = target
     const goal = target.goal ?? subject.goal ?? subject.name
     const epoch = this.gate.epoch
@@ -241,7 +266,8 @@ export class StudyServiceImpl implements StudyService {
     }
     if (epoch !== this.gate.epoch) return waitFor('Cancelled.')
     if (target.topicNamed) roadmap = refineNewSubject(this.deps, subject, roadmap)
-    commitRoadmap(this.deps.repos, roadmap)
+    const reason = replan?.trim() ? replannedReason(replan) : newRoadmapReason(goal)
+    commitRoadmap(this.deps.repos, roadmap, reason)
     if (previous) parkRoadmap(this.deps.repos, previous.roadmapId, this.deps.clock.nowIso())
     this.deps.bus.emit('memory:changed', { scope: 'roadmaps', ids: [roadmap.id] })
     this.meta = metaFor(roadmap, ctx.assistant)

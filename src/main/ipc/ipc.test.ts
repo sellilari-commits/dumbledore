@@ -247,6 +247,36 @@ describe('IPC handlers', () => {
     await call('encounters.delete', orgoEncounter.id)
     expect(repos.encounters.list({}).some((e) => e.id === orgoEncounter.id)).toBe(false)
 
+    // Roadmap history: an earlier version is listed, brought back, and swapped back again.
+    const orgoNow = repos.roadmaps.listBySubject(orgo.id)[0]
+    if (!orgoNow) throw new Error('no roadmap')
+    repos.roadmaps.save({
+      ...orgoNow,
+      id: 'rdm_earlier',
+      title: 'Substitution basics',
+      createdAt: '2026-10-01T09:00:00.000Z',
+    })
+    repos.roadmaps.supersede('rdm_earlier', {
+      at: '2026-10-02T09:00:00.000Z',
+      by: orgoNow.id,
+      reason: 'Replanned: skip SN2',
+    })
+    expect(await call('roadmaps.history', orgo.id)).toMatchObject([
+      {
+        roadmap: { id: 'rdm_earlier', title: 'Substitution basics' },
+        reason: 'Replanned: skip SN2',
+      },
+    ])
+    expect(await call('roadmaps.restore', 'rdm_earlier')).toMatchObject({
+      restored: { id: 'rdm_earlier' },
+      replaced: [orgoNow.id],
+    })
+    expect((await call('subjects.get', orgo.id)).roadmap?.id).toBe('rdm_earlier')
+    expect((await call('roadmaps.history', orgo.id)).map((v) => v.roadmap.id)).toEqual([orgoNow.id])
+    await call('roadmaps.restore', orgoNow.id)
+    expect((await call('subjects.get', orgo.id)).roadmap?.id).toBe(orgoNow.id)
+    await expect(call('roadmaps.restore', 'rdm_missing')).rejects.toThrow(/no longer exists/)
+
     await call('subjects.delete', { id: physics.id, confirm: true })
     expect((await call('subjects.list')).map((s) => s.name)).not.toContain('Physics')
     await call('data.deleteAll', { confirm: true })

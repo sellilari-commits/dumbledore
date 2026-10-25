@@ -64,6 +64,54 @@ export function learningSuite(t: () => ConformanceTarget): void {
       expect(repos.roadmaps.listBySubject(s.id).map((r) => r.id)).toEqual(['rdm_2', 'rdm_1'])
       expect(repos.roadmaps.listActive().map((r) => r.id)).toEqual(['rdm_1', 'rdm_3'])
     })
+
+    it('keeps superseded roadmaps as history, hidden from the current reads', () => {
+      const { repos } = t()
+      const s = repos.subjects.create({ name: 'Chem' })
+      const old = roadmap(s.id, { id: 'rdm_old', createdAt: '2026-10-20T00:00:00.000Z' })
+      const older = roadmap(s.id, { id: 'rdm_older', createdAt: '2026-10-19T00:00:00.000Z' })
+      const now = roadmap(s.id, { id: 'rdm_now', createdAt: '2026-10-21T00:00:00.000Z' })
+      for (const r of [older, old, now]) repos.roadmaps.save(r)
+      repos.roadmaps.supersede('rdm_older', {
+        at: '2026-10-20T00:00:00.000Z',
+        by: 'rdm_old',
+        reason: 'New roadmap: B',
+      })
+      repos.roadmaps.supersede('rdm_old', {
+        at: '2026-10-21T00:00:00.000Z',
+        by: 'rdm_now',
+        reason: 'Replanned: skip SN2',
+      })
+      expect(repos.roadmaps.listBySubject(s.id).map((r) => r.id)).toEqual(['rdm_now'])
+      expect(repos.roadmaps.listActive().map((r) => r.id)).toEqual(['rdm_now'])
+      expect(repos.roadmaps.getActive(s.id)?.id).toBe('rdm_now')
+      expect(repos.roadmaps.history(s.id)).toEqual([
+        {
+          roadmap: old,
+          replacedAt: '2026-10-21T00:00:00.000Z',
+          replacedBy: 'rdm_now',
+          reason: 'Replanned: skip SN2',
+        },
+        {
+          roadmap: older,
+          replacedAt: '2026-10-20T00:00:00.000Z',
+          replacedBy: 'rdm_old',
+          reason: 'New roadmap: B',
+        },
+      ])
+      expect(repos.roadmaps.get('rdm_old')).toEqual(old)
+      expect(repos.roadmaps.version('rdm_now')).toBeNull()
+      expect(repos.roadmaps.version('rdm_old')?.reason).toBe('Replanned: skip SN2')
+      // Saving a superseded roadmap (a late quiz id) keeps it in the history.
+      repos.roadmaps.save({ ...old, carry: ['SN2'] })
+      expect(repos.roadmaps.version('rdm_old')?.roadmap.carry).toEqual(['SN2'])
+      expect(repos.roadmaps.getActive(s.id)?.id).toBe('rdm_now')
+
+      repos.roadmaps.unsupersede('rdm_old')
+      expect(repos.roadmaps.version('rdm_old')).toBeNull()
+      expect(repos.roadmaps.listBySubject(s.id).map((r) => r.id)).toEqual(['rdm_now', 'rdm_old'])
+      expect(repos.roadmaps.history(s.id).map((v) => v.roadmap.id)).toEqual(['rdm_older'])
+    })
   })
 
   describe('quizzes', () => {

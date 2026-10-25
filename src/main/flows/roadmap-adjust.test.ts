@@ -89,7 +89,10 @@ describe('RoadmapAdjust (adjust_roadmap from the double-tap chat)', () => {
     })
     // The subject's own goal is kept; the roadmap keeps its goal and gets the wishes structurally.
     expect(t.repos.subjects.get(t.chem.id)?.goal).toBe('Pass the midterm')
-    expect(t.starts).toEqual([{ subjectId: t.chem.id, goal: 'SN1 and SN2', question: null }])
+    // A fresh plan even though the goal is the open roadmap's; the old one goes to the history.
+    expect(t.starts).toEqual([
+      { subjectId: t.chem.id, goal: 'SN1 and SN2', question: null, replan: 'SN1, not SN2' },
+    ])
     expect(t.pasteFailed).toHaveBeenCalledWith('itm_1')
     expect(t.changes).toContainEqual({ scope: 'subjects', ids: [t.chem.id] })
   })
