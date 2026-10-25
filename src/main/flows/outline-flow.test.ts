@@ -143,7 +143,7 @@ describe('OutlineFlow', () => {
     expect(shown).toEqual([])
   })
 
-  it('follows a scroll: the marks move with their text, and clear when the window changes', async () => {
+  it('follows a scroll: the marks move with their text while any marked line is on screen', async () => {
     let tick: () => void = () => {}
     let current: PerceivedWindow | null = page()
     const f = flow({
@@ -167,6 +167,41 @@ describe('OutlineFlow', () => {
     expect(shown.at(-1)?.marks[0]?.rect.y).toBe(110)
     expect(shown.at(-1)?.marks[1]?.rect.y).toBe(200)
 
+    // Scrolled further: the first marked line left the view (Chrome squashes it onto the edge),
+    // the rest of the passage is still on screen, so the marks stay and keep moving.
+    const further = page()
+    further.lines = further.lines.map((l, i) =>
+      !l.box
+        ? l
+        : i === 2
+          ? { ...l, box: { ...l.box, y: 0, height: 1 } }
+          : { ...l, box: { ...l.box, y: l.box.y - 70 } },
+    )
+    current = further
+    tick()
+    await new Promise((r) => setImmediate(r))
+    expect(shown.at(-1)?.marks[0]?.rect.y).toBe(90)
+
+    // No marked line on screen any more: the marks clear.
+    const gone = page()
+    gone.lines = gone.lines.map((l) => (l.box ? { ...l, box: { ...l.box, y: 0, height: 0 } } : l))
+    current = gone
+    tick()
+    await new Promise((r) => setImmediate(r))
+    expect(shown.at(-1)).toBeNull()
+  })
+
+  it('clears the marks when another window comes to the front', async () => {
+    let tick: () => void = () => {}
+    let current: PerceivedWindow | null = page()
+    const f = flow({
+      frontWindow: async () => current,
+      every: (_ms, fn) => {
+        tick = fn
+        return () => {}
+      },
+    })
+    await f.run()
     current = { ...page(), windowId: 99 }
     tick()
     await new Promise((r) => setImmediate(r))
@@ -189,5 +224,26 @@ describe('pageLines', () => {
     expect(lines.some((l) => l.text.includes('ISBN'))).toBe(false)
     expect(isCitation('^ Schneider, Thomas (27 August 2008). "Periodizing"')).toBe(true)
     expect(isCitation('Ramesses II ruled for 66 years.')).toBe(false)
+  })
+
+  it('leaves out lines squashed onto the view’s edge (Chrome’s text scrolled out of view)', () => {
+    const win = page()
+    win.frame = { x: 0, y: 0, width: 800, height: 900 }
+    win.lines.unshift({
+      text: 'Everything above the view, merged into one line',
+      conf: 1,
+      box: { x: 100, y: 80, width: 500, height: 1 },
+      align: 'left',
+    })
+    win.lines.push({
+      text: 'A paragraph below the view',
+      conf: 1,
+      box: { x: 100, y: 900, width: 500, height: 0 },
+      align: 'left',
+    })
+    const texts = pageLines(win).map((l) => l.text)
+    expect(texts[0]).toBe(TEXT[0])
+    expect(texts).not.toContain('A paragraph below the view')
+    expect(texts).toHaveLength(TEXT.length)
   })
 })

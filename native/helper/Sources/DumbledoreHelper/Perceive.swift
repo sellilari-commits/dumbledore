@@ -91,7 +91,8 @@ enum Perceiver {
       frame = frame ?? AX.frame(position: v[kAXPositionAttribute], size: v[kAXSizeAttribute])
       let focused = isFront ? FocusReader.focused(pid: t.app.pid)?.element : nil
       let walkStart = monoMs()
-      let text = AXTextReader.read(window: axWin, windowFrame: frame, focused: focused, maxChars: p.maxChars)
+      let text = AXTextReader.read(window: axWin, windowFrame: frame, focused: focused, maxChars: p.maxChars,
+                                   budgetMs: p.fresh ? 500 : 150, visibleOnly: p.fresh)
       Log.debug("ax walk \(t.app.bundleId): \(text.visited) nodes, \(text.chars) chars, "
         + "\(Int(monoMs() - walkStart)) ms\(text.timedOut ? " (budget hit)" : ""), "
         + "kept \(text.trim.rawValue), dropped \(text.droppedChars) chars")
@@ -112,8 +113,10 @@ enum Perceiver {
     }
     let lines = ax?.lines ?? []
     let hash = "ax:" + fnv1a64(lines.map(\.text).joined(separator: "\n"))
+    // A fresh read is only what is on screen: it must not reset what perception last saw.
+    if p.fresh { return make(.ax, changed: true, hash: hash, lines: lines) }
     let changed = session.update(key, hash: hash)
-    return make(.ax, changed: changed || p.fresh, hash: hash, lines: lines)
+    return make(.ax, changed: changed, hash: hash, lines: lines)
   }
 
   private static func ocrWindow(_ win: WindowInfo, frame: CGRect, key: String, params p: PerceiveParams,

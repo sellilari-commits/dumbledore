@@ -3,7 +3,7 @@
 // Budget: 150 ms and a depth limit. Reads static text and multi-line text areas; never reads the
 // focused field, single-line form fields (search boxes, logins) or secure fields — what the user
 // is typing is only read on an explicit request (ax.readFocusedValue). Off-window subtrees are
-// pruned, so the result is the visible text, like OCR would see it.
+// pruned; text scrolled out of a web page's viewport is pruned only on request (visibleOnly).
 //
 // Region trimming: web content (browsers, Electron apps) labels its landmarks (main, navigation,
 // sidebar, header, footer). When the main region holds the page's real text, only that is kept;
@@ -57,8 +57,18 @@ enum AXTextReader {
     kAXRoleAttribute, kAXSubroleAttribute, kAXValueAttribute, kAXChildrenAttribute, kAXPositionAttribute, kAXSizeAttribute,
   ]
 
+  /// Chrome reports text scrolled out of the page's viewport with its frame squashed onto the
+  /// viewport's edge (height ~0 at the top or bottom), so the window test never prunes it. Text
+  /// hidden for screen readers only (1 pt boxes) is not on screen either.
+  static func isOffscreenClamp(_ frame: CGRect) -> Bool {
+    frame.height < 2
+  }
+
+  /// `visibleOnly` (an explicit request: the outline) also drops text scrolled out of view
+  /// (`isOffscreenClamp`), so a long page scrolled down yields the lines on screen, not its top
+  /// (with a larger budget, since the walk still passes the text above the view).
   static func read(window: AXUIElement, windowFrame: CGRect?, focused: AXUIElement?, maxChars: Int,
-                   budgetMs: Double = 150, maxDepth: Int = 64) -> AXTextResult {
+                   budgetMs: Double = 150, maxDepth: Int = 64, visibleOnly: Bool = false) -> AXTextResult {
     let deadline = monoMs() + budgetMs
     var result = AXTextResult()
     var frags: [AXFragment] = []
@@ -95,13 +105,15 @@ enum AXTextReader {
         result.sawWebArea = true
         result.url = AX.url(AX.attr(el, "AXURL"))
       }
+      // Only text is tested: Chrome also squashes wrappers that hold on-screen text.
+      let offscreen = visibleOnly && frame.map(isOffscreenClamp) == true
       switch role {
       case "AXStaticText":
-        if let s = AX.str(v[kAXValueAttribute]) { add(s, frame, region) }
+        if !offscreen, let s = AX.str(v[kAXValueAttribute]) { add(s, frame, region) }
         return true
       case "AXTextArea":
         let isFocused = focused.map { CFEqual($0, el) } ?? false
-        if !isFocused, !FocusReader.isSecure(role: role, subrole: subrole), let s = AX.str(v[kAXValueAttribute]) {
+        if !isFocused, !offscreen, !FocusReader.isSecure(role: role, subrole: subrole), let s = AX.str(v[kAXValueAttribute]) {
           add(s, frame, region)
         }
         return true  // children repeat the value (or the user's draft): never descend

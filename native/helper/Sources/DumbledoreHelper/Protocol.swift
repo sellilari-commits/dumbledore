@@ -140,7 +140,8 @@ struct PerceiveParams: Decodable {
   let forceOcr: Bool
   let maxChars: Int
   let excludeBundleIds: [String]
-  /// An explicit request (the outline): return the lines even when the window is unchanged.
+  /// An explicit request (the outline): the lines on screen now (text scrolled out of view left
+  /// out), even when the window is unchanged; perception's change state is left alone.
   let fresh: Bool
 
   enum CodingKeys: String, CodingKey { case scope, minChange, allowOcr, forceOcr, maxChars, excludeBundleIds, fresh }

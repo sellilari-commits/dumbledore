@@ -7,8 +7,8 @@
  * is written if the app or field changed meanwhile (ChatWriter checks the snapshot).
  *
  * A key tap waits out the double-tap window first (TapGuard), so a double-tap only opens the
- * chat window. A tap that rewrites shows the orb thinking while the rewrite runs. A hold only
- * opens the prompt box (ask bar route 'prompt'); its release does nothing.
+ * chat window. A tap that rewrites shows the orb thinking while the rewrite runs. A hold
+ * outlines what to read on the page in front (again: clears the marks); its release does nothing.
  */
 import type {
   HelperClient,

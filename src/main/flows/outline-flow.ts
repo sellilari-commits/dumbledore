@@ -87,10 +87,18 @@ export function isCitation(text: string): boolean {
 
 type Boxed = PerceivedWindow['lines'][number] & { box: Rect }
 
-/** The page's lines worth outlining: positioned, not citations, starting near the screen. */
+/**
+ * A line with a real box. Chrome squashes text scrolled out of view onto the viewport's edge
+ * (height ~0), and such a line can be neither found on screen nor marked.
+ */
+export function onScreen(l: PerceivedWindow['lines'][number]): l is Boxed {
+  return l.box !== null && l.box.height >= 2
+}
+
+/** The page's lines worth outlining: on screen, not citations, starting near the screen. */
 export function pageLines(win: PerceivedWindow): Boxed[] {
   const lines = win.lines.filter(
-    (l): l is Boxed => l.box !== null && l.text.trim().length > 0 && !isCitation(l.text),
+    (l): l is Boxed => onScreen(l) && l.text.trim().length > 0 && !isCitation(l.text),
   )
   const top = win.frame?.y ?? Number.NEGATIVE_INFINITY
   const first = Math.max(
@@ -170,9 +178,10 @@ export class OutlineFlow {
       marks,
     }
     this.deps.show(outline)
-    const first = out.ranges[0]
-    const anchor = first ? lines[first.from] : undefined
-    if (anchor) this.startFollow(outline, anchor.text, anchor.box.y)
+    const anchors = out.ranges
+      .flatMap((r) => lines.slice(r.from, r.to + 1))
+      .map((l) => ({ text: l.text, y: l.box.y }))
+    if (anchors.length > 0) this.startFollow(outline, anchors)
 
     const reads = out.ranges.filter((r) => r.verdict === 'read').slice(0, 5)
     for (const r of reads) {
@@ -196,12 +205,12 @@ export class OutlineFlow {
 
   /**
    * Keeps the marks on their text: re-reads the page every FOLLOW_MS and moves the marks by how
-   * far the first marked line moved (a scroll). Another window in front, or the line gone (a new
-   * page), clears them.
+   * far a marked line still on screen moved (a scroll; the first one found counts, so the marks
+   * stay when the first passage scrolls out of view). Another window in front, or no marked line
+   * left on screen (a new page, or scrolled past them all), clears them.
    */
-  private startFollow(outline: OutlineOverlay, anchorText: string, anchorY: number): void {
+  private startFollow(outline: OutlineOverlay, anchors: { text: string; y: number }[]): void {
     let shown = outline
-    let y = anchorY
     let busy = false
     const tick = async () => {
       if (busy) return
@@ -210,21 +219,29 @@ export class OutlineFlow {
         const win = await this.deps.frontWindow()
         if (this.follow !== handle) return
         if (!win || win === 'private' || win.windowId !== shown.windowId) return this.clear()
-        const candidates = win.lines.filter((l) => l.box && l.text === anchorText)
-        const next = candidates
-          .map((l) => l.box?.y ?? y)
-          .sort((a, b) => Math.abs(a - y) - Math.abs(b - y))[0]
-        if (next === undefined) return this.clear()
-        const dy = next - y
+        const visible = win.lines.filter(onScreen)
+        let dy: number | undefined
+        for (const a of anchors) {
+          const next = visible
+            .filter((l) => l.text === a.text)
+            .map((l) => l.box.y)
+            .sort((p, q) => Math.abs(p - a.y) - Math.abs(q - a.y))[0]
+          if (next !== undefined) {
+            dy = next - a.y
+            break
+          }
+        }
+        if (dy === undefined) return this.clear()
         if (Math.abs(dy) < 1) return
-        y = next
+        const moved = dy
+        for (const a of anchors) a.y += moved
         shown = {
           ...shown,
           frame: win.frame,
           marks: shown.marks.map((m) => ({
             ...m,
-            rect: { ...m.rect, y: m.rect.y + dy },
-            lines: m.lines?.map((b) => ({ ...b, y: b.y + dy })),
+            rect: { ...m.rect, y: m.rect.y + moved },
+            lines: m.lines?.map((b) => ({ ...b, y: b.y + moved })),
           })),
         }
         this.deps.show(shown)

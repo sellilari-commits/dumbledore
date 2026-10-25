@@ -146,6 +146,10 @@ enum SelfTestIO {
     expect(merged.map(\.text) == ["Hello world", "Next line"], "AX fragments merge: \(merged.map(\.text))")
     expect(merged.first?.box?.width == 85 && merged.first?.align == .left, "merged box and alignment")
     expect(AXTextReader.clean("a\u{00A0} b\u{200B}c  d") == "a bc d", "AX text clean")
+    // Chrome squashes text scrolled out of view onto the viewport's edge: pruned on a fresh read.
+    expect(AXTextReader.isOffscreenClamp(CGRect(x: 333, y: 982, width: 1016, height: 0)), "clamped below the view")
+    expect(AXTextReader.isOffscreenClamp(CGRect(x: 333, y: 154, width: 1006, height: 1)), "clamped above the view")
+    expect(!AXTextReader.isOffscreenClamp(CGRect(x: 333, y: 505, width: 600, height: 4)), "a line cut by the edge stays")
     regionTrim()
     let cli = CLIOptions(["serve", "--socket", "/x.sock", "--verbose", "--parent-pid", "42"])
     expect(cli.command == "serve" && cli.string("socket") == "/x.sock" && cli.bool("verbose") && cli.int("parent-pid") == 42,
