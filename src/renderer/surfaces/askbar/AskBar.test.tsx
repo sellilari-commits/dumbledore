@@ -5,7 +5,6 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { InvokeHandlers } from '../overlay/lib/localApi'
 import { fakeApi } from '../overlay/testing/fakeApi'
-import { describeAction } from './ActionChips'
 import { AskBar, CHAT_TITLE, EMPTY_CHAT, FOLLOW_UP, PLACEHOLDER } from './AskBar'
 import { currentChat, VISIBLE_LIMIT } from './askHistory'
 import { clampHeight, heightCap } from './useWindowAutoSize'
@@ -87,7 +86,7 @@ describe('AskBar', () => {
     expect(head?.querySelector('button')).toBeTruthy()
   })
 
-  it('Enter → ask.submit, then the markdown reply and action chips', async () => {
+  it('Enter → ask.submit, then the markdown reply, without chips', async () => {
     const local = askApi()
     render(<AskBar api={local.api} />)
     ask('  I don’t get recursion ')
@@ -96,8 +95,8 @@ describe('AskBar', () => {
     expect(screen.getByText('I don’t get recursion')).toBeTruthy()
     expect(screen.getByText('a function calling itself').tagName).toBe('STRONG')
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
-    expect(screen.getByRole('button', { name: /Start roadmap: Understand recursion/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Paste prompt into chat' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Start roadmap/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Paste prompt into chat' })).toBeNull()
     expect(input().value).toBe('')
     expect(input().placeholder).toBe(FOLLOW_UP)
   })
@@ -120,7 +119,7 @@ describe('AskBar', () => {
     expect(callsTo(local, 'ask.submit')).toEqual([{ text: 'chemistry' }, { text: 'moles?' }])
     const log = screen.getByRole('log', { name: 'Conversation with Dumbledore' })
     expect(log.textContent).toMatch(/chemistry.*First answer\..*moles\?.*Second answer\./)
-    expect(screen.getAllByRole('button', { name: 'Paste prompt into chat' })).toHaveLength(1)
+    expect(document.querySelector('.ask__chip')).toBeNull()
   })
 
   it('shows what the chat saved as a receipt with Undo, which stays in the chat and turns into Undone', async () => {
@@ -128,7 +127,11 @@ describe('AskBar', () => {
       reply:
         'Because it has one slow step.\n\nSaved to Chemistry › SN1: open question “why is SN1 first order?”',
       actions: [
-        { type: 'undo_save', saveId: 'save_1' },
+        {
+          type: 'undo_save',
+          saveId: 'save_1',
+          label: 'Saved to Chemistry › SN1: open question “why is SN1 first order?”',
+        },
         { type: 'add_note', text: 'SN1 is first order', subjectId: null, conceptId: null },
       ],
       pasted: false,
@@ -137,17 +140,17 @@ describe('AskBar', () => {
     render(<AskBar api={local.api} />)
     ask('why is SN1 first order?')
     await flush()
-    expect(screen.getByText(/Saved to Chemistry › SN1: open question/)).toBeTruthy()
-    // An applied save is never offered again as a chip; only its Undo is.
+    // The receipt is a row (its line left out of the text), never a chip.
+    expect(screen.getAllByText(/Saved to Chemistry › SN1: open question/)).toHaveLength(1)
     expect(screen.queryByRole('button', { name: /^Save note/ })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Undo: Saved to Chemistry/ }))
     await flush()
-    expect(callsTo(local, 'coach.runAction')).toEqual([{ type: 'undo_save', saveId: 'save_1' }])
+    expect(callsTo(local, 'coach.runAction')).toEqual([saved.actions[0]])
     expect(callsTo(local, 'window.close')).toEqual([])
     expect(screen.getByText('Undone')).toBeTruthy()
   })
 
-  it('saves an answer to the subject only when asked, without its receipt lines', async () => {
+  it('has no "Save to subject" button under an answer', async () => {
     const local = askApi(() => ({
       reply: 'SN1 has one slow step.\n\nSaved to Chemistry: goal “Pass”',
       actions: [],
@@ -156,12 +159,9 @@ describe('AskBar', () => {
     render(<AskBar api={local.api} />)
     ask('why is SN1 first order?')
     await flush()
-    fireEvent.click(screen.getByRole('button', { name: 'Save to subject' }))
-    await flush()
-    expect(callsTo(local, 'coach.runAction')).toEqual([
-      { type: 'add_note', text: 'SN1 has one slow step.', subjectId: null, conceptId: null },
-    ])
-    expect(screen.getByText('Saved to your subject')).toBeTruthy()
+    expect(screen.getByText(/SN1 has one slow step/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Save to subject' })).toBeNull()
+    expect(callsTo(local, 'coach.runAction')).toEqual([])
   })
 
   it('Shift+Enter adds a line instead of sending', async () => {
@@ -274,16 +274,18 @@ describe('AskBar', () => {
     expect(callsTo(local, 'window.setSize')).toEqual([])
   })
 
-  it('an action chip runs coach.runAction, then closes the bar', async () => {
+  it('shows no chips or buttons under a reply (no "Open subject", no "Save to subject")', async () => {
     const local = askApi()
     render(<AskBar api={local.api} />)
     ask('recursion')
     await flush()
-    fireEvent.click(screen.getByRole('button', { name: 'Paste prompt into chat' }))
-    await flush()
-    const channels = local.calls.map((c) => c.channel)
-    expect(channels.slice(-2)).toEqual(['coach.runAction', 'window.close'])
-    expect(local.calls.at(-2)?.payload).toEqual(RESULT.actions[1])
+    for (const name of [
+      /Paste prompt into chat/,
+      /Open subject/,
+      /Save to subject/,
+      /Start roadmap/,
+    ])
+      expect(screen.queryByRole('button', { name })).toBeNull()
   })
 
   it('Esc closes the window', () => {
@@ -313,20 +315,6 @@ describe('AskBar', () => {
 })
 
 describe('Ask bar helpers', () => {
-  it('labels every coach action', () => {
-    expect(describeAction({ type: 'start_review', conceptIds: ['a', 'b'] }).label).toBe(
-      'Review 2 topics',
-    )
-    expect(
-      describeAction({
-        type: 'create_exam',
-        spec: { subjectIds: ['s'], count: 10, focus: 'weak', difficulty: 'mixed' },
-      }).label,
-    ).toBe('Create a 10-question exam')
-    expect(describeAction({ type: 'set_focus', subjectId: null }).label).toBe('Clear focus')
-    expect(describeAction({ type: 'open_subject', subjectId: 's' }).label).toBe('Open subject')
-  })
-
   it('keeps the window between 52 and 600 tall, less on a short screen', () => {
     expect(clampHeight(0)).toBe(52)
     expect(clampHeight(300.2)).toBe(301)

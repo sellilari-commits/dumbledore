@@ -9,7 +9,7 @@ import type { MemoryChanged } from '@shared/state'
 import { describe, expect, it } from 'vitest'
 import type { ChatTool, ToolCtx, ToolOutcome } from './types'
 import { UndoLog } from './undo'
-import { createWriteTools } from './write'
+import { createWriteTools, saysYes } from './write'
 
 const SOURCE = { app: 'Chrome', bundleId: null, url: null, title: 'Page' }
 
@@ -60,8 +60,9 @@ function setup(opts: { relink?: boolean } = {}) {
     call('create', { kind, data: typeof data === 'string' ? data : JSON.stringify(data) })
   const update = (kind: string, id: Id | null, patch: unknown) =>
     call('update', { kind, id, patch: JSON.stringify(patch) })
-  const remove = (kind: string, id: Id, confirmed = false) =>
-    call('delete', { kind, id }, { confirmed })
+  /** A delete: first the question; confirmed, with the student's "yes" as the message. */
+  const remove = (kind: string, id: Id, confirmed = false, message = confirmed ? 'yes' : '') =>
+    call('delete', { kind, id, confirmed }, { message })
   const undoLast = async (out: ToolOutcome) => {
     const id = out.receipts[0]?.undoId
     expect(id).toBeTruthy()
@@ -400,18 +401,12 @@ describe('write tools: topic', () => {
 
     const ask = await t.remove('topic', mid.id)
     expect(ask.ok).toBe(true)
-    expect(ask.result).toEqual({
+    expect(ask.result).toMatchObject({
+      deleted: false,
       needsConfirmation: true,
-      message: 'Ask the student to press the confirmation button',
+      ask: 'Delete the topic “Spread” and its 2 notes from Statistics? Say yes to delete it.',
     })
-    expect(ask.chips).toEqual([
-      {
-        type: 'run_tool',
-        tool: 'delete',
-        input: { kind: 'topic', id: mid.id },
-        label: 'Delete topic “Spread” and its 2 notes',
-      },
-    ])
+    expect(Object.keys(ask)).not.toContain('chips')
     expect(ask.receipts).toEqual([])
     expect(t.state()).toEqual(before)
 
@@ -506,10 +501,13 @@ describe('write tools: note', () => {
     })
     const before = t.state()
     const ask = await t.remove('note', note.id)
-    expect(ask.chips[0]).toMatchObject({
-      type: 'run_tool',
-      label: 'Delete note “Median resists outliers”',
+    expect(ask.result).toMatchObject({
+      ask: 'Delete the note “Median resists outliers” from Statistics? Say yes to delete it.',
     })
+    expect(t.repos.notes.get(note.id)?.status).toBe('active')
+    // Confirmed without a yes from the student: nothing is deleted.
+    const noYes = await t.remove('note', note.id, true, 'hmm, what was that note?')
+    expect(noYes.result).toMatchObject({ deleted: false, needsConfirmation: true })
     expect(t.repos.notes.get(note.id)?.status).toBe('active')
     const out = await t.remove('note', note.id, true)
     expect(out.receipts[0]?.line).toBe('Deleted note “Median resists outliers”')
@@ -651,7 +649,11 @@ describe('write tools: roadmap_step', () => {
     const t = withRoadmap()
     const before = t.state()
     const ask = await t.remove('roadmap_step', 'itm_0')
-    expect(ask.chips[0]).toMatchObject({ label: 'Delete step 1 “Mean”' })
+    expect(ask.result).toMatchObject({
+      ask: expect.stringMatching(
+        /^Delete step 1 “Mean” from the plan “.+”\? Say yes to delete it\.$/,
+      ),
+    })
     expect(t.state()).toEqual(before)
     const out = await t.remove('roadmap_step', 'itm_0', true)
     expect(out.receipts[0]?.line).toBe('Deleted step 1 “Mean”')
@@ -662,6 +664,39 @@ describe('write tools: roadmap_step', () => {
     ])
     await t.undoLast(out)
     expect(t.state()).toEqual(before)
+  })
+})
+
+describe('delete confirmation by a typed yes', () => {
+  it('runs only for a delete that was asked, when the student says yes', async () => {
+    const t = setup()
+    const s = t.repos.subjects.list()[0]
+    const { note } = t.repos.notes.add({
+      subjectId: s?.id ?? null,
+      conceptId: null,
+      encounterId: null,
+      kind: 'fact',
+      text: 'Old note',
+      source: SOURCE,
+    })
+    // Never asked: confirmed true is not enough, it asks first.
+    const skipped = await t.remove('note', note.id, true, 'yes')
+    expect(skipped.result).toMatchObject({ deleted: false, needsConfirmation: true })
+    expect(t.repos.notes.get(note.id)?.status).toBe('active')
+    // Asked now (the call above): a "no" deletes nothing, a "yes" deletes.
+    expect((await t.remove('note', note.id, true, 'no, keep it')).result).toMatchObject({
+      deleted: false,
+    })
+    const out = await t.remove('note', note.id, true, 'Yes')
+    expect(out.receipts[0]?.line).toBe('Deleted note “Old note”')
+    expect(t.repos.notes.get(note.id)?.status).toBe('deleted')
+  })
+
+  it('saysYes reads a plain yes, not a no', () => {
+    for (const yes of ['yes', 'Yes!', 'yep, delete it', 'ok', 'sure', 'joo', 'go ahead'])
+      expect(saysYes(yes), yes).toBe(true)
+    for (const no of ['no', 'yes but not that one', "don't", 'what note?', '', 'maybe'])
+      expect(saysYes(no), no).toBe(false)
   })
 })
 
@@ -676,7 +711,9 @@ describe('write tools: feedback, assignment, settings, profile', () => {
 
     const f = t.repos.feedback.add({ text: 'Shorter prompts', scope: 'prompts', subjectId: null })
     const ask = await t.remove('feedback', f.id)
-    expect(ask.chips[0]).toMatchObject({ label: 'Delete feedback “Shorter prompts”' })
+    expect(ask.result).toMatchObject({
+      ask: 'Delete your feedback “Shorter prompts”? Say yes to delete it.',
+    })
     const del = await t.remove('feedback', f.id, true)
     expect(t.repos.feedback.recent({ limit: 10 })).toEqual([])
     await t.undoLast(del)

@@ -1,9 +1,9 @@
 /**
  * Ask flow (F5) and `/d` instructions: one coach turn on the cheap LLM.
  *
- * The Ask bar (double tap) is a conversation with Dumbledore: it never pastes into the AI chat.
- * Its actions come back as chips the student can press (insert_prompt is dropped there), e.g.
- * adjust_roadmap when they say what a subject should cover. A `/d …` line typed in the AI chat
+ * The Ask bar (double tap) is a conversation with Dumbledore. It has no buttons or chips: what it
+ * did shows as receipt rows (labelled undo_saves, with Undo where there is one), and when it needs
+ * the student's choice it asks in plain text and the next turn acts on the answer. A `/d …` line typed in the AI chat
  * box still acts in place: "I want to understand X" starts a roadmap whose first prompt is pasted,
  * and other actions become toast buttons.
  * Turns live in thread 'ask'; the context is its last 10 messages after the latest "New chat"
@@ -11,18 +11,18 @@
  * streams as 'chat.delta' on that thread when `emitDelta` is wired.
  * A topic selected in the Ask bar (`subjectId`) leads the coach context: "Topic: <name>" plus that
  * subject's goal, deadline, open roadmap (active or paused) and step, and struggling concepts.
- * A "Start roadmap" chip for a subject that already has an open roadmap becomes "Open subject"
+ * A start_roadmap for a subject that already has an open roadmap is dropped
  * (`chatRoadmapActions`), so the chat never plans a second one.
  *
  * What the student tells Dumbledore is saved into their studying at once (ChatSaves): what they
  * ask or don't get (save_question), facts about a course (update_subject) and notes they ask to
- * keep (add_note), each as a receipt line in the reply with an Undo chip. Feedback the coach
+ * keep (add_note), each as a receipt row with Undo. Feedback the coach
  * recognises (give_feedback) is stored right away and reaches the prompts of its scope.
  *
  * With chat tools wired (and a brain with coachLoop), the double-tap chat runs the tool loop
  * instead of the single coach call: the model reads, writes and acts through the tools
  * (chat-tools/index.ts) until it answers. The reply streams as before; the assistant message
- * carries the turn's chips and one labelled undo_save per receipt (what was done, with Undo), and
+ * carries one labelled undo_save per receipt (what was done, with Undo), and
  * the web sources as links under the text. The history the next turns send says what was done
  * ("Done: …" lines from those receipts) without showing it twice in the chat. `/d` instructions
  * and a brain without coachLoop keep the single coach call.
@@ -35,7 +35,7 @@ import type { EventPayload } from '@shared/ipc'
 import type { AskResult } from '@shared/state'
 import type { ChatWriter, FieldSnapshot } from '../chat/chat-writer'
 import type { ChatTools, ChatTurnTools } from '../chat-tools'
-import { askedToOpen, type StartRoadmapAction } from '../chat-tools/flows'
+import type { StartRoadmapAction } from '../chat-tools/flows'
 import { withProgress } from '../chat-tools/progress'
 import { sourcesMarkdown } from '../chat-tools/web-search'
 import { coachActionLabel } from '../overlay/labels'
@@ -163,7 +163,7 @@ export class AskFlow {
   }
 
   /**
-   * Ask bar (double tap): reply + actions as chips. With chat tools it runs the tool loop
+   * Ask bar (double tap): reply + receipts. With chat tools it runs the tool loop
    * (submitWithTools); without, one coach call where nothing is ever pasted.
    */
   async submit(text: string, opts: AskOptions = {}): Promise<AskResult> {
@@ -188,16 +188,16 @@ export class AskFlow {
   }
 
   /**
-   * Saves happen now: each adds a receipt line ("Saved to …") and its Undo chip; feedback is
-   * stored, with a "Got it" line when the coach said nothing. Other actions stay chips.
+   * Saves happen now: each adds a receipt line ("Saved to …") and its receipt row (a labelled
+   * undo_save, with Undo when it has one); feedback is stored, with a "Got it" line when the coach
+   * said nothing. Other actions are not shown: the chat has no chips.
    */
   private applyInChat(
     actions: CoachAction[],
     reply: string,
   ): { actions: CoachAction[]; lines: string[] } {
     const { feedback, saves } = this.deps
-    const chips: CoachAction[] = []
-    const undos: CoachAction[] = []
+    const receipts: CoachAction[] = []
     const lines: string[] = []
     for (const action of actions) {
       if (action.type === 'give_feedback') {
@@ -213,23 +213,20 @@ export class AskFlow {
         continue
       }
       const receipt = saves?.apply(action)
-      if (receipt) {
-        if (receipt.line) lines.push(receipt.line)
-        if (receipt.undo) undos.push(receipt.undo)
-        chips.push(...receipt.more)
-      } else if (action.type !== 'add_note' || !saves) {
-        chips.push(action)
+      if (receipt?.line) {
+        lines.push(receipt.line)
+        const saveId = receipt.undo?.type === 'undo_save' ? receipt.undo.saveId : ''
+        receipts.push({ type: 'undo_save', saveId, label: receipt.line })
       }
     }
-    return { actions: [...chips, ...undos], lines }
+    return { actions: receipts, lines }
   }
 
   /**
    * Plans the roadmap the student asked for while they keep talking (the orb shows "Building your
    * roadmap…"), then says in the chat that it is ready and where step 1 is: their next tap in
    * their AI chat. With `startNow` (the student asked to start) and an AI chat open when the plan
-   * is ready, step 1 is pasted there instead. Nothing is ever opened. A failure says why and
-   * offers to try again.
+   * is ready, step 1 is pasted there instead. A failure says why; the student can ask again.
    */
   plan(action: StartRoadmapAction, opts: { startNow?: boolean } = {}): void {
     const { sessions, repos } = this.deps
@@ -289,8 +286,7 @@ export class AskFlow {
             .filter(Boolean)
             .join('\n\n'),
           [
-            { type: 'open_subject', subjectId: session.subjectId },
-            ...(fact?.undo ? [fact.undo] : []),
+            ...(fact?.undo?.type === 'undo_save' ? [{ ...fact.undo, label: fact.line }] : []),
             ...(pasted
               ? [{ type: 'undo_save' as const, saveId: '', label: `Pasted step 1 into ${pasted}` }]
               : []),
@@ -300,15 +296,14 @@ export class AskFlow {
       .catch((error: unknown) => {
         const raw = error instanceof Error ? error.message : String(error)
         const why = aiFailureText(raw) ?? raw.replace(/^Couldn't build a roadmap:\s*/, '')
-        return say(`I couldn’t plan that yet. ${why}`, [action])
+        return say(`I couldn’t plan that yet. ${why}`, [])
       })
   }
 
   /**
    * The double-tap chat with tools: the model reads, writes and acts in a loop until it answers.
-   * Receipts become labelled undo_saves (the UI shows them as lines with Undo), chips stay chips,
-   * web sources go under the reply as links. A website opens only when the student's message
-   * asked for it (askedToOpen) or later on a chip click.
+   * Receipts become labelled undo_saves (the UI shows them as lines with Undo); web sources go
+   * under the reply as links. The student's message goes to the tools (a delete runs on a yes).
    */
   private async submitWithTools(text: string, opts: AskOptions): Promise<AskResult> {
     const { repos, brain, chatTools } = this.deps
@@ -323,9 +318,7 @@ export class AskFlow {
     })
     const topic = opts.subjectId ? topicContext(repos, opts.subjectId) : null
     const context = [topic, this.deps.contextText()].filter(Boolean).join('\n\n')
-    const traced = this.memory.trace(
-      chatTools.turn({ signal: opts.signal, userAskedToOpen: askedToOpen(text) }),
-    )
+    const traced = this.memory.trace(chatTools.turn({ signal: opts.signal, message: text }))
     const turn = traced.tools
     const messageId = `ask_pending_${++this.seq}`
     let answered = () => {}

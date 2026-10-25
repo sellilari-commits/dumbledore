@@ -3,7 +3,8 @@
  * tool calls — and always finishes with `done`. Falls through to the next chat model only before
  * the first token arrives (the router's stream rule). A model that only saves (save_question,
  * update_subject, add_note, give_feedback) and says nothing — it expects to answer after the tool
- * result — is asked once more, without tools, for the answer itself.
+ * result — is asked once more, without tools, for the answer itself. No canned lines: a model
+ * that only acts says nothing, and the chat shows what it did as receipts.
  */
 import type { CallOptions, CoachEvent, CoachInput } from '@engine/brain-contract'
 import type { Clock } from '../clock'
@@ -11,20 +12,6 @@ import type { Router } from './llm/router'
 import { deadlineFor } from './llm/structured'
 import { estimateMessagesTokens, looksFinnish } from './llm/text'
 import { COACH_TOOLS, coachMessages, coachSystem, toCoachAction } from './prompts/p10-coach'
-
-const FALLBACK_TEXT: Record<string, string> = {
-  start_roadmap: "Let's build a roadmap for that first.",
-  create_exam: "I'll set up that exam.",
-  start_review: "Let's do a quick review.",
-  insert_prompt: "I've put a prompt in your chat box — read it, then send.",
-  set_focus: 'Focus updated.',
-  open_subject: 'Opening it now.',
-  save_question:
-    'Good question — saved. Tap the Dumbledore key in your AI chat for a prompt that explains it.',
-  update_subject: 'Got it.',
-  add_note: 'Saved.',
-  give_feedback: 'Got it, I’ll keep that in mind.',
-}
 
 /** Tool calls the student only sees as a receipt: the answer still has to come as text. */
 const SAVES = new Set(['save_question', 'update_subject', 'add_note', 'give_feedback'])
@@ -105,10 +92,6 @@ export async function* runCoach(
         yield { type: 'text', delta: part.delta }
       }
     }
-  }
-  const first = actions[0]
-  if (!wroteText && first?.type === 'action') {
-    yield { type: 'text', delta: FALLBACK_TEXT[first.action.type] ?? '' }
   }
   for (const a of actions) yield a
   yield { type: 'done' }

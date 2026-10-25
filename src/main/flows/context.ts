@@ -5,7 +5,7 @@
  * coach.
  *
  * `chatRoadmapActions` keeps the double-tap chat from planning a second roadmap: a start_roadmap
- * for a subject or topic that already has an open roadmap becomes open_subject (open, continue).
+ * for a subject (by id or name) that already has an open roadmap is dropped.
  */
 import type {
   ChatContext,
@@ -15,7 +15,6 @@ import type {
   StudyService,
 } from '@engine/contracts'
 import type { CoachAction, Id, Roadmap, RoadmapItem, Subject } from '@shared/domain'
-import { topLevel } from '@shared/topics'
 
 export function chatContext(
   perception: Pick<PerceptionService, 'aiChat' | 'chatExcerpt' | 'pageContext'>,
@@ -127,71 +126,75 @@ export function coachContextText(d: CoachContextDeps): string {
   return lines.join('\n')
 }
 
-const norm = (s: string): string => s.trim().toLowerCase().replace(/\s+/g, ' ')
+const STOP = new Set(
+  'about again also deeply learn learning master really study studying their there these thing things understand understanding want what with would into from that this have better more some like just need know'.split(
+    ' ',
+  ),
+)
 
-/** `name` appears in `text` as whole words (case-insensitive). */
-function mentions(text: string, name: string): boolean {
-  const n = norm(name)
-  if (n.length < 3) return false
-  const escaped = n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}($|[^\\p{L}\\p{N}])`, 'u').test(norm(text))
+const words = (text: string) =>
+  text
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w.length >= 4 && !STOP.has(w))
+
+const stem = (word: string) => word.replace(/s$/, '')
+
+/**
+ * The open roadmap (active or paused) that already covers a goal: every key word of the goal is
+ * a word of the roadmap's title or goal or its subject's name (whole words, plurals alike). Only
+ * those, not topic names: "graph neural networks" is not covered by a Neural Networks roadmap
+ * that has a "Computational graphs" topic, so a new course the student chose is not refused.
+ */
+export function coveringRoadmap(
+  repos: Pick<Repos, 'subjects' | 'roadmaps'>,
+  goal: string,
+): Roadmap | null {
+  const keys = words(goal).map(stem)
+  if (keys.length === 0) return null
+  for (const subject of repos.subjects.list({ status: ['active', 'suggested'] })) {
+    for (const roadmap of openRoadmaps(repos, subject.id)) {
+      const have = new Set(words([roadmap.title, roadmap.goal, subject.name].join(' ')).map(stem))
+      if (keys.every((k) => have.has(k))) return roadmap
+    }
+  }
+  return null
 }
 
 /**
- * The subject a start_roadmap is about: its id, else a subject it names instead of an id (the
- * model sometimes writes "Statistics"), else the subject whose name or topic the goal names.
+ * The subject a start_roadmap names: its id, else a subject name written in place of the id (the
+ * model sometimes writes "Statistics"). Never guessed from the goal's words: "create a course on
+ * graph neural networks" is not the Neural Networks course.
  */
 function roadmapSubject(
-  repos: Pick<Repos, 'subjects' | 'concepts'>,
+  repos: Pick<Repos, 'subjects'>,
   action: Extract<CoachAction, { type: 'start_roadmap' }>,
 ): Subject | null {
-  if (action.subjectId) {
-    const named =
-      repos.subjects.get(action.subjectId) ?? repos.subjects.findByName(action.subjectId)
-    if (named) return named
-  }
-  const subjects = repos.subjects.list({ status: ['active', 'suggested'] })
-  return (
-    subjects.find((s) => mentions(action.goal, s.name)) ??
-    subjects.find((s) =>
-      topLevel(repos.concepts.listBySubject(s.id)).some((c) => mentions(action.goal, c.name)),
-    ) ??
-    null
-  )
+  if (!action.subjectId) return null
+  return repos.subjects.get(action.subjectId) ?? repos.subjects.findByName(action.subjectId)
 }
 
 /**
- * Double-tap chat chips: a start_roadmap for a subject that already has an open roadmap becomes
- * open_subject (its page shows the roadmap and Continue), so the chat never plans a second one.
- * Otherwise the subject id is made real (a name becomes its id, an unknown id becomes null so the
- * chip still finds or creates the subject from the goal).
+ * Double-tap chat (the single-call path): a start_roadmap for a subject that already has an open
+ * roadmap, or with no subject for a goal an open roadmap covers (coveringRoadmap), is dropped, so
+ * the chat never plans a second one. Otherwise the subject id is made real
+ * (a name becomes its id, an unknown id becomes null so the planner finds or creates the subject
+ * from the goal).
  */
 export function chatRoadmapActions(
-  repos: Pick<Repos, 'subjects' | 'concepts' | 'roadmaps'>,
+  repos: Pick<Repos, 'subjects' | 'roadmaps'>,
   actions: CoachAction[],
 ): CoachAction[] {
   const out: CoachAction[] = []
-  const opened = new Set<Id>()
-  const open = (subjectId: Id) => {
-    if (!opened.has(subjectId)) out.push({ type: 'open_subject', subjectId })
-    opened.add(subjectId)
-  }
   for (const action of actions) {
-    if (action.type === 'open_subject') {
-      open(action.subjectId)
-      continue
-    }
     if (action.type !== 'start_roadmap') {
       out.push(action)
       continue
     }
     const subject = roadmapSubject(repos, action)
-    if (subject && openRoadmaps(repos, subject.id).length > 0) {
-      open(subject.id)
-      continue
-    }
-    // A named subject gets its real id; a goal-matched one is left to the start's own resolver.
-    out.push({ ...action, subjectId: action.subjectId ? (subject?.id ?? null) : null })
+    if (subject && openRoadmaps(repos, subject.id).length > 0) continue
+    if (!subject && coveringRoadmap(repos, action.goal)) continue
+    out.push({ ...action, subjectId: subject?.id ?? null })
   }
   return out
 }

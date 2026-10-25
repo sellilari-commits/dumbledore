@@ -5,11 +5,12 @@
  * validated with the tool's zod schema, every call is logged (name, ok, a short redacted input),
  * and a throwing tool becomes a failure the model can read.
  *
- * `turn()` is one chat turn: the CoachTools that brain.coachLoop calls, plus what the turn did —
- * receipts (each write's line with its Undo) and chips (a delete waiting for its button, an
- * offered flow). `actions()` turns them into what the reply carries: the chips as they are, then
+ * `turn()` is one chat turn: the CoachTools that brain.coachLoop calls, plus what the turn did:
+ * receipts (each write's line with its Undo). `actions()` turns them into what the reply carries,
  * one labelled undo_save per receipt ({ saveId: the Undo id, label: the line }); a receipt that
- * has no Undo is an undo_save with an empty saveId, shown as a line without an Undo button.
+ * has no Undo is an undo_save with an empty saveId, shown as a line without an Undo button. There
+ * are no buttons or chips: when the model needs the student's answer (which course, a delete) it
+ * asks in plain text and the next turn acts on the reply.
  */
 import { toProviderSchema } from '@engine/brain/llm/json'
 import { stableJson } from '@engine/brain/llm/tool-loop'
@@ -58,13 +59,11 @@ export interface ChatToolsDeps {
 export interface ChatTurnTools extends CoachTools {
   /** What the turn's writes and acts did, in order. */
   readonly receipts: Receipt[]
-  /** Chips the turn's calls asked for (a delete to confirm, an offered flow). */
-  readonly chips: CoachAction[]
   /** Every call that ran: name and whether it succeeded. */
   readonly calls: { name: string; ok: boolean }[]
   /** Sources this turn's web searches returned (empty when none ran). */
   sources(): WebSearchSource[]
-  /** The reply's actions: chips, then one labelled undo_save per receipt. */
+  /** The reply's actions: one labelled undo_save per receipt. */
   actions(): CoachAction[]
 }
 
@@ -73,7 +72,7 @@ export interface ChatTools {
   specs: CoachToolSpec[]
   /** Runs one call by name: validated, logged, never throws. */
   run(name: string, input: unknown, ctx?: ToolCtx): Promise<ToolOutcome>
-  /** One chat turn's tools; `ctx` goes to every call of the turn. */
+  /** One chat turn's tools; `ctx` (the signal, the student's message) goes to every call. */
   turn(ctx?: ToolCtx): ChatTurnTools
 }
 
@@ -102,8 +101,6 @@ function issues(error: z.ZodError): string {
     300,
   )
 }
-
-const chipKey = (chip: CoachAction) => stableJson(chip)
 
 export function createChatTools(deps: ChatToolsDeps): ChatTools {
   const log = (line: string) => deps.log?.(`[chat-tools] ${line}`)
@@ -162,24 +159,20 @@ export function createChatTools(deps: ChatToolsDeps): ChatTools {
 
   function turn(ctx: ToolCtx = {}): ChatTurnTools {
     const receipts: Receipt[] = []
-    const chips: CoachAction[] = []
     const calls: { name: string; ok: boolean }[] = []
     deps.webSearch?.resetTurn()
     return {
       specs,
       receipts,
-      chips,
       calls,
       sources: () => deps.webSearch?.turnSources() ?? [],
       async run(name, input) {
         const out = await run(name, input, ctx)
         calls.push({ name, ok: out.ok })
         receipts.push(...out.receipts)
-        const seen = new Set(chips.map(chipKey))
-        for (const chip of out.chips) if (!seen.has(chipKey(chip))) chips.push(chip)
         return { ok: out.ok, result: out.result }
       },
-      actions: () => [...chips, ...receipts.map(receiptAction)],
+      actions: () => receipts.map(receiptAction),
     }
   }
 

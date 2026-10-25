@@ -267,7 +267,6 @@ export function chatHarness(opts: ChatHarnessOptions = {}) {
     writer,
     sessions: sessions as unknown as SessionFlow,
     surfaces,
-    usualAiName: () => usualAi,
     openUsualAi,
     copy: async () => undefined,
     subjectName: () => 'Statistics',
@@ -300,9 +299,7 @@ export function chatHarness(opts: ChatHarnessOptions = {}) {
     notes: typedNotes,
     feedback: repos.feedback,
     saves,
-    chatTools: tools,
     undoLog: undo,
-    chat: repos.chat,
     chatChanged,
   })
   const ask = new AskFlow({
@@ -382,11 +379,10 @@ export const readInput = (kind: string, more: Record<string, unknown> = {}) => (
   ...more,
 })
 
-/** act's input: args as a JSON string, run now. */
-export const actInput = (name: string, args: Record<string, unknown>, offer = false) => ({
+/** act's input: args as a JSON string. */
+export const actInput = (name: string, args: Record<string, unknown>) => ({
   name,
   args: JSON.stringify(args),
-  offer,
 })
 
 /** Lets background work (the planner) finish. */

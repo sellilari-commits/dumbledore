@@ -148,21 +148,22 @@ describe('coachContextText: roadmaps', () => {
 describe('chatRoadmapActions', () => {
   const goal = 'deeply understand causal inference'
 
-  it('turns start_roadmap for a subject with an open roadmap into open_subject', () => {
+  it('drops start_roadmap for a subject with an open roadmap (no chip, no second plan)', () => {
     const { repos, stats } = world()
-    const open: CoachAction = { type: 'open_subject', subjectId: stats.id }
     // By id, by the subject's name in place of an id, by an invented id, and by the goal alone.
     for (const subjectId of [stats.id, 'Statistics', 'sub_01JH82Z8QGVR0D5GZ8P9Y819AB', null]) {
-      expect(chatRoadmapActions(repos, [{ type: 'start_roadmap', subjectId, goal }])).toEqual([
-        open,
-      ])
+      expect(chatRoadmapActions(repos, [{ type: 'start_roadmap', subjectId, goal }])).toEqual([])
     }
-    expect(
-      chatRoadmapActions(repos, [
-        { type: 'start_roadmap', subjectId: stats.id, goal },
-        { type: 'open_subject', subjectId: stats.id },
-      ]),
-    ).toEqual([open])
+  })
+
+  it('REGRESSION: a goal that merely names a course is a new plan, never "Open subject"', () => {
+    const { repos } = world()
+    const start: CoachAction = {
+      type: 'start_roadmap',
+      subjectId: null,
+      goal: 'create me a course on Bayesian statistics',
+    }
+    expect(chatRoadmapActions(repos, [start])).toEqual([start])
   })
 
   it('keeps start_roadmap when no roadmap covers it, with a real subject id or null', () => {
@@ -219,7 +220,7 @@ describe('double-tap chat on a subject that has a roadmap (regression)', () => {
     return { ...w, flow, inputs }
   }
 
-  it('the coach sees the roadmap and its steps, and every chip opens it instead', async () => {
+  it('the coach sees the roadmap and its steps, and no second roadmap or chip comes out', async () => {
     const goal = 'deeply understand causal inference'
     const { flow, inputs, stats } = chat([
       [{ type: 'start_roadmap', subjectId: null, goal }],
@@ -233,7 +234,7 @@ describe('double-tap chat on a subject that has a roadmap (regression)', () => {
     ]
     for (const message of messages) {
       const result = await flow.submit(message)
-      expect(result.actions).toEqual([{ type: 'open_subject', subjectId: stats.id }])
+      expect(result.actions).toEqual([])
     }
     for (const input of inputs) {
       expect(input.context).toContain(`Statistics [${stats.id}]`)

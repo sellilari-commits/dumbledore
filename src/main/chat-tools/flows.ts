@@ -9,11 +9,9 @@
  *   study_now: a new subject → roadmap → step 1 pasted when ready, or the current step of a
  *   roadmap that exists; open_topic), paste_prompt, and restore_roadmap_version.
  *
- * Websites (Ilari's hard rule): the chat never opens a website or browser tab on its own. A prompt
- * goes into the AI chat that is open; with none open, nothing opens: the result says so and a
- * chip "Open <AI> and paste" waits for the student's click (ctx.confirmed). Only when the
- * student's own message asked to open their AI (ctx.userAskedToOpen) does it open at once.
- * Dumbledore's own pages (a subject page, the panel) may open.
+ * A prompt goes into the AI chat that is open; with none open, the student's usual AI is opened
+ * with the prompt (prompt.openUsualAi: typed in when its site takes it, else on the clipboard),
+ * with a receipt ("Opened ChatGPT and pasted"). No buttons: everything shows as a receipt.
  *
  * A roadmap is never planned twice: start_roadmap refuses a subject (or a goal) that an open
  * roadmap already covers, and says which one to continue.
@@ -26,7 +24,7 @@ import { APP_ROUTES } from '@shared/state'
 import { z } from 'zod'
 import type { ChatWriter } from '../chat/chat-writer'
 import type { ChatSaves } from '../flows/chat-saves'
-import { chatContext, openRoadmaps, roadmapProgress } from '../flows/context'
+import { chatContext, coveringRoadmap, openRoadmaps, roadmapProgress } from '../flows/context'
 import type { SessionFlow } from '../flows/session-flow'
 import type { TypedNotes } from '../flows/typed-notes'
 import type { SurfaceControl } from '../platform'
@@ -52,8 +50,6 @@ export interface ChatFlowsDeps {
   writer: Pick<ChatWriter, 'write'>
   sessions: Pick<SessionFlow, 'start'>
   surfaces: Pick<SurfaceControl, 'open'>
-  /** The AI the student studies with when none is open (for "Open Claude and paste"). */
-  usualAiName: () => string | null
   /** Copies the prompt and opens the usual AI (prompt.openUsualAi); null = none known. */
   openUsualAi?: (text: string) => Promise<{ name: string; prefilled: boolean } | null>
   /** Puts text on the clipboard (when no AI is known to open). */
@@ -64,62 +60,14 @@ export interface ChatFlowsDeps {
 
 export interface ChatFlows {
   perform(action: CoachAction, ctx: ToolCtx): Promise<ToolOutcome>
-  /** Why a coach flow must not run or be offered (a second roadmap); null = fine. */
+  /** Why a coach flow must not run (a second roadmap); null = fine. */
   refuse(action: CoachAction): string | null
   flows: ActFlow[]
 }
 
-// ─── The website rule ─────────────────────────────────────────────────────────────────────────
-
-const OPEN_WORD =
-  /\b(open|launch|bring up|pull up|go to|start up|fire up|avaa|avaa?mme|öppna)\b|\bopen it\b/i
-const AI_WORD =
-  /\b(chat ?gpt|gpt|claude|gemini|perplexity|copilot|mistral|le chat|deepseek|grok|my ai|the ai|an ai|ai chat|browser|tab|website|site)\b/i
-
-/**
- * The student's own message asks to open their AI ("open ChatGPT and paste it", "avaa Claude"):
- * only then may a turn open a website without a click.
- */
-export function askedToOpen(message: string): boolean {
-  return OPEN_WORD.test(message) && AI_WORD.test(message)
-}
-
 // ─── Roadmaps that exist ────────────────────────────────────────────────────────────────────
 
-const STOP = new Set(
-  'about again also deeply learn learning master really study studying their there these thing things understand understanding want what with would into from that this have better more some like just need know'.split(
-    ' ',
-  ),
-)
-
-const words = (text: string) =>
-  text
-    .toLowerCase()
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter((w) => w.length >= 4 && !STOP.has(w))
-
-/**
- * The open roadmap (active or paused) that already covers a goal: every key word of the goal is
- * in the roadmap's title or goal, its subject's name or its topics.
- */
-export function coveringRoadmap(repos: Repos, goal: string): Roadmap | null {
-  const keys = words(goal)
-  if (keys.length === 0) return null
-  for (const subject of repos.subjects.list({ status: ['active', 'suggested'] })) {
-    for (const roadmap of openRoadmaps(repos, subject.id)) {
-      const text = [
-        roadmap.title,
-        roadmap.goal,
-        subject.name,
-        ...repos.concepts.listBySubject(subject.id).map((c) => c.name),
-      ]
-        .join(' ')
-        .toLowerCase()
-      if (keys.every((k) => text.includes(k))) return roadmap
-    }
-  }
-  return null
-}
+export { coveringRoadmap }
 
 function roadmapExists(repos: Repos, roadmap: Roadmap): string {
   const subject = repos.subjects.get(roadmap.subjectId)
@@ -133,23 +81,11 @@ const errorText = (error: unknown) => (error instanceof Error ? error.message : 
 export function createChatFlows(deps: ChatFlowsDeps): ChatFlows {
   const { repos } = deps
   const subjectName = (id: string | null) => (id ? (repos.subjects.get(id)?.name ?? null) : null)
-  const aiLabel = () => deps.perception.aiChat()?.assistant ?? deps.usualAiName() ?? 'your AI'
   const receipt = (line: string, undoId: string | null = null): Receipt => ({ line, undoId })
 
-  /** The chip that pastes `text` on the student's click (it may open their AI then). */
-  const pasteChip = (text: string): CoachAction => {
-    const usual = deps.usualAiName()
-    return {
-      type: 'run_tool',
-      tool: 'act',
-      input: { name: 'paste_prompt', args: JSON.stringify({ text }), offer: false },
-      label: usual ? `Open ${usual} and paste` : 'Copy the prompt',
-    }
-  }
-
   /**
-   * Puts a prompt into the open AI chat; with none open, opens the usual AI only when the student
-   * asked (their message or a click), else returns the "Open <AI> and paste" chip.
+   * Puts a prompt into the open AI chat; with none open, opens the student's usual AI with it
+   * (typed in when its site takes the prompt, else copied); with no usual AI known, copies it.
    */
   async function deliver(text: string, ctx: ToolCtx): Promise<ToolOutcome> {
     const chat = deps.perception.aiChat()
@@ -171,32 +107,20 @@ export function createChatFlows(deps: ChatFlowsDeps): ChatFlows {
         { receipts: [receipt('Copied the prompt: press ⌘V in your AI chat')] },
       )
     }
-    if (ctx.confirmed || ctx.userAskedToOpen) {
-      const opened = await deps.openUsualAi?.(text)
-      if (opened) {
-        const line = opened.prefilled
-          ? `Opened ${opened.name} with the prompt typed in`
-          : `Opened ${opened.name}; the prompt is copied, press ⌘V`
-        return outcome(
-          { opened: opened.name, prefilled: opened.prefilled },
-          {
-            receipts: [receipt(line)],
-          },
-        )
-      }
-      await deps.copy?.(text)
+    const opened = await deps.openUsualAi?.(text)
+    if (opened) {
+      const line = opened.prefilled
+        ? `Opened ${opened.name} and pasted`
+        : `Opened ${opened.name}; the prompt is copied, press ⌘V`
       return outcome(
-        { opened: null, note: 'No usual AI known: the prompt is on the clipboard.' },
-        { receipts: [receipt('Copied the prompt: open your AI chat and press ⌘V')] },
+        { opened: opened.name, pasted: opened.prefilled, sent: false },
+        { receipts: [receipt(line)] },
       )
     }
+    await deps.copy?.(text)
     return outcome(
-      {
-        pasted: false,
-        noAiChatOpen: true,
-        note: `No AI chat is open and nothing was opened. Tell the student: open their AI chat and ask again, or press the button to open ${aiLabel()} and paste. Never open it yourself.`,
-      },
-      { chips: [pasteChip(text)] },
+      { opened: null, note: 'No usual AI known: the prompt is on the clipboard.' },
+      { receipts: [receipt('Copied the prompt: open your AI chat and press ⌘V')] },
     )
   }
 
@@ -348,12 +272,15 @@ export function createChatFlows(deps: ChatFlowsDeps): ChatFlows {
           const noteId = saved.undo.noteId
           undoId = deps.undo.remember(saved.line, () => deps.notes.undo(noteId))
         }
+        // A changed goal or scope could replan the active roadmap: the model decides or asks.
+        const replan = saved.more.some((a) => a.type === 'adjust_roadmap')
+          ? {
+              note: 'The subject has an active roadmap. If the student wants it to follow this, act adjust_roadmap; if that is unclear, ask them in one short question.',
+            }
+          : {}
         return outcome(
-          { saved: saved.line },
-          {
-            receipts: [receipt(saved.line, undoId)],
-            chips: saved.more,
-          },
+          { saved: saved.line, ...replan },
+          { receipts: [receipt(saved.line, undoId)] },
         )
       }
       case 'start_roadmap': {
@@ -411,17 +338,15 @@ export function createChatFlows(deps: ChatFlowsDeps): ChatFlows {
     {
       name: 'write_prompt',
       description:
-        'the student says what they want from their AI ("a prompt that explains SN1 with an example"): Dumbledore writes a good prompt from it (with their subject and what is on screen) and pastes it into their open AI chat (never sends). request = their wish in their words. Use it when they want a prompt, not for a roadmap',
+        'the student says what they want from their AI ("a prompt that explains SN1 with an example"): Dumbledore writes a good prompt from it (with their subject and what is on screen) and pastes it into their open AI chat, or opens their usual AI with it when none is open (never sends). request = their wish in their words. Use it when they want a prompt, not for a roadmap',
       input: z.object({ request: z.string().min(1) }),
-      label: () => 'Write the prompt',
       run: (args, ctx) => writePrompt(String(args.request), ctx),
     },
     {
       name: 'paste_prompt',
       description:
-        "paste a prompt you wrote yourself into the student's open AI chat (never sends). With no AI chat open nothing opens: the student gets a button",
+        "paste a prompt you wrote yourself into the student's open AI chat (never sends). With no AI chat open, their usual AI opens with it",
       input: z.object({ text: z.string().min(1) }),
-      label: () => `Open ${aiLabel()} and paste`,
       run: (args, ctx) => deliver(String(args.text), ctx),
     },
     {
@@ -433,7 +358,6 @@ export function createChatFlows(deps: ChatFlowsDeps): ChatFlows {
         goal: z.string().min(1),
         deadline: z.string().nullable(),
       }),
-      label: (args) => `Start studying: ${short(String(args.goal), 40)}`,
       run: (args, ctx) =>
         studyNow(
           {
@@ -449,7 +373,6 @@ export function createChatFlows(deps: ChatFlowsDeps): ChatFlows {
       description:
         "open a topic (conceptId from read/search) on its subject's page in the app, where its notes, sources and roadmap steps are",
       input: z.object({ conceptId: z.string() }),
-      label: () => 'Open the topic',
       async run(args) {
         const concept = repos.concepts.get(String(args.conceptId))
         if (!concept) return failure(`No topic with id ${args.conceptId}; read the subject first`)
@@ -466,7 +389,6 @@ export function createChatFlows(deps: ChatFlowsDeps): ChatFlows {
       description:
         "bring back an earlier version of a subject's roadmap (versionId = a roadmap id from read roadmap_history); the roadmap shown until now goes into the history, nothing is deleted",
       input: z.object({ versionId: z.string() }),
-      label: () => 'Bring back this version',
       run(args) {
         const versionId = String(args.versionId)
         try {

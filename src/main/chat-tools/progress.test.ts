@@ -115,7 +115,6 @@ describe('AskFlow: chat.progress while the tool loop runs', () => {
       specs: tools.specs,
       run: tools.run,
       receipts: [],
-      chips: [],
       calls: [],
       sources: () => [],
       actions: () => [],

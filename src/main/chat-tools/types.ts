@@ -4,12 +4,12 @@
  * - read(kind, id?, filter?) and search(query): any kind of record (read.ts)
  * - create(kind, data), update(kind, id, patch), delete(kind, id): row edits on the writable
  *   kinds; every write snapshots what it touches first, so it comes back with a receipt and an
- *   Undo that restores the snapshot; delete only asks for confirmation (a chip) (write.ts)
+ *   Undo that restores the snapshot; a delete first gives the model a plain question to ask, and
+ *   runs only once the student's next message says yes (write.ts)
  * - act(name, args): flows that are more than a row edit, e.g. start or adjust a roadmap, create
  *   an exam, open a page; the app's IPC channels classified as acts are callable too (act.ts)
  * Every call is validated against its zod schema; ids come only from what a read returned.
  */
-import type { CoachAction } from '@shared/domain'
 import type { z } from 'zod'
 
 /** One line the student sees under the reply ("Renamed “X” → “Y”"), with its Undo when it has one. */
@@ -24,21 +24,14 @@ export interface ToolOutcome {
   ok: boolean
   /** JSON-able result the model reads next; keep it compact (the loop clips it anyway). */
   result: unknown
-  /** What changed, for the student. */
+  /** What changed, for the student: the only thing shown under the reply. */
   receipts: Receipt[]
-  /** Chips under the reply: a delete waiting for confirmation, an action the model offered. */
-  chips: CoachAction[]
 }
 
 export interface ToolCtx {
   signal?: AbortSignal
-  /** The student pressed the confirmation chip: a delete runs instead of asking. */
-  confirmed?: boolean
-  /**
-   * The student's own message asked to open their AI ("open ChatGPT and paste it"). Without it
-   * (or a chip click, `confirmed`) the chat never opens a website or browser tab.
-   */
-  userAskedToOpen?: boolean
+  /** The student's message this turn: a confirmed delete runs only when it says yes. */
+  message?: string
 }
 
 export interface ChatTool<I = unknown> {
@@ -63,7 +56,6 @@ export const outcome = (result: unknown, more: Partial<ToolOutcome> = {}): ToolO
   ok: true,
   result,
   receipts: [],
-  chips: [],
   ...more,
 })
 
@@ -71,7 +63,6 @@ export const failure = (error: string): ToolOutcome => ({
   ok: false,
   result: { error },
   receipts: [],
-  chips: [],
 })
 
 /** "a long text…" at `max` characters, whitespace collapsed. */

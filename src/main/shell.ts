@@ -178,7 +178,6 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
     writer,
     sessions,
     surfaces,
-    usualAiName: () => usualAssistant()?.name ?? null,
     openUsualAi: async (text) => {
       const res = (await invoke('prompt.openUsualAi', text)) as {
         opened: { name: string; prefilled: boolean } | null
@@ -216,9 +215,7 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
   // A pressed Undo is noted in the chat memory, so the next turns know it was undone.
   const undoNotes = new ChatMemory({ chat: repos.chat })
   const actions = new CoachActions({
-    chatTools,
     undoLog: { undo: async (id) => undoNotes.noteUndo(id, await undoLog.undo(id)) },
-    chat: repos.chat,
     chatChanged,
     notes: typedNotes,
     saves: {

@@ -1,6 +1,7 @@
 /**
- * The tool-using chat in the Ask bar: receipt rows with Undo under a reply, the confirmation chip
- * of a delete, and links in replies (a web search's sources) that open only when clicked.
+ * The tool-using chat in the Ask bar: receipt rows with Undo under a reply (the only UI there: no
+ * chips or buttons, a delete is a plain question), and links in replies (a web search's sources)
+ * that open only when clicked.
  */
 import type { CoachAction } from '@shared/domain'
 import type { InvokeChannel } from '@shared/ipc'
@@ -22,12 +23,7 @@ const STEP: CoachAction = {
   saveId: 'undo_2',
   label: 'Marked step 3 “Backdoor criterion” done',
 }
-const DELETE: CoachAction = {
-  type: 'run_tool',
-  tool: 'delete',
-  input: { kind: 'note', id: 'note_1' },
-  label: 'Delete note “Colliders open paths”',
-}
+const OPENED: CoachAction = { type: 'undo_save', saveId: '', label: 'Opened ChatGPT and pasted' }
 
 function askApi(result: AskResult, extra: InvokeHandlers = {}) {
   return fakeApi(
@@ -79,9 +75,16 @@ describe('Ask bar receipts', () => {
       STEP.type === 'undo_save' ? STEP.label : '',
     ])
     expect(rows.every((r) => within(r).getByRole('button', { name: /^Undo: / }))).toBe(true)
-    // No plain chips for them: no "Undo" chip and no chips row at all.
+    // No chips at all: no "Undo" chip, no "Save to subject", no "Open subject".
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
-    expect(document.querySelector('.ask__chip')?.textContent).toBe('Save to subject')
+    expect(document.querySelector('.ask__chip')).toBeNull()
+    expect(
+      screen
+        .getAllByRole('button')
+        .every((b) =>
+          /^(Undo: |New chat|Send|Close)/.test(b.getAttribute('aria-label') ?? b.textContent ?? ''),
+        ),
+    ).toBe(true)
   })
 
   it('Undo runs undo_save in place and the row reads Undone', async () => {
@@ -129,51 +132,23 @@ describe('Ask bar receipts', () => {
     expect(withoutReceiptLines(`Kept.\n${label}`, [])).toBe(`Kept.\n${label}`)
   })
 
-  it('keeps the chat’s own saves as before: receipt in the text, a plain Undo chip', async () => {
-    const plain: CoachAction = { type: 'undo_save', saveId: 'save_1' }
-    const local = askApi(
-      reply('Saved to Chemistry › SN1: open question “why first order?”', [plain, RENAME]),
-    )
-    await ask(local)
-    expect(screen.getByText(/Saved to Chemistry › SN1/)).toBeTruthy()
-    expect(within(receipts()).getAllByRole('listitem')).toHaveLength(1)
-    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
-    await flush()
-    expect(callsTo(local, 'coach.runAction')).toEqual([plain])
-    expect(screen.getByText('Undone').closest('.ask__chip')).toBeTruthy()
+  it('a receipt without Undo is a plain row (Opened ChatGPT and pasted)', async () => {
+    const local = askApi(reply('It’s in ChatGPT: read it, then send.', [OPENED]))
+    await ask(local, 'write me a prompt about colliders')
+    const row = within(receipts()).getByRole('listitem')
+    expect(row.textContent).toContain('Opened ChatGPT and pasted')
+    expect(within(row).queryByRole('button')).toBeNull()
   })
 })
 
-describe('Ask bar confirmation chip', () => {
-  it('runs the tool call once, in place, then reads Done', async () => {
-    let finish: () => void = () => {}
-    const local = askApi(reply('Press the button if you want it gone.', [DELETE]), {
-      'coach.runAction': () => new Promise<void>((r) => (finish = r)),
-    })
+describe('Ask bar delete: a plain question, no confirmation chip', () => {
+  it('shows the question as text and no button', async () => {
+    const question = 'Delete the note “Colliders open paths” from Statistics? Say yes to delete it.'
+    const local = askApi(reply(question, []))
     await ask(local, 'delete the colliders note')
-    const chip = screen.getByRole('button', { name: 'Delete note “Colliders open paths”' })
-    expect(chip.className).toContain('ask__chip--confirm')
-    fireEvent.click(chip)
-    fireEvent.click(chip)
-    await flush()
-    expect(callsTo(local, 'coach.runAction')).toEqual([DELETE])
-    await act(async () => finish())
-    expect(screen.queryByRole('button', { name: /Delete note/ })).toBeNull()
-    expect(screen.getByText('Done')).toBeTruthy()
-    expect(callsTo(local, 'window.close')).toEqual([])
-    expect(callsTo(local, 'coach.runAction')).toHaveLength(1)
-  })
-
-  it('a failed confirmation shows quietly and the chip stays', async () => {
-    const local = askApi(reply('Press the button.', [DELETE]), {
-      'coach.runAction': () => Promise.reject(new Error('That note is already gone.')),
-    })
-    await ask(local, 'delete it')
-    fireEvent.click(screen.getByRole('button', { name: /Delete note/ }))
-    await flush()
-    expect(screen.getByRole('status').textContent).toBe('That note is already gone.')
-    expect(screen.queryByRole('alert')).toBeNull()
-    expect(screen.getByRole('button', { name: /Delete note/ })).toBeTruthy()
+    expect(screen.getByText(question)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Delete/ })).toBeNull()
+    expect(document.querySelector('.ask__chip')).toBeNull()
   })
 })
 

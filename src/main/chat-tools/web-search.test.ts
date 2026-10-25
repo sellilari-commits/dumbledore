@@ -32,7 +32,6 @@ describe('web_search tool', () => {
       sources: [{ title: 'Helsinki - Wikipedia', url: 'https://en.wikipedia.org/wiki/Helsinki' }],
     })
     expect(out.receipts).toEqual([])
-    expect(out.chips).toEqual([])
     expect(queries).toEqual(['capital of Finland'])
     await web.tool.run({ query: 'again' }, {})
     expect(web.turnSources()).toEqual([

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { TOOL_RESULTS_HEADER } from '../llm/tool-loop'
-import { CHAT_ACTS, chatToolsSystem } from './p10-chat-tools'
+import { CHAT_ACTS, chatToolsSystem, isClearQuestion } from './p10-chat-tools'
 
 const system = chatToolsSystem({
   profile: 'First-year chemistry student',
@@ -30,11 +30,19 @@ describe('P10 chat with tools', () => {
     expect(system).toMatch(/"What are the steps\?" → read that roadmap and list its steps/)
   })
 
-  it('writes without asking, never claims an unmade change, deletes through a button', () => {
+  it('writes without asking, never claims an unmade change, confirms a delete by a typed yes', () => {
     expect(system).toMatch(/receipt with Undo[^\n]*don't ask permission for ordinary edits/)
     expect(system).toMatch(/Never claim a change you did not make through a tool/)
-    expect(system).toMatch(/Delete never deletes straight away[^\n]*Tell them to press it/)
+    expect(system).toMatch(/Delete asks first[^\n]*word for word[^\n]*says yes[^\n]*confirmed true/)
     expect(system).toMatch(/as few tool calls as needed/)
+  })
+
+  it('has no buttons or chips: acts when clear, asks one plain question when not', () => {
+    expect(system).toMatch(/no buttons, chips or links to press/)
+    expect(system).toMatch(/Never tell the student to press or click anything/)
+    expect(system).toMatch(/When the request is clear, act at once/)
+    expect(system).toMatch(/ask one clear question and do nothing else this turn/)
+    expect(system).not.toMatch(/press the button|press it\b|Open Claude and paste/i)
   })
 
   it('names the acts, defers app actions to the act tool, and saves questions', () => {
@@ -43,10 +51,9 @@ describe('P10 chat with tools', () => {
     expect(system).toMatch(/stuck[^\n]*act save_question/)
   })
 
-  it('never opens a website unless the student asked, and offers the button instead', () => {
-    expect(system).toMatch(/never open a website, a browser tab or their AI yourself/)
-    expect(system).toMatch(/Only when the student's own message asks you to open their AI/)
-    expect(system).toMatch(/Dumbledore's own pages[^\n]*may open/)
+  it('opens their usual AI with a prompt when no AI chat is open', () => {
+    expect(system).toMatch(/or opens their usual AI with it when none is open \(never sends it\)/)
+    expect(system).not.toMatch(/never open a website/i)
   })
 
   it('runs the old long-press flows and roadmap history from the chat', () => {
@@ -64,5 +71,44 @@ describe('P10 chat with tools', () => {
 
   it('explains the tool-results turn', () => {
     expect(system).toContain(`A user turn starting with ${TOOL_RESULTS_HEADER} comes from the app`)
+  })
+})
+
+/** Ilari: "the questions should be really clear." */
+describe('P10 clarifying questions', () => {
+  it('gives the rules with a good and a bad example', () => {
+    expect(system).toMatch(
+      /ONE question per reply, one short sentence, with nothing else around it/,
+    )
+    expect(system).toMatch(/Name the real things by name[^\n]*2 \(at most 3\) concrete options/)
+    expect(system).toMatch(/Say what will happen\. Plain words: course, topic, step, note/)
+    expect(system).toContain(
+      'Good: "Add Graph Neural Networks to your Neural Networks course, or make it a new course?"',
+    )
+    expect(system).toContain('Bad: "Should I add this to an existing subject?"')
+    expect(system).toMatch(/Asking \(only when it really matters; otherwise act/)
+  })
+
+  it('isClearQuestion accepts clear questions', () => {
+    for (const good of [
+      'Add Graph Neural Networks to your Neural Networks course, or make it a new course?',
+      'Delete the note “Colliders block paths” from Causal Inference? Say yes to delete it.',
+      'Move SN1 reactions to Organic Chemistry or keep it in Chemistry?',
+      'Set your Statistics exam to 12 December or 19 December?',
+    ])
+      expect(isClearQuestion(good), good).toBe(true)
+  })
+
+  it('isClearQuestion rejects vague, padded, two-part or internal questions', () => {
+    for (const bad of [
+      'Should I add this to an existing subject?',
+      'Sure! I can help with that. Add it to Neural Networks or make a new course?',
+      'Add it to Neural Networks or a new course? And what level are you?',
+      'Use concept nn_12 or make a new course?',
+      'Add it to subject sub_01 or create a new one?',
+      'What would you like me to do?',
+      'Add Graph Neural Networks to your Neural Networks course, or make it a new course.',
+    ])
+      expect(isClearQuestion(bad), bad).toBe(false)
   })
 })

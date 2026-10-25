@@ -1,8 +1,10 @@
 /**
  * Chat tools that write: create(kind, data), update(kind, id, patch) and delete(kind, id) on the
  * student's Dumbledore data. Writes act at once and come back with one receipt line and an Undo;
- * only a delete asks first (a run_tool chip the student presses, which runs it with
- * ctx.confirmed).
+ * only a delete asks first, in plain text: the first call deletes nothing and returns the
+ * question for the model to ask ("Delete the note “X” from Statistics? Say yes to delete it."),
+ * and the delete is pending. The next turn's call with confirmed: true runs it only when that
+ * delete is pending (asked within 15 minutes) and the student's message says yes (saysYes).
  *
  * Undo is generic: before a write, the rows it will touch are snapshotted (per kind: the subject,
  * the topics with what links to them, the note, the roadmaps, the settings or profile fields);
@@ -284,8 +286,22 @@ function changedKeys<
 // ─── The tools ────────────────────────────────────────────────────────────────────────────────
 
 interface Deletion {
-  label: string
+  /** The plain question the model asks first, naming the thing and saying what happens. */
+  question: string
   run(): ToolOutcome
+}
+
+/** How long an asked delete waits for the student's yes. */
+const CONFIRM_MS = 15 * 60_000
+
+const YES =
+  /^\s*(yes|y|yeah|yep|yup|sure|ok|okay|confirm(ed)?|do it|go ahead|delete it|please do|kyllä|joo|juu|ja|jo)\b/i
+const NO = /\b(no|not|don'?t|do not|cancel|stop|wait|keep|ei|älä|nej)\b/i
+
+/** The student's message is a yes to the question asked ("yes", "yep, delete it", "joo"). */
+export function saysYes(message: string | undefined): boolean {
+  const text = (message ?? '').trim()
+  return YES.test(text) && !NO.test(text)
 }
 
 interface KindOps {
@@ -298,6 +314,8 @@ interface KindOps {
 
 export function createWriteTools(deps: WriteToolsDeps): ChatTool[] {
   const { repos, bus, undo, relink, nowIso } = deps
+  /** Deletes the model asked about ("kind:id" → when), waiting for the student's yes. */
+  const asked = new Map<string, number>()
 
   const emit = (scope: MemoryScope, ids: (Id | null | undefined)[]) => {
     const clean = [...new Set(ids.filter((id): id is Id => !!id))]
@@ -699,8 +717,9 @@ export function createWriteTools(deps: WriteToolsDeps): ChatTool[] {
         const c = mustTopic(id)
         const count = repos.notes.list({ conceptId: c.id }).length
         const notes = count > 0 ? ` and its ${plural(count, 'note')}` : ''
+        const from = repos.subjects.get(c.subjectId)?.name
         return {
-          label: `Delete topic ${q(c.name)}${notes}`,
+          question: `Delete the topic ${q(c.name)}${notes}${from ? ` from ${from}` : ''}? Say yes to delete it.`,
           run() {
             const snap = topicSnapshot([c.id], true)
             repos.transaction(() => repos.concepts.remove(c.id))
@@ -794,8 +813,11 @@ export function createWriteTools(deps: WriteToolsDeps): ChatTool[] {
       },
       remove(id) {
         const n = mustNote(id)
+        const from =
+          (n.conceptId ? repos.concepts.get(n.conceptId)?.name : null) ??
+          (n.subjectId ? repos.subjects.get(n.subjectId)?.name : null)
         return {
-          label: `Delete note ${q(n.text)}`,
+          question: `Delete the note ${q(n.text)}${from ? ` from ${from}` : ''}? Say yes to delete it.`,
           run() {
             repos.notes.remove(n.id)
             noteChanged(n)
@@ -956,7 +978,7 @@ export function createWriteTools(deps: WriteToolsDeps): ChatTool[] {
         const original = r.items[index] as RoadmapItem
         const label = stepLabel({ ...original, idx: index })
         return {
-          label: `Delete ${label}`,
+          question: `Delete ${label} from the plan ${q(r.title)}? Say yes to delete it.`,
           run() {
             const after = structuredClone(r)
             after.items.splice(index, 1)
@@ -996,7 +1018,7 @@ export function createWriteTools(deps: WriteToolsDeps): ChatTool[] {
         const f = repos.feedback.recent({ limit: 1000 }).find((x) => x.id === id)
         if (!f) throw missing('feedback', id)
         return {
-          label: `Delete feedback ${q(f.text)}`,
+          question: `Delete your feedback ${q(f.text)}? Say yes to delete it.`,
           run() {
             repos.feedback.remove(f.id)
             // Comes back under a new id (FeedbackRepo has no restore); same text, scope, subject.
@@ -1207,27 +1229,40 @@ export function createWriteTools(deps: WriteToolsDeps): ChatTool[] {
       name: 'delete',
       description: [
         'Delete a record: topic (its notes go too), note, roadmap_step or feedback.',
-        'Nothing happens until the student presses the confirmation button this call puts under your reply; tell them to press it.',
+        'Asks first: with confirmed false nothing is deleted and the result has the question to ask the student, word for word. Ask it as your whole reply.',
+        'Only when their next message says yes, call delete again with the same kind and id and confirmed true. Never pass confirmed true before you asked.',
         'Subjects are deleted only by the student on the subject page; roadmaps are never deleted (pause them); assignments are dismissed with update.',
       ].join('\n'),
-      input: z.object({ kind: Kind, id: Id.describe('The record’s id from read or search') }),
-      run({ kind, id }, ctx) {
+      input: z.object({
+        kind: Kind,
+        id: Id.describe('The record’s id from read or search'),
+        confirmed: z
+          .boolean()
+          .describe('true only after you asked and the student’s message said yes'),
+      }),
+      run({ kind, id, confirmed }, ctx) {
         const op = ops[kind].remove
         if (!op) return refused(kind, 'delete')
         return guarded(() => {
           const deletion = op(id)
-          if (ctx.confirmed) return deletion.run()
-          return outcome(
-            {
-              needsConfirmation: true,
-              message: 'Ask the student to press the confirmation button',
-            },
-            {
-              chips: [
-                { type: 'run_tool', tool: 'delete', input: { kind, id }, label: deletion.label },
-              ],
-            },
-          )
+          const key = `${kind}:${id}`
+          const at = asked.get(key)
+          const now = Date.parse(nowIso())
+          const pending = at !== undefined && now - at <= CONFIRM_MS
+          if (confirmed && pending && saysYes(ctx.message)) {
+            asked.delete(key)
+            return deletion.run()
+          }
+          asked.set(key, now)
+          return outcome({
+            deleted: false,
+            needsConfirmation: true,
+            ask: deletion.question,
+            note:
+              confirmed && pending
+                ? 'Nothing was deleted: the student’s message is not a yes. Ask again, or leave it.'
+                : 'Nothing was deleted yet. Ask exactly this question as your reply; delete with confirmed true after they say yes.',
+          })
         })
       },
     }),

@@ -291,7 +291,7 @@ export class FakeBrain implements Brain {
     if (this.overrides.coach) return this.overrides.coach(input, opts)
     const wantsToLearn = /\b(understand|learn|don'?t get|explain)\b/i.test(input.message)
     const reply = wantsToLearn
-      ? "Let's build a roadmap for that first — I'll start where you are."
+      ? 'Planning a roadmap for that from where you are.'
       : 'Focus on your weakest concept first, then do a 5-minute review.'
     return (async function* () {
       for (const word of reply.split(' ')) yield { type: 'text' as const, delta: `${word} ` }

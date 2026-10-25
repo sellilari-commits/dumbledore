@@ -5,8 +5,8 @@
  * URL options: `?seed=<turns>` starts with an earlier conversation, `?theme=dark|light` forces a
  * theme, `?topics=0` hides the topic chips (otherwise 9 subjects with 19 topics, so they scroll;
  * `session.start` just answers), `#/prompt` opens the prompt box (right ⌥ hold), `?undo=fail`
- * makes every Undo and confirmation fail ("That can no longer be undone."). `coach.runAction`
- * takes a moment for an Undo (undo_save) or a confirmation (run_tool), like main. `window.__ddMock.calls` logs every call (Playwright reads it).
+ * makes every Undo fail ("That can no longer be undone."). `coach.runAction` takes a moment for
+ * an Undo (undo_save), like main. `window.__ddMock.calls` logs every call (Playwright reads it).
  */
 
 import { demoAppState } from '@renderer/lib/mock/demo-misc'
@@ -43,10 +43,12 @@ export function createAskMock(search: string = window.location.search): Dumbledo
     return message
   }
 
+  const lastReply = () => thread.findLast((m) => m.role === 'assistant')?.content ?? ''
+
   const turns = Math.min(Number(params.get('seed')) || 0, SEED_QUESTIONS.length)
   SEED_QUESTIONS.slice(0, turns).forEach((question, i) => {
     const createdAt = (k: number) => new Date(Date.now() - (turns - i) * 120_000 + k).toISOString()
-    const { reply, actions } = cannedReply(question)
+    const { reply, actions } = cannedReply(question, lastReply())
     add('user', question, { createdAt: createdAt(0) })
     add('assistant', reply, { actions, createdAt: createdAt(1) })
   })
@@ -54,8 +56,8 @@ export function createAskMock(search: string = window.location.search): Dumbledo
   const local = createLocalApi('askbar', {
     'chat.history': (name) => thread.filter((m) => m.thread === name),
     'ask.submit': async ({ text }) => {
+      const result = cannedReply(text, lastReply())
       add('user', text)
-      const result = cannedReply(text)
       const messageId = `ask_pending_${seq}`
       await mockWork(params, (label) =>
         local.emit('chat.progress', { thread: ASK_THREAD, messageId, label }),
@@ -79,15 +81,9 @@ export function createAskMock(search: string = window.location.search): Dumbledo
     'subjects.get': (id) => demoSubject(id),
     'session.start': ({ subjectId }) => demoSession(subjectId ?? ''),
     'coach.runAction': async (action) => {
-      if (action.type !== 'undo_save' && action.type !== 'run_tool') return
+      if (action.type !== 'undo_save') return
       await new Promise((r) => window.setTimeout(r, ACTION_MS))
-      if (params.get('undo') === 'fail') {
-        throw new Error(
-          action.type === 'undo_save'
-            ? 'That can no longer be undone.'
-            : 'That note is already gone.',
-        )
-      }
+      if (params.get('undo') === 'fail') throw new Error('That can no longer be undone.')
     },
     'window.close': () => undefined,
     'window.setSize': () => undefined,

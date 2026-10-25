@@ -15,8 +15,8 @@ function setup() {
   })
   const log = vi.fn()
   const tool = createActTool({ perform, invoke, log })
-  const call = (name: string, args: unknown = '{}', offer = false) =>
-    tool.run(tool.input.parse({ name, args, offer }), {})
+  const call = (name: string, args: unknown = '{}') =>
+    tool.run(tool.input.parse({ name, args }), {})
   return { tool, perform, invoke, log, call }
 }
 
@@ -154,21 +154,17 @@ describe('act tool', () => {
     )
   })
 
-  it('offers a coach flow as a chip without performing it', async () => {
-    const { call, perform } = setup()
-    const result = await call('open_subject', '{"subjectId":"s9"}', true)
-    expect(perform).not.toHaveBeenCalled()
+  it('runs at once: an "offer" from an old schema is ignored, nothing becomes a button', async () => {
+    const { tool, perform } = setup()
+    const result = await tool.run(
+      tool.input.parse({ name: 'open_subject', args: '{"subjectId":"s9"}', offer: true }),
+      {},
+    )
+    expect(perform).toHaveBeenCalledTimes(1)
     expect(result.ok).toBe(true)
-    expect(result.chips).toEqual([{ type: 'open_subject', subjectId: 's9' }])
-    expect(result.receipts).toEqual([])
-  })
-
-  it('refuses to offer an app action', async () => {
-    const { call, invoke } = setup()
-    const result = await call('session.end', '{}', true)
-    expect(result.ok).toBe(false)
-    expect(result.chips).toEqual([])
-    expect(invoke).not.toHaveBeenCalled()
+    expect(Object.keys(result).sort()).toEqual(['ok', 'receipts', 'result'])
+    expect(tool.description).not.toMatch(/\boffer/i)
+    expect(tool.description).toContain('There are no buttons')
   })
 
   it('validates an app act with its own schema and invokes it', async () => {
@@ -239,7 +235,7 @@ describe('act tool', () => {
 
   it('refuses app acts when no invoke is wired', async () => {
     const tool = createActTool({ perform: vi.fn() })
-    const result = await tool.run({ name: 'session.end', args: '{}', offer: false }, {})
+    const result = await tool.run({ name: 'session.end', args: '{}' }, {})
     expect(result).toMatchObject({
       ok: false,
       result: { error: 'App actions are not available here.' },
@@ -260,51 +256,31 @@ describe('act tool: chat flows and refusals', () => {
           name: 'paste_prompt',
           description: 'paste a prompt',
           input: z.object({ text: z.string().min(1) }),
-          label: () => 'Open Claude and paste',
           run: ran,
         },
       ],
       refuse: (action) =>
         action.type === 'start_roadmap' ? 'Not planned: Statistics already has a roadmap' : null,
     })
-    const call = (name: string, args: unknown, offer = false, ctx: ToolCtx = {}) =>
-      tool.run(tool.input.parse({ name, args, offer }), ctx)
+    const call = (name: string, args: unknown, ctx: ToolCtx = {}) =>
+      tool.run(tool.input.parse({ name, args }), ctx)
     return { tool, ran, perform, call }
   }
 
   it('lists the flows with their fields and runs one with the turn context', async () => {
     const { tool, call, ran } = withFlows()
     expect(tool.description).toContain('- paste_prompt {text: string}: paste a prompt')
-    const out = await call('paste_prompt', { text: 'Explain DAGs' }, false, {
-      userAskedToOpen: true,
-    })
-    expect(ran).toHaveBeenCalledWith({ text: 'Explain DAGs' }, { userAskedToOpen: true })
+    const out = await call('paste_prompt', { text: 'Explain DAGs' }, { message: 'paste it' })
+    expect(ran).toHaveBeenCalledWith({ text: 'Explain DAGs' }, { message: 'paste it' })
     expect(out.receipts).toEqual([{ line: 'Pasted into ChatGPT', undoId: null }])
     expect((await call('paste_prompt', { text: '' })).ok).toBe(false)
   })
 
-  it('offers a flow as a run_tool chip that runs this act', async () => {
-    const { call, ran } = withFlows()
-    const out = await call('paste_prompt', { text: 'Explain DAGs' }, true)
-    expect(ran).not.toHaveBeenCalled()
-    expect(out.chips).toEqual([
-      {
-        type: 'run_tool',
-        tool: 'act',
-        input: { name: 'paste_prompt', args: '{"text":"Explain DAGs"}', offer: false },
-        label: 'Open Claude and paste',
-      },
-    ])
-  })
-
-  it('refuses a coach flow before running or offering it', async () => {
+  it('refuses a coach flow before running it', async () => {
     const { call, perform } = withFlows()
-    for (const offer of [false, true]) {
-      const out = await call('start_roadmap', { subjectId: 's1', goal: 'Causal' }, offer)
-      expect(out.ok).toBe(false)
-      expect(out.chips).toEqual([])
-      expect((out.result as { error: string }).error).toContain('already has a roadmap')
-    }
+    const out = await call('start_roadmap', { subjectId: 's1', goal: 'Causal' })
+    expect(out.ok).toBe(false)
+    expect((out.result as { error: string }).error).toContain('already has a roadmap')
     expect(perform).not.toHaveBeenCalled()
   })
 })

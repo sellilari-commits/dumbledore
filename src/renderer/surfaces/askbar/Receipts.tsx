@@ -2,8 +2,9 @@
  * What the chat changed, under its reply: one quiet row per labelled `undo_save` (a chat tool's
  * write), its receipt line and an Undo on the right. Undo runs in place; the row then reads
  * "Undone" with the line struck through. A failed Undo ("That can no longer be undone.") shows
- * as a small line in the row, and the Undo stays for another try. Unlabelled undo_saves (the
- * chat's own saves, whose receipt is in the reply text) stay plain Undo chips (ActionChips).
+ * as a small line in the row, and the Undo stays for another try. These rows are the only UI
+ * under a reply: the chat has no chips or buttons. A receipt without Undo (empty saveId) is a
+ * plain line.
  */
 import type { CoachAction } from '@shared/domain'
 import { Check, Undo2 } from 'lucide-react'
@@ -56,7 +57,7 @@ function ReceiptRow({ receipt, onRun }: { receipt: LabelledUndo; onRun: Props['o
           </span>
         )}
       </span>
-      {state.kind === 'undone' ? (
+      {!receipt.saveId ? null : state.kind === 'undone' ? (
         <span className="ask__receipt-done">Undone</span>
       ) : (
         <button

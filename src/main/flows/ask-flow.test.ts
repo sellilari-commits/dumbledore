@@ -229,7 +229,7 @@ describe('AskFlow.submit', () => {
       type: 'create_exam',
       spec: { subjectIds: ['s'], count: 5, focus: 'weak', difficulty: 'mixed' },
     }
-    const roadmap: CoachAction = { type: 'start_roadmap', subjectId: null, goal: 'Moles' }
+    const roadmap: CoachAction = { type: 'start_roadmap', subjectId: null, goal: 'Stoichiometry' }
     const s = setup({
       aiChat: true,
       actions: [{ type: 'insert_prompt', text: 'Explain moles simply' }, roadmap, exam],
@@ -237,19 +237,20 @@ describe('AskFlow.submit', () => {
     const result = await s.flow.submit('help me study moles')
     expect(s.writer.write).not.toHaveBeenCalled()
     expect(s.sessions.start).toHaveBeenCalledWith(
-      { subjectId: null, goal: 'Moles', question: null },
+      { subjectId: null, goal: 'Stoichiometry', question: null },
       { hold: true },
     )
     expect(s.toasts.showToast).not.toHaveBeenCalled()
     expect(result).toEqual({
-      reply: 'Hello there.\n\nPlanning a roadmap for “Moles”. I’ll tell you here when it’s ready.',
-      actions: [exam],
+      reply:
+        'Hello there.\n\nPlanning a roadmap for “Stoichiometry”. I’ll tell you here when it’s ready.',
+      actions: [],
       pasted: false,
     })
   })
 
-  it('retries a plan once after an AI timeout, then says why in plain words with Try again', async () => {
-    const roadmap: CoachAction = { type: 'start_roadmap', subjectId: null, goal: 'Moles' }
+  it('retries a plan once after an AI timeout, then says why in plain words, no chip', async () => {
+    const roadmap: CoachAction = { type: 'start_roadmap', subjectId: null, goal: 'Stoichiometry' }
     const s = setup({ actions: [roadmap] })
     s.sessions.start = vi.fn(async () => {
       throw new Error('Couldn\'t build a roadmap: brain task "buildRoadmap" timed out')
@@ -260,10 +261,10 @@ describe('AskFlow.submit', () => {
     )
     expect(s.sessions.start).toHaveBeenCalledTimes(2)
     expect(s.messages.at(-1)?.content).toMatch(/didn’t answer in time.*Gemini key/)
-    expect(s.messages.at(-1)?.actions).toEqual([roadmap])
+    expect(s.messages.at(-1)?.actions).toEqual([])
   })
 
-  it('offers adjust_roadmap as a chip and tells the coach it is a chat', async () => {
+  it('shows no chip for adjust_roadmap and tells the coach it is a chat', async () => {
     const adjust: CoachAction = {
       type: 'adjust_roadmap',
       subjectId: CHEM.id,
@@ -271,14 +272,14 @@ describe('AskFlow.submit', () => {
     }
     const s = setup({ aiChat: true, actions: [adjust] })
     const result = await s.flow.submit('on chemistry I want SN1 not SN2')
-    expect(result.actions).toEqual([adjust])
+    expect(result.actions).toEqual([])
     expect(s.inputs[0]?.context.split('\n')[0]).toMatch(/^Mode: chat\b/)
     expect(s.writer.write).not.toHaveBeenCalled()
   })
 })
 
 describe('AskFlow.submit: saves into studying, feedback', () => {
-  it('saves a note and a question at once, each with a receipt line and Undo; the rest stay chips', async () => {
+  it('saves a note and a question at once, each a receipt row with Undo; nothing else shows', async () => {
     const h = setup({
       feedback: true,
       saves: true,
@@ -305,9 +306,16 @@ describe('AskFlow.submit: saves into studying, feedback', () => {
         'Saved to Chemistry: “why is a mole that number?”',
       ].join('\n\n'),
       actions: [
-        { type: 'set_focus', subjectId: 'sub_chem' },
-        { type: 'undo_save', saveId: 's_add_note' },
-        { type: 'undo_save', saveId: 's_save_question' },
+        {
+          type: 'undo_save',
+          saveId: 's_add_note',
+          label: 'Saved to Chemistry: “A mole is 6.022e23”',
+        },
+        {
+          type: 'undo_save',
+          saveId: 's_save_question',
+          label: 'Saved to Chemistry: “why is a mole that number?”',
+        },
       ],
       pasted: false,
     })

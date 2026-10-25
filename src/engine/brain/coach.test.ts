@@ -70,14 +70,14 @@ describe('Brain.coach', () => {
     expect(req?.system).toContain('sub_1')
   })
 
-  it('adds a short line when the model only calls a tool', async () => {
+  it('adds no canned line when the model only calls a tool (the receipt says what was done)', async () => {
     const h = brainHarness()
     h.groq.queue({
       toolCalls: [{ name: 'start_roadmap', input: { goal: 'recursion', subjectId: null } }],
     })
     const events = await collect(h.brain.coach(input('teach me recursion')))
-    expect(events[0]).toEqual({ type: 'text', delta: "Let's build a roadmap for that first." })
-    expect(events[1]?.type).toBe('action')
+    expect(events.filter((e) => e.type === 'text')).toEqual([])
+    expect(events[0]?.type).toBe('action')
   })
 
   it('asks again, without tools, for the answer when the model only saved', async () => {

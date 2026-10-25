@@ -65,7 +65,8 @@ describe('createChatTools: what the model sees', () => {
     expect(byName.create?.properties.data?.type).toBe('string')
     expect(byName.update?.properties.patch?.type).toBe('string')
     expect(byName.act?.properties.args?.type).toBe('string')
-    expect(byName.act?.properties.offer?.type).toBe('boolean')
+    expect(byName.act?.properties.offer).toBeUndefined()
+    expect(byName.delete?.properties.confirmed?.type).toBe('boolean')
   })
 })
 
@@ -104,7 +105,7 @@ describe('createChatTools: run', () => {
 })
 
 describe('createChatTools: a turn', () => {
-  it('collects receipts as labelled undo_saves and chips as they are', async () => {
+  it('collects receipts as labelled undo_saves, and nothing else (no chips)', async () => {
     const { tools, repos, stats, undo } = setup()
     const turn = tools.turn()
     const created = await turn.run('create', {
@@ -114,13 +115,12 @@ describe('createChatTools: a turn', () => {
     expect(created.ok).toBe(true)
     const note = repos.notes.list({ subjectId: stats.id })[0]
     expect(note?.text).toBe('Colliders block paths')
-    await turn.run('delete', { kind: 'note', id: note?.id })
-    await turn.run('act', { name: 'open_subject', args: { subjectId: stats.id }, offer: false })
+    await turn.run('delete', { kind: 'note', id: note?.id, confirmed: false })
+    await turn.run('act', { name: 'open_subject', args: { subjectId: stats.id } })
     const actions = turn.actions()
     const receipt = turn.receipts[0]
     expect(receipt?.undoId).toMatch(/^undo_/)
     expect(actions).toEqual([
-      expect.objectContaining({ type: 'run_tool', tool: 'delete' }),
       { type: 'undo_save', saveId: receipt?.undoId, label: receipt?.line },
       { type: 'undo_save', saveId: '', label: 'Ran open_subject' },
     ])
@@ -134,13 +134,13 @@ describe('createChatTools: a turn', () => {
     expect(repos.notes.get(note?.id ?? '')?.status).toBe('deleted')
   })
 
-  it('passes the turn context to every call (the website rule)', async () => {
+  it('passes the turn context (the student’s message) to every call', async () => {
     const { tools, perform } = setup()
-    const turn = tools.turn({ userAskedToOpen: true })
-    await turn.run('act', { name: 'set_focus', args: '{"subjectId":null}', offer: false })
+    const turn = tools.turn({ message: 'clear my focus' })
+    await turn.run('act', { name: 'set_focus', args: '{"subjectId":null}' })
     expect(perform).toHaveBeenCalledWith(
       { type: 'set_focus', subjectId: null },
-      { userAskedToOpen: true },
+      { message: 'clear my focus' },
     )
   })
 

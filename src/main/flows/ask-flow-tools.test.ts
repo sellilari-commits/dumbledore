@@ -2,13 +2,16 @@
  * The double-tap chat with tools, wired as the shell wires it (AskFlow + CoachActions + chat
  * tools on Ilari's world), with a scripted model that calls the real tools:
  * - the loop path: streamed reply, receipts as labelled undo_saves, chips, history with what was
- *   done, Undo and run_tool through CoachActions;
+ *   done, Undo through CoachActions; a delete confirmed by a typed yes;
  * - REGRESSION: Ilari's causal-inference conversation (the chat must read the paused roadmap,
  *   list its steps, never offer Start roadmap, never plan a second one);
  * - REGRESSION: the old long-press flows from the chat — (a) say what you want → prompt written
  *   and pasted, (b) "I want to learn X" → subject → roadmap → step 1 pasted, (c) open a topic;
- * - Ilari's website rule both ways: nothing opens unless the student's message (or a click) asked.
+ * - no chips: an unclear course is one plain question, the answer acts; a prompt with no AI chat
+ *   open opens the usual AI and pastes.
  */
+
+import { isClearQuestion } from '@engine/brain/prompts/p10-chat-tools'
 import { describe, expect, it } from 'vitest'
 import { actInput, call, chatHarness, readInput, settle } from '../chat-tools/testing'
 import { historyContent } from './ask-flow'
@@ -95,32 +98,64 @@ describe('double-tap chat with tools: the loop path', () => {
     ).rejects.toThrow(/no Undo/)
   })
 
-  it('a confirmed run_tool deletes, adds its receipt to the chat, and Undo brings it back', async () => {
+  it('REGRESSION: a delete is a plain question; the next turn deletes on "yes", with Undo', async () => {
+    const h = chatHarness()
+    const { note } = h.repos.notes.add({
+      subjectId: h.stats.id,
+      conceptId: h.causal.id,
+      encounterId: null,
+      kind: 'fact',
+      text: 'Old note',
+      source: { app: 'Safari', bundleId: null, url: null, title: 'x' },
+    })
+    const asked = await h.say('delete my old note', async function* (_, tools) {
+      const out = await call(tools, 'delete', { kind: 'note', id: note.id, confirmed: false })
+      expect(out.result.needsConfirmation).toBe(true)
+      yield { type: 'text', delta: String(out.result.ask) }
+    })
+    expect(asked.reply).toBe(
+      'Delete the note “Old note” from Causal Inference? Say yes to delete it.',
+    )
+    expect(isClearQuestion(asked.reply)).toBe(true)
+    expect(asked.actions).toEqual([])
+    expect(h.repos.notes.get(note.id)?.status).toBe('active')
+
+    const done = await h.say('yes', async function* (input, tools) {
+      expect(input.history.at(-1)?.content).toContain('Say yes to delete it.')
+      const out = await call(tools, 'delete', { kind: 'note', id: note.id, confirmed: true })
+      expect(out.ok).toBe(true)
+      yield { type: 'text', delta: 'Deleted.' }
+    })
+    expect(h.repos.notes.get(note.id)?.status).toBe('deleted')
+    const undo = done.actions.find((a) => a.type === 'undo_save')
+    expect(undo).toMatchObject({ label: 'Deleted note “Old note”' })
+    expect(done.actions.some((a) => a.type === 'run_tool')).toBe(false)
+    await h.actions.run(undo as never)
+    expect(h.repos.notes.get(note.id)?.status).toBe('active')
+  })
+
+  it('a confirmed delete without the student’s yes deletes nothing', async () => {
     const h = chatHarness()
     const { note } = h.repos.notes.add({
       subjectId: h.stats.id,
       conceptId: null,
       encounterId: null,
       kind: 'fact',
-      text: 'Old note',
+      text: 'Keep me',
       source: { app: 'Safari', bundleId: null, url: null, title: 'x' },
     })
-    const result = await h.say('delete my old note', async function* (_, tools) {
-      const asked = await call(tools, 'delete', { kind: 'note', id: note.id })
-      expect(asked.result.needsConfirmation).toBe(true)
-      yield { type: 'text', delta: 'Press the button to delete it.' }
+    await h.say('delete my note', async function* (_, tools) {
+      await call(tools, 'delete', { kind: 'note', id: note.id, confirmed: false })
+      yield {
+        type: 'text',
+        delta: 'Delete the note “Keep me” from Statistics? Say yes to delete it.',
+      }
     })
-    expect(h.repos.notes.get(note.id)?.status).toBe('active')
-    const chip = result.actions.find((a) => a.type === 'run_tool')
-    expect(chip).toMatchObject({ tool: 'delete', label: expect.stringContaining('Old note') })
-    await h.actions.run(chip as never)
-    expect(h.repos.notes.get(note.id)?.status).toBe('deleted')
-    const receipt = h.thread().at(-1)
-    expect(receipt?.content).toBe('Done.')
-    const undo = receipt?.actions.find((a) => a.type === 'undo_save')
-    expect(undo).toMatchObject({ label: expect.stringContaining('Old note') })
-    expect(h.chatChanged).toHaveBeenCalled()
-    await h.actions.run(undo as never)
+    await h.say('hmm, what is in it?', async function* (_, tools) {
+      const out = await call(tools, 'delete', { kind: 'note', id: note.id, confirmed: true })
+      expect(out.result.deleted).toBe(false)
+      yield { type: 'text', delta: 'It says “Keep me”.' }
+    })
     expect(h.repos.notes.get(note.id)?.status).toBe('active')
   })
 
@@ -154,12 +189,12 @@ describe('REGRESSION: Ilari’s causal-inference conversation', () => {
         )
         expect(plan.ok).toBe(false)
         expect(String(plan.result.error)).toContain('already has the paused roadmap')
-        const offer = await call(
+        const again = await call(
           tools,
           'act',
-          actInput('start_roadmap', { subjectId: h.stats.id, goal: 'causal inference' }, true),
+          actInput('start_roadmap', { subjectId: h.stats.id, goal: 'causal inference' }),
         )
-        expect(offer.ok).toBe(false)
+        expect(again.ok).toBe(false)
         yield {
           type: 'text',
           delta: 'You already have a roadmap for this: step 3 of 6. Let’s continue it.',
@@ -334,56 +369,85 @@ describe('REGRESSION: the old long-press flows from the chat', () => {
   })
 })
 
-describe('REGRESSION: the chat never opens a website on its own (Ilari)', () => {
-  const writePrompt = (request: string) =>
-    async function* (_: unknown, tools: Parameters<typeof call>[0]) {
-      await call(tools, 'act', actInput('write_prompt', { request }))
-      yield { type: 'text' as const, delta: 'Here you go.' }
-    }
-
-  it('no AI chat open: opens nothing, says so, offers "Open Claude and paste"; the click opens it', async () => {
+describe('REGRESSION: a prompt with no AI chat open opens the usual AI and pastes (Ilari)', () => {
+  it('opens Claude with the prompt, a receipt and no chip', async () => {
     const h = chatHarness({ aiChat: false, usualAi: 'Claude' })
-    const result = await h.say('write me a prompt about colliders', writePrompt('about colliders'))
-    expect(h.openUsualAi).not.toHaveBeenCalled()
-    expect(h.writes).toEqual([])
-    const chip = result.actions.find((a) => a.type === 'run_tool')
-    expect(chip).toMatchObject({ tool: 'act', label: 'Open Claude and paste' })
-    // The student's click: now it may open.
-    await h.actions.run(chip as never)
-    expect(h.opened).toEqual([expect.stringContaining('about colliders')])
-    expect(h.thread().at(-1)?.actions).toContainEqual({
-      type: 'undo_save',
-      saveId: '',
-      label: 'Opened Claude with the prompt typed in',
-    })
-  })
-
-  it('the student’s own message asks to open their AI: it opens at once', async () => {
-    const h = chatHarness({ aiChat: false, usualAi: 'Claude' })
-    const result = await h.say(
-      'open Claude and paste a prompt about colliders',
-      writePrompt('about colliders'),
-    )
-    expect(h.openUsualAi).toHaveBeenCalledTimes(1)
-    expect(result.actions.some((a) => a.type === 'run_tool')).toBe(false)
-    expect(result.actions).toContainEqual({
-      type: 'undo_save',
-      saveId: '',
-      label: 'Opened Claude with the prompt typed in',
-    })
-  })
-
-  it('paste_prompt offered as a chip never runs until clicked', async () => {
-    const h = chatHarness({ aiChat: true })
-    const result = await h.say('give me a prompt button', async function* (_, tools) {
-      const out = await call(tools, 'act', actInput('paste_prompt', { text: 'Explain DAGs' }, true))
+    const result = await h.say('write me a prompt about colliders', async function* (_, tools) {
+      const out = await call(tools, 'act', actInput('write_prompt', { request: 'about colliders' }))
       expect(out.ok).toBe(true)
-      yield { type: 'text', delta: 'Press the button.' }
+      yield { type: 'text', delta: 'It’s in Claude: read it, then send.' }
     })
-    expect(h.writes).toEqual([])
-    expect(result.actions.find((a) => a.type === 'run_tool')).toMatchObject({
-      label: 'Open ChatGPT and paste',
+    expect(h.openUsualAi).toHaveBeenCalledTimes(1)
+    expect(h.opened).toEqual([expect.stringContaining('about colliders')])
+    expect(result.actions).toEqual([
+      { type: 'undo_save', saveId: '', label: 'Opened Claude and pasted' },
+    ])
+  })
+})
+
+describe('REGRESSION: an unclear course asks one plain question; the answer acts (Ilari)', () => {
+  it('"create me a course on graph neural networks" → the question; "new course" → planned, with a receipt', async () => {
+    const h = chatHarness()
+    const question =
+      'Add Graph Neural Networks to your Neural Networks course, or make it a new course?'
+    const first = await h.say(
+      'create me a course on graph neural networks',
+      async function* (input, tools) {
+        expect(input.context).toContain('Foundations of Neural Networks')
+        const found = await call(tools, 'search', { query: 'neural networks', limit: null })
+        expect(JSON.stringify(found.result)).toContain('Neural Networks')
+        yield { type: 'text', delta: question }
+      },
+    )
+    expect(first.reply).toBe(question)
+    expect(isClearQuestion(first.reply)).toBe(true)
+    expect(first.actions).toEqual([])
+    expect(h.planned).toEqual([])
+
+    const second = await h.say('new course', async function* (input, tools) {
+      expect(input.history.at(-1)).toMatchObject({ role: 'assistant' })
+      expect(input.history.at(-1)?.content.startsWith(question)).toBe(true)
+      const out = await call(
+        tools,
+        'act',
+        actInput('start_roadmap', { subjectId: null, goal: 'Graph Neural Networks' }),
+      )
+      expect(out.ok).toBe(true)
+      yield { type: 'text', delta: 'Planning your Graph Neural Networks course now.' }
     })
+    expect(second.actions).toEqual([
+      { type: 'undo_save', saveId: '', label: 'Planning a roadmap for “Graph Neural Networks”' },
+    ])
+    await settle()
+    expect(h.planned).toEqual([{ goal: 'Graph Neural Networks', subjectId: null, hold: true }])
+    expect(h.thread().at(-1)?.content).toContain('Your roadmap is ready')
+    expect(
+      h
+        .thread()
+        .at(-1)
+        ?.actions.some((a) => a.type === 'open_subject'),
+    ).toBe(false)
+  })
+
+  it('"is the roadmap already built for graph neural networks" → reads and answers, changes nothing', async () => {
+    const h = chatHarness()
+    const result = await h.say(
+      'is the roadmap already built for graph neural networks',
+      async function* (_, tools) {
+        const list = await call(tools, 'read', readInput('roadmaps', { subjectId: null }))
+        const titles = JSON.stringify(list.result)
+        expect(titles).toContain('Foundations of Neural Networks')
+        expect(titles).not.toMatch(/graph/i)
+        yield {
+          type: 'text',
+          delta:
+            'Not yet: you have “Foundations of Neural Networks”, nothing on graph neural networks.',
+        }
+      },
+    )
+    expect(result.reply).toMatch(/^Not yet/)
+    expect(result.actions).toEqual([])
+    expect(h.planned).toEqual([])
   })
 })
 

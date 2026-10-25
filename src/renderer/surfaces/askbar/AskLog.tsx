@@ -1,12 +1,11 @@
 /**
  * The Ask bar conversation: the student's questions as grey bubbles on the right, Dumbledore's
- * markdown replies with their action chips on the left, the reply being written (streamed) and
- * the last error. Until the reply arrives, the working indicator (Working.tsx: pulsing dots and
- * the current step) stands where it will appear, and comes back under streamed words while a tool
- * runs. It stays on the newest message unless the student scrolled up to read.
- * Dumbledore's own answers are saved only when the student chooses: "Save to subject" puts the
- * answer (without its "Saved to …" receipt lines) as a note on the current topic.
- * What a chat tool wrote shows as receipt rows under the reply (Receipts.tsx); a line of the reply
+ * markdown replies on the left, the reply being written (streamed) and the last error. Until the
+ * reply arrives, the working indicator (Working.tsx: pulsing dots and the current step) stands
+ * where it will appear, and comes back under streamed words while a tool runs. It stays on the
+ * newest message unless the student scrolled up to read.
+ * No buttons or chips under a reply: only receipt rows of what the chat did, with Undo where
+ * there is one (Receipts.tsx). When the chat needs a choice it asks in plain text. A line of the reply
  * that only repeats one of them is left out of the text. Links in a reply (e.g. a web search's
  * "Sources: [title](url) · …") open only when clicked, in the default browser: they are
  * target=_blank anchors, which main's window open handler sends to shell.openExternal
@@ -14,11 +13,10 @@
  * mailto links are links; anything else stays plain text.
  */
 import type { CoachAction } from '@shared/domain'
-import { BookmarkPlus, Check } from 'lucide-react'
-import { memo, useRef, useState } from 'react'
+import { Check } from 'lucide-react'
+import { memo, useRef } from 'react'
 import Markdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { ActionChips } from './ActionChips'
 import { isReceipt, Receipts } from './Receipts'
 import type { AskController, AskError, AskMessage } from './useAsk'
 import { useStickToBottom } from './useStickToBottom'
@@ -72,58 +70,11 @@ function Reply({ text, streaming }: { text: string; streaming?: boolean }) {
 
 interface MessageProps {
   message: AskMessage
-  onRun: AskController['runAction']
   onRunInPlace: AskController['runInPlace']
 }
 
-/** Receipt lines the chat adds under a reply; never part of a saved answer. */
-const RECEIPT = /^(Saved to |Not saved: )/
-
-/** The answer as a note: the reply without its receipts, at most 1000 characters. */
-export function answerNote(content: string): string {
-  const text = content
-    .split(/\n{2,}/)
-    .filter((p) => !RECEIPT.test(p.trim()))
-    .join('\n\n')
-    .trim()
-  return text.length <= 1000 ? text : `${text.slice(0, 999).trimEnd()}…`
-}
-
-function SaveAnswer({ content, onRun }: { content: string; onRun: MessageProps['onRun'] }) {
-  const [state, setState] = useState<'idle' | 'busy' | 'saved'>('idle')
-  const text = answerNote(content)
-  if (!text) return null
-  if (state === 'saved')
-    return (
-      <p className="ask__pasted">
-        <Check size={14} aria-hidden /> Saved to your subject
-      </p>
-    )
-  const save: CoachAction = { type: 'add_note', text, subjectId: null, conceptId: null }
-  return (
-    <div className="ask__actions">
-      <button
-        type="button"
-        className="ask__chip"
-        aria-disabled={state === 'busy' || undefined}
-        onClick={() => {
-          if (state !== 'idle') return
-          setState('busy')
-          onRun(save).then(
-            (ok) => setState(ok ? 'saved' : 'idle'),
-            () => setState('idle'),
-          )
-        }}
-      >
-        <BookmarkPlus size={14} strokeWidth={1.75} aria-hidden />
-        <span>Save to subject</span>
-      </button>
-    </div>
-  )
-}
-
 /** Memoised: while a reply streams in, only the streaming bubble re-renders. */
-const Message = memo(function Message({ message, onRun, onRunInPlace }: MessageProps) {
+const Message = memo(function Message({ message, onRunInPlace }: MessageProps) {
   if (message.role === 'user') {
     return <div className="ask__msg ask__msg--user">{message.content}</div>
   }
@@ -138,8 +89,6 @@ const Message = memo(function Message({ message, onRun, onRunInPlace }: MessageP
           <Check size={14} aria-hidden /> Pasted into the chat box
         </p>
       )}
-      <ActionChips actions={message.actions} onRun={onRun} onRunInPlace={onRunInPlace} />
-      {text && !message.pasted ? <SaveAnswer content={text} onRun={onRun} /> : null}
     </div>
   )
 })
@@ -164,7 +113,7 @@ export function AskLog({ chat }: { chat: AskController }) {
         aria-label="Conversation with Dumbledore"
       >
         {chat.messages.map((m) => (
-          <Message key={m.id} message={m} onRun={chat.runAction} onRunInPlace={chat.runInPlace} />
+          <Message key={m.id} message={m} onRunInPlace={chat.runInPlace} />
         ))}
         {pending && (
           <div className="ask__msg ask__msg--assistant" aria-live="polite">
