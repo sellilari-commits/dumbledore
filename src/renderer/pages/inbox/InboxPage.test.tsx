@@ -21,6 +21,14 @@ async function pick(trigger: HTMLElement, item: RegExp) {
 const topicRow = async (name: string) =>
   (await screen.findByRole('button', { name })).closest('li') as HTMLElement
 
+/** The topic's row, opened (every row starts closed). */
+const openTopic = async (name: string) => {
+  const row = await topicRow(name)
+  const toggle = within(row).getByRole('button', { name: new RegExp(`^(Open|Fold) ${name}$`) })
+  if (toggle.getAttribute('aria-expanded') !== 'true') fireEvent.click(toggle)
+  return row
+}
+
 beforeEach(() => {
   useToasts.setState({ toasts: [] })
 })
@@ -29,7 +37,7 @@ describe('Memory page · By topic', () => {
   it('lists subjects with their topics, big picture and sources', async () => {
     render()
     expect(await screen.findByRole('region', { name: 'Organic Chemistry' })).toBeTruthy()
-    const topic = await topicRow('Carbocation stability')
+    const topic = await openTopic('Carbocation stability')
     expect(within(topic).getByText(/3° > 2° > 1° > methyl/)).toBeTruthy()
     const sources = within(topic).getByRole('region', { name: 'Sources for Carbocation stability' })
     expect(within(sources).getAllByTestId('mem-source')).toHaveLength(2)
@@ -39,7 +47,7 @@ describe('Memory page · By topic', () => {
 
   it('links a source to its page, and shows a plain name when there is no url', async () => {
     render()
-    const topic = await topicRow('Carbocation stability')
+    const topic = await openTopic('Carbocation stability')
     const link = within(topic).getByRole('link', { name: 'Carbocation – LibreTexts' })
     expect(link.getAttribute('href')).toBe('https://chem.libretexts.org/Carbocation')
     expect(link.getAttribute('target')).toBe('_blank')
@@ -50,7 +58,7 @@ describe('Memory page · By topic', () => {
 
   it('ends each topic with a link that opens all the text extracted about it', async () => {
     const r = render()
-    const topic = await topicRow('Carbocation stability')
+    const topic = await openTopic('Carbocation stability')
     const invoke = vi.spyOn(r.api, 'invoke')
     const link = within(topic).getByRole('button', {
       name: 'All extracted text about Carbocation stability',
@@ -59,7 +67,7 @@ describe('Memory page · By topic', () => {
     fireEvent.click(link)
     await waitFor(() => expect(invoke).toHaveBeenCalledWith('concepts.openText', 'con_carbocation'))
     // A topic with only a big picture gets the link too.
-    const plain = await topicRow('Electrophiles')
+    const plain = await openTopic('Electrophiles')
     expect(
       within(plain).getByRole('button', { name: 'All extracted text about Electrophiles' }),
     ).toBeTruthy()
@@ -76,7 +84,7 @@ describe('Memory page · By topic', () => {
 
   it('edits a note in place', async () => {
     const r = render()
-    const topic = await topicRow('SN1 mechanism')
+    const topic = await openTopic('SN1 mechanism')
     fireEvent.click(within(topic).getByRole('button', { name: 'Edit note' }))
     const box = within(topic).getByRole('textbox', { name: 'Edit note' })
     fireEvent.change(box, { target: { value: 'SN1: rate depends only on the substrate.' } })
@@ -90,7 +98,7 @@ describe('Memory page · By topic', () => {
 
   it("edits a topic's big picture in place", async () => {
     const r = render()
-    const topic = await topicRow('Carbocation stability')
+    const topic = await openTopic('Carbocation stability')
     fireEvent.click(
       within(topic).getByRole('button', { name: 'Edit the big picture of Carbocation stability' }),
     )
@@ -109,7 +117,7 @@ describe('Memory page · By topic', () => {
 
   it('deletes a note with its ✕', async () => {
     const r = render()
-    const topic = await topicRow('SN1 mechanism')
+    const topic = await openTopic('SN1 mechanism')
     fireEvent.click(within(topic).getByRole('button', { name: 'Delete note' }))
     await waitFor(() =>
       expect(r.api.db.notes.find((n) => n.id === 'note_sn1')?.status ?? 'gone').not.toBe('active'),
@@ -118,13 +126,13 @@ describe('Memory page · By topic', () => {
 
   it('renames a topic and deletes one after a confirm', async () => {
     const r = render()
-    const topic = await topicRow('SN1 mechanism')
+    const topic = await openTopic('SN1 mechanism')
     fireEvent.click(within(topic).getByRole('button', { name: 'Rename SN1 mechanism' }))
     const input = within(topic).getByRole('textbox', { name: 'Topic name' })
     fireEvent.change(input, { target: { value: 'SN1' } })
     fireEvent.keyDown(input, { key: 'Enter' })
     await waitFor(() => expect(r.api.db.concepts.find((c) => c.id === 'con_sn1')?.name).toBe('SN1'))
-    const leaving = await topicRow('Leaving groups')
+    const leaving = await openTopic('Leaving groups')
     fireEvent.click(within(leaving).getByRole('button', { name: 'Delete Leaving groups' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Delete topic' }))
     await waitFor(() => expect(r.api.db.concepts.some((c) => c.id === 'con_leaving')).toBe(false))
@@ -158,6 +166,77 @@ describe('Memory page · By topic', () => {
       target: { value: 'zzz-nothing' },
     })
     expect(await screen.findByText(/Nothing matches/)).toBeTruthy()
+  })
+})
+
+describe('Memory page · By topic · folding', () => {
+  /** Demo data with "Carbocation stability" under "SN1 mechanism" and "Hyperconjugation" under
+   * that, so the tree has two levels below a top-level topic. */
+  const renderTree = () => {
+    const r = render()
+    const byName = (name: string) => {
+      const c = r.api.db.concepts.find((x) => x.name === name)
+      if (!c) throw new Error(`demo data has no ${name}`)
+      return c
+    }
+    byName('Carbocation stability').parentId = byName('SN1 mechanism').id
+    byName('Hyperconjugation').parentId = byName('Carbocation stability').id
+    return r
+  }
+
+  it('starts with every topic closed: top-level topics only, no big picture or sources', async () => {
+    renderTree()
+    const sn1 = await topicRow('SN1 mechanism')
+    expect(await topicRow('Leaving groups')).toBeTruthy()
+    for (const b of screen.getAllByRole('button', { name: /^(Open|Fold) / }))
+      expect(b.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByRole('button', { name: 'Carbocation stability' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Hyperconjugation' })).toBeNull()
+    expect(screen.queryByText(/3° > 2° > 1° > methyl/)).toBeNull()
+    expect(screen.queryAllByTestId('mem-source')).toHaveLength(0)
+    // No notes under any topic (notes not in a topic yet still show at the subject's end).
+    for (const row of screen.getAllByTestId('mem-topic'))
+      expect(within(row.closest('li') as HTMLElement).queryAllByTestId('mem-note')).toHaveLength(0)
+    expect(within(sn1).queryByRole('region')).toBeNull()
+  })
+
+  it('opens and closes one row at a time, level by level', async () => {
+    renderTree()
+    const sn1 = await topicRow('SN1 mechanism')
+    fireEvent.click(within(sn1).getByRole('button', { name: 'Open SN1 mechanism' }))
+    expect(within(sn1).getByRole('button', { name: 'Fold SN1 mechanism' })).toBeTruthy()
+    // Its subtopic shows, still closed; the one below that does not.
+    const carbo = await topicRow('Carbocation stability')
+    expect(within(carbo).getByRole('button', { name: 'Open Carbocation stability' })).toBeTruthy()
+    expect(within(carbo).queryByText(/3° > 2° > 1° > methyl/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Hyperconjugation' })).toBeNull()
+    // Other topics stay closed.
+    const leaving = await topicRow('Leaving groups')
+    expect(within(leaving).getByRole('button', { name: 'Open Leaving groups' })).toBeTruthy()
+    // Clicking the name opens too.
+    fireEvent.click(within(carbo).getByRole('button', { name: 'Carbocation stability' }))
+    expect(within(carbo).getByText(/3° > 2° > 1° > methyl/)).toBeTruthy()
+    expect(await topicRow('Hyperconjugation')).toBeTruthy()
+    // Closing the parent hides everything under it.
+    fireEvent.click(within(sn1).getByRole('button', { name: 'Fold SN1 mechanism' }))
+    expect(screen.queryByRole('button', { name: 'Carbocation stability' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Hyperconjugation' })).toBeNull()
+    // Opening it again shows what was open inside it (kept for this visit).
+    fireEvent.click(within(sn1).getByRole('button', { name: 'Open SN1 mechanism' }))
+    expect(await topicRow('Hyperconjugation')).toBeTruthy()
+  })
+
+  it('a search opens the rows that hold a match, and clearing it closes them again', async () => {
+    renderTree()
+    await topicRow('SN1 mechanism')
+    const search = screen.getByRole('textbox', { name: 'Search notes' })
+    fireEvent.change(search, { target: { value: 'hyperconjugation' } })
+    // The note sits on a subtopic of a closed topic; the search shows it anyway.
+    expect(await screen.findByText(/Alkyl groups stabilise/)).toBeTruthy()
+    fireEvent.change(search, { target: { value: '' } })
+    await topicRow('SN1 mechanism')
+    expect(screen.queryByText(/Alkyl groups stabilise/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Carbocation stability' })).toBeNull()
   })
 })
 

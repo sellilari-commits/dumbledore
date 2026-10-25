@@ -87,6 +87,10 @@ for (const theme of ['light', 'dark'] as const) {
       await open(page, '/inbox', theme)
       await expect(page.getByRole('heading', { name: 'Memory', exact: true })).toBeVisible()
       await expect(page.getByRole('region', { name: 'Organic Chemistry' })).toBeVisible()
+      // Every topic starts closed: rows only, no big picture or sources.
+      await expect(page.getByRole('button', { name: /^Open / }).first()).toBeVisible()
+      await expect(page.getByRole('button', { name: /^Fold / })).toHaveCount(0)
+      await expect(page.getByTestId('mem-source')).toHaveCount(0)
       await shoot(page, `ui-inbox-${theme}`)
     })
 
@@ -149,9 +153,11 @@ test.describe('home & inbox interactions', () => {
 
   test('memory: a source links to its page, and a note can be deleted', async ({ page }) => {
     await open(page, '/inbox', 'light')
+    await page.getByRole('button', { name: 'Open Carbocation stability' }).click()
     const link = page.getByRole('link', { name: 'Carbocation – LibreTexts' })
     await expect(link).toHaveAttribute('href', 'https://chem.libretexts.org/Carbocation')
     await expect(page.getByRole('button', { name: /^Keep/ })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Open SN1 mechanism' }).click()
     const note = page.getByTestId('mem-note').filter({ hasText: 'SN1 goes through a carbocation' })
     await note.hover()
     await note.getByRole('button', { name: 'Delete note' }).click()

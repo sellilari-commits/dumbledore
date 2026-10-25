@@ -1,7 +1,9 @@
 /**
  * Memory · By topic: each subject as a section, its topics as rows that fold open (children
  * indented, a small understanding dot), and under a topic its notes grouped by the page they came
- * from. Hovering a topic offers rename (concepts.update) and delete with a confirm
+ * from. Every row starts closed: a subject shows only its top-level topics, and a topic's
+ * subtopics, big picture and sources appear when the student opens it. What is open is kept for
+ * this visit only (never opened for them); a search opens every row so its matches show. Hovering a topic offers rename (concepts.update) and delete with a confirm
  * (concepts.delete); the big picture (the topic summary) edits in place too, which pins it so
  * consolidation keeps the student's words. There is no IPC to move a topic to another subject,
  * so that is not offered.
@@ -101,9 +103,18 @@ function AllTextLink({ concept }: { concept: Concept }) {
   )
 }
 
-function TopicRow({ topic, forceOpen }: { topic: TopicNode; forceOpen: boolean }) {
+function TopicRow({
+  topic,
+  open,
+  onToggle,
+  forceOpen,
+}: {
+  topic: TopicNode
+  open: boolean
+  onToggle: () => void
+  forceOpen: boolean
+}) {
   const { concept } = topic
-  const [open, setOpen] = useState(true)
   const [renaming, setRenaming] = useState(false)
   const [name, setName] = useState(concept.name)
   const [confirm, setConfirm] = useState(false)
@@ -137,7 +148,7 @@ function TopicRow({ topic, forceOpen }: { topic: TopicNode; forceOpen: boolean }
           className="mem-topic__toggle"
           aria-expanded={expanded}
           aria-label={`${expanded ? 'Fold' : 'Open'} ${concept.name}`}
-          onClick={() => setOpen((o) => !o)}
+          onClick={onToggle}
         >
           <ChevronRight size={14} strokeWidth={1.75} className="mem-topic__chev" />
         </button>
@@ -165,7 +176,7 @@ function TopicRow({ topic, forceOpen }: { topic: TopicNode; forceOpen: boolean }
             }}
           />
         ) : (
-          <button type="button" className="mem-topic__name" onClick={() => setOpen((o) => !o)}>
+          <button type="button" className="mem-topic__name" onClick={onToggle}>
             {concept.name}
           </button>
         )}
@@ -221,6 +232,17 @@ function TopicRow({ topic, forceOpen }: { topic: TopicNode; forceOpen: boolean }
   )
 }
 
+/** The rows to show: top-level topics, and a subtopic only while every topic above it is open. */
+export function visibleTopics(topics: TopicNode[], opened: ReadonlySet<string>): TopicNode[] {
+  const byId = new Map(topics.map((t) => [t.concept.id, t.concept]))
+  const shown = (id: string | null, guard = 0): boolean => {
+    const parent = id ? byId.get(id) : undefined
+    if (!parent || guard > 8) return true
+    return opened.has(parent.id) && shown(parent.parentId, guard + 1)
+  }
+  return topics.filter((t) => shown(t.concept.parentId))
+}
+
 export function SubjectBlock({
   section,
   searching,
@@ -229,6 +251,15 @@ export function SubjectBlock({
   searching: boolean
 }) {
   const { subject, topics, unplaced } = section
+  const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set())
+  const toggle = (id: string) =>
+    setOpened((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  const shown = searching ? topics : visibleTopics(topics, opened)
   return (
     <section className="mem-subject" aria-label={subject.name}>
       <h2 className="mem-subject__title">
@@ -241,8 +272,14 @@ export function SubjectBlock({
         <p className="mem-quiet">No topics yet.</p>
       ) : (
         <ul className="mem-topics">
-          {topics.map((t) => (
-            <TopicRow key={t.concept.id} topic={t} forceOpen={searching} />
+          {shown.map((t) => (
+            <TopicRow
+              key={t.concept.id}
+              topic={t}
+              open={opened.has(t.concept.id)}
+              onToggle={() => toggle(t.concept.id)}
+              forceOpen={searching}
+            />
           ))}
         </ul>
       )}
