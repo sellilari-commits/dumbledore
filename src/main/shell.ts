@@ -19,6 +19,7 @@ import { UndoLog } from './chat-tools/undo'
 import { createWebSearchTool } from './chat-tools/web-search'
 import { buildAppState, PermissionsCache } from './flows/app-state'
 import { AskFlow } from './flows/ask-flow'
+import { ChatMemory } from './flows/chat-memory'
 import { ChatSaves } from './flows/chat-saves'
 import { CoachActions } from './flows/coach-actions'
 import { CoachChat } from './flows/coach-chat'
@@ -212,13 +213,18 @@ export function createShellCore(services: Services, hooks: ShellHooks): ShellCor
       : null,
     log: (line) => console.info(line),
   })
+  // A pressed Undo is noted in the chat memory, so the next turns know it was undone.
+  const undoNotes = new ChatMemory({ chat: repos.chat })
   const actions = new CoachActions({
     chatTools,
-    undoLog,
+    undoLog: { undo: async (id) => undoNotes.noteUndo(id, await undoLog.undo(id)) },
     chat: repos.chat,
     chatChanged,
     notes: typedNotes,
-    saves: chatSaves,
+    saves: {
+      apply: (action) => chatSaves.apply(action),
+      undo: (id) => undoNotes.noteUndo(id, chatSaves.undo(id)),
+    },
     feedback: repos.feedback,
     sessions,
     quizzes: services.quizzes,

@@ -7,7 +7,8 @@
  * box still acts in place: "I want to understand X" starts a roadmap whose first prompt is pasted,
  * and other actions become toast buttons.
  * Turns live in thread 'ask'; the context is its last 10 messages after the latest "New chat"
- * (`since`), and the reply streams as 'chat.delta' on that thread when `emitDelta` is wired.
+ * (`since`; the tool chat sends the whole chat since then, see chat-memory.ts), and the reply
+ * streams as 'chat.delta' on that thread when `emitDelta` is wired.
  * A topic selected in the Ask bar (`subjectId`) leads the coach context: "Topic: <name>" plus that
  * subject's goal, deadline, open roadmap (active or paused) and step, and struggling concepts.
  * A "Start roadmap" chip for a subject that already has an open roadmap becomes "Open subject"
@@ -40,6 +41,7 @@ import { sourcesMarkdown } from '../chat-tools/web-search'
 import { coachActionLabel } from '../overlay/labels'
 import type { ToastSpec } from '../overlay/toasts'
 import { keyName } from '../router/hints'
+import { ChatMemory } from './chat-memory'
 import type { ChatSaves } from './chat-saves'
 import { chatRoadmapActions, openRoadmaps, roadmapProgress } from './context'
 import type { SessionFlow } from './session-flow'
@@ -148,8 +150,17 @@ export class AskFlow {
   private seq = 0
   /** The tool-loop turn being answered; a plan's "ready" message waits for its reply. */
   private turn: Promise<void> | null = null
+  /** The whole chat since "New chat" as the tool loop's history (chat-memory.ts). */
+  private readonly memory: ChatMemory
 
-  constructor(private readonly deps: AskFlowDeps) {}
+  constructor(private readonly deps: AskFlowDeps) {
+    this.memory = new ChatMemory({
+      chat: deps.repos.chat,
+      thread: ASK_THREAD,
+      summarize: deps.brain.summarizeChat?.bind(deps.brain),
+      log: (line) => console.info(line),
+    })
+  }
 
   /**
    * Ask bar (double tap): reply + actions as chips. With chat tools it runs the tool loop
@@ -303,13 +314,19 @@ export class AskFlow {
     const { repos, brain, chatTools } = this.deps
     if (!chatTools || !brain.coachLoop) throw new Error('Chat tools are not wired.')
     this.noteReset(opts.since)
-    const history = afterReset(repos.chat.history(ASK_THREAD, HISTORY_LIMIT), this.since).map(
-      (m) => ({ role: m.role, content: historyContent(m) }),
-    )
-    repos.chat.append({ thread: ASK_THREAD, role: 'user', content: text, actions: [] })
+    const history = await this.memory.history(this.since, { signal: opts.signal })
+    const asked = repos.chat.append({
+      thread: ASK_THREAD,
+      role: 'user',
+      content: text,
+      actions: [],
+    })
     const topic = opts.subjectId ? topicContext(repos, opts.subjectId) : null
     const context = [topic, this.deps.contextText()].filter(Boolean).join('\n\n')
-    const turn = chatTools.turn({ signal: opts.signal, userAskedToOpen: askedToOpen(text) })
+    const traced = this.memory.trace(
+      chatTools.turn({ signal: opts.signal, userAskedToOpen: askedToOpen(text) }),
+    )
+    const turn = traced.tools
     const messageId = `ask_pending_${++this.seq}`
     let answered = () => {}
     const current = new Promise<void>((resolve) => {
@@ -319,6 +336,7 @@ export class AskFlow {
     try {
       return await this.answerWithTools(text, opts, turn, history, context, messageId)
     } finally {
+      this.memory.saveTrace(asked.id, traced)
       if (this.turn === current) this.turn = null
       answered()
     }

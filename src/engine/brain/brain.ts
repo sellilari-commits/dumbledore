@@ -7,6 +7,8 @@
 import {
   type Brain,
   type CallOptions,
+  ChatSummaryInput,
+  type ChatSummaryOutput,
   CheckpointInput,
   type CoachEvent,
   CoachInput,
@@ -74,6 +76,7 @@ import { profilePrompt } from './prompts/p12-profile'
 import { consolidatePrompt } from './prompts/p13-consolidate'
 import { preferencesPrompt } from './prompts/p14-preferences'
 import { outlinePrompt } from './prompts/p15-outline'
+import { chatSummaryPrompt } from './prompts/p16-chat-summary'
 import { withFeedback } from './prompts/shared'
 import { runWebSearch } from './web-search'
 
@@ -342,5 +345,8 @@ export function createBrain(deps: BrainDeps = {}): BrainHandle {
 
     buildProfile: (raw: ProfileInput, opts?: CallOptions): Promise<ProfileOutput> =>
       runStructured(runner, profilePrompt, ProfileInput.parse(raw), opts),
+
+    summarizeChat: (raw: ChatSummaryInput, opts?: CallOptions): Promise<ChatSummaryOutput> =>
+      runStructured(runner, chatSummaryPrompt, ChatSummaryInput.parse(raw), opts),
   }
 }

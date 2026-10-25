@@ -234,9 +234,17 @@ ${tag('profile', input.profile || '(no profile yet)')}
 ${tag('context', clip(input.context || '(nothing recorded yet)', 6000))}`
 }
 
+/** Safety cap on history messages (the chat memory already keeps them within a token budget). */
+const HISTORY_CAP = 120
+
+/**
+ * The chat so far plus the new message. The caller sends the whole current chat, already kept
+ * within a token budget (src/main/flows/chat-memory.ts: older turns as a running summary), so
+ * only a generous safety cap applies here.
+ */
 export function coachMessages(input: CoachInput): ChatTurn[] {
   const history = input.history
-    .slice(-12)
-    .map((m) => ({ role: m.role, content: clip(m.content, 2000) }))
+    .slice(-HISTORY_CAP)
+    .map((m) => ({ role: m.role, content: clip(m.content, 4000) }))
   return [...history, { role: 'user' as const, content: input.message }]
 }

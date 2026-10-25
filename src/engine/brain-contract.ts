@@ -523,6 +523,14 @@ export const ProfileOutput = z.object({
 })
 export type ProfileOutput = z.infer<typeof ProfileOutput>
 
+// ─── P16 Chat summary ───────────────────────────────────────────────────────────────────────
+
+/** The older part of the double-tap chat (`transcript`) folded into the running summary so far. */
+export const ChatSummaryInput = z.object({ previous: z.string(), transcript: z.string() })
+export type ChatSummaryInput = z.infer<typeof ChatSummaryInput>
+export const ChatSummaryOutput = z.object({ summary: z.string() })
+export type ChatSummaryOutput = z.infer<typeof ChatSummaryOutput>
+
 // ─── The interface ──────────────────────────────────────────────────────────────────────────
 
 export interface CallOptions {
@@ -601,4 +609,10 @@ export interface Brain {
   buildProfile(input: ProfileInput, opts?: CallOptions): Promise<ProfileOutput>
   /** P15: which passages of the page being read to read / skim / skip for the student's gaps. */
   outline(input: OutlineInput, opts?: CallOptions): Promise<OutlineOutput>
+  /**
+   * P16: folds the older part of the double-tap chat into a short running summary (what was
+   * asked, done, created, changed or undone), so a long chat keeps its memory. Optional: fakes
+   * and older brains leave it out and the chat keeps a plain list of the older turns instead.
+   */
+  summarizeChat?(input: ChatSummaryInput, opts?: CallOptions): Promise<ChatSummaryOutput>
 }
