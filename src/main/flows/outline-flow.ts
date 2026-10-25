@@ -1,6 +1,7 @@
 /**
- * Outline (right-⌥ hold): Dumbledore marks what the student needs to read on what is in front of
- * them, a PDF, an article or an AI chat's answers, for the subject it belongs to. In an AI chat
+ * Outline (right-⌥ hold): Dumbledore marks what the student needs to read on what is on screen,
+ * a PDF, an article or an AI chat's answers, for the subject it belongs to; when the page goes on
+ * below, the card says to scroll and hold again. In an AI chat
  * only the assistant's answers are marked (P15 gets kind 'ai_chat'; the student's own
  * right-aligned bubbles are left out).
  *
@@ -73,7 +74,7 @@ export function union(boxes: readonly Rect[]): Rect | null {
   return { x, y, width: right - x, height: bottom - y }
 }
 
-/** Lines sent to P15: from just above the first visible line, about two screens' worth. */
+/** At most this many on-screen lines go to P15. */
 export const OUTLINE_LINES = 220
 /** How often the marks re-read the page to follow a scroll. */
 export const FOLLOW_MS = 1000
@@ -88,24 +89,39 @@ export function isCitation(text: string): boolean {
 type Boxed = PerceivedWindow['lines'][number] & { box: Rect }
 
 /**
- * A line with a real box. Chrome squashes text scrolled out of view onto the viewport's edge
- * (height ~0), and such a line can be neither found on screen nor marked.
+ * On screen: a real box, mostly inside the window. Text scrolled out of view comes from Chrome's
+ * Accessibility squeezed to the window's edge with no height; marking it would highlight nothing.
  */
-export function onScreen(l: PerceivedWindow['lines'][number]): l is Boxed {
-  return l.box !== null && l.box.height >= 2
+function onScreen(box: Rect, frame: Rect | null | undefined): boolean {
+  if (box.height <= 0 || box.width <= 0) return false
+  if (!frame) return true
+  const half = box.height / 2
+  return box.y >= frame.y - half && box.y + box.height <= frame.y + frame.height + half
 }
 
-/** The page's lines worth outlining: on screen, not citations, starting near the screen. */
+/** The lines to outline: what the student can see now, without citations. */
 export function pageLines(win: PerceivedWindow): Boxed[] {
-  const lines = win.lines.filter(
-    (l): l is Boxed => onScreen(l) && l.text.trim().length > 0 && !isCitation(l.text),
+  return win.lines
+    .filter(
+      (l): l is Boxed =>
+        l.box !== null &&
+        l.text.trim().length > 0 &&
+        !isCitation(l.text) &&
+        onScreen(l.box, win.frame),
+    )
+    .slice(0, OUTLINE_LINES)
+}
+
+/** Whether text continues below what is on screen (the card then says to scroll and hold again). */
+export function moreBelow(win: PerceivedWindow): boolean {
+  const bottom = win.frame ? win.frame.y + win.frame.height : Number.POSITIVE_INFINITY
+  return win.lines.some(
+    (l) =>
+      l.box !== null &&
+      l.text.trim().length > 0 &&
+      !isCitation(l.text) &&
+      (l.box.height <= 0 || l.box.y + l.box.height / 2 > bottom),
   )
-  const top = win.frame?.y ?? Number.NEGATIVE_INFINITY
-  const first = Math.max(
-    0,
-    lines.findIndex((l) => l.box.y + l.box.height > top),
-  )
-  return lines.slice(Math.max(0, first - 3), Math.max(0, first - 3) + OUTLINE_LINES)
 }
 
 export class OutlineFlow {
@@ -175,13 +191,13 @@ export class OutlineFlow {
       subjectName: subject.name,
       summary: out.summary,
       minutes: Math.max(1, Math.round(readWords / 200)),
+      more: moreBelow(win),
       marks,
     }
     this.deps.show(outline)
-    const anchors = out.ranges
-      .flatMap((r) => lines.slice(r.from, r.to + 1))
-      .map((l) => ({ text: l.text, y: l.box.y }))
-    if (anchors.length > 0) this.startFollow(outline, anchors)
+    const first = out.ranges[0]
+    const anchor = first ? lines[first.from] : undefined
+    if (anchor) this.startFollow(outline, anchor.text, anchor.box.y)
 
     const reads = out.ranges.filter((r) => r.verdict === 'read').slice(0, 5)
     for (const r of reads) {
@@ -205,12 +221,12 @@ export class OutlineFlow {
 
   /**
    * Keeps the marks on their text: re-reads the page every FOLLOW_MS and moves the marks by how
-   * far a marked line still on screen moved (a scroll; the first one found counts, so the marks
-   * stay when the first passage scrolls out of view). Another window in front, or no marked line
-   * left on screen (a new page, or scrolled past them all), clears them.
+   * far the first marked line moved (a scroll). Another window in front, or the line gone (a new
+   * page), clears them.
    */
-  private startFollow(outline: OutlineOverlay, anchors: { text: string; y: number }[]): void {
+  private startFollow(outline: OutlineOverlay, anchorText: string, anchorY: number): void {
     let shown = outline
+    let y = anchorY
     let busy = false
     const tick = async () => {
       if (busy) return
@@ -219,29 +235,21 @@ export class OutlineFlow {
         const win = await this.deps.frontWindow()
         if (this.follow !== handle) return
         if (!win || win === 'private' || win.windowId !== shown.windowId) return this.clear()
-        const visible = win.lines.filter(onScreen)
-        let dy: number | undefined
-        for (const a of anchors) {
-          const next = visible
-            .filter((l) => l.text === a.text)
-            .map((l) => l.box.y)
-            .sort((p, q) => Math.abs(p - a.y) - Math.abs(q - a.y))[0]
-          if (next !== undefined) {
-            dy = next - a.y
-            break
-          }
-        }
-        if (dy === undefined) return this.clear()
+        const candidates = win.lines.filter((l) => l.box && l.text === anchorText)
+        const next = candidates
+          .map((l) => l.box?.y ?? y)
+          .sort((a, b) => Math.abs(a - y) - Math.abs(b - y))[0]
+        if (next === undefined) return this.clear()
+        const dy = next - y
         if (Math.abs(dy) < 1) return
-        const moved = dy
-        for (const a of anchors) a.y += moved
+        y = next
         shown = {
           ...shown,
           frame: win.frame,
           marks: shown.marks.map((m) => ({
             ...m,
-            rect: { ...m.rect, y: m.rect.y + moved },
-            lines: m.lines?.map((b) => ({ ...b, y: b.y + moved })),
+            rect: { ...m.rect, y: m.rect.y + dy },
+            lines: m.lines?.map((b) => ({ ...b, y: b.y + dy })),
           })),
         }
         this.deps.show(shown)

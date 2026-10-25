@@ -108,6 +108,8 @@ export const OutlineOverlay = z.object({
   summary: z.string(),
   /** About how long the passages to read take (200 words a minute). */
   minutes: z.number().int().optional(),
+  /** The page goes on below what is on screen: scroll and hold again for the rest. */
+  more: z.boolean().optional(),
   marks: z.array(OutlineMark),
 })
 export type OutlineOverlay = z.infer<typeof OutlineOverlay>

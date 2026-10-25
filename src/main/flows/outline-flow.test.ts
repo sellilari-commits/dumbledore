@@ -5,7 +5,7 @@ import { createMemoryRepos } from '@engine/testing/memory-repos'
 import type { PerceivedWindow } from '@shared/helper-protocol'
 import type { OutlineOverlay } from '@shared/state'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { isCitation, OutlineFlow, pageLines, union } from './outline-flow'
+import { isCitation, moreBelow, OutlineFlow, pageLines, union } from './outline-flow'
 
 const TEXT = [
   'Carbocation – Wikipedia',
@@ -210,9 +210,26 @@ describe('OutlineFlow', () => {
 })
 
 describe('pageLines', () => {
-  it('skips citation lines and starts near the first visible line', () => {
+  it('outlines only what is on screen: no citations, nothing scrolled away or squeezed to the edge', () => {
     const win = page()
-    win.frame = { x: 0, y: 190, width: 800, height: 600 }
+    win.frame = { x: 0, y: 0, width: 800, height: 900 }
+    // Chrome reports text below the window squeezed to its bottom edge with no height.
+    win.lines.push({
+      text: 'Stability: tertiary > secondary > primary.',
+      conf: 1,
+      box: { x: 100, y: 900, width: 500, height: 0 },
+      align: 'left',
+    })
+    expect(pageLines(win).map((l) => l.text)).not.toContain(
+      'Stability: tertiary > secondary > primary.',
+    )
+    expect(moreBelow(win)).toBe(true)
+    expect(moreBelow(page())).toBe(false)
+  })
+
+  it('skips citation lines', () => {
+    const win = page()
+    win.frame = { x: 0, y: 0, width: 800, height: 900 }
     win.lines.push({
       text: 'Smith, J. (2008). Egypt. ISBN 978-0-19-815034-3',
       conf: 1,

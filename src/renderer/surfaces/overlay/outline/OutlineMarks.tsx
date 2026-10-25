@@ -187,6 +187,9 @@ export function OutlineMarks({
             {outline.summary ? (
               <span className="ov-outline__summary"> {outline.summary}</span>
             ) : null}
+            {outline.more ? (
+              <span className="ov-outline__summary"> Scroll down and hold again for more.</span>
+            ) : null}
           </span>
           <span className="ov-outline__hint">hold {TRIGGER_KEYS[triggerKey].short} to clear</span>
         </div>
